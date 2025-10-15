@@ -7,9 +7,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
+    Optional<Contract> findByContractNumber(String contractNumber);
+    boolean existsByContractNumber(String contractNumber);
     /**
      * Phương thức này tìm kiếm các hợp đồng dựa trên trạng thái (status) và từ khóa (keyword).
      * Từ khóa có thể là tên khách hàng hoặc mã khách hàng.
