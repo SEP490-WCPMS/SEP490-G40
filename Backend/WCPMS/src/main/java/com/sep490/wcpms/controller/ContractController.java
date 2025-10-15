@@ -14,7 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/contracts")
 @RequiredArgsConstructor
-public class CustomerController {
+public class ContractController {
     private final ContractService contractService;
     @GetMapping
     public ApiResponse<List<ContractDTO>> getAllContracts() {
