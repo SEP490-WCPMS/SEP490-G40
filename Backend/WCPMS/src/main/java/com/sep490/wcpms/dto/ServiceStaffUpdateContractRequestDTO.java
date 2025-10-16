@@ -1,10 +1,10 @@
-package com.sep490.wcpms.dto.contract;
+package com.sep490.wcpms.dto;
 
 import lombok.Data;
 import java.time.LocalDate;
 
 @Data
-public class UpdateContractRequestDTO {
+public class ServiceStaffUpdateContractRequestDTO {
 
     // Chỉ chứa các trường mà Service Staff được phép cập nhật
     private String contractStatus;
