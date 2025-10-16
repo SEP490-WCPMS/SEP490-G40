@@ -8,6 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
-    // Tìm thông tin khách hàng dựa trên ID của tài khoản liên kết
-    Optional<Customer> findByAccountId(Long accountId);
+    // Spring Data JPA sẽ tự động tạo câu query để tìm Customer dựa trên ID của đối tượng Account liên kết
+    Optional<Customer> findByAccount_Id(Long accountId);
 }
