@@ -3,7 +3,7 @@ package com.sep490.wcpms.controller;
 import com.sep490.wcpms.dto.ApiResponse;
 import com.sep490.wcpms.dto.ContractCreateDTO;
 import com.sep490.wcpms.dto.ContractDTO;
-import com.sep490.wcpms.service.ContractService;
+import com.sep490.wcpms.service.ContractCustomerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,23 +15,23 @@ import java.util.List;
 @RequestMapping("/api/v1/contracts")
 @RequiredArgsConstructor
 public class ContractController {
-    private final ContractService contractService;
+    private final ContractCustomerService contractCustomerService;
     @GetMapping
     public ApiResponse<List<ContractDTO>> getAllContracts() {
-        List<ContractDTO> contracts = contractService.getAllContracts();
+        List<ContractDTO> contracts = contractCustomerService.getAllContracts();
         return ApiResponse.success(contracts, "Contracts retrieved successfully");
     }
 
     @GetMapping("/{id}")
     public ApiResponse<ContractDTO> getContractById(@PathVariable Integer id) {
-        ContractDTO contract = contractService.getContractById(id);
+        ContractDTO contract = contractCustomerService.getContractById(id);
         return ApiResponse.success(contract, "Contract retrieved successfully");
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ContractDTO> createContract(@Valid @RequestBody ContractCreateDTO createDTO) {
-        ContractDTO createdContract = contractService.createContract(createDTO);
+        ContractDTO createdContract = contractCustomerService.createContract(createDTO);
         return ApiResponse.created(createdContract, "Contract created successfully");
     }
 
@@ -39,14 +39,14 @@ public class ContractController {
     public ApiResponse<ContractDTO> updateContract(
             @PathVariable Integer id,
             @Valid @RequestBody ContractCreateDTO updateDTO) {
-        ContractDTO updatedContract = contractService.updateContract(id, updateDTO);
+        ContractDTO updatedContract = contractCustomerService.updateContract(id, updateDTO);
         return ApiResponse.success(updatedContract, "Contract updated successfully");
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ApiResponse<Void> deleteContract(@PathVariable Integer id) {
-        contractService.deleteContract(id);
+        contractCustomerService.deleteContract(id);
         return ApiResponse.success(null, "Contract deleted successfully");
     }
 }
