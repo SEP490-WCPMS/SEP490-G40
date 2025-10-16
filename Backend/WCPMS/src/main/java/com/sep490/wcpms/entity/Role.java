@@ -1,8 +1,12 @@
 package com.sep490.wcpms.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "roles")
@@ -13,24 +17,27 @@ public class Role {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "role_name", nullable = false)
+    @Column(name = "role_name", length = 50, nullable = false)
     private RoleName roleName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private Status status = Status.active;
+    @Column(length = 20)
+    private Status status;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @OneToMany(mappedBy = "role")
+    private List<Account> accounts;
+
     public enum RoleName {
-        admin, customer, cashier_staff, accounting_staff, service_staff, technical_staff, guest
+        ADMIN, CUSTOMER, CASHIER_STAFF, ACCOUNTING_STAFF, SERVICE_STAFF, TECHNICAL_STAFF, GUEST
     }
 
     public enum Status {
-        active, inactive
+        ACTIVE, INACTIVE
     }
 }
