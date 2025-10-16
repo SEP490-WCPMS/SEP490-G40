@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ContractService {
+public class ContractCustomerService {
     private final ContractRepository contractRepository;
 
     public List<ContractDTO> getAllContracts() {
