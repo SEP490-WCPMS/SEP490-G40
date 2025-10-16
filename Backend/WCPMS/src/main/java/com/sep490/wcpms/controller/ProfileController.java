@@ -1,46 +1,50 @@
 package com.sep490.wcpms.controller;
 
-import com.sep490.wcpms.dto.UpdateProfileDTO;
-import com.sep490.wcpms.dto.UserProfileDTO;
+import com.sep490.wcpms.dto.ProfileResponseDTO;
+import com.sep490.wcpms.dto.ProfileUpdateRequestDTO;
 import com.sep490.wcpms.service.ProfileService;
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/v1/profile")
-@RequiredArgsConstructor
+@RequestMapping("/api/profile")
+@CrossOrigin(origins = "http://localhost:3000") // Cho phép front-end ở port 3000 gọi tới
 public class ProfileController {
 
-    private final ProfileService profileService;
+    @Autowired
+    private ProfileService profileService;
 
-    @GetMapping("/me")
-    public ResponseEntity<UserProfileDTO> getCurrentUserProfile() {
-        // Lấy thông tin xác thực của người dùng đang đăng nhập
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    // API để lấy thông tin hồ sơ
+    @GetMapping("/{accountId}")
+    public ResponseEntity<ProfileResponseDTO> getProfile(@PathVariable Long accountId) {
+        ProfileResponseDTO profile = profileService.getProfileByAccountId(accountId);
+        return ResponseEntity.ok(profile);
+    }
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).build(); // Unauthorized
+    // API để cập nhật thông tin hồ sơ
+    @PutMapping("/update/{accountId}")
+    // **THAY ĐỔI 1: Đổi kiểu trả về thành ResponseEntity<?> hoặc ResponseEntity<Map<String, Object>>**
+    public ResponseEntity<?> updateProfile(@PathVariable Long accountId, @Valid @RequestBody ProfileUpdateRequestDTO updateRequestDTO) {
+        ProfileResponseDTO updatedProfile = profileService.updateProfile(accountId, updateRequestDTO);
+
+        // **THAY ĐỔI 2: Tạo một Map để bao bọc response**
+        Map<String, Object> responseBody = new HashMap<>();
+        responseBody.put("user", updatedProfile);
+
+        return ResponseEntity.ok(responseBody);
+    }
+
+    // Lớp nội bộ để bao bọc response cho giống với yêu cầu của front-end
+    private static class UserUpdateWrapper {
+        public ProfileResponseDTO user;
+
+        public UserUpdateWrapper(ProfileResponseDTO user) {
+            this.user = user;
         }
-
-        String currentUsername = authentication.getName();
-
-        UserProfileDTO userProfile = profileService.getUserProfileByUsername(currentUsername);
-
-        return ResponseEntity.ok(userProfile);
     }
-
-    @PutMapping("/me")
-    public ResponseEntity<UserProfileDTO> updateCurrentUserProfile(@RequestBody UpdateProfileDTO updateData) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUsername = authentication.getName();
-
-        UserProfileDTO updatedProfile = profileService.updateUserProfile(currentUsername, updateData);
-
-        return ResponseEntity.ok(updatedProfile);
-    }
-
-
 }
