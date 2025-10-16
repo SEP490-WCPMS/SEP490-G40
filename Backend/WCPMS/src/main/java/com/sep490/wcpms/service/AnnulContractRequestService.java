@@ -97,6 +97,13 @@ public class AnnulContractRequestService {
             throw new IllegalStateException("Only PENDING requests can be approved/rejected.");
         }
 
+        // 2) (Khuyến nghị) Chỉ cho phép hủy khi hợp đồng chưa ở trạng thái cuối
+        String current = entity.getContract().getContractStatus();
+        if (Constant.ContractStatus.TERMINATED.equalsIgnoreCase(current)
+                || Constant.ContractStatus.EXPIRED.equalsIgnoreCase(current)) {
+            throw new IllegalStateException("Contract is already in a final state: " + current);
+        }
+
         Account approvedBy = null;
         if (dto.getApprovedById() != null) {
             approvedBy = accountRepository.findById(Long.valueOf(dto.getApprovedById()))
@@ -115,7 +122,15 @@ public class AnnulContractRequestService {
 
         mapper.updateApproval(entity, dto, approvedBy);
 
-        // optional: nếu APPROVED -> có thể cập nhật trạng thái Contract ở Service khác/Domain event
+        // 6) NẾU ĐƯỢC DUYỆT => Chấm dứt hợp đồng (terminate, không xoá)
+        if (Constant.ApprovalStatus.APPROVED.equalsIgnoreCase(dto.getApprovalStatus())) {
+            Contract contract = entity.getContract();
+            contract.setContractStatus(Constant.ContractStatus.TERMINATED); // <-- quan trọng
+            if (contract.getEndDate() == null) {
+                contract.setEndDate(LocalDate.now()); // gắn ngày kết thúc thực tế
+            }
+            contractRepository.save(contract);
+        }
 
         return mapper.toDTO(entity);
     }
