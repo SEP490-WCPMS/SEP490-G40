@@ -1,41 +1,54 @@
 package com.sep490.wcpms.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "meter_readings")
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class MeterReading {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(name = "meter_installation_id", nullable = false)
-    private Long meterInstallationId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "meter_installation_id", foreignKey = @ForeignKey(name = "fk_meter_readings_installations"))
+    private MeterInstallation meterInstallation;
 
-    @Column(name = "reading_date", nullable = false)
-    private LocalDate readingDate = LocalDate.now();
+    @Column(name = "reading_date")
+    private LocalDate readingDate;
 
-    @Column(name = "previous_reading", nullable = false)
-    private Double previousReading;
+    @Column(name = "previous_reading", precision = 15, scale = 2)
+    private BigDecimal previousReading;
 
-    @Column(name = "current_reading", nullable = false)
-    private Double currentReading;
+    @Column(name = "current_reading", precision = 15, scale = 2)
+    private BigDecimal currentReading;
 
-    @Column(name = "consumption", nullable = false)
-    private Double consumption;
+    @Column(precision = 15, scale = 2)
+    private BigDecimal consumption;
 
-    @Column(name = "reader_id", nullable = false)
-    private Long readerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reader_id", foreignKey = @ForeignKey(name = "fk_meter_readings_accounts"))
+    private Account reader;
 
-    @Column(name = "reading_status")
     @Enumerated(EnumType.STRING)
-    private ReadingStatus readingStatus = ReadingStatus.COMPLETED;
+    @Column(name = "reading_status", length = 20)
+    private ReadingStatus readingStatus;
 
-    @Column(name = "notes")
+    @Lob
     private String notes;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     public enum ReadingStatus {
         PENDING, COMPLETED, VERIFIED, DISPUTED
