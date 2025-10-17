@@ -12,9 +12,9 @@ import java.time.LocalDate;
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "annul_contract_requests",
+@Table(name = "annul_transfer_contract_requests",
         uniqueConstraints = @UniqueConstraint(name = "uk_annul_request_number", columnNames = "request_number"))
-public class ContractRequest {
+public class AnnulTransferContractRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
