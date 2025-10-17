@@ -1,22 +1,20 @@
 package com.sep490.wcpms.entity;
 
-import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.util.Constant;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.Instant;
 import java.time.LocalDate;
 
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "annul_contract_requests",
+@Table(name = "annul_transfer_contract_requests",
         uniqueConstraints = @UniqueConstraint(name = "uk_annul_request_number", columnNames = "request_number"))
-public class AnnulContractRequest {
+public class AnnulTransferContractRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,6 +25,9 @@ public class AnnulContractRequest {
     @JoinColumn(name = "contract_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_annul_contract"))
     private Contract contract;
+
+    @Column(name = "request_type", nullable = false, length = 20)
+    private String requestType;
 
     @Column(name = "request_number", length = 50, nullable = false)
     private String requestNumber;
@@ -39,8 +40,8 @@ public class AnnulContractRequest {
     private String reason;
 
     @Lob
-    @Column(name = "attached_files")
-    private String attachedFiles; // JSON list/URLs/paths tùy bạn quy ước
+    @Column(name = "attached_evidence")
+    private String attachedEvidence; // JSON list/URLs/paths tùy bạn quy ước
 
     // FK: accounts.id (người tạo yêu cầu)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -59,6 +60,15 @@ public class AnnulContractRequest {
 
     @Column(name = "approval_status", nullable = false, length = 20)
     private String approvalStatus = Constant.ApprovalStatus.PENDING;
+
+    // transfer only
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "from_customer_id")
+    private Customer fromCustomer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "to_customer_id")
+    private Customer toCustomer;
 
     @Column(name = "notes")
     private String notes;
