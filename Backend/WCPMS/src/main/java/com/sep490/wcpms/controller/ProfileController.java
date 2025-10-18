@@ -21,7 +21,7 @@ public class ProfileController {
 
     // API để lấy thông tin hồ sơ
     @GetMapping("/{accountId}")
-    public ResponseEntity<ProfileResponseDTO> getProfile(@PathVariable Long accountId) {
+    public ResponseEntity<ProfileResponseDTO> getProfile(@PathVariable Integer accountId) {
         ProfileResponseDTO profile = profileService.getProfileByAccountId(accountId);
         return ResponseEntity.ok(profile);
     }
@@ -29,7 +29,7 @@ public class ProfileController {
     // API để cập nhật thông tin hồ sơ
     @PutMapping("/update/{accountId}")
     // **THAY ĐỔI 1: Đổi kiểu trả về thành ResponseEntity<?> hoặc ResponseEntity<Map<String, Object>>**
-    public ResponseEntity<?> updateProfile(@PathVariable Long accountId, @Valid @RequestBody ProfileUpdateRequestDTO updateRequestDTO) {
+    public ResponseEntity<?> updateProfile(@PathVariable Integer accountId, @Valid @RequestBody ProfileUpdateRequestDTO updateRequestDTO) {
         ProfileResponseDTO updatedProfile = profileService.updateProfile(accountId, updateRequestDTO);
 
         // **THAY ĐỔI 2: Tạo một Map để bao bọc response**
