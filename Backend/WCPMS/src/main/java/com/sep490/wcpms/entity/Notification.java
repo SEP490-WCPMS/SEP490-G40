@@ -1,7 +1,10 @@
 package com.sep490.wcpms.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -14,34 +17,34 @@ public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @ManyToOne
-    @JoinColumn(name = "customer_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", foreignKey = @ForeignKey(name = "fk_notifications_customers"))
     private Customer customer;
 
-    @ManyToOne
-    @JoinColumn(name = "invoice_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id", foreignKey = @ForeignKey(name = "fk_notifications_invoices"))
     private Invoice invoice;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "message_type", length = 20)
     private MessageType messageType;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
+    @Column(name = "message_content")
     private String messageContent;
 
+    @Column(name = "sent_date")
     private LocalDate sentDate;
 
     @Enumerated(EnumType.STRING)
-    private Status status = Status.pending;
+    @Column(length = 20)
+    private Status status;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public enum MessageType {
-        invoice, payment_reminder, outage, general
-    }
-
-    public enum Status {
-        sent, pending, failed
-    }
+    public enum MessageType { INVOICE, PAYMENT_REMINDER, OUTAGE, GENERAL }
+    public enum Status { SENT, PENDING, FAILED }
 }

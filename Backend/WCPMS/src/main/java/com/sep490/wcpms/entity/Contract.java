@@ -13,6 +13,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(
@@ -24,7 +25,6 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-
 public class Contract {
 
     @Id
@@ -67,21 +67,25 @@ public class Contract {
     @Column(name = "contract_value", precision = 15, scale = 2)
     private BigDecimal contractValue;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", length = 20)
-    private String paymentMethod;
+    private PaymentMethod paymentMethod;
 
-    @Column(name = "contract_status", length = 20, nullable = false)
-    private String contractStatus = Constant.ContractStatus.DRAFT;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "contract_status", length = 30, nullable = false)
+    private ContractStatus contractStatus = ContractStatus.DRAFT;
 
+    // Liên kết đến service staff
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_staff_id",
             foreignKey = @ForeignKey(name = "fk_contracts_accounts_service"))
-    private Account serviceStaffId;
+    private Account serviceStaff;
 
+    // Liên kết đến technical staff
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "technical_staff_id",
             foreignKey = @ForeignKey(name = "fk_contracts_accounts_technical"))
-    private Account technicalStaffId;
+    private Account technicalStaff;
 
     @Lob
     @Column(name = "notes", columnDefinition = "TEXT")
@@ -95,4 +99,28 @@ public class Contract {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // Một hợp đồng có thể có nhiều invoice
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Invoice> invoices;
+
+    // Một hợp đồng có thể gắn với nhiều lần lắp đặt đồng hồ
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MeterInstallation> meterInstallations;
+
+    // Enum cho payment_method
+    public enum PaymentMethod {
+        CASH, BANK_TRANSFER, INSTALLMENT
+    }
+
+    // Enum cho contract_status
+    public enum ContractStatus {
+        DRAFT,
+        PENDING,
+        PENDING_SURVEY_REVIEW,
+        APPROVED,
+        ACTIVE,
+        EXPIRED,
+        TERMINATED,
+        SUSPENDED
+    }
 }

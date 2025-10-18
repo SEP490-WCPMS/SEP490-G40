@@ -1,0 +1,100 @@
+/* --- BIẾN MÀU CHỦ ĐẠO (THEME MỘT NHÀ MÁY NƯỚC) --- */
+:root {
+  --water-primary-blue: #0A77E2; /* Màu xanh dương của nước, dùng cho các nút và tiêu đề chính */
+  --water-primary-blue-dark: #085fb5; /* Màu xanh đậm hơn khi hover */
+  --water-light-background: #f4f7fc; /* Màu nền rất nhạt, tạo cảm giác sạch sẽ */
+  --water-form-background: #ffffff; /* Màu nền của form, màu trắng tinh */
+  --water-text-color: #334155; /* Màu chữ chính, xám đậm dễ đọc */
+  --water-border-color: #ced4da; /* Màu viền cho các ô input */
+  --water-success-color: #16a34a; /* Màu xanh lá cho thông báo thành công */
+  --water-error-color: #dc3545;  /* Màu đỏ cho thông báo lỗi */
+}
+
+/* --- PHONG CÁCH TỔNG THỂ --- */
+body {
+  background-color: var(--water-light-background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--water-text-color);
+}
+
+.user-dashboard-section {
+  padding: 60px 0;
+}
+
+/* --- KHUNG FORM CHÍNH --- */
+.profile-form-wrapper {
+  background-color: var(--water-form-background);
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.07);
+  border: 1px solid #eef2f7;
+}
+
+/* --- TIÊU ĐỀ --- */
+.dashboard-right-sidebar .title h2 {
+  color: var(--water-primary-blue);
+  font-weight: 700;
+  margin-bottom: 25px;
+}
+
+/* --- Ô NHẬP LIỆU (INPUT) --- */
+.form-control {
+  background-color: #f8fafc;
+  border: 1px solid var(--water-border-color);
+  border-radius: 8px;
+  padding: 12px 15px;
+  height: auto;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.form-control:focus {
+  border-color: var(--water-primary-blue);
+  background-color: var(--water-form-background);
+  box-shadow: 0 0 0 3px rgba(10, 119, 226, 0.15);
+  outline: none;
+}
+
+.form-control::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+/* --- NÚT BẤM "LƯU THAY ĐỔI" --- */
+.btn.theme-bg-color {
+  background-color: var(--water-primary-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 35px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn.theme-bg-color:hover {
+  background-color: var(--water-primary-blue-dark);
+  transform: translateY(-2px); /* Hiệu ứng nhấc nút lên một chút */
+  box-shadow: 0 4px 12px rgba(10, 119, 226, 0.3);
+}
+
+/* --- HỘP THÔNG BÁO (MESSAGE) --- */
+.alert {
+  border-radius: 8px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 15px;
+  font-weight: 500;
+}
+
+.alert-success {
+  background-color: #f0fdf4;
+  color: var(--water-success-color);
+  border-color: #bbf7d0;
+}
+
+.alert-danger {
+  background-color: #fef2f2;
+  color: var(--water-error-color);
+  border-color: #fecaca;
+}
