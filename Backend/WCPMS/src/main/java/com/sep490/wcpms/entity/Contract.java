@@ -35,11 +35,11 @@ public class Contract {
     @Column(name = "contract_number", length = 50, nullable = false, unique = true)
     private String contractNumber;
 
-    // Quan hệ nhiều hợp đồng thuộc về 1 khách hàng
+    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_contracts_customers"))
-    private Customer customer;
+    private Customer customerId;
 
     @Column(name = "application_date")
     private LocalDate applicationDate;

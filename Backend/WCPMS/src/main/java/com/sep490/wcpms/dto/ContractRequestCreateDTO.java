@@ -8,10 +8,13 @@ import java.time.LocalDate;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class AnnulContractRequestCreateDTO {
+public class ContractRequestCreateDTO {
 
     @NotNull
     private Integer contractId;
+
+    @NotBlank // "annul" | "transfer"
+    private String requestType;
 
     @NotBlank
     @Size(max = 50)
@@ -23,10 +26,14 @@ public class AnnulContractRequestCreateDTO {
     @NotBlank
     private String reason;
 
-    private String attachedFiles; // có thể là JSON string
+    private String attachedEvidence; // có thể là JSON string
 
     @NotNull
     private Integer requestedById;
 
     private String notes;
+
+    //transfer only
+    private Integer fromCustomerId;
+    private Integer toCustomerId;
 }
