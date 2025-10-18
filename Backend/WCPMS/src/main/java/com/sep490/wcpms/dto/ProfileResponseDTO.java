@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProfileResponseDTO {
-    private Long accountId;
+    private Integer accountId;
     private String fullName;
     private String email;
     private String phone;
