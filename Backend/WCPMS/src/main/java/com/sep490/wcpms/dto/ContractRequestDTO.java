@@ -1,25 +1,26 @@
 package com.sep490.wcpms.dto;
 
-import com.sep490.wcpms.util.Constant;
 import lombok.*;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class AnnulContractRequestDTO {
+public class ContractRequestDTO {
 
     private Integer id;
 
     private Integer contractId;
     private String contractNumber;  // tiện cho UI
 
+    private String requestType;
+
     private String requestNumber;
     private LocalDate requestDate;
     private String reason;
-    private String attachedFiles;
+    private String attachedEvidence;
 
     private Integer requestedById;
     private String requestedByUsername; // hoặc fullname/email
@@ -30,8 +31,12 @@ public class AnnulContractRequestDTO {
     private LocalDate approvalDate;
     private String approvalStatus;
 
+    //transfer only
+    private Integer fromCustomerId;
+    private Integer toCustomerId;
+
     private String notes;
 
-    private LocalDate createdAt;
-    private LocalDate updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

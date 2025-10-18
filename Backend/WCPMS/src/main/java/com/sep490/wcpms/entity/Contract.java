@@ -36,11 +36,10 @@ public class Contract {
     private String contractNumber;
 
     @NotNull
-//    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-//    @JoinColumn(name = "customer_id", nullable = false,
-//            foreignKey = @ForeignKey(name = "fk_contracts_customers"))
-    @Column(name = "customer_id", length = 20, nullable = false)
-    private Integer customerId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_contracts_customers"))
+    private Customer customerId;
 
     @Column(name = "application_date")
     private LocalDate applicationDate;
@@ -74,17 +73,15 @@ public class Contract {
     @Column(name = "contract_status", length = 20, nullable = false)
     private String contractStatus = Constant.ContractStatus.DRAFT;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "service_staff_id",
-//            foreignKey = @ForeignKey(name = "fk_contracts_accounts_service"))
-    @Column(name = "service_staff_id", length = 20, nullable = false)
-    private Integer serviceStaffId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_staff_id",
+            foreignKey = @ForeignKey(name = "fk_contracts_accounts_service"))
+    private Account serviceStaffId;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "technical_staff_id",
-//            foreignKey = @ForeignKey(name = "fk_contracts_accounts_technical"))
-    @Column(name = "technical_staff_id", length = 20, nullable = false)
-    private Integer technicalStaffId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "technical_staff_id",
+            foreignKey = @ForeignKey(name = "fk_contracts_accounts_technical"))
+    private Account technicalStaffId;
 
     @Lob
     @Column(name = "notes", columnDefinition = "TEXT")

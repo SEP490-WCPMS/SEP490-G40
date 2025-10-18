@@ -8,7 +8,7 @@ import java.time.LocalDate;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class AnnulContractRequestUpdateDTO {
+public class ContractRequestUpdateDTO {
 
     @NotNull
     private String approvalStatus; // PENDING/APPROVED/REJECTED
@@ -19,5 +19,5 @@ public class AnnulContractRequestUpdateDTO {
 
     private String notes;
 
-    private String attachedFiles;         // nếu muốn cập nhật file đính kèm
+    private String attachedEvidence;         // nếu muốn cập nhật file đính kèm
 }
