@@ -10,11 +10,10 @@ import java.time.LocalDate;
 
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
-@Builder
 @Entity
 @Table(name = "annul_transfer_contract_requests",
         uniqueConstraints = @UniqueConstraint(name = "uk_annul_request_number", columnNames = "request_number"))
-public class AnnulTransferContractRequest {
+public class ContractAnnulTransferRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

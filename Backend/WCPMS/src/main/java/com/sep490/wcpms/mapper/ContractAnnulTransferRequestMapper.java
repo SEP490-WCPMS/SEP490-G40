@@ -1,13 +1,16 @@
 package com.sep490.wcpms.mapper;
 
-import com.sep490.wcpms.dto.ContractRequestCreateDTO;
-import com.sep490.wcpms.dto.ContractRequestDTO;
-import com.sep490.wcpms.dto.ContractRequestUpdateDTO;
+import com.sep490.wcpms.dto.ContractAnnulTransferRequestCreateDTO;
+import com.sep490.wcpms.dto.ContractAnnulTransferRequestDTO;
+import com.sep490.wcpms.dto.ContractAnnulTransferRequestUpdateDTO;
 import com.sep490.wcpms.entity.*;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
-public interface ContractRequestMapper {
+@Mapper(
+        componentModel = "spring",
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
+public interface ContractAnnulTransferRequestMapper {
 
     // ===== Entity -> DTO =====
     @Mapping(source = "contract.id",             target = "contractId")
@@ -17,7 +20,7 @@ public interface ContractRequestMapper {
     @Mapping(source = "requestNumber",           target = "requestNumber")
     @Mapping(source = "requestDate",             target = "requestDate")
     @Mapping(source = "reason",                  target = "reason")
-    @Mapping(source = "attachedEvidence",           target = "attachedEvidence")
+    @Mapping(source = "attachedEvidence",        target = "attachedEvidence")
 
     @Mapping(source = "requestedBy.id",          target = "requestedById")
     // đổi 'username' thành field có thật (email/fullName/username) trong Account
@@ -34,7 +37,7 @@ public interface ContractRequestMapper {
     @Mapping(source = "notes",                   target = "notes")
     @Mapping(source = "createdAt",               target = "createdAt")
     @Mapping(source = "updatedAt",               target = "updatedAt")
-    ContractRequestDTO toDTO(AnnulTransferContractRequest entity);
+    ContractAnnulTransferRequestDTO toDTO(ContractAnnulTransferRequest entity);
 
     // ===== CreateDTO -> Entity =====
     @Mapping(target = "id",             ignore = true)
@@ -55,7 +58,7 @@ public interface ContractRequestMapper {
     @Mapping(target = "approvalStatus", constant = "pending")
     @Mapping(target = "createdAt",      ignore = true)
     @Mapping(target = "updatedAt",      ignore = true)
-    AnnulTransferContractRequest toEntity(ContractRequestCreateDTO dto,
+    ContractAnnulTransferRequest toEntity(ContractAnnulTransferRequestCreateDTO dto,
                                           Contract contract,
                                           Account requestedBy,
                                           Customer fromCustomer,
@@ -70,7 +73,7 @@ public interface ContractRequestMapper {
             @Mapping(target = "notes",          source = "dto.notes"),
             @Mapping(target = "attachedEvidence",  source = "dto.attachedEvidence")
     })
-    void updateApproval(@MappingTarget AnnulTransferContractRequest entity,
-                        ContractRequestUpdateDTO dto,
+    void updateApproval(@MappingTarget ContractAnnulTransferRequest entity,
+                        ContractAnnulTransferRequestUpdateDTO dto,
                         Account approvedBy);
 }
