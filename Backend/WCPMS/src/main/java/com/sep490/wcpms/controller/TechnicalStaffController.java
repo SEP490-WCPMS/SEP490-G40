@@ -11,7 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/technical")
-// @CrossOrigin("*") // Thêm nếu cần
+@CrossOrigin("*")
 public class TechnicalStaffController {
 
     @Autowired
