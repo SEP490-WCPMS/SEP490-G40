@@ -6,7 +6,10 @@ import com.sep490.wcpms.dto.ContractRequestUpdateDTO;
 import com.sep490.wcpms.entity.*;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface ContractRequestMapper {
 
     // ===== Entity -> DTO =====
@@ -17,7 +20,7 @@ public interface ContractRequestMapper {
     @Mapping(source = "requestNumber",           target = "requestNumber")
     @Mapping(source = "requestDate",             target = "requestDate")
     @Mapping(source = "reason",                  target = "reason")
-    @Mapping(source = "attachedEvidence",           target = "attachedEvidence")
+    @Mapping(source = "attachedEvidence",        target = "attachedEvidence")
 
     @Mapping(source = "requestedBy.id",          target = "requestedById")
     // đổi 'username' thành field có thật (email/fullName/username) trong Account
