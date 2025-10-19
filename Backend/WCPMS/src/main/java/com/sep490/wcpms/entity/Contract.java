@@ -39,7 +39,7 @@ public class Contract {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_contracts_customers"))
-    private Customer customerId;
+    private Customer customer;
 
     @Column(name = "application_date")
     private LocalDate applicationDate;

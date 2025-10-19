@@ -22,7 +22,7 @@ public class ProfileServiceImpl implements ProfileService {
     private CustomerRepository customerRepository;
 
     @Override
-    public ProfileResponseDTO getProfileByAccountId(Long accountId) {
+    public ProfileResponseDTO getProfileByAccountId(Integer accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + accountId));
         Customer customer = customerRepository.findByAccount_Id(accountId)
@@ -33,7 +33,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional // Rất quan trọng! Đảm bảo cả 2 bảng được cập nhật hoặc không có gì cả.
-    public ProfileResponseDTO updateProfile(Long accountId, ProfileUpdateRequestDTO dto) {
+    public ProfileResponseDTO updateProfile(Integer accountId, ProfileUpdateRequestDTO dto) {
         // 1. Lấy các entity hiện có từ DB
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + accountId));

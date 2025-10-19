@@ -42,7 +42,7 @@ public class AnnulTransferContractRequestService {
         Contract contract = contractRepository.findById(dto.getContractId())
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + dto.getContractId()));
 
-        Account requestedBy = accountRepository.findById(Long.valueOf(dto.getRequestedById()))
+        Account requestedBy = accountRepository.findById(dto.getRequestedById())
                 .orElseThrow(() -> new ResourceNotFoundException("Account (requestedById) not found: " + dto.getRequestedById()));
 
         // Không cho 2 request PENDING cùng loại trên 1 contract
@@ -56,9 +56,9 @@ public class AnnulTransferContractRequestService {
             if (dto.getFromCustomerId() == null || dto.getToCustomerId() == null) {
                 throw new IllegalArgumentException("fromCustomerId and toCustomerId are required for transfer.");
             }
-            fromCustomer = customerRepository.findById(Long.valueOf(dto.getFromCustomerId()))
+            fromCustomer = customerRepository.findById(dto.getFromCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("From-customer not found: " + dto.getFromCustomerId()));
-            toCustomer = customerRepository.findById(Long.valueOf(dto.getToCustomerId()))
+            toCustomer = customerRepository.findById(dto.getToCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("To-customer not found: " + dto.getToCustomerId()));
         }
 
@@ -109,7 +109,7 @@ public class AnnulTransferContractRequestService {
             throw new IllegalStateException("Only PENDING requests can be approved/rejected.");
         }
 
-        String current = entity.getContract().getContractStatus();
+        String current = String.valueOf(entity.getContract().getContractStatus());
         if (Constant.ContractStatus.TERMINATED.equalsIgnoreCase(current)
                 || Constant.ContractStatus.EXPIRED.equalsIgnoreCase(current)) {
             throw new IllegalStateException("Contract is already in a final state: " + current);
@@ -117,7 +117,7 @@ public class AnnulTransferContractRequestService {
 
         Account approvedBy = null;
         if (dto.getApprovedById() != null) {
-            approvedBy = accountRepository.findById(Long.valueOf(dto.getApprovedById()))
+            approvedBy = accountRepository.findById(dto.getApprovedById())
                     .orElseThrow(() -> new ResourceNotFoundException("Approver account not found: " + dto.getApprovedById()));
         }
 
@@ -138,7 +138,7 @@ public class AnnulTransferContractRequestService {
             Contract contract = entity.getContract();
 
             if ("annul".equalsIgnoreCase(entity.getRequestType())) {
-                contract.setContractStatus(Constant.ContractStatus.TERMINATED);
+                contract.setContractStatus(Contract.ContractStatus.valueOf(Constant.ContractStatus.TERMINATED));
                 if (contract.getEndDate() == null) {
                     contract.setEndDate(LocalDate.now());
                 }
@@ -150,7 +150,7 @@ public class AnnulTransferContractRequestService {
                     throw new IllegalStateException("toCustomer is required for transfer approval.");
                 }
                 // cần Contract có field 'customer'
-                contract.setCustomerId(entity.getToCustomer());
+                contract.setCustomer(entity.getToCustomer());
                 contractRepository.save(contract);
             }
         }
