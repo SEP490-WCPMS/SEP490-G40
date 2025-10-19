@@ -1,7 +1,7 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.*;
-import com.sep490.wcpms.service.AnnulTransferContractRequestService;
+import com.sep490.wcpms.service.ContractAnnulTransferRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -14,22 +14,22 @@ import java.time.LocalDate;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/contract-requests")
-public class AnnulTransferContractRequestController {
+public class ContractAnnulTransferRequestController {
 
-    private final AnnulTransferContractRequestService service;
+    private final ContractAnnulTransferRequestService service;
 
     @PostMapping
-    public ResponseEntity<ContractRequestDTO> create(@Valid @RequestBody ContractRequestCreateDTO dto) {
+    public ResponseEntity<ContractAnnulTransferRequestDTO> create(@Valid @RequestBody ContractAnnulTransferRequestCreateDTO dto) {
         return ResponseEntity.ok(service.create(dto));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ContractRequestDTO> getById(@PathVariable Integer id) {
+    public ResponseEntity<ContractAnnulTransferRequestDTO> getById(@PathVariable Integer id) {
         return ResponseEntity.ok(service.getById(id));
     }
 
     @GetMapping
-    public ResponseEntity<Page<ContractRequestDTO>> search(
+    public ResponseEntity<Page<ContractAnnulTransferRequestDTO>> search(
             @RequestParam(required = false) Integer contractId,
             @RequestParam(required = false) String requestType, // "annul" | "transfer"
             @RequestParam(required = false) String status,      // "pending" | "approved" | "rejected"
@@ -45,14 +45,14 @@ public class AnnulTransferContractRequestController {
     }
 
     @PatchMapping("/{id}/approval")
-    public ResponseEntity<ContractRequestDTO> updateApproval(@PathVariable Integer id,
-                                                             @Valid @RequestBody ContractRequestUpdateDTO dto) {
+    public ResponseEntity<ContractAnnulTransferRequestDTO> updateApproval(@PathVariable Integer id,
+                                                                          @Valid @RequestBody ContractAnnulTransferRequestUpdateDTO dto) {
         return ResponseEntity.ok(service.updateApproval(id, dto));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<ContractRequestDTO> updateMinor(@PathVariable Integer id,
-                                                          @RequestBody ContractRequestUpdateDTO dto) {
+    public ResponseEntity<ContractAnnulTransferRequestDTO> updateMinor(@PathVariable Integer id,
+                                                                       @RequestBody ContractAnnulTransferRequestUpdateDTO dto) {
         return ResponseEntity.ok(service.updateMinor(id, dto));
     }
 
