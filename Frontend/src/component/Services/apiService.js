@@ -29,3 +29,24 @@ export const markInstallationAsCompleted = (contractId, installData) => {
 export const getContractDetails = (contractId) => {
     return apiClient.get(`/contracts/${contractId}`);
 };
+
+
+// === API MỚI CHO LUỒNG GHI CHỈ SỐ ===
+const READING_API_URL = 'http://localhost:8080/api/readings';
+
+/** Lấy thông tin Hợp đồng và Chỉ số cũ */
+export const getReadingConfirmationData = (contractId) => {
+    return apiClient.get(`${READING_API_URL}/confirm-data/${contractId}`);
+};
+
+/** Lưu chỉ số mới (Gửi Kế toán) */
+export const saveNewReading = (saveData) => {
+    // saveData là MeterReadingSaveDTO
+    return apiClient.post(`${READING_API_URL}/save`, saveData);
+};
+
+/** API Scan AI (File này của bạn, tôi chỉ gom vào đây) */
+export const scanMeterImage = (base64Image) => {
+    const SCAN_API_URL = 'http://192.168.1.106:8080/api/meter-scan'; // <-- IP của bạn
+    return axios.post(`${SCAN_API_URL}/scan`, { imageBase64: base64Image });
+};
