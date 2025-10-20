@@ -12,6 +12,14 @@ function InstallationDetail() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
+    // Dữ liệu cho biên bản lắp đặt
+    const [installData, setInstallData] = useState({
+        meterId: '',
+        initialReading: '',
+        notes: ''
+    });
+
+    // Load chi tiết hợp đồng
     useEffect(() => {
         getContractDetails(contractId)
             .then(response => {
@@ -21,16 +29,29 @@ function InstallationDetail() {
             .finally(() => setLoading(false));
     }, [contractId]);
 
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setInstallData(prev => ({ ...prev, [name]: value }));
+    };
+
     const handleMarkAsCompleted = () => {
-        if (!window.confirm("Xác nhận hoàn thành lắp đặt cho hợp đồng này?")) return;
+        if (!installData.meterId || installData.initialReading === '') {
+            alert("Vui lòng nhập Mã Đồng Hồ và Chỉ Số Ban Đầu.");
+            return;
+        }
+
+        if (!window.confirm("Xác nhận hoàn thành lắp đặt với thông tin đã nhập?")) {
+            return;
+        }
 
         setSubmitting(true);
         setError(null);
 
-        markInstallationAsCompleted(contractId)
+        // Gọi API với DTO mới
+        markInstallationAsCompleted(contractId, installData)
             .then(() => {
                 alert("Xác nhận hoàn thành lắp đặt thành công!");
-                navigate('/install');
+                navigate('/technical/install'); // Quay lại danh sách
             })
             .catch(err => {
                 setError(err.response?.data?.message || "Lỗi khi xác nhận.");
@@ -46,24 +67,60 @@ function InstallationDetail() {
         <div className="detail-container">
             <h2>Chi Tiết Lắp Đặt (HĐ: {contract.contractNumber})</h2>
             
-            {/* ... (Giữ nguyên phần info-section và action-section) ... */}
             <div className="info-section">
                 <h3>Thông tin Khách Hàng</h3>
                 <p><strong>Tên Khách Hàng:</strong> {contract.customerName}</p>
                 <p><strong>Địa Chỉ Lắp Đặt:</strong> {contract.customerAddress}</p>
-                <p><strong>Trạng Thái Hiện Tại:</strong> <span className={`status-badge status-${contract.contractStatus?.toLowerCase()}`}>{contract.contractStatus}</span></p>
             </div>
+
             <div className="info-section">
                 <h3>Thông Tin Kỹ Thuật (Từ Báo Giá)</h3>
-                <p><strong>Chi Phí Dự Kiến:</strong> {contract.estimatedCost?.toLocaleString('vi-VN')} VNĐ</p>
-                <p><strong>Thiết Kế Kỹ Thuật:</strong></p>
                 <pre className="technical-design-box">{contract.technicalDesign || "(Không có mô tả)"}</pre>
             </div>
             
-            <div className="action-section">
-                {error && <div className="error-message">{error}</div>}
-                
-                {contract.contractStatus === 'APPROVED' && (
+            {/* Form Biên bản Lắp đặt */}
+            {contract.contractStatus === 'APPROVED' ? (
+                <div className="action-section">
+                    <h3>Biên Bản Lắp Đặt</h3>
+                    <div className="form-group">
+                        <label htmlFor="meterId">Mã Đồng Hồ (meterId)</label>
+                        <input
+                            type="number"
+                            id="meterId"
+                            name="meterId"
+                            value={installData.meterId}
+                            onChange={handleChange}
+                            placeholder="Nhập ID đồng hồ từ bảng water_meters"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="initialReading">Chỉ Số Ban Đầu (initialReading)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            id="initialReading"
+                            name="initialReading"
+                            value={installData.initialReading}
+                            onChange={handleChange}
+                            placeholder="Nhập chỉ số trên mặt đồng hồ (ví dụ: 0, 1.5)"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="notes">Ghi Chú Lắp Đặt (notes)</label>
+                        <textarea
+                            id="notes"
+                            name="notes"
+                            rows="3"
+                            value={installData.notes}
+                            onChange={handleChange}
+                            placeholder="Ghi chú thêm nếu cần..."
+                        />
+                    </div>
+                    
+                    {error && <div className="error-message">{error}</div>}
+                    
                     <button 
                         className="button-submit"
                         onClick={handleMarkAsCompleted}
@@ -71,8 +128,12 @@ function InstallationDetail() {
                     >
                         {submitting ? 'Đang xử lý...' : 'Xác Nhận Hoàn Thành Lắp Đặt'}
                     </button>
-                )}
-            </div>
+                </div>
+            ) : (
+                <div className="action-section">
+                     <p>Hợp đồng này đang ở trạng thái <strong>{contract.contractStatus}</strong>.</p>
+                </div>
+            )}
         </div>
     );
 }

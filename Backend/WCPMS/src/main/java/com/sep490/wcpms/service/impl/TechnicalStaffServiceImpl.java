@@ -2,17 +2,19 @@ package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
-import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Contract;
+import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.ContractMapper;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.ContractRepository;
+import com.sep490.wcpms.repository.WaterMeterRepository;
 import com.sep490.wcpms.service.TechnicalStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sep490.wcpms.dto.InstallationCompleteRequestDTO; // <-- Import DTO mới
+import com.sep490.wcpms.repository.MeterInstallationRepository; // <-- Import Repo mới
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,6 +30,12 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
     @Autowired
     private ContractMapper contractMapper;
+
+    @Autowired
+    private MeterInstallationRepository meterInstallationRepository;
+
+    @Autowired
+    private WaterMeterRepository waterMeterRepository;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -95,21 +103,41 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
     @Override
     @Transactional
-    public ContractDetailsDTO markInstallationAsCompleted(Integer contractId, Integer staffId) {
-        Contract contract = getContractAndVerifyAccess(contractId, staffId);
+    public ContractDetailsDTO markInstallationAsCompleted(Integer contractId,
+                                                          InstallationCompleteRequestDTO installDTO,
+                                                          Integer staffId) {
 
-        // Chỉ cho phép hoàn thành khi ở trạng thái APPROVED
+        Contract contract = getContractAndVerifyAccess(contractId, staffId);
+        Account staff = contract.getTechnicalStaff();
+        Customer customer = contract.getCustomer();
+
         if (contract.getContractStatus() != Contract.ContractStatus.APPROVED) {
             throw new IllegalStateException("Cannot complete installation. Contract is not in APPROVED status.");
         }
 
-        // Cập nhật ngày lắp đặt và chuyển trạng thái sang ACTIVE
-        // (Theo Enum của bạn, ACTIVE là trạng thái sau APPROVED, nghĩa là "đã hoàn thành lắp đặt và đang hoạt động")
+        // 1. Lấy đối tượng WaterMeter từ ID
+        // === SỬA LỖI TẠI ĐÂY: Dùng waterMeterRepository ===
+        WaterMeter meter = waterMeterRepository.findById(installDTO.getMeterId())
+                .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found with id: " + installDTO.getMeterId()));
+
+        // 2. TẠO BIÊN BẢN LẮP ĐẶT (MeterInstallation)
+        MeterInstallation installation = new MeterInstallation();
+        installation.setContract(contract);
+        installation.setCustomer(customer);
+        installation.setInstallationStaff(staff);
+        installation.setInstallationDate(LocalDate.now());
+        installation.setWaterMeter(meter);
+        installation.setInitialReading(installDTO.getInitialReading());
+        installation.setNotes(installDTO.getNotes());
+
+        meterInstallationRepository.save(installation);
+
+        // 3. CẬP NHẬT HỢP ĐỒNG
         contract.setInstallationDate(LocalDate.now());
         contract.setContractStatus(Contract.ContractStatus.ACTIVE);
+        contractRepository.save(contract);
 
-        Contract savedContract = contractRepository.save(contract);
-        return contractMapper.toDto(savedContract);
+        return contractMapper.toDto(contract);
     }
 
     // === CHUNG ===

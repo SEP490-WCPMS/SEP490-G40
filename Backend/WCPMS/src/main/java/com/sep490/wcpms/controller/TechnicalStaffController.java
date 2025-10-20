@@ -1,6 +1,7 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.ContractDetailsDTO;
+import com.sep490.wcpms.dto.InstallationCompleteRequestDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
 import com.sep490.wcpms.service.TechnicalStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,10 +54,18 @@ public class TechnicalStaffController {
         return ResponseEntity.ok(contracts);
     }
 
+    /**
+     * SỬA LẠI API NÀY: Thêm @RequestBody
+     */
     @PutMapping("/contracts/{id}/complete")
-    public ResponseEntity<ContractDetailsDTO> markInstallationAsCompleted(@PathVariable Integer id) {
+    public ResponseEntity<ContractDetailsDTO> markInstallationAsCompleted(
+            @PathVariable Integer id,
+            @RequestBody InstallationCompleteRequestDTO installDTO) { // <-- SỬA Ở ĐÂY
+
         Integer staffId = getAuthenticatedStaffId();
-        ContractDetailsDTO completedContract = technicalStaffService.markInstallationAsCompleted(id, staffId);
+        ContractDetailsDTO completedContract = technicalStaffService.markInstallationAsCompleted(
+                id, installDTO, staffId); // <-- Truyền DTO vào service
+
         return ResponseEntity.ok(completedContract);
     }
 

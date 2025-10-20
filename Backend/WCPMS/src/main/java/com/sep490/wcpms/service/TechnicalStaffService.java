@@ -1,6 +1,7 @@
 package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.ContractDetailsDTO;
+import com.sep490.wcpms.dto.InstallationCompleteRequestDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
 import java.util.List;
 
@@ -20,7 +21,8 @@ public interface TechnicalStaffService {
     List<ContractDetailsDTO> getAssignedInstallationContracts(Integer staffId);
 
     /** Đánh dấu hợp đồng đã hoàn thành lắp đặt (chuyển sang ACTIVE) */
-    ContractDetailsDTO markInstallationAsCompleted(Integer contractId, Integer staffId);
+    /** SỬA LẠI HÀM NÀY: Thêm DTO */
+    ContractDetailsDTO markInstallationAsCompleted(Integer contractId, InstallationCompleteRequestDTO installDTO, Integer staffId);
 
     // === CHUNG ===
 
