@@ -18,8 +18,11 @@ export const submitSurveyReport = (contractId, reportData) => {
 export const getAssignedInstallationContracts = () => {
     return apiClient.get('/install/contracts');
 };
-export const markInstallationAsCompleted = (contractId) => {
-    return apiClient.put(`/contracts/${contractId}/complete`);
+/** (API 5) Đánh dấu hợp đồng đã hoàn thành lắp đặt
+ * SỬA LẠI: Gửi kèm installData (DTO)
+ */
+export const markInstallationAsCompleted = (contractId, installData) => {
+    return apiClient.put(`/contracts/${contractId}/complete`, installData);
 };
 
 // === API CHUNG ===
