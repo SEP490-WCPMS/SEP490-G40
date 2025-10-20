@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
-import MeterScan from "./component/MeterScan"; 
 import CustomerProfileUpdate from "./component/Customer/CustomerProfileUpdate"; 
 import LayoutTechnical from './component/Layouts/LayoutTechnical';
 import TechnicalDashboard from './component/PagesTechnical/TechnicalDashboard';
@@ -9,6 +8,9 @@ import SurveyContractsList from './component/PagesTechnical/Survey/SurveyContrac
 import SurveyForm from './component/PagesTechnical/Survey/SurveyForm';
 import InstallContractsList from './component/PagesTechnical/Install/InstallContractsList';
 import InstallationDetail from './component/PagesTechnical/Install/InstallationDetail';
+import LayoutCashier from './component/Layouts/LayoutCashier';
+import MeterScan from './component/PagesCashier/MeterScan'; // <-- Trang AI Scan của bạn
+import ReadingConfirmation from './component/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
 
 function App() {
   return (
@@ -17,7 +19,6 @@ function App() {
 
         {/* --- CÁC ROUTE CHUNG --- */}
         <Route path="/" element={<h1>Trang chủ</h1>} />
-        <Route path="/meter-scan" element={<MeterScan />} />
         <Route path="/profile" element={<CustomerProfileUpdate />} />
 
         {/* --- LUỒNG CỦA TECHNICAL STAFF --- */}
@@ -44,6 +45,20 @@ function App() {
           */}
           <Route path="install" element={<InstallContractsList />} />
           <Route path="install/detail/:contractId" element={<InstallationDetail />} />
+        </Route>
+
+
+        {/* --- LUỒNG CỦA TECHNICAL STAFF --- */}
+        {/* Tất cả các trang Kỹ thuật sẽ nằm dưới /technical
+          và dùng chung <LayoutTechnical />
+        */}
+        <Route path="/cashier" element={<LayoutCashier />}>
+        {/* <Route index element={<CashierDashboard />} /> (Trang chủ Thu ngân nếu có) */}
+
+        {/* LUỒNG GHI CHỈ SỐ MỚI (Từ yêu cầu của bạn) */}
+          <Route path="scan" element={<MeterScan />} /> 
+          <Route path="submit-reading" element={<ReadingConfirmation />} />
+        
         </Route>
 
       </Routes>
