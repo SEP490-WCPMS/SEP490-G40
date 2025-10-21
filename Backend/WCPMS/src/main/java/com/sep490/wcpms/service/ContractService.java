@@ -1,6 +1,9 @@
 package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.ContractRequestDTO;
+import com.sep490.wcpms.dto.ContractRequestStatusDTO;
+
+import java.util.List;
 
 public interface ContractService {
     /**
@@ -10,4 +13,6 @@ public interface ContractService {
      * @param requestDTO Dữ liệu yêu cầu từ front-end
      */
     void createContractRequest(ContractRequestDTO requestDTO);
+
+    List<ContractRequestStatusDTO> getContractRequestsByAccountId(Integer accountId);
 }
