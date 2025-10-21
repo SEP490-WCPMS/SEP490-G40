@@ -17,4 +17,10 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
      * với một trạng thái cụ thể.
      */
     List<Contract> findByTechnicalStaffAndContractStatus(Account technicalStaff, Contract.ContractStatus contractStatus);
+
+    /**
+     * Tìm tất cả các hợp đồng của một khách hàng dựa trên Account ID của họ,
+     * sắp xếp theo ID giảm dần (để lấy yêu cầu mới nhất lên đầu).
+     */
+    List<Contract> findByCustomer_Account_IdOrderByIdDesc(Integer accountId);
 }
