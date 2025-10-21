@@ -1,6 +1,7 @@
 package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.ContractRequestDTO;
+import com.sep490.wcpms.dto.ContractRequestStatusDTO;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.ContractUsageDetail;
 import com.sep490.wcpms.entity.Customer;
@@ -17,9 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service // Đánh dấu đây là một Service
 public class ContractServiceImpl implements ContractService { // Triển khai interface
+
+    @Override
+    public List<ContractRequestStatusDTO> getContractRequestsByAccountId(Integer accountId) {
+        // 1. Gọi phương thức mới từ repository
+        List<Contract> contracts = contractRepository.findByCustomer_Account_IdOrderByIdDesc(accountId);
+
+        // 2. Chuyển đổi danh sách Entity sang DTO
+        return contracts.stream()
+                .map(ContractRequestStatusDTO::new) // Dùng hàm constructor tiện ích trong DTO
+                .collect(Collectors.toList());
+    }
 
     @Autowired
     private ContractRepository contractRepository;
