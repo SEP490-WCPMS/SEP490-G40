@@ -8,7 +8,7 @@ import java.time.LocalDate;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class ContractRequestUpdateDTO {
+public class ContractAnnulTransferRequestUpdateDTO {
 
     @NotNull
     private String approvalStatus; // PENDING/APPROVED/REJECTED

@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class ContractRequestDTO {
+public class ContractAnnulTransferRequestDTO {
 
     private Integer id;
 

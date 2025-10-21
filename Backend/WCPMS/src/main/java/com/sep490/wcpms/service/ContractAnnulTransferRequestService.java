@@ -3,7 +3,7 @@ package com.sep490.wcpms.service;
 import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
-import com.sep490.wcpms.mapper.ContractRequestMapper;
+import com.sep490.wcpms.mapper.ContractAnnulTransferRequestMapper;
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.util.Constant;
 import jakarta.transaction.Transactional;
@@ -18,17 +18,17 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
-public class AnnulTransferContractRequestService {
+public class ContractAnnulTransferRequestService {
 
-    private final AnnulTransferContractRequestRepository repository;
+    private final ContractAnnulTransferRequestRepository repository;
     private final ContractRepository contractRepository;
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository; // cần nếu validate from/to
-    private final ContractRequestMapper mapper;
+    private final ContractAnnulTransferRequestMapper mapper;
 
     // CREATE (annul/transfer)
     @Transactional
-    public ContractRequestDTO create(ContractRequestCreateDTO dto) {
+    public ContractAnnulTransferRequestDTO create(ContractAnnulTransferRequestCreateDTO dto) {
 
         String type = dto.getRequestType();
         if (type == null || (!type.equalsIgnoreCase("annul") && !type.equalsIgnoreCase("transfer"))) {
@@ -62,7 +62,7 @@ public class AnnulTransferContractRequestService {
                     .orElseThrow(() -> new ResourceNotFoundException("To-customer not found: " + dto.getToCustomerId()));
         }
 
-        AnnulTransferContractRequest entity =
+        ContractAnnulTransferRequest entity =
                 mapper.toEntity(dto, contract, requestedBy, fromCustomer, toCustomer);
 
         // đảm bảo default
@@ -75,34 +75,34 @@ public class AnnulTransferContractRequestService {
         return mapper.toDTO(entity);
     }
 
-    public ContractRequestDTO getById(Integer id) {
-        AnnulTransferContractRequest entity = repository.findWithRelationsById(id)
+    public ContractAnnulTransferRequestDTO getById(Integer id) {
+        ContractAnnulTransferRequest entity = repository.findWithRelationsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
         return mapper.toDTO(entity);
     }
 
-    public Page<ContractRequestDTO> search(Integer contractId,
-                                           String requestType,
-                                           String status,
-                                           LocalDate from,
-                                           LocalDate to,
-                                           String q,
-                                           Pageable pageable) {
-        Specification<AnnulTransferContractRequest> spec = Specification.allOf(
-                AnnulTransferContractRequestSpecs.contractIdEq(contractId),
-                AnnulTransferContractRequestSpecs.typeEq(requestType),
-                AnnulTransferContractRequestSpecs.statusEq(status),
-                AnnulTransferContractRequestSpecs.requestDateGte(from),
-                AnnulTransferContractRequestSpecs.requestDateLte(to),
-                AnnulTransferContractRequestSpecs.qLike(q)
+    public Page<ContractAnnulTransferRequestDTO> search(Integer contractId,
+                                                        String requestType,
+                                                        String status,
+                                                        LocalDate from,
+                                                        LocalDate to,
+                                                        String q,
+                                                        Pageable pageable) {
+        Specification<ContractAnnulTransferRequest> spec = Specification.allOf(
+                ContractAnnulTransferRequestSpecs.contractIdEq(contractId),
+                ContractAnnulTransferRequestSpecs.typeEq(requestType),
+                ContractAnnulTransferRequestSpecs.statusEq(status),
+                ContractAnnulTransferRequestSpecs.requestDateGte(from),
+                ContractAnnulTransferRequestSpecs.requestDateLte(to),
+                ContractAnnulTransferRequestSpecs.qLike(q)
         );
 
         return repository.findAll(spec, pageable).map(mapper::toDTO);
     }
 
     @Transactional
-    public ContractRequestDTO updateApproval(Integer id, ContractRequestUpdateDTO dto) {
-        AnnulTransferContractRequest entity = repository.findById(id)
+    public ContractAnnulTransferRequestDTO updateApproval(Integer id, ContractAnnulTransferRequestUpdateDTO dto) {
+        ContractAnnulTransferRequest entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
 
         if (!Objects.equals(entity.getApprovalStatus(), Constant.ApprovalStatus.PENDING)) {
@@ -159,8 +159,8 @@ public class AnnulTransferContractRequestService {
     }
 
     @Transactional
-    public ContractRequestDTO updateMinor(Integer id, ContractRequestUpdateDTO dto) {
-        AnnulTransferContractRequest entity = repository.findById(id)
+    public ContractAnnulTransferRequestDTO updateMinor(Integer id, ContractAnnulTransferRequestUpdateDTO dto) {
+        ContractAnnulTransferRequest entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
 
         if (dto.getAttachedEvidence() != null) entity.setAttachedEvidence(dto.getAttachedEvidence());
@@ -171,7 +171,7 @@ public class AnnulTransferContractRequestService {
 
     @Transactional
     public void delete(Integer id) {
-        AnnulTransferContractRequest entity = repository.findById(id)
+        ContractAnnulTransferRequest entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
         repository.delete(entity);
     }
