@@ -36,15 +36,22 @@ public class MeterInstallation {
     @Column(name = "installation_date")
     private LocalDate installationDate;
 
+    // --- SỬA LẠI CHỖ NÀY ---
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "installation_staff_id", foreignKey = @ForeignKey(name = "fk_meter_installations_accounts"))
-    private Account installationStaff;
+    // Đổi @JoinColumn "name" cho khớp với tên cột mới
+    @JoinColumn(name = "technical_staff_id", foreignKey = @ForeignKey(name = "fk_meter_installations_accounts"))
+    private Account technicalStaff; // Đổi tên biến cho nhất quán
 
     @Column(name = "initial_reading", precision = 15, scale = 2)
     private BigDecimal initialReading;
 
     @Lob
     private String notes;
+
+    // --- THÊM TRƯỜNG NÀY ---
+    @Lob // Dùng @Lob để map với kiểu LONGTEXT
+    @Column(name = "installation_image_base64")
+    private String installationImageBase64;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
