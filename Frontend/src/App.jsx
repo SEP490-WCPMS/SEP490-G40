@@ -12,8 +12,8 @@ import LayoutCashier from './component/Layouts/LayoutCashier';
 import MeterScan from './component/PagesCashier/MeterScan'; // <-- Trang AI Scan của bạn
 import ReadingConfirmation from './component/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
 import LayoutService from './component/Layouts/LayoutService';
-import ServiceDashboardPage from './component/PageService/ServiceDashboardPage'; 
-import ContractManagementPage from './component/PageService/ContractManagementPage'; 
+import ServiceDashboardPage from './component/PagesService/ServiceDashboardPage'; 
+import ContractManagementPage from './component/PagesService/ContractManagementPage'; 
 
 function App() {
   return (
