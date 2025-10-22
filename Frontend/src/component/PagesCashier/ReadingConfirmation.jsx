@@ -1,14 +1,20 @@
 // src/PagesTechnical/ReadingConfirmation.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getReadingConfirmationData, saveNewReading } from '../Services/apiService';
+import { getReadingConfirmationDataByMeterCode, saveNewReading } from '../Services/apiService';
 
 function ReadingConfirmation() {
     const location = useLocation();
     const navigate = useNavigate();
 
     // Lấy dữ liệu (Chỉ số mới & ID) từ trang Scan gửi qua
-    const { contractId, currentReading } = location.state || {};
+    const { 
+        physicalMeterId, // (vd: "345728") 
+        currentReading,
+        aiDetectedReading,
+        aiDetectedMeterId,
+        scanImageBase64 
+    } = location.state || {};
 
     const [confirmationData, setConfirmationData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -17,14 +23,14 @@ function ReadingConfirmation() {
     const [notes, setNotes] = useState(""); // Ghi chú thêm
 
     useEffect(() => {
-        if (!contractId || !currentReading) {
+        if (!physicalMeterId || !currentReading) {
             setError("Không có dữ liệu đọc số. Vui lòng quay lại trang Scan.");
             setLoading(false);
             return;
         }
 
         // Gọi API lấy thông tin Hợp đồng và Chỉ số cũ
-        getReadingConfirmationData(contractId)
+        getReadingConfirmationDataByMeterCode(physicalMeterId)
             .then(response => {
                 setConfirmationData(response.data);
             })
@@ -34,7 +40,7 @@ function ReadingConfirmation() {
             })
             .finally(() => setLoading(false));
 
-    }, [contractId, currentReading]);
+    }, [physicalMeterId, currentReading]);
 
     // Hàm gửi đi (Lưu vào Bảng 12)
     const handleSubmitReading = () => {
@@ -44,10 +50,17 @@ function ReadingConfirmation() {
         setError(null);
 
         const saveData = {
+            // Dữ liệu nghiệp vụ (Bảng 12)
             meterInstallationId: confirmationData.meterInstallationId,
             previousReading: confirmationData.previousReading,
             currentReading: currentReading,
-            notes: notes
+            notes: notes,
+
+            // Dữ liệu Log (Bảng mới)
+            aiDetectedReading: aiDetectedReading,
+            aiDetectedMeterId: aiDetectedMeterId,
+            userCorrectedMeterIdText: userCorrectedMeterIdText, // ID (text) mà người dùng nhập
+            scanImageBase64: scanImageBase64 // Ảnh
         };
 
         saveNewReading(saveData)

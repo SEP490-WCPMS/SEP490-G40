@@ -21,11 +21,12 @@ public class MeterReadingController {
     private MeterReadingService meterReadingService;
 
     /**
-     * API Lấy thông tin Hợp đồng và Chỉ số cũ
+     * SỬA LẠI API NÀY
+     * Lấy thông tin Hợp đồng và Chỉ số cũ BẰNG MÃ ĐỒNG HỒ (meterCode)
      */
-    @GetMapping("/confirm-data/{contractId}")
-    public ResponseEntity<ReadingConfirmationDTO> getConfirmationData(@PathVariable Integer contractId) {
-        ReadingConfirmationDTO data = meterReadingService.getConfirmationData(contractId);
+    @GetMapping("/confirm-data/by-meter/{meterCode}")
+    public ResponseEntity<ReadingConfirmationDTO> getConfirmationData(@PathVariable String meterCode) {
+        ReadingConfirmationDTO data = meterReadingService.getConfirmationDataByMeterCode(meterCode);
         return ResponseEntity.ok(data);
     }
 

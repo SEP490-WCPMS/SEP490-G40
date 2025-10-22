@@ -34,9 +34,9 @@ export const getContractDetails = (contractId) => {
 // === API MỚI CHO LUỒNG GHI CHỈ SỐ ===
 const READING_API_URL = 'http://localhost:8080/api/readings';
 
-/** Lấy thông tin Hợp đồng và Chỉ số cũ */
-export const getReadingConfirmationData = (contractId) => {
-    return apiClient.get(`${READING_API_URL}/confirm-data/${contractId}`);
+/** SỬA LẠI HÀM NÀY: Gọi bằng meterCode */
+export const getReadingConfirmationDataByMeterCode = (meterCode) => {
+    return apiClient.get(`${READING_API_URL}/confirm-data/by-meter/${meterCode}`);
 };
 
 /** Lưu chỉ số mới (Gửi Kế toán) */
