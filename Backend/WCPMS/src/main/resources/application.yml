@@ -3,7 +3,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/wcpms?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&characterEncoding=UTF-8&useUnicode=true
     username: root
-    password: 123456789
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
     # Cấu hình connection pool
     hikari:
