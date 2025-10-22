@@ -50,3 +50,24 @@ export const scanMeterImage = (base64Image) => {
     const SCAN_API_URL = 'http://192.168.1.106:8080/api/meter-scan'; // <-- IP của bạn
     return axios.post(`${SCAN_API_URL}/scan`, { imageBase64: base64Image });
 };
+
+// === API CHO SERVICE STAFF CONTRACT MANAGEMENT ===
+const SERVICE_API_BASE_URL = 'http://localhost:8080/api/service/contracts';
+const serviceApiClient = axios.create({ 
+  baseURL: SERVICE_API_BASE_URL
+});
+
+/** (Service Staff) Lấy danh sách hợp đồng */
+export const getServiceContracts = (params) => { 
+    return serviceApiClient.get('/', { params });
+};
+
+/** (Service Staff) Lấy chi tiết 1 hợp đồng */
+export const getServiceContractDetail = (id) => {
+    return serviceApiClient.get(`/${id}`);
+};
+
+/** (Service Staff) Cập nhật hợp đồng */
+export const updateServiceContract = (id, data) => {
+    return serviceApiClient.put(`/${id}`, data);
+};
