@@ -14,10 +14,13 @@ function InstallationDetail() {
 
     // Dữ liệu cho biên bản lắp đặt
     const [installData, setInstallData] = useState({
-        meterId: '',
+        meterCode: '',
         initialReading: '',
-        notes: ''
+        notes: '',
+        installationImageBase64: null // <-- THÊM STATE NÀY
     });
+
+    const [imagePreview, setImagePreview] = useState(null); // State cho xem trước ảnh
 
     // Load chi tiết hợp đồng
     useEffect(() => {
@@ -29,14 +32,43 @@ function InstallationDetail() {
             .finally(() => setLoading(false));
     }, [contractId]);
 
+    // Hàm xử lý khi người dùng nhập text/số
     const handleChange = (e) => {
         const { name, value } = e.target;
         setInstallData(prev => ({ ...prev, [name]: value }));
     };
 
+    // --- HÀM MỚI: Xử lý khi chọn ảnh ---
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+            setInstallData(prev => ({ ...prev, installationImageBase64: null }));
+            setImagePreview(null);
+            return;
+        }
+
+        // Hiển thị ảnh xem trước
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+
+        // Chuyển ảnh sang Base64 (giống hệt trang Scan)
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result.split(",")[1];
+            setInstallData(prev => ({ ...prev, installationImageBase64: base64String }));
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleMarkAsCompleted = () => {
-        if (!installData.meterId || installData.initialReading === '') {
+        if (!installData.meterCode || installData.initialReading === '') {
             alert("Vui lòng nhập Mã Đồng Hồ và Chỉ Số Ban Đầu.");
+            return;
+        }
+
+        // BẮT BUỘC NHẬP ẢNH
+        if (!installData.installationImageBase64) {
+            alert("Vui lòng chụp và đính kèm ảnh đồng hồ đã lắp đặt.");
             return;
         }
 
@@ -83,12 +115,12 @@ function InstallationDetail() {
                 <div className="action-section">
                     <h3>Biên Bản Lắp Đặt</h3>
                     <div className="form-group">
-                        <label htmlFor="meterId">Mã Đồng Hồ (meterId)</label>
+                        <label htmlFor="meterCode">Mã Đồng Hồ (meter_code)</label>
                         <input
-                            type="number"
-                            id="meterId"
-                            name="meterId"
-                            value={installData.meterId}
+                            type="text"
+                            id="meterCode"
+                            name="meterCode"
+                            value={installData.meterCode}
                             onChange={handleChange}
                             placeholder="Nhập ID đồng hồ từ bảng water_meters"
                             required
@@ -107,6 +139,26 @@ function InstallationDetail() {
                             required
                         />
                     </div>
+                    {/* --- THÊM Ô UPLOAD ẢNH --- */}
+                    <div className="form-group">
+                        <label htmlFor="installationImage">Ảnh Chụp Đồng Hồ (Bắt buộc)</label>
+                        <input
+                            type="file"
+                            id="installationImage"
+                            name="installationImage"
+                            accept="image/*" // Chỉ chấp nhận ảnh
+                            onChange={handleFileChange}
+                            required
+                        />
+                    </div>
+                    
+                    {/* Hiển thị ảnh xem trước */}
+                    {imagePreview && (
+                        <div className="form-group">
+                            <label>Ảnh xem trước:</label>
+                            <img src={imagePreview} alt="Xem trước" style={{ maxWidth: '300px', border: '1px solid #ccc' }} />
+                        </div>
+                    )}
                     <div className="form-group">
                         <label htmlFor="notes">Ghi Chú Lắp Đặt (notes)</label>
                         <textarea

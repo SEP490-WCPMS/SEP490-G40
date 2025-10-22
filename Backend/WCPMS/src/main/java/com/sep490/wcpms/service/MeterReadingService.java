@@ -5,8 +5,8 @@ import com.sep490.wcpms.dto.ReadingConfirmationDTO;
 
 public interface MeterReadingService {
 
-    /** Lấy thông tin xác nhận: Hợp đồng + Chỉ số cũ */
-    ReadingConfirmationDTO getConfirmationData(Integer contractId);
+    /** SỬA LẠI HÀM NÀY: Input là meterCode (String) */
+    ReadingConfirmationDTO getConfirmationDataByMeterCode(String meterCode);
 
     /** Lưu bản ghi chỉ số mới vào bảng meter_readings */
     void saveNewReading(MeterReadingSaveDTO dto, Integer readerId);
