@@ -11,6 +11,9 @@ import InstallationDetail from './component/PagesTechnical/Install/InstallationD
 import LayoutCashier from './component/Layouts/LayoutCashier';
 import MeterScan from './component/PagesCashier/MeterScan'; // <-- Trang AI Scan của bạn
 import ReadingConfirmation from './component/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
+import LayoutService from './component/Layouts/LayoutService';
+import ServiceDashboardPage from './component/PageService/ServiceDashboardPage'; 
+import ContractManagementPage from './component/PageService/ContractManagementPage'; 
 
 function App() {
   return (
@@ -60,6 +63,18 @@ function App() {
           <Route path="submit-reading" element={<ReadingConfirmation />} />
         
         </Route>
+
+        {/* --- LUỒNG CỦA SERVICE STAFF --- */}
+          <Route path="/service" element={<LayoutService />}>
+              {/* Trang index của /service sẽ là dashboard */}
+              <Route index element={<ServiceDashboardPage />} />
+              {/* Hoặc dùng Navigate nếu muốn URL luôn là /service/dashboard */}
+              {/* <Route index element={<Navigate to="/service/dashboard" replace />} /> */}
+
+              {/* Các trang cụ thể */}
+              <Route path="dashboard" element={<ServiceDashboardPage />} />
+              <Route path="contracts" element={<ContractManagementPage />} />
+          </Route>
 
       </Routes>
     </BrowserRouter>
