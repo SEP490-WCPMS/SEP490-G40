@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/staff/contracts")
+@RequestMapping("/api/service/contracts")
 @RequiredArgsConstructor
 public class ServiceStaffContractController {
 
