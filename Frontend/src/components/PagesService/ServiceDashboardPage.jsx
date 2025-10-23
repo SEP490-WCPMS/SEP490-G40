@@ -1,85 +1,220 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Typography, message, Spin } from 'antd'; // Thêm Spin và message
-import { FileAddOutlined, ClockCircleOutlined, CheckCircleOutlined, IssuesCloseOutlined } from '@ant-design/icons';
+import { Row, Col, Typography, message, Spin, Card, Select, DatePicker, Button } from 'antd';
+import { 
+    FileAddOutlined, 
+    ClockCircleOutlined, 
+    CheckCircleOutlined, 
+    IssuesCloseOutlined,
+    FilterOutlined,
+    ReloadOutlined
+} from '@ant-design/icons';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title as ChartTitle,
+    Tooltip,
+    Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import StatisticCard from '../common/StatisticCard';
-import ContractTable from './ContractManagement/ContractTable'; // ✨ Import ContractTable ✨
-import { getServiceContracts } from '../Services/apiService'; // ✨ Import hàm API ✨
+import ContractTable from './ContractManagement/ContractTable';
+import { 
+    getDashboardStats, 
+    getContractChartData,
+    getServiceContracts 
+} from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
+const { RangePicker } = DatePicker;
+
+// Đăng ký các components cần thiết cho Chart.js
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    ChartTitle,
+    Tooltip,
+    Legend
+);
+
+// Options cho biểu đồ
+const chartOptions = {
+    responsive: true,
+    plugins: {
+        legend: {
+            position: 'top',
+        },
+        title: {
+            display: false,
+        },
+    },
+    scales: {
+        y: {
+            beginAtZero: true,
+            ticks: {
+                stepSize: 1
+            }
+        }
+    }
+};
 
 const ServiceDashboardPage = () => {
-    // State cho dữ liệu thống kê (sau này lấy từ API riêng)
+    // State cho dữ liệu thống kê
     const [stats, setStats] = useState({
         newRequests: 0,
         pendingSurvey: 0,
         pendingInstallation: 0,
         supportTickets: 0,
     });
+    
     // State cho bảng yêu cầu gần đây
     const [recentContracts, setRecentContracts] = useState([]);
     const [loadingRecent, setLoadingRecent] = useState(false);
+    
+    // State cho biểu đồ và filters
+    const [chartData, setChartData] = useState({
+        labels: [],
+        datasets: [
+            {
+                label: 'Yêu cầu mới',
+                data: [],
+                borderColor: '#1890ff',
+                backgroundColor: '#1890ff',
+            },
+            {
+                label: 'Hoàn thành',
+                data: [],
+                borderColor: '#52c41a',
+                backgroundColor: '#52c41a',
+            },
+        ],
+    });
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [dateRange, setDateRange] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    // TODO: Hàm gọi API lấy số liệu thống kê (tách riêng sau)
+    // Lấy số liệu thống kê từ API
     const fetchStats = async () => {
-        // Giả lập API
-        setStats({
-            newRequests: 12,
-            pendingSurvey: 5,
-            pendingInstallation: 8,
-            supportTickets: 3,
-        });
+        try {
+            setLoading(true);
+            const response = await getDashboardStats();
+            if (response.data) {
+                setStats(response.data);
+            }
+        } catch (error) {
+            message.error('Không thể lấy dữ liệu thống kê');
+            console.error('Error fetching stats:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // Hàm gọi API lấy các hợp đồng gần đây (ví dụ: 5 hợp đồng DRAFT hoặc PENDING)
-    const fetchRecentContracts = async () => {
-        setLoadingRecent(true);
+    // Lấy dữ liệu biểu đồ từ API
+    const fetchChartData = async (start, end) => {
         try {
-            const params = {
-                page: 0, // Lấy trang đầu tiên
-                size: 5, // Chỉ lấy 5 item
-                status: 'DRAFT,PENDING', // Lấy các trạng thái cần xử lý (cần backend hỗ trợ lọc nhiều status)
-                // Hoặc lọc thủ công sau khi lấy nếu backend chưa hỗ trợ
-                // sort: 'createdAt,desc' // Sắp xếp theo ngày tạo mới nhất (cần backend hỗ trợ)
-            };
-            const response = await getServiceContracts(params);
-            setRecentContracts(response.data.content || []);
+            setLoading(true);
+            const response = await getContractChartData(start, end);
+            if (response.data) {
+                setChartData({
+                    labels: response.data.labels,
+                    datasets: [
+                        {
+                            label: 'Yêu cầu mới',
+                            data: response.data.newRequests,
+                            borderColor: '#1890ff',
+                            backgroundColor: '#1890ff',
+                        },
+                        {
+                            label: 'Hoàn thành',
+                            data: response.data.completed,
+                            borderColor: '#52c41a',
+                            backgroundColor: '#52c41a',
+                        },
+                    ],
+                });
+            }
         } catch (error) {
-            message.error('Lỗi khi tải các yêu cầu gần đây!');
-            console.error("Fetch recent contracts error:", error);
+            message.error('Không thể lấy dữ liệu biểu đồ');
+            console.error('Error fetching chart data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Lấy danh sách hợp đồng gần đây
+    const fetchRecentContracts = async () => {
+        try {
+            setLoadingRecent(true);
+            const response = await getServiceContracts({
+                status: filterStatus !== 'all' ? filterStatus : undefined,
+                pageSize: 5,
+                page: 1
+            });
+            if (response.data) {
+                setRecentContracts(response.data.data || []);
+            }
+        } catch (error) {
+            message.error('Không thể lấy danh sách hợp đồng');
+            console.error('Error fetching contracts:', error);
         } finally {
             setLoadingRecent(false);
         }
     };
 
-    // Gọi các hàm fetch khi component mount
+    // Load dữ liệu khi component mount
     useEffect(() => {
         fetchStats();
+        // Lấy dữ liệu cho 7 ngày gần nhất làm mặc định
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 6);
+        fetchChartData(start.toISOString(), end.toISOString());
         fetchRecentContracts();
-    }, []); // Chạy 1 lần duy nhất
+    }, []);
 
-    // Hàm xử lý khi click nút "Xem/Sửa" từ bảng tóm tắt
-    // TODO: Cần điều hướng người dùng sang trang ContractManagement hoặc mở Modal
-    const handleViewDetailsFromDashboard = (contract) => {
-        console.log("Xem chi tiết hợp đồng:", contract.id);
-        // Ví dụ: Chuyển hướng
-        // navigate(`/service/contracts?view=${contract.id}`); // Cần import useNavigate
-        message.info(`Chức năng xem chi tiết cho HĐ #${contract.id} sẽ được thực hiện sau.`);
+    // Xử lý khi thay đổi filter status
+    useEffect(() => {
+        fetchRecentContracts();
+    }, [filterStatus]);
+
+    // Xử lý khi thay đổi date range
+    const handleDateRangeChange = (dates) => {
+        if (!dates || !dates[0] || !dates[1]) return;
+        setDateRange(dates);
+        fetchChartData(dates[0].toISOString(), dates[1].toISOString());
     };
 
-
     return (
-        <div>
-            <Title level={2}>Tổng quan công việc</Title>
-            <Paragraph>Dưới đây là tóm tắt các công việc cần xử lý.</Paragraph>
+        <div className="space-y-6">
+            {/* Header Section */}
+            <div className="flex justify-between items-center">
+                <div>
+                    <Title level={2} className="!mb-2">Tổng quan công việc</Title>
+                    <Paragraph className="!mb-0">Dưới đây là tóm tắt các công việc cần xử lý.</Paragraph>
+                </div>
+                <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                        fetchStats();
+                        fetchRecentContracts();
+                    }}
+                >
+                    Làm mới
+                </Button>
+            </div>
 
-            <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
-                {/* Các StatisticCard giữ nguyên như cũ */}
-                 <Col xs={24} sm={12} lg={6}>
+            {/* Statistics Cards */}
+            <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} lg={6}>
                     <StatisticCard
                         title="Yêu cầu mới"
                         value={stats.newRequests}
                         icon={<FileAddOutlined />}
-                        color="#1890ff" // Blue
+                        color="#1890ff"
                         suffix=" yêu cầu"
                     />
                 </Col>
@@ -88,7 +223,7 @@ const ServiceDashboardPage = () => {
                         title="Chờ khảo sát"
                         value={stats.pendingSurvey}
                         icon={<ClockCircleOutlined />}
-                        color="#faad14" // Yellow/Orange
+                        color="#faad14"
                         suffix=" yêu cầu"
                     />
                 </Col>
@@ -97,34 +232,61 @@ const ServiceDashboardPage = () => {
                         title="Chờ lắp đặt"
                         value={stats.pendingInstallation}
                         icon={<CheckCircleOutlined />}
-                        color="#52c41a" // Green
+                        color="#52c41a"
                         suffix=" hợp đồng"
                     />
                 </Col>
-                 <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={6}>
                     <StatisticCard
                         title="Hỗ trợ cần trả lời"
                         value={stats.supportTickets}
                         icon={<IssuesCloseOutlined />}
-                        color="#f5222d" // Red
+                        color="#f5222d"
                         suffix=" yêu cầu"
                     />
                 </Col>
             </Row>
 
-            <div style={{ marginTop: '48px' }}>
-                <Title level={3}>Các yêu cầu gần đây cần xử lý</Title>
-                 {/* ✨ Thêm Bảng tóm tắt vào đây ✨ */}
+            {/* Chart Section */}
+            <Card className="shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                    <Title level={4} className="!mb-0">Thống kê yêu cầu trong tuần</Title>
+                    <RangePicker
+                        onChange={handleDateRangeChange}
+                        className="w-64"
+                    />
+                </div>
+                <div className="h-[300px]">
+                    <Line options={chartOptions} data={chartData} />
+                </div>
+            </Card>
+
+            {/* Recent Contracts Section */}
+            <Card className="shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                    <Title level={4} className="!mb-0">Các yêu cầu gần đây cần xử lý</Title>
+                    <div className="flex gap-3">
+                        <Select
+                            placeholder="Lọc theo trạng thái"
+                            style={{ width: 200 }}
+                            onChange={(value) => setFilterStatus(value)}
+                            allowClear
+                            suffixIcon={<FilterOutlined />}
+                        >
+                            <Select.Option value="all">Tất cả</Select.Option>
+                            <Select.Option value="DRAFT">Bản nháp</Select.Option>
+                            <Select.Option value="PENDING">Đang chờ</Select.Option>
+                        </Select>
+                    </div>
+                </div>
                 <Spin spinning={loadingRecent}>
                     <ContractTable
                         data={recentContracts}
                         loading={loadingRecent}
-                        pagination={false} // Tắt phân trang cho bảng tóm tắt
-                        onViewDetails={handleViewDetailsFromDashboard} // Hàm xử lý khi click nút Xem/Sửa
-                        // Không cần onPageChange vì đã tắt pagination
+                        pagination={false}
                     />
                 </Spin>
-            </div>
+            </Card>
         </div>
     );
 };

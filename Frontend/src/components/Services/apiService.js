@@ -51,23 +51,35 @@ export const scanMeterImage = (base64Image) => {
     return axios.post(`${SCAN_API_URL}/scan`, { imageBase64: base64Image });
 };
 
-// === API CHO SERVICE STAFF CONTRACT MANAGEMENT ===
-const SERVICE_API_BASE_URL = 'http://localhost:8080/api/service/contracts';
+// === API CHO SERVICE STAFF ===
+const SERVICE_API_BASE_URL = 'http://localhost:8080/api/service';
 const serviceApiClient = axios.create({ 
   baseURL: SERVICE_API_BASE_URL
 });
 
-/** (Service Staff) Lấy danh sách hợp đồng */
+/** Lấy số liệu thống kê cho dashboard */
+export const getDashboardStats = () => {
+    return serviceApiClient.get('/dashboard/stats');
+};
+
+/** Lấy dữ liệu biểu đồ theo khoảng thời gian */
+export const getContractChartData = (startDate, endDate) => {
+    return serviceApiClient.get('/dashboard/chart', {
+        params: { startDate, endDate }
+    });
+};
+
+/** Lấy danh sách hợp đồng gần đây */
 export const getServiceContracts = (params) => { 
-    return serviceApiClient.get('/', { params });
+    return serviceApiClient.get('/contracts', { params });
 };
 
-/** (Service Staff) Lấy chi tiết 1 hợp đồng */
+/** Lấy chi tiết 1 hợp đồng */
 export const getServiceContractDetail = (id) => {
-    return serviceApiClient.get(`/${id}`);
+    return serviceApiClient.get(`/contracts/${id}`);
 };
 
-/** (Service Staff) Cập nhật hợp đồng */
+/** Cập nhật hợp đồng */
 export const updateServiceContract = (id, data) => {
-    return serviceApiClient.put(`/${id}`, data);
+    return serviceApiClient.put(`/contracts/${id}`, data);
 };
