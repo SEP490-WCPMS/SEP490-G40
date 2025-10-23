@@ -1,19 +1,19 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
-import CustomerProfileUpdate from "./component/Customer/CustomerProfileUpdate"; 
-import LayoutTechnical from './component/Layouts/LayoutTechnical';
-import TechnicalDashboard from './component/PagesTechnical/TechnicalDashboard';
-import SurveyContractsList from './component/PagesTechnical/Survey/SurveyContractsList';
-import SurveyForm from './component/PagesTechnical/Survey/SurveyForm';
-import InstallContractsList from './component/PagesTechnical/Install/InstallContractsList';
-import InstallationDetail from './component/PagesTechnical/Install/InstallationDetail';
-import LayoutCashier from './component/Layouts/LayoutCashier';
-import MeterScan from './component/PagesCashier/MeterScan'; // <-- Trang AI Scan của bạn
-import ReadingConfirmation from './component/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
-import LayoutService from './component/Layouts/LayoutService';
-import ServiceDashboardPage from './component/PagesService/ServiceDashboardPage'; 
-import ContractManagementPage from './component/PagesService/ContractManagementPage'; 
+import CustomerProfileUpdate from "./components/Customer/CustomerProfileUpdate"; 
+import LayoutTechnical from './components/Layouts/LayoutTechnical';
+import TechnicalDashboard from './components/PagesTechnical/TechnicalDashboard';
+import SurveyContractsList from './components/PagesTechnical/Survey/SurveyContractsList';
+import SurveyForm from './components/PagesTechnical/Survey/SurveyForm';
+import InstallContractsList from './components/PagesTechnical/Install/InstallContractsList';
+import InstallationDetail from './components/PagesTechnical/Install/InstallationDetail';
+import LayoutCashier from './components/Layouts/LayoutCashier';
+import MeterScan from './components/PagesCashier/MeterScan'; // <-- Trang AI Scan của bạn
+import ReadingConfirmation from './components/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
+import LayoutService from './components/Layouts/LayoutService';
+import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage'; 
+import ContractManagementPage from './components/PagesService/ContractManagementPage'; 
 
 function App() {
   return (
