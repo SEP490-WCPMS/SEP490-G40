@@ -115,22 +115,29 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
             throw new IllegalStateException("Cannot complete installation. Contract is not in APPROVED status.");
         }
 
-        // 1. Lấy đối tượng WaterMeter từ ID
-        // === SỬA LỖI TẠI ĐÂY: Dùng waterMeterRepository ===
-        WaterMeter meter = waterMeterRepository.findById(installDTO.getMeterId())
-                .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found with id: " + installDTO.getMeterId()));
+        // 1. Lấy đối tượng WaterMeter từ MÃ CODE (String)
+        // === SỬA LỖI TẠI ĐÂY ===
+        WaterMeter meter = waterMeterRepository.findByMeterCode(installDTO.getMeterCode())
+                .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found with code: " + installDTO.getMeterCode()));
 
         // 2. TẠO BIÊN BẢN LẮP ĐẶT (MeterInstallation)
         MeterInstallation installation = new MeterInstallation();
         installation.setContract(contract);
         installation.setCustomer(customer);
-        installation.setInstallationStaff(staff);
+        installation.setTechnicalStaff(staff);
         installation.setInstallationDate(LocalDate.now());
         installation.setWaterMeter(meter);
         installation.setInitialReading(installDTO.getInitialReading());
         installation.setNotes(installDTO.getNotes());
 
+        // --- THÊM DÒNG NÀY ---
+        installation.setInstallationImageBase64(installDTO.getInstallationImageBase64());
+
         meterInstallationRepository.save(installation);
+
+        // (Tùy chọn: Cập nhật trạng thái đồng hồ)
+        meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
+        waterMeterRepository.save(meter);
 
         // 3. CẬP NHẬT HỢP ĐỒNG
         contract.setInstallationDate(LocalDate.now());

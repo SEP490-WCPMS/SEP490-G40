@@ -16,6 +16,13 @@ function MeterScan() {
     meterId: ''
   });
 
+  // --- THÊM STATE ĐỂ LƯU LOG ---
+  const [logData, setLogData] = useState({
+    aiDetectedReading: null,
+    aiDetectedMeterId: null,
+    scanImageBase64: null
+  });
+
   const handleOpenCamera = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -37,12 +44,21 @@ function MeterScan() {
           const base64 = reader.result.split(",")[1];
           // Gọi API từ service
           const response = await scanMeterImage(base64);
+          const aiResult = response.data;
           
           // Cập nhật kết quả vào form
           setFormData({
-             reading: response.data.reading || '',
-             meterId: response.data.meterId || ''
+             reading: aiResult.reading || '',
+             meterId: aiResult.meterId || ''
           });
+
+          // --- LƯU LẠI DỮ LIỆU GỐC ĐỂ GỬI LOG ---
+          setLogData({
+            aiDetectedReading: aiResult.reading,
+            aiDetectedMeterId: aiResult.meterId,
+            scanImageBase64: base64 // Lưu ảnh base64
+          });
+          // --- HẾT PHẦN LƯU LOG ---
 
         } catch (err) {
           console.error("Lỗi khi gửi ảnh:", err);
@@ -72,8 +88,12 @@ function MeterScan() {
     // Chuyển sang trang Xác nhận, mang theo dữ liệu
     navigate('/cashier/submit-reading', { 
         state: { 
-            contractId: formData.meterId, // Gửi ID (logic của bạn: meterId = contractId)
-            currentReading: formData.reading // Gửi Chỉ số mới
+            physicalMeterId: formData.meterId, // Gửi ID (logic của bạn: meterId = contractId)
+            currentReading: formData.reading, // Gửi Chỉ số mới
+            // Dữ liệu Log (gốc)
+            ...logData, // Gửi kèm aiDetectedReading, aiDetectedMeterId, scanImageBase64
+            // Gửi ID đồng hồ mà người dùng SỬA
+            userCorrectedMeterIdText: formData.meterId
         } 
     });
   };
@@ -93,9 +113,9 @@ function MeterScan() {
       {/* Hiển thị kết quả dưới dạng ô nhập liệu để CHỈNH SỬA */}
       <div className="result-form">
         <div className="form-group">
-          <label htmlFor="meterId">ID Đồng Hồ ( = ID Hợp đồng)</label>
+          <label htmlFor="meterId">ID Đồng Hồ (Mã vạch / Serial)</label>
           <input
-            type="number"
+            type="text" // Đổi sang text vì meter_code có thể có chữ
             id="meterId"
             name="meterId"
             value={formData.meterId}
