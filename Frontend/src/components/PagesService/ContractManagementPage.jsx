@@ -15,8 +15,8 @@ const { TabPane } = Tabs;
 
 // Các trạng thái hợp lệ (lấy từ Enum trong backend Entity Contract.java)
 const contractStatuses = [
-    "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED",
-    "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
+    "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED", "PENDING_SIGN",
+    "SIGNED", "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
 ];
 
 // Các tab cho quản lý hợp đồng
