@@ -5,7 +5,7 @@ import com.sep490.wcpms.dto.ServiceStaffUpdateContractRequestDTO;
 import com.sep490.wcpms.service.ServiceStaffContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -13,25 +13,27 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class ServiceStaffContractController {
 
-    private final ServiceStaffContractService contractService;
+    private final ServiceStaffContractService service;
 
     @GetMapping
     public Page<ServiceStaffContractDTO> listContracts(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
-            Pageable pageable) {
-        return contractService.findContractsForServiceStaff(status, keyword, pageable);
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return service.findContractsForServiceStaff(status, keyword, PageRequest.of(page, size));
     }
 
     @GetMapping("/{id}")
-    public ServiceStaffContractDTO getContractDetail(@PathVariable Integer id) {
-        return contractService.getContractDetailById(id);
+    public ServiceStaffContractDTO getContract(@PathVariable Integer id) {
+        return service.getContractDetailById(id);
     }
 
     @PutMapping("/{id}")
     public ServiceStaffContractDTO updateContract(
             @PathVariable Integer id,
             @RequestBody ServiceStaffUpdateContractRequestDTO updateRequest) {
-        return contractService.updateContractByServiceStaff(id, updateRequest);
+        return service.updateContractByServiceStaff(id, updateRequest);
     }
 }

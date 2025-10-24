@@ -1,15 +1,17 @@
 package com.sep490.wcpms.dto;
 
 import lombok.Data;
+
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
 public class ServiceStaffUpdateContractRequestDTO {
-
-    // Chỉ chứa các trường mà Service Staff được phép cập nhật
-    private String contractStatus;
-    private LocalDate surveyDate;
-    private LocalDate installationDate;
+    private LocalDate startDate;
+    private LocalDate endDate;
     private String notes;
-    private Long technicalStaffId; // Thêm ID nhân viên kỹ thuật để gán việc
+    private BigDecimal estimatedCost;
+    private BigDecimal contractValue;
+    private String paymentMethod; // e.g. "CASH" or "BANK_TRANSFER", will map to enum
+    private Integer serviceStaffId; // optional - to assign service staff
 }

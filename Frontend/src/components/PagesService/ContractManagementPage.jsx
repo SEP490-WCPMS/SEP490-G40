@@ -1,17 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Select, Row, Col, Typography, message, Spin, Button } from 'antd';
-import ContractTable from './ContractManagement/ContractTable'; // Đường dẫn đến Table
-import ContractDetailModal from './ContractManagement/ContractDetailModal'; // Đường dẫn đến Modal
-import { getServiceContracts, updateServiceContract, getServiceContractDetail } from '../Services/apiService'; // Đường đúng đến API
+import { Input, Select, Row, Col, Typography, message, Spin, Button, Tabs } from 'antd';
+import ContractTable from './ContractManagement/ContractTable';
+import ContractDetailModal from './ContractManagement/ContractDetailModal';
+import ActiveContractList from './ContractManagement/Lists/ActiveContractList';
+import PendingContractList from './ContractManagement/Lists/PendingContractList';
+import ContractTransferList from './ContractManagement/Requests/ContractTransferList';
+import ContractAnnulList from './ContractManagement/Requests/ContractAnnulList';
+import { getServiceContracts, updateServiceContract, getServiceContractDetail } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 const { Option } = Select;
+const { TabPane } = Tabs;
 
 // Các trạng thái hợp lệ (lấy từ Enum trong backend Entity Contract.java)
 const contractStatuses = [
     "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED",
     "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
+];
+
+// Các tab cho quản lý hợp đồng
+const tabItems = [
+    {
+        key: '1',
+        label: 'Hợp đồng đang hoạt động',
+        children: <ActiveContractList />
+    },
+    {
+        key: '2',
+        label: 'Hợp đồng đang xử lý',
+        children: <PendingContractList />
+    },
+    {
+        key: '3',
+        label: 'Yêu cầu chuyển nhượng',
+        children: <ContractTransferList />
+    },
+    {
+        key: '4',
+        label: 'Yêu cầu hủy hợp đồng',
+        children: <ContractAnnulList />
+    }
 ];
 
 const ContractManagementPage = () => {
@@ -36,13 +65,71 @@ const ContractManagementPage = () => {
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize, currentFilters = filters) => {
         setLoading(true);
         try {
+            // Mock data cho testing
+            const mockData = [
+                {
+                    id: 1,
+                    contractNumber: "HD001",
+                    customerName: "Nguyễn Văn A",
+                    customerCode: "KH001",
+                    contractStatus: "DRAFT",
+                    startDate: "2025-10-01",
+                    endDate: "2026-10-01"
+                },
+                {
+                    id: 2,
+                    contractNumber: "HD002",
+                    customerName: "Trần Thị B",
+                    customerCode: "KH002",
+                    contractStatus: "PENDING",
+                    startDate: "2025-09-15",
+                    endDate: "2026-09-15"
+                },
+                {
+                    id: 3,
+                    contractNumber: "HD003",
+                    customerName: "Lê Văn C",
+                    customerCode: "KH003",
+                    contractStatus: "ACTIVE",
+                    startDate: "2025-08-20",
+                    endDate: "2026-08-20"
+                }
+            ];
+
+            // Filter mock data
+            let filteredData = mockData;
+            if (currentFilters.status) {
+                filteredData = filteredData.filter(contract => 
+                    contract.contractStatus === currentFilters.status
+                );
+            }
+            if (currentFilters.keyword) {
+                const keyword = currentFilters.keyword.toLowerCase();
+                filteredData = filteredData.filter(contract => 
+                    contract.contractNumber.toLowerCase().includes(keyword) ||
+                    contract.customerName.toLowerCase().includes(keyword) ||
+                    contract.customerCode.toLowerCase().includes(keyword)
+                );
+            }
+
+            // Pagination
+            const start = (page - 1) * pageSize;
+            const paginatedData = filteredData.slice(start, start + pageSize);
+
+            setContracts(paginatedData);
+            setPagination({
+                current: page,
+                pageSize: pageSize,
+                total: filteredData.length,
+            });
+
+            /* Khi có API, uncomment đoạn này
             const params = {
                 page: page - 1,
                 size: pageSize,
                 status: currentFilters.status,
                 keyword: currentFilters.keyword,
             };
-            // ✨ SỬA TÊN HÀM GỌI API Ở ĐÂY ✨
             const response = await getServiceContracts(params);
             setContracts(response.data.content || []);
             setPagination({
@@ -50,6 +137,7 @@ const ContractManagementPage = () => {
                 pageSize: response.data.size || 10,
                 total: response.data.totalElements || 0,
             });
+            */
         } catch (error) {
             message.error('Lỗi khi tải danh sách hợp đồng!');
             console.error("Fetch contracts error:", error);
@@ -67,8 +155,7 @@ const ContractManagementPage = () => {
 
     // Xử lý thay đổi bộ lọc
     const handleFilterChange = (type, value) => {
-        const filterValue = (value === '' || value === undefined) ? null : value;
-        setFilters(prev => ({ ...prev, [type]: filterValue }));
+           setFilters(prev => ({ ...prev, [type]: value }));
         setPagination(prev => ({ ...prev, current: 1 }));
     };
 
@@ -118,6 +205,7 @@ const ContractManagementPage = () => {
             setModalLoading(false);
         }
     };
+    
 
     return (
         <div>
