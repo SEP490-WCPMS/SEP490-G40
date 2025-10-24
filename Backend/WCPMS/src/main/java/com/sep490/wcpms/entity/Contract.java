@@ -114,13 +114,15 @@ public class Contract {
 
     // Enum cho contract_status
     public enum ContractStatus {
-        DRAFT,
-        PENDING,
-        PENDING_SURVEY_REVIEW,
-        APPROVED,
-        ACTIVE,
-        EXPIRED,
-        TERMINATED,
-        SUSPENDED
+        DRAFT,                  // Nháp (Service Staff tạo)
+        PENDING,                // Chờ khảo sát (Đã gửi cho Technical)
+        PENDING_SURVEY_REVIEW,  // Chờ duyệt báo cáo (Technical đã gửi báo cáo)
+        APPROVED,               // Đã duyệt báo cáo (Service Staff đã duyệt)
+        PENDING_SIGN,           // Chờ ký (Đã gửi cho khách)
+        SIGNED,                 // Đã ký (Khách đã ký)
+        ACTIVE,                 // Đang hoạt động (Đã lắp đặt xong)
+        EXPIRED,               // Hết hạn
+        SUSPENDED,             // Tạm ngưng
+        TERMINATED             // Chấm dứt
     }
 }

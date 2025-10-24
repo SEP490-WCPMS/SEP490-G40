@@ -31,36 +31,138 @@ const columns = (onViewDetails) => [
     title: 'Trạng thái',
     dataIndex: 'contractStatus',
     key: 'contractStatus',
+    filters: [
+      { text: 'Bản nháp', value: 'DRAFT' },
+      { text: 'Đang chờ xử lý', value: 'PENDING' },
+      { text: 'Đang chờ báo cáo khảo sát', value: 'PENDING_SURVEY_REVIEW' },
+      { text: 'Đã duyệt', value: 'APPROVED' },
+      { text: 'Đang chờ khách ký', value: 'PENDING_SIGN' },
+      { text: 'Khách đã ký, chờ lắp đặt', value: 'SIGNED' },
+      { text: 'Đang hoạt động', value: 'ACTIVE' },
+      { text: 'Hết hạn', value: 'EXPIRED' },
+      { text: 'Đã chấm dứt', value: 'TERMINATED' },
+      { text: 'Bị tạm ngưng', value: 'SUSPENDED' }
+    ],
+    onFilter: (value, record) => record.contractStatus === value,
     render: (status) => {
       let color;
-      // Cập nhật case cho khớp với Enum backend nếu cần
-      switch (status?.toUpperCase()) { // Dùng toUpperCase để đảm bảo khớp
-        case 'DRAFT': color = 'blue'; break;
-        case 'PENDING': case 'PENDING_SURVEY_REVIEW': color = 'orange'; break;
-        case 'APPROVED': color = 'purple'; break;
-        case 'ACTIVE': color = 'green'; break;
-        case 'TERMINATED': case 'SUSPENDED': case 'EXPIRED': color = 'red'; break;
-        default: color = 'default';
+      let displayText;
+      
+      switch (status?.toUpperCase()) {
+        case 'DRAFT':
+          color = 'blue';
+          displayText = 'Bản nháp';
+          break;
+        case 'PENDING':
+          color = 'gold';
+          displayText = 'Đang chờ xử lý';
+          break;
+        case 'PENDING_SURVEY_REVIEW':
+          color = 'orange';
+          displayText = 'Đang chờ báo cáo khảo sát';
+          break;
+        case 'APPROVED':
+          color = 'cyan';
+          displayText = 'Đã duyệt';
+          break;
+        case 'PENDING_SIGN':
+          color = 'geekblue';
+          displayText = 'Đang chờ khách ký';
+          break;
+        case 'SIGNED':
+          color = 'purple';
+          displayText = 'Khách đã ký, chờ lắp đặt';
+          break;
+        case 'ACTIVE':
+          color = 'green';
+          displayText = 'Đang hoạt động';
+          break;
+        case 'EXPIRED':
+          color = 'volcano';
+          displayText = 'Hết hạn';
+          break;
+        case 'TERMINATED':
+          color = 'red';
+          displayText = 'Đã chấm dứt';
+          break;
+        case 'SUSPENDED':
+          color = 'magenta';
+          displayText = 'Bị tạm ngưng';
+          break;
+        default:
+          color = 'default';
+          displayText = status || 'N/A';
       }
-      return <Tag color={color}>{status?.toUpperCase() || 'N/A'}</Tag>;
+      return <Tag color={color}>{displayText}</Tag>;
     },
   },
   {
     title: 'Hành động',
     key: 'action',
-    fixed: 'right', // Giữ cột này cố định khi cuộn ngang
-    width: 120,
-    render: (_, record) => (
-      <Space size="middle">
-        <Button
-          type="primary"
-          icon={<EditOutlined />}
-          onClick={() => onViewDetails(record)}
-        >
-          Xem/Sửa
-        </Button>
-      </Space>
-    ),
+    fixed: 'right',
+    width: 200,
+    render: (_, record) => {
+      const status = record.contractStatus?.toUpperCase();
+      return (
+        <Space size="small" wrap>
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => onViewDetails(record)}
+          >
+            Chi tiết
+          </Button>
+          
+          {/* Hiển thị các nút hành động dựa trên trạng thái */}
+          {status === 'DRAFT' && (
+            <Button type="primary" onClick={() => onViewDetails(record, 'submit')}>
+              Gửi duyệt
+            </Button>
+          )}
+          
+          {status === 'PENDING' && (
+            <Button type="primary" onClick={() => onViewDetails(record, 'approve')}>
+              Duyệt
+            </Button>
+          )}
+
+          {status === 'PENDING_SURVEY_REVIEW' && (
+            <Button type="primary" onClick={() => onViewDetails(record, 'reviewSurvey')}>
+              Xem khảo sát
+            </Button>
+          )}
+
+          {status === 'APPROVED' && (
+            <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
+              Gửi ký
+            </Button>
+          )}
+
+          {status === 'SIGNED' && (
+            <Button type="primary" onClick={() => onViewDetails(record, 'installation')}>
+              Lắp đặt
+            </Button>
+          )}
+
+          {status === 'ACTIVE' && (
+            <>
+              <Button type="default" onClick={() => onViewDetails(record, 'suspend')}>
+                Tạm ngưng
+              </Button>
+              <Button danger onClick={() => onViewDetails(record, 'terminate')}>
+                Chấm dứt
+              </Button>
+            </>
+          )}
+
+          {status === 'SUSPENDED' && (
+            <Button type="primary" onClick={() => onViewDetails(record, 'reactivate')}>
+              Kích hoạt lại
+            </Button>
+          )}
+        </Space>
+      );
+    },
   },
 ];
 

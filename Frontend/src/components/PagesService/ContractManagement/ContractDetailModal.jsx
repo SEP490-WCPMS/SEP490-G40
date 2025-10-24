@@ -1,15 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Select, DatePicker, Input, Button, Spin, message } from 'antd';
-import moment from 'moment'; // Cần chạy: npm install moment
+import { Modal, Form, Select, DatePicker, Input, Button, Spin, message, Space, Row, Col, Divider } from 'antd';
+import { FileTextOutlined, UserOutlined, ScheduleOutlined, DollarOutlined } from '@ant-design/icons';
+import moment from 'moment';
 
 const { Option } = Select;
 const { TextArea } = Input;
 
-// Các trạng thái hợp lệ (lấy từ Enum trong backend Entity Contract.java)
-const contractStatuses = [
-  "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED",
-  "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
-];
+// Các trạng thái hợp lệ và tên hiển thị
+const CONTRACT_STATUS_MAP = {
+    DRAFT: { text: 'Bản nháp', color: 'blue' },
+    PENDING: { text: 'Đang chờ xử lý', color: 'gold' },
+    PENDING_SURVEY_REVIEW: { text: 'Đang chờ báo cáo khảo sát', color: 'orange' },
+    APPROVED: { text: 'Đã duyệt', color: 'cyan' },
+    PENDING_SIGN: { text: 'Đang chờ khách ký', color: 'geekblue' },
+    SIGNED: { text: 'Khách đã ký, chờ lắp đặt', color: 'purple' },
+    ACTIVE: { text: 'Đang hoạt động', color: 'green' },
+    EXPIRED: { text: 'Hết hạn', color: 'volcano' },
+    TERMINATED: { text: 'Đã chấm dứt', color: 'red' },
+    SUSPENDED: { text: 'Bị tạm ngưng', color: 'magenta' }
+};
 
 const ContractDetailModal = ({ visible, onCancel, onSave, loading, initialData }) => {
   const [form] = Form.useForm();
