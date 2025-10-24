@@ -1,0 +1,106 @@
+/* Sử dụng lại các biến màu từ theme quản lý nước */
+:root {
+  --water-primary-blue: #0A77E2;
+  --water-light-background: #f4f7fc;
+  --water-text-color: #334155;
+  --water-border-color: #e2e8f0;
+  --status-active-bg: #dcfce7;
+  --status-active-text: #166534;
+  --status-inactive-bg: #fee2e2;
+  --status-inactive-text: #991b1b;
+}
+
+.profile-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 50px 20px;
+  background-color: var(--water-light-background);
+  min-height: 100vh;
+}
+
+.profile-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 600px;
+  overflow: hidden;
+  border: 1px solid var(--water-border-color);
+}
+
+.profile-header {
+  background-color: var(--water-primary-blue);
+  color: white;
+  padding: 20px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.status-badge {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background-color: var(--status-active-bg);
+  color: var(--status-active-text);
+}
+
+.status-badge.inactive {
+  background-color: var(--status-inactive-bg);
+  color: var(--status-inactive-text);
+}
+
+.profile-body {
+  padding: 25px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--water-border-color);
+  font-size: 1rem;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.info-value {
+  color: var(--water-text-color);
+  font-weight: 600;
+  text-align: right;
+}
+
+.profile-footer {
+  background-color: #f8fafc;
+  padding: 15px 25px;
+  border-top: 1px solid var(--water-border-color);
+  display: flex;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+/* Dành cho màn hình loading và lỗi */
+.loading-container, .error-container {
+  text-align: center;
+  padding: 50px;
+  font-size: 1.2rem;
+}
