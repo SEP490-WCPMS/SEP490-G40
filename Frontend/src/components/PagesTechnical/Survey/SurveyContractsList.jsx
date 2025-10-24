@@ -33,7 +33,7 @@ function SurveyContractsList() {
 
     return (
         <div className="list-container">
-            <h2>Danh Sách Yêu Cầu Khảo Sát (Status: DRAFT)</h2>
+            <h2>Danh Sách Yêu Cầu Khảo Sát</h2>
             <table>
                 {/* ... (Giữ nguyên phần table a) ... */}
                 <thead>
