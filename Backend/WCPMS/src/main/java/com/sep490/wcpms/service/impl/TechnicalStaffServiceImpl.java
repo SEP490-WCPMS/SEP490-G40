@@ -64,7 +64,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     public List<ContractDetailsDTO> getAssignedSurveyContracts(Integer staffId) {
         Account staff = getStaffAccountById(staffId);
         List<Contract> contracts = contractRepository.findByTechnicalStaffAndContractStatus(
-                staff, Contract.ContractStatus.DRAFT
+                staff, Contract.ContractStatus.PENDING
         );
         return contractMapper.toDtoList(contracts);
     }
@@ -75,7 +75,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         Contract contract = getContractAndVerifyAccess(contractId, staffId);
 
         // Chỉ cho phép nộp khi ở trạng thái DRAFT
-        if (contract.getContractStatus() != Contract.ContractStatus.DRAFT) {
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING) {
             throw new IllegalStateException("Cannot submit report. Contract is not in DRAFT status.");
         }
 
@@ -96,7 +96,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         Account staff = getStaffAccountById(staffId);
         // Lấy hợp đồng ở trạng thái APPROVED (đã ký, chờ lắp đặt)
         List<Contract> contracts = contractRepository.findByTechnicalStaffAndContractStatus(
-                staff, Contract.ContractStatus.APPROVED
+                staff, Contract.ContractStatus.SIGNED
         );
         return contractMapper.toDtoList(contracts);
     }
@@ -111,7 +111,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         Account staff = contract.getTechnicalStaff();
         Customer customer = contract.getCustomer();
 
-        if (contract.getContractStatus() != Contract.ContractStatus.APPROVED) {
+        if (contract.getContractStatus() != Contract.ContractStatus.SIGNED) {
             throw new IllegalStateException("Cannot complete installation. Contract is not in APPROVED status.");
         }
 
