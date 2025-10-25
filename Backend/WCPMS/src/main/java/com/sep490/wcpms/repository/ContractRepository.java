@@ -4,6 +4,8 @@ import com.sep490.wcpms.entity.Contract;
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.sep490.wcpms.entity.Account;
 import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,8 +21,9 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     List<Contract> findByTechnicalStaffAndContractStatus(Account technicalStaff, Contract.ContractStatus contractStatus);
 
     /**
-     * Tìm tất cả các hợp đồng của một khách hàng dựa trên Account ID của họ,
-     * sắp xếp theo ID giảm dần (để lấy yêu cầu mới nhất lên đầu).
+     * Tìm hợp đồng của khách hàng DỰA TRÊN MỘT DANH SÁCH các trạng thái
      */
+    List<Contract> findByCustomer_Account_IdAndContractStatusInOrderByIdDesc(Integer accountId, Collection<Contract.ContractStatus> statuses);
+
     List<Contract> findByCustomer_Account_IdOrderByIdDesc(Integer accountId);
 }
