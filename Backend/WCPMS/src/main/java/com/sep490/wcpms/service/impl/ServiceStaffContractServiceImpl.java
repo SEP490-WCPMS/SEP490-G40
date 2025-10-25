@@ -85,6 +85,54 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         return convertToDTO(contract);
     }
 
+    @Override
+    public Page<ServiceStaffContractDTO> getDraftContracts(String keyword, Pageable pageable) {
+        return contractRepository.findByStatusAndKeyword(ContractStatus.DRAFT, keyword, pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    public ServiceStaffContractDTO submitContractForSurvey(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        // Chỉ cho phép chuyển từ DRAFT sang PENDING
+        if (contract.getContractStatus() != ContractStatus.DRAFT) {
+            throw new RuntimeException("Cannot submit non-DRAFT contract. Current status: " + contract.getContractStatus());
+        }
+
+        contract.setContractStatus(ContractStatus.PENDING);
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    public Page<ServiceStaffContractDTO> getPendingSurveyReviewContracts(String keyword, Pageable pageable) {
+        return contractRepository.findByStatusAndKeyword(ContractStatus.PENDING_SURVEY_REVIEW, keyword, pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    public ServiceStaffContractDTO approveSurveyReport(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        // Chỉ cho phép duyệt hợp đồng có status PENDING_SURVEY_REVIEW
+        if (contract.getContractStatus() != ContractStatus.PENDING_SURVEY_REVIEW) {
+            throw new RuntimeException("Cannot approve contract not in PENDING_SURVEY_REVIEW status. Current status: " + contract.getContractStatus());
+        }
+
+        contract.setContractStatus(ContractStatus.APPROVED);
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    public Page<ServiceStaffContractDTO> getApprovedContracts(String keyword, Pageable pageable) {
+        return contractRepository.findByStatusAndKeyword(ContractStatus.APPROVED, keyword, pageable)
+                .map(this::convertToDTO);
+    }
+
     private ServiceStaffContractDTO convertToDTO(Contract c) {
         ServiceStaffContractDTO dto = new ServiceStaffContractDTO();
         dto.setId(c.getId());
