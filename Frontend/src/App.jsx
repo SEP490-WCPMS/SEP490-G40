@@ -16,6 +16,7 @@ import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage
 import ContractManagementPage from './components/PagesService/ContractManagementPage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
+import StaffProfileView from './components/Staff/StaffProfileView';
 
 
 function App() {
