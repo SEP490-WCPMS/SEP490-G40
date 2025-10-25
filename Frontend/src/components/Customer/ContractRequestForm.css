@@ -120,3 +120,58 @@
   color: var(--water-error-text);
   border: 1px solid #fecaca;
 }
+
+.price-details-wrapper {
+    margin-top: 15px; /* Tạo khoảng cách với dropdown */
+    margin-bottom: 20px;
+}
+
+.price-details-wrapper label {
+    display: block;
+    font-weight: 600;
+    color: var(--water-text-color);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.table-responsive {
+    width: 100%;
+    overflow-x: auto; /* Cho phép cuộn ngang trên màn hình nhỏ */
+    border: 1px solid var(--water-border-color);
+    border-radius: 8px;
+}
+
+.price-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.price-details-table th,
+.price-details-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--water-border-color);
+    white-space: nowrap; /* Ngăn text xuống dòng */
+}
+
+.price-details-table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #475569;
+}
+
+.price-details-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.price-details-table tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+.price-details-table td:nth-child(2),
+.price-details-table td:nth-child(3),
+.price-details-table td:nth-child(4) {
+    text-align: right;
+    font-family: 'Courier New', Courier, monospace;
+}

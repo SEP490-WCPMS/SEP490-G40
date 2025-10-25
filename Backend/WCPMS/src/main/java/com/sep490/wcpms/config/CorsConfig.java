@@ -1,6 +1,7 @@
 package com.sep490.wcpms.config;
 
 import org.apache.http.HttpHeaders;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfiguration;
@@ -13,6 +14,7 @@ import java.util.Arrays;
 @Configuration
 @EnableWebMvc
 public class CorsConfig {
+    @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration corsConfiguration = new CorsConfiguration();

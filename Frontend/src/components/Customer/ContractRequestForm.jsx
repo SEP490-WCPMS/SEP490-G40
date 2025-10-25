@@ -13,6 +13,8 @@ const ContractRequestForm = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    // --- State MỚI cho bảng giá ---
+    const [priceDetails, setPriceDetails] = useState([]);
 
     // 1. Lấy danh sách các loại hình sử dụng (loại giá nước)
     useEffect(() => {
@@ -25,7 +27,19 @@ const ContractRequestForm = () => {
                 setError('Không thể tải danh sách loại hình sử dụng.');
             }
         };
+
+        // --- Hàm MỚI lấy dữ liệu cho bảng chi tiết ---
+        const fetchPriceDetails = async () => {
+            try {
+                const response = await axios.get('http://localhost:8080/api/water-prices/active-details');
+                setPriceDetails(response.data);
+            } catch (err) {
+                console.error("Lỗi tải chi tiết giá (bảng):", err);
+                setError('Không thể tải bảng chi tiết giá.');
+            }
+        };
         fetchPriceTypes();
+        fetchPriceDetails(); // <-- Gọi hàm mới
     }, []);
 
     // 2. Xử lý khi nhấn nút Gửi
@@ -35,7 +49,6 @@ const ContractRequestForm = () => {
         setMessage('');
         setError('');
 
-        // Lấy accountId từ localStorage
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user || !user.accountId) {
             setError('Bạn cần đăng nhập để thực hiện chức năng này.');
@@ -58,17 +71,43 @@ const ContractRequestForm = () => {
         };
 
         try {
-            const response = await axios.post('http://localhost:8080/api/contracts/request', requestData);
-            setMessage(response.data);
-            // Reset form
-            setSelectedPriceType('');
-            setOccupants(1);
-            setNotes('');
+            // Gọi API
+            await axios.post('http://localhost:8080/api/contracts/request', requestData);
+
+            // --- THAY ĐỔI CHÍNH: TỰ ĐỘNG CHUYỂN HƯỚNG ---
+            // Sau khi gửi thành công, chuyển thẳng đến trang xem trạng thái
+            navigate('/my-requests');
+
         } catch (err) {
-            setError(err.response?.data || 'Gửi yêu cầu thất bại. Vui lòng thử lại.');
+            // Xử lý lỗi (giữ nguyên như cũ)
+            let errorMessage = 'Gửi yêu cầu thất bại. Vui lòng thử lại.';
+            if (err.response && err.response.data) {
+                const errorData = err.response.data;
+                if (typeof errorData === 'string') {
+                    errorMessage = errorData;
+                } else if (typeof errorData === 'object') {
+                    const errorValues = Object.values(errorData);
+                    if (errorValues.length > 0) {
+                        errorMessage = errorValues[0];
+                    }
+                }
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Hàm format tiền tệ (cho đẹp)
+    const formatCurrency = (value) => {
+        if (value === null || value === undefined) return "0";
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+    };
+
+    // Hàm format ngày (cho đẹp)
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
     return (
@@ -98,6 +137,43 @@ const ContractRequestForm = () => {
                         ))}
                     </select>
                     <small>Loại hình sử dụng sẽ quyết định biểu giá nước của bạn.</small>
+                </div>
+
+                {/* --- BẢNG GIÁ NƯỚC MỚI --- */}
+                <div className="price-details-wrapper">
+                    <label>Bảng giá chi tiết (tham khảo)</label>
+                    <div className="table-responsive">
+                        <table className="price-details-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên loại giá</th>
+                                    <th>Đơn giá (VNĐ/m³)</th>
+                                    <th>Phí BVMT (VNĐ/m³)</th>
+                                    <th>VAT (%)</th>
+                                    <th>Ngày hiệu lực</th>
+                                    <th>Người duyệt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {priceDetails.length > 0 ? (
+                                    priceDetails.map((price, index) => (
+                                        <tr key={index}>
+                                            <td>{price.typeName}</td>
+                                            <td>{formatCurrency(price.unitPrice)}</td>
+                                            <td>{formatCurrency(price.environmentFee)}</td>
+                                            <td>{price.vatRate}%</td>
+                                            <td>{formatDate(price.effectiveDate)}</td>
+                                            <td>{price.approvedBy || 'N/A'}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="6" style={{ textAlign: 'center' }}>Đang tải bảng giá...</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div className="form-group">
