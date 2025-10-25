@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
 import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
@@ -8,15 +7,7 @@ import { getServiceContracts, updateServiceContract, getServiceContractDetail } 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-// Các trạng thái hợp lệ (lấy từ Enum trong backend Entity Contract.java)
-const contractStatuses = [
-    "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED", "PENDING_SIGN",
-    "SIGNED", "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
-];
-
-const ContractManagementPage = () => {
-    const { activeContractStatus } = useOutletContext() || { activeContractStatus: 'ALL' };
-    
+const ContractRequestsPage = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -33,48 +24,35 @@ const ContractManagementPage = () => {
         keyword: null,
     });
 
-    // Hàm gọi API lấy danh sách hợp đồng
-    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize, statusFilter = activeContractStatus, keywordFilter = filters.keyword) => {
+    // Mock data cho DRAFT status
+    const mockData = [
+        {
+            id: 1,
+            contractNumber: "HD001",
+            customerName: "Nguyễn Văn A",
+            customerCode: "KH001",
+            contractStatus: "DRAFT",
+            startDate: "2025-10-01",
+            endDate: "2026-10-01"
+        },
+        {
+            id: 2,
+            contractNumber: "HD002",
+            customerName: "Trần Thị B",
+            customerCode: "KH002",
+            contractStatus: "DRAFT",
+            startDate: "2025-09-15",
+            endDate: "2026-09-15"
+        },
+    ];
+
+    // Hàm gọi API lấy danh sách yêu cầu (DRAFT)
+    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize, keywordFilter = filters.keyword) => {
         setLoading(true);
         try {
-            // Mock data cho testing
-            const mockData = [
-                {
-                    id: 1,
-                    contractNumber: "HD001",
-                    customerName: "Nguyễn Văn A",
-                    customerCode: "KH001",
-                    contractStatus: "DRAFT",
-                    startDate: "2025-10-01",
-                    endDate: "2026-10-01"
-                },
-                {
-                    id: 2,
-                    contractNumber: "HD002",
-                    customerName: "Trần Thị B",
-                    customerCode: "KH002",
-                    contractStatus: "PENDING",
-                    startDate: "2025-09-15",
-                    endDate: "2026-09-15"
-                },
-                {
-                    id: 3,
-                    contractNumber: "HD003",
-                    customerName: "Lê Văn C",
-                    customerCode: "KH003",
-                    contractStatus: "ACTIVE",
-                    startDate: "2025-08-20",
-                    endDate: "2026-08-20"
-                }
-            ];
-
-            // Filter mock data
+            // Filter mock data with DRAFT status
             let filteredData = mockData;
-            if (statusFilter && statusFilter !== 'ALL') {
-                filteredData = filteredData.filter(contract => 
-                    contract.contractStatus === statusFilter
-                );
-            }
+            
             if (keywordFilter) {
                 const keyword = keywordFilter.toLowerCase();
                 filteredData = filteredData.filter(contract => 
@@ -94,24 +72,8 @@ const ContractManagementPage = () => {
                 pageSize: pageSize,
                 total: filteredData.length,
             });
-
-            /* Khi có API, uncomment đoạn này
-            const params = {
-                page: page - 1,
-                size: pageSize,
-                status: currentFilters.status,
-                keyword: currentFilters.keyword,
-            };
-            const response = await getServiceContracts(params);
-            setContracts(response.data.content || []);
-            setPagination({
-                current: (response.data.number || 0) + 1,
-                pageSize: response.data.size || 10,
-                total: response.data.totalElements || 0,
-            });
-            */
         } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng!');
+            message.error('Lỗi khi tải danh sách yêu cầu!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
             setPagination(prev => ({ ...prev, total: 0 }));
@@ -120,22 +82,20 @@ const ContractManagementPage = () => {
         }
     };
 
-    // Gọi API lần đầu và khi filter/pagination thay đổi
     useEffect(() => {
-        fetchContracts(pagination.current, pagination.pageSize, activeContractStatus, filters.keyword);
-    }, [activeContractStatus, filters.keyword, pagination.current, pagination.pageSize]);
+        fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
+    }, [filters.keyword, pagination.current, pagination.pageSize]);
 
-    // Xử lý thay đổi bộ lọc keyword
-    const handleFilterChange = (type, value) => {
-        if (type === 'keyword') {
-            setFilters(prev => ({ ...prev, [type]: value }));
-            setPagination(prev => ({ ...prev, current: 1 }));
-        }
+    const handleTableChange = (paginationParams) => {
+        setPagination(paginationParams);
     };
 
-    // Xử lý thay đổi phân trang
-    const handleTableChange = (newPagination) => {
-        setPagination(prev => ({ ...prev, current: newPagination.current }));
+    const handleFilterChange = (filterName, value) => {
+        setFilters(prev => ({
+            ...prev,
+            [filterName]: value
+        }));
+        setPagination(prev => ({ ...prev, current: 1 }));
     };
 
     // Mở Modal
@@ -143,7 +103,6 @@ const ContractManagementPage = () => {
         setModalLoading(true);
         setIsModalVisible(true);
         try {
-            // ✨ SỬA TÊN HÀM GỌI API Ở ĐÂY ✨
             const response = await getServiceContractDetail(contract.id);
             setSelectedContract(response.data);
         } catch (error) {
@@ -166,12 +125,11 @@ const ContractManagementPage = () => {
         if (!selectedContract) return;
         setModalLoading(true);
         try {
-            // ✨ SỬA TÊN HÀM GỌI API Ở ĐÂY ✨
             await updateServiceContract(selectedContract.id, formData);
             message.success('Cập nhật hợp đồng thành công!');
             setIsModalVisible(false);
             setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, filters); // Tải lại bảng
+            fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
         } catch (error) {
             message.error('Cập nhật hợp đồng thất bại!');
             console.error("Update contract error:", error);
@@ -179,12 +137,11 @@ const ContractManagementPage = () => {
             setModalLoading(false);
         }
     };
-    
 
     return (
         <div>
-            <Title level={2}>Quản lý Hợp đồng</Title>
-            <Paragraph>Quản lý và cập nhật thông tin các hợp đồng cấp nước.</Paragraph>
+            <Title level={2}>Đơn từ khách hàng</Title>
+            <Paragraph>Danh sách các đơn yêu cầu hợp đồng từ khách hàng (chưa gửi khảo sát).</Paragraph>
 
             {/* --- Khu vực Bộ lọc --- */}
             <Row gutter={[16, 16]} style={{ marginBottom: '24px', width: '100%' }}>
@@ -212,8 +169,7 @@ const ContractManagementPage = () => {
             {/* --- Modal chi tiết/cập nhật --- */}
             {isModalVisible && selectedContract && (
                 <ContractDetailModal
-                    // `visible` prop is deprecated in Antd v5+, use `open` instead
-                    open={isModalVisible} // Sử dụng 'open'
+                    open={isModalVisible}
                     onCancel={handleCancelModal}
                     onSave={handleSaveModal}
                     loading={modalLoading}
@@ -224,4 +180,4 @@ const ContractManagementPage = () => {
     );
 };
 
-export default ContractManagementPage;
+export default ContractRequestsPage;
