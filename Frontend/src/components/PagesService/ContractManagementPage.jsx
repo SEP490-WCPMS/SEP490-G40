@@ -1,49 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Select, Row, Col, Typography, message, Spin, Button, Tabs } from 'antd';
+import { useOutletContext } from 'react-router-dom';
+import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import ActiveContractList from './ContractManagement/Lists/ActiveContractList';
-import PendingContractList from './ContractManagement/Lists/PendingContractList';
-import ContractTransferList from './ContractManagement/Requests/ContractTransferList';
-import ContractAnnulList from './ContractManagement/Requests/ContractAnnulList';
 import { getServiceContracts, updateServiceContract, getServiceContractDetail } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
-const { Option } = Select;
-const { TabPane } = Tabs;
 
 // Các trạng thái hợp lệ (lấy từ Enum trong backend Entity Contract.java)
 const contractStatuses = [
-    "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED",
-    "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
-];
-
-// Các tab cho quản lý hợp đồng
-const tabItems = [
-    {
-        key: '1',
-        label: 'Hợp đồng đang hoạt động',
-        children: <ActiveContractList />
-    },
-    {
-        key: '2',
-        label: 'Hợp đồng đang xử lý',
-        children: <PendingContractList />
-    },
-    {
-        key: '3',
-        label: 'Yêu cầu chuyển nhượng',
-        children: <ContractTransferList />
-    },
-    {
-        key: '4',
-        label: 'Yêu cầu hủy hợp đồng',
-        children: <ContractAnnulList />
-    }
+    "DRAFT", "PENDING", "PENDING_SURVEY_REVIEW", "APPROVED", "PENDING_SIGN",
+    "SIGNED", "ACTIVE", "EXPIRED", "TERMINATED", "SUSPENDED"
 ];
 
 const ContractManagementPage = () => {
+    const { activeContractStatus } = useOutletContext() || { activeContractStatus: 'ALL' };
+    
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -57,12 +30,11 @@ const ContractManagementPage = () => {
     });
 
     const [filters, setFilters] = useState({
-        status: null,
         keyword: null,
     });
 
     // Hàm gọi API lấy danh sách hợp đồng
-    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize, currentFilters = filters) => {
+    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize, statusFilter = activeContractStatus, keywordFilter = filters.keyword) => {
         setLoading(true);
         try {
             // Mock data cho testing
@@ -98,13 +70,13 @@ const ContractManagementPage = () => {
 
             // Filter mock data
             let filteredData = mockData;
-            if (currentFilters.status) {
+            if (statusFilter && statusFilter !== 'ALL') {
                 filteredData = filteredData.filter(contract => 
-                    contract.contractStatus === currentFilters.status
+                    contract.contractStatus === statusFilter
                 );
             }
-            if (currentFilters.keyword) {
-                const keyword = currentFilters.keyword.toLowerCase();
+            if (keywordFilter) {
+                const keyword = keywordFilter.toLowerCase();
                 filteredData = filteredData.filter(contract => 
                     contract.contractNumber.toLowerCase().includes(keyword) ||
                     contract.customerName.toLowerCase().includes(keyword) ||
@@ -150,18 +122,20 @@ const ContractManagementPage = () => {
 
     // Gọi API lần đầu và khi filter/pagination thay đổi
     useEffect(() => {
-        fetchContracts(pagination.current, pagination.pageSize, filters);
-    }, [filters, pagination.current, pagination.pageSize]);
+        fetchContracts(pagination.current, pagination.pageSize, activeContractStatus, filters.keyword);
+    }, [activeContractStatus, filters.keyword, pagination.current, pagination.pageSize]);
 
-    // Xử lý thay đổi bộ lọc
+    // Xử lý thay đổi bộ lọc keyword
     const handleFilterChange = (type, value) => {
-           setFilters(prev => ({ ...prev, [type]: value }));
-        setPagination(prev => ({ ...prev, current: 1 }));
+        if (type === 'keyword') {
+            setFilters(prev => ({ ...prev, [type]: value }));
+            setPagination(prev => ({ ...prev, current: 1 }));
+        }
     };
 
     // Xử lý thay đổi phân trang
     const handleTableChange = (newPagination) => {
-        fetchContracts(newPagination.current, newPagination.pageSize, filters);
+        setPagination(prev => ({ ...prev, current: newPagination.current }));
     };
 
     // Mở Modal
@@ -213,7 +187,7 @@ const ContractManagementPage = () => {
             <Paragraph>Quản lý và cập nhật thông tin các hợp đồng cấp nước.</Paragraph>
 
             {/* --- Khu vực Bộ lọc --- */}
-            <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: '24px', width: '100%' }}>
                 <Col xs={24} sm={12} md={10} lg={8}>
                     <Search
                         placeholder="Tìm theo tên hoặc mã KH..."
@@ -221,21 +195,6 @@ const ContractManagementPage = () => {
                         enterButton
                         allowClear
                     />
-                </Col>
-                <Col xs={24} sm={12} md={8} lg={6}>
-                    <Select
-                        placeholder="Lọc theo trạng thái"
-                        style={{ width: '100%' }}
-                        onChange={(value) => handleFilterChange('status', value)}
-                        allowClear
-                        value={filters.status}
-                    >
-                        {contractStatuses.map(status => (
-                            <Option key={status} value={status}>
-                                {status}
-                            </Option>
-                        ))}
-                    </Select>
                 </Col>
             </Row>
 
