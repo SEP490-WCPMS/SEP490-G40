@@ -17,8 +17,9 @@ import ContractManagementPage from './components/PagesService/ContractManagement
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <div style={{display: 'contents'}}>
+      <BrowserRouter>
+        <Routes>
 
         {/* --- CÁC ROUTE CHUNG --- */}
         <Route path="/" element={<h1>Trang chủ</h1>} />
@@ -78,6 +79,7 @@ function App() {
 
       </Routes>
     </BrowserRouter>
+    </div>
   );
 }
 
