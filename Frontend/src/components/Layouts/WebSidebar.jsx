@@ -21,9 +21,19 @@ const mainMenuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Quản lý Hợp đồng',
-    url: '/service/contracts',
+    title: 'Đơn từ khách hàng',
+    url: '/service/requests',
     icon: FileText,
+  },
+  {
+    title: 'Hợp đồng khảo sát xong',
+    url: '/service/survey-reviews',
+    icon: Eye,
+  },
+  {
+    title: 'Hợp đồng đã duyệt',
+    url: '/service/approved-contracts',
+    icon: CheckCircle,
   },
 ];
 
@@ -81,7 +91,6 @@ const contractStatusItems = [
 
 export function WebSidebar({ activeContractStatus, onContractStatusChange }) {
   const location = useLocation();
-  const isContractPage = location.pathname === '/service/contracts';
 
   return (
     <Sidebar>
@@ -116,36 +125,6 @@ export function WebSidebar({ activeContractStatus, onContractStatusChange }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* Contract Status Filter - only show when on contracts page */}
-        {isContractPage && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-blue-700 font-bold">Lọc theo trạng thái</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {contractStatusItems.map((item) => (
-                    <SidebarMenuItem key={item.key}>
-                      <SidebarMenuButton
-                        onClick={() => onContractStatusChange(item.key)}
-                        isActive={activeContractStatus === item.key}
-                        style={activeContractStatus === item.key ? {
-                          backgroundColor: '#DBEAFE',
-                          color: '#1D4ED8',
-                          fontWeight: 'bold'
-                        } : {}}
-                      >
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
       </SidebarContent>
     </Sidebar>
   );

@@ -13,7 +13,9 @@ import MeterScan from './components/PagesCashier/MeterScan'; // <-- Trang AI Sca
 import ReadingConfirmation from './components/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
 import LayoutService from './components/Layouts/LayoutService';
 import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage';
-import ContractManagementPage from './components/PagesService/ContractManagementPage';
+import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
+import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
+import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import StaffProfileView from './components/Staff/StaffProfileView';
@@ -84,7 +86,9 @@ function App() {
 
           {/* Các trang cụ thể */}
           <Route path="dashboard" element={<ServiceDashboardPage />} />
-          <Route path="contracts" element={<ContractManagementPage />} />
+          <Route path="requests" element={<ContractRequestsPage />} />
+          <Route path="survey-reviews" element={<SurveyReviewPage />} />
+          <Route path="approved-contracts" element={<ApprovedContractsPage />} />
         </Route>
 
       </Routes>
