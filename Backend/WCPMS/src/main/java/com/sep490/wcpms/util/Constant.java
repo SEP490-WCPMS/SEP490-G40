@@ -17,4 +17,15 @@ public final class Constant {
         public static final String BANK_TRANSFER = "bank_transfer";
         public static final String INSTALLMENT = "installment";
     }
+
+    public static final class RequestType {
+        public static final String ANNUL = "annul";
+        public static final String TRANSFER = "transfer";
+    }
+
+    public static final class ApprovalStatus {
+        public static final String PENDING = "pending";
+        public static final String APPROVED = "approved";
+        public static final String REJECTED = "rejected";
+    }
 }
