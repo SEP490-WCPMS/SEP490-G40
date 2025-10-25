@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 @Builder
 public class LoginResponse {
-    private Long id;
+    private Integer id;
     private String username;
     private String fullName;
     private RoleName roleName; // Sử dụng RoleName enum trực tiếp
