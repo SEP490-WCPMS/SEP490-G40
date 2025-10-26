@@ -23,7 +23,6 @@ import StaffProfileView from './components/Staff/StaffProfileView';
 
 function App() {
   return (
-    <div style={{display: 'contents'}}>
       <BrowserRouter>
         <Routes>
 
@@ -93,7 +92,6 @@ function App() {
 
       </Routes>
     </BrowserRouter>
-    </div>
   );
 }
 

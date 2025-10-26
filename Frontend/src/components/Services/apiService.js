@@ -53,6 +53,31 @@ export const scanMeterImage = (base64Image) => {
     return axios.post(SCAN_API_URL, { imageBase64: base64Image });
 };
 
+// === API CHO TECHNICAL DASHBOARD ===
+const DASHBOARD_API_URL = 'http://localhost:8080/api/technical/dashboard';
+
+/** Lấy số liệu thống kê cho thẻ */
+export const getTechnicalDashboardStats = () => {
+    return apiClient.get(`${DASHBOARD_API_URL}/stats`);
+};
+
+/** Lấy dữ liệu biểu đồ */
+export const getTechnicalChartData = (startDate, endDate) => {
+    // Format date thành YYYY-MM-DD
+    const start = startDate.toISOString().split('T')[0];
+    const end = endDate.toISOString().split('T')[0];
+    return apiClient.get(`${DASHBOARD_API_URL}/chart`, { params: { startDate: start, endDate: end } });
+};
+
+/** Lấy danh sách công việc gần đây */
+export const getRecentTechnicalTasks = (status, limit = 5) => {
+    const params = { limit };
+    if (status && status !== 'all') {
+        params.status = status;
+    }
+    return apiClient.get(`${DASHBOARD_API_URL}/recent-tasks`, { params });
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
