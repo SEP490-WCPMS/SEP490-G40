@@ -1,6 +1,7 @@
 // AuthController.java
 package com.sep490.wcpms.controller;
 
+import com.sep490.wcpms.dto.RegisterResponse;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.dto.RegisterRequest;
 import com.sep490.wcpms.dto.LoginRequest;
@@ -28,10 +29,9 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Account> register(@RequestBody RegisterRequest registerRequest) {
-        Account createdAccount = authService.register(registerRequest);
-        // Trả về HTTP 201 Created và thông tin tài khoản (tránh trả về password)
-        // Thường nên dùng một DTO riêng cho Register Response
-        return new ResponseEntity<>(createdAccount, HttpStatus.CREATED);
+    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest registerRequest) { // <-- Sửa kiểu trả về
+        RegisterResponse response = authService.register(registerRequest);
+        // Trả về HTTP 201 Created và DTO
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 }
