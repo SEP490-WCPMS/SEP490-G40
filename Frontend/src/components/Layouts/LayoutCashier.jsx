@@ -6,7 +6,7 @@ import { CashierSidebar } from './CashierSidebar'; // Import Sidebar mới
 const LayoutCashier = () => {
   return (
     // Bọc ngoài bằng SidebarProvider
-    <SidebarProvider style={{ width: '100%', height: '100vh', display: 'flex' }}>
+    <SidebarProvider style={{ width: '100%', height: '100%' }}>
       
       {/* Sidebar Thu Ngân */}
       <CashierSidebar /> 
