@@ -1,33 +1,40 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'; // Component UI
+import { Outlet } from 'react-router-dom';
+import { TechnicalSidebar } from './TechnicalSidebar'; // Import Sidebar mới
 
-function LayoutTechnical() {
+const LayoutTechnical = () => {
   return (
-    <div className="app-container">
-      <nav className="navbar">
-        {/* Link này đúng, trỏ về trang index của /technical */}
-        <Link to="/technical" className="nav-logo">WCPMS (Technical)</Link>
-        <div className="nav-links">
-          
-          {/* SỬA LẠI ĐÂY: Bỏ dấu "/" */}
-          <Link to="survey" className="nav-link">Khảo sát & Báo giá</Link>
-          <Link to="install" className="nav-link">Lắp đặt</Link>
+    // Bọc ngoài bằng SidebarProvider
+    <SidebarProvider style={{ width: '100%', height: '100vh', display: 'flex' }}> {/* Thêm display: flex */}
+      
+      {/* Sidebar Kỹ Thuật */}
+      <TechnicalSidebar /> 
+      
+      {/* Phần Nội dung chính (Header + Main) */}
+      <div className="flex flex-col flex-1" style={{ width: 'calc(100% - YOUR_SIDEBAR_WIDTH)' }}> {/* Trừ đi độ rộng Sidebar nếu cần */}
+        
+        {/* Header */}
+        <header className="px-6 py-4 bg-white border-b flex items-center sticky top-0 z-40 shadow-sm">
+          <SidebarTrigger className="mr-4 lg:hidden" /> {/* Nút ẩn/hiện Sidebar trên mobile */}
+          <h2 className="text-xl font-semibold text-gray-800">Nhân viên Kỹ Thuật</h2>
+          {/* Bạn có thể thêm User Menu ở đây */}
+          <div className="ml-auto"> {/* Đẩy User Menu sang phải */}
+             <span>Xin chào, [Tech Staff Name]</span>
+          </div>
+        </header>
 
-          {/* HOẶC dùng đường dẫn tuyệt đối đầy đủ (cũng đúng)
-          <Link to="/technical/survey" className="nav-link">Khảo sát & Báo giá</Link>
-          <Link to="/technical/install" className="nav-link">Lắp đặt</Link>
-          */}
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto bg-gray-50"style={{ padding: 0, width: '100%' }}>
+          {/* Thêm padding cho nội dung bên trong */}
+          <div style={{ padding: '24px', height: '100%', width: '100%' }}>
+            <Outlet /> {/* Trang con sẽ hiển thị ở đây */}
+          </div>
+        </main>
 
-        </div>
-        <div className="nav-user">
-          <span>Xin chào, [Tech Staff Name]</span>
-        </div>
-      </nav>
-      <main className="main-content">
-        <Outlet /> {/* Các trang con sẽ hiển thị ở đây */}
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
-}
+};
 
 export default LayoutTechnical;
