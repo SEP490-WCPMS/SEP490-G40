@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
+import Login from './components/Authentication/Login';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
 import HomePage from './components/Pages/HomePage';
@@ -23,6 +24,7 @@ import ApprovedContractsPage from './components/PagesService/ApprovedContractsPa
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import StaffProfileView from './components/Staff/StaffProfileView';
+import Register from './components/Authentication/Register';
 
 
 function App() {
@@ -45,6 +47,10 @@ function App() {
         <main style={{ flex: 1 }}>
           <Routes>
 
+        {/* Trang Login */}
+        <Route path="/login" element={<Login />} />
+        {/* Trang Đăng ký */}
+        <Route path="/register" element={<Register />} />
         {/* --- CÁC ROUTE CHUNG --- */}
         <Route path="/" element={<HomePage isAuthenticated={isAuthenticated} user={user} />} />
         <Route path="/about" element={<AboutPage />} />
