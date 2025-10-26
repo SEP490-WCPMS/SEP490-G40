@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
+import Login from './components/Authentication/Login';
 import CustomerProfileUpdate from "./components/Customer/CustomerProfileUpdate";
 import LayoutTechnical from './components/Layouts/LayoutTechnical';
 import TechnicalDashboard from './components/PagesTechnical/TechnicalDashboard';
@@ -17,6 +18,7 @@ import ContractManagementPage from './components/PagesService/ContractManagement
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import StaffProfileView from './components/Staff/StaffProfileView';
+import Register from './components/Authentication/Register';
 
 
 function App() {
@@ -25,6 +27,10 @@ function App() {
       <BrowserRouter>
         <Routes>
 
+        {/* Trang Login */}
+        <Route path="/login" element={<Login />} />
+        {/* Trang Đăng ký */}
+        <Route path="/register" element={<Register />} />
         {/* --- CÁC ROUTE CHUNG --- */}
         <Route path="/" element={<h1>Trang chủ</h1>} />
         <Route path="/staff/profile" element={<StaffProfileView />} />
