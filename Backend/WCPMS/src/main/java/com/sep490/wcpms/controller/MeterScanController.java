@@ -54,7 +54,7 @@ public class MeterScanController {
 
                 // ======= Bước 1: Tìm số gần chữ m³ nhất =======
                 String reading = null;
-                Pattern nearM3 = Pattern.compile("(\\d{3,8})\\s*(?:m|m³|m3|M3|M³)");
+                Pattern nearM3 = Pattern.compile("(\\d{3,8})\\s*(?:m|m³|m3|M3|M³|MULTIMAG|Itrón|itron)");
                 Matcher mNear = nearM3.matcher(description);
                 if (mNear.find()) {
                     reading = mNear.group(1);
