@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
+import Header from './components/Layouts/Header';
+import Footer from './components/Layouts/Footer';
+import HomePage from './components/Pages/HomePage';
+import AboutPage from './components/Pages/AboutPage';
 import CustomerProfileUpdate from "./components/Customer/CustomerProfileUpdate";
 import LayoutTechnical from './components/Layouts/LayoutTechnical';
 import TechnicalDashboard from './components/PagesTechnical/TechnicalDashboard';
@@ -9,8 +13,8 @@ import SurveyForm from './components/PagesTechnical/Survey/SurveyForm';
 import InstallContractsList from './components/PagesTechnical/Install/InstallContractsList';
 import InstallationDetail from './components/PagesTechnical/Install/InstallationDetail';
 import LayoutCashier from './components/Layouts/LayoutCashier';
-import MeterScan from './components/PagesCashier/MeterScan'; // <-- Trang AI Scan của bạn
-import ReadingConfirmation from './components/PagesCashier/ReadingConfirmation'; // <-- TRANG MỚI
+import MeterScan from './components/PagesCashier/MeterScan';
+import ReadingConfirmation from './components/PagesCashier/ReadingConfirmation';
 import LayoutService from './components/Layouts/LayoutService';
 import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage';
 import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
@@ -22,12 +26,28 @@ import StaffProfileView from './components/Staff/StaffProfileView';
 
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+    if (token && userData) {
+      setIsAuthenticated(true);
+      setUser(JSON.parse(userData));
+    }
+  }, []);
   return (
+    <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
       <BrowserRouter>
-        <Routes>
+        <Header isAuthenticated={isAuthenticated} user={user} />
+        <main style={{ flex: 1 }}>
+          <Routes>
 
         {/* --- CÁC ROUTE CHUNG --- */}
-        <Route path="/" element={<h1>Trang chủ</h1>} />
+        <Route path="/" element={<HomePage isAuthenticated={isAuthenticated} user={user} />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/staff/profile" element={<StaffProfileView />} />
 
         {/* --- LUỒNG CỦA CUSTOMER --- */}
@@ -91,7 +111,10 @@ function App() {
         </Route>
 
       </Routes>
-    </BrowserRouter>
+        </main>
+        <Footer />
+      </BrowserRouter>
+    </div>
   );
 }
 
