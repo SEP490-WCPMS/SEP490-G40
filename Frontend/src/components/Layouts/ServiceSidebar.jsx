@@ -89,7 +89,7 @@ const contractStatusItems = [
   },
 ];
 
-export function WebSidebar({ activeContractStatus, onContractStatusChange }) {
+export function ServiceSidebar({ activeContractStatus, onContractStatusChange }) {
   const location = useLocation();
 
   return (

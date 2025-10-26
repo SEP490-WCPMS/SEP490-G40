@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Outlet } from 'react-router-dom';
-import { WebSidebar } from './WebSidebar';
+import { ServiceSidebar } from './ServiceSidebar';
 
 const LayoutService = () => {
   const [activeContractStatus, setActiveContractStatus] = useState('ALL');
@@ -11,15 +11,15 @@ const LayoutService = () => {
   };
 
   return (
-    <SidebarProvider style={{ width: '100%', height: '100%' }}>
-      <WebSidebar 
+    <SidebarProvider style={{ width: '100%', height: '100vh', display: 'flex' }}>
+      <ServiceSidebar 
         activeContractStatus={activeContractStatus}
         onContractStatusChange={handleContractStatusChange}
       />
       
-      <div className="flex flex-col flex-1" style={{ width: '100%' }}>
-        <header className="px-6 py-4 bg-white border-b flex items-center sticky top-0 z-40 shadow-sm">
-          <SidebarTrigger className="mr-4" />
+      <div className="flex flex-col flex-1 w-full">
+        <header className="px-6 py-4 bg-white border-b flex items-center sticky top-0 z-50 shadow-sm">
+          <SidebarTrigger className="mr-4 lg:hidden" />
           <h2 className="text-xl font-semibold text-gray-800">Nhân viên dịch vụ</h2>
         </header>
 
