@@ -6,7 +6,6 @@ import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.exception.DuplicateResourceException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.ContractRepository;
-import com.sep490.wcpms.util.Constant;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -74,7 +73,7 @@ public class ContractCustomerService {
         try {
             Field statusField = Contract.class.getDeclaredField("contractStatus");
             statusField.setAccessible(true);
-            statusField.set(contract, Constant.ContractStatus.DELETED);
+            statusField.set(contract, Contract.ContractStatus.TERMINATED);
             contractRepository.save(contract);
         } catch (Exception e) {
             throw new RuntimeException("Failed to update contract status", e);

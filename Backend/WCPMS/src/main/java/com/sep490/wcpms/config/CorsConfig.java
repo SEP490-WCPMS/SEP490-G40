@@ -12,7 +12,6 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import java.util.Arrays;
 
 @Configuration
-@EnableWebMvc
 public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
