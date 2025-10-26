@@ -1,4 +1,7 @@
-
+#root {
+  width: 100%;
+  text-align: center;
+}
 
 .logo {
   height: 6em;
