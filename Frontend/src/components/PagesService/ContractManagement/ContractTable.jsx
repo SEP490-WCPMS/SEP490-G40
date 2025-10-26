@@ -14,13 +14,15 @@ const columns = (onViewDetails) => [
     title: 'Số Hợp đồng',
     dataIndex: 'contractNumber',
     key: 'contractNumber',
-    ellipsis: true, // Thêm dấu ... nếu quá dài
+    ellipsis: true,
+    width: '12%',
   },
   {
     title: 'Tên Khách hàng',
     dataIndex: 'customerName',
     key: 'customerName',
     ellipsis: true,
+    width: '15%',
   },
   {
     title: 'Mã Khách hàng',
@@ -116,32 +118,53 @@ const columns = (onViewDetails) => [
           {/* Hiển thị các nút hành động dựa trên trạng thái */}
           {status === 'DRAFT' && (
             <Button type="primary" onClick={() => onViewDetails(record, 'submit')}>
-              Gửi duyệt
+              Gửi khảo sát
             </Button>
           )}
           
           {status === 'PENDING' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'approve')}>
-              Duyệt
+            <Button onClick={() => onViewDetails(record, 'view')}>
+              Xem
             </Button>
           )}
 
           {status === 'PENDING_SURVEY_REVIEW' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'reviewSurvey')}>
-              Xem khảo sát
-            </Button>
+            <>
+              <Button type="primary" onClick={() => onViewDetails(record, 'approveSurvey')}>
+                Duyệt báo cáo
+              </Button>
+              <Button danger onClick={() => onViewDetails(record, 'rejectSurvey')}>
+                Từ chối
+              </Button>
+            </>
           )}
 
           {status === 'APPROVED' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
-              Gửi ký
+            <>
+              <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
+                Gửi ký
+              </Button>
+              <Button onClick={() => onViewDetails(record, 'edit')}>
+                Sửa
+              </Button>
+            </>
+          )}
+
+          {status === 'PENDING_SIGN' && (
+            <Button onClick={() => onViewDetails(record, 'view')}>
+              Xem
             </Button>
           )}
 
           {status === 'SIGNED' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'installation')}>
-              Lắp đặt
-            </Button>
+            <>
+              <Button type="primary" onClick={() => onViewDetails(record, 'sendToInstall')}>
+                Lắp đặt
+              </Button>
+              <Button onClick={() => onViewDetails(record, 'view')}>
+                Xem
+              </Button>
+            </>
           )}
 
           {status === 'ACTIVE' && (
@@ -173,11 +196,10 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails 
       dataSource={data}
       loading={loading}
       pagination={pagination}
-      onChange={onPageChange} // Antd Table tự xử lý sự kiện phân trang
+      onChange={onPageChange}
       rowKey="id"
       style={{ marginTop: '20px' }}
-      scroll={{ x: 'max-content' }} // Cho phép cuộn ngang
-      bordered // Thêm đường viền cho bảng
+      bordered
     />
   );
 };

@@ -2,6 +2,7 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Account;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -29,4 +30,8 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
 
     //  Lấy tài khoản theo mã khách hàng (nếu account có customer_code)
     Optional<Account> findByCustomerCode(String customerCode);
+
+    // Phương thức tìm customerCode lớn nhất (ví dụ: KH999)
+    @Query("SELECT a.customerCode FROM Account a WHERE a.customerCode IS NOT NULL AND a.customerCode LIKE 'KH%' ORDER BY a.customerCode DESC LIMIT 1")
+    Optional<String> findMaxCustomerCode();
 }
