@@ -12,7 +12,7 @@ const ContractRequestStatusList = () => {
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user || !user.accountId) {
+        if (!user || !user.id) {
             navigate('/login');
             return;
         }
@@ -20,7 +20,7 @@ const ContractRequestStatusList = () => {
         const fetchRequests = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`http://localhost:8080/api/contracts/my-requests/${user.accountId}`);
+                const response = await axios.get(`http://localhost:8080/api/contract-request/my-requests/${user.id}`);
                 setRequests(response.data);
             } catch (err) {
                 setError('Không thể tải danh sách yêu cầu. Vui lòng thử lại.');
