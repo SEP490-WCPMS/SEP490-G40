@@ -29,7 +29,7 @@ const Footer = () => {
             <div className="footer-item">
               <MapPin size={16} />
               <a 
-                href="https://www.google.com/maps/place/Công+ty+Cổ+phần+Cấp+nước+Phú+Thọ/@21.323954,105.402491,17z"
+                href="https://www.google.com/maps/place/C%C3%B4ng+Ty+Cp+C%E1%BA%A5p+N%C6%B0%E1%BB%9Bc+Ph%C3%BA+Th%E1%BB%8D/@21.323954,105.402491,17z/data=!4m6!3m5!1s0x31348d544214c7e9:0x8251a3ced9755dff!8m2!3d21.32385!4d105.4032217!16s%2Fg%2F1hc3x7_pz?entry=ttu&g_ep=EgoyMDI1MTAyMi4wIKXMDSoASAFQAw%3D%3D"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="footer-link"
