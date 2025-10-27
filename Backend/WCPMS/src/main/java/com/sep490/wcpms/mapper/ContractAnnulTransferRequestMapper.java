@@ -55,7 +55,7 @@ public interface ContractAnnulTransferRequestMapper {
 
     @Mapping(target = "approvedBy",     ignore = true)
     @Mapping(target = "approvalDate",   ignore = true)
-    @Mapping(target = "approvalStatus", constant = "pending")
+    @Mapping(target = "approvalStatus", constant = "PENDING")
     @Mapping(target = "createdAt",      ignore = true)
     @Mapping(target = "updatedAt",      ignore = true)
     ContractAnnulTransferRequest toEntity(ContractAnnulTransferRequestCreateDTO dto,

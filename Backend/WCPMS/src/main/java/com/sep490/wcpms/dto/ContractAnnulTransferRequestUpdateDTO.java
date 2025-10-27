@@ -1,5 +1,6 @@
 package com.sep490.wcpms.dto;
 
+import com.sep490.wcpms.entity.ContractAnnulTransferRequest;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -11,7 +12,7 @@ import java.time.LocalDate;
 public class ContractAnnulTransferRequestUpdateDTO {
 
     @NotNull
-    private String approvalStatus; // PENDING/APPROVED/REJECTED
+    private ContractAnnulTransferRequest.ApprovalStatus approvalStatus; // PENDING/APPROVED/REJECTED
 
     private Integer approvedById;         // bắt buộc nếu APPROVED/REJECTED (validate ở service)
 

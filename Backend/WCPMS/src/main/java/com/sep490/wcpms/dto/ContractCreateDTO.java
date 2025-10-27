@@ -1,6 +1,5 @@
 package com.sep490.wcpms.dto;
 
-import com.sep490.wcpms.util.Constant;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

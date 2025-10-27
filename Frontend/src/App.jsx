@@ -25,6 +25,8 @@ import ApprovedContractsPage from './components/PagesService/ApprovedContractsPa
 import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
+import ContractList from './components/Customer/ContractList';
+import ContractDetail from './components/Customer/ContractDetail';
 import StaffProfileView from './components/Staff/StaffProfileView';
 import Register from './components/Authentication/Register';
 
@@ -95,6 +97,26 @@ function App() {
             <Footer />
           </div>
         } />
+
+      <Route path="/contract-list" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+              <Header isAuthenticated={isAuthenticated} user={user} />
+              <main style={{ flex: 1 }}>
+                  <ContractList />
+              </main>
+              <Footer />
+          </div>
+      } />
+
+      <Route path="/contract-detail" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+              <Header isAuthenticated={isAuthenticated} user={user} />
+              <main style={{ flex: 1 }}>
+                  <ContractDetail />
+              </main>
+              <Footer />
+          </div>
+      } />
         
         <Route path="/my-requests" element={
           <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
