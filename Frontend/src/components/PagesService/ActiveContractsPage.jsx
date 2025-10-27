@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table } from 'antd';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract } from '../Services/apiService';
@@ -8,7 +7,7 @@ import { getServiceContracts, getServiceContractDetail, updateServiceContract } 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-const ContractRequestsPage = () => {
+const ActiveContractsPage = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -25,14 +24,14 @@ const ContractRequestsPage = () => {
         keyword: null,
     });
 
-    // Hàm gọi API lấy danh sách yêu cầu (DRAFT)
+    // Hàm gọi API lấy danh sách hợp đồng đang hoạt động (ACTIVE)
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
         setLoading(true);
         try {
             const response = await getServiceContracts({
                 page: page - 1, // API dùng 0-based indexing
                 size: pageSize,
-                status: 'DRAFT',
+                status: 'ACTIVE',
                 keyword: filters.keyword
             });
             
@@ -46,7 +45,7 @@ const ContractRequestsPage = () => {
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách yêu cầu!');
+            message.error('Lỗi khi tải danh sách hợp đồng đang hoạt động!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
             setPagination(prev => ({ ...prev, total: 0 }));
@@ -71,44 +70,41 @@ const ContractRequestsPage = () => {
         setPagination(prev => ({ ...prev, current: 1 }));
     };
 
-    // Mở Modal
-    const handleViewDetails = async (contract) => {
-        setModalLoading(true);
-        setIsModalVisible(true);
+    const handleViewDetails = async (record) => {
         try {
-            const response = await getServiceContractDetail(contract.id);
-            setSelectedContract(response.data);
+            setModalLoading(true);
+            const response = await getServiceContractDetail(record.id);
+            if (response.data) {
+                setSelectedContract(response.data);
+                setIsModalVisible(true);
+            }
         } catch (error) {
-            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
-            console.error("Fetch contract detail error:", error);
-            setIsModalVisible(false);
+            message.error('Lỗi khi tải chi tiết hợp đồng!');
+            console.error("Error fetching contract details:", error);
         } finally {
             setModalLoading(false);
         }
     };
 
-    // Đóng Modal
-    const handleCancelModal = () => {
-        setIsModalVisible(false);
-        setSelectedContract(null);
-    };
-
-    // Lưu thay đổi từ Modal
-    const handleSaveModal = async (formData) => {
-        if (!selectedContract) return;
-        setModalLoading(true);
+    const handleSaveModal = async (updatedData) => {
         try {
-            await updateServiceContract(selectedContract.id, formData);
+            setModalLoading(true);
+            await updateServiceContract(updatedData.id, updatedData);
             message.success('Cập nhật hợp đồng thành công!');
             setIsModalVisible(false);
             setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
+            fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
-            message.error('Cập nhật hợp đồng thất bại!');
-            console.error("Update contract error:", error);
+            message.error('Lỗi khi cập nhật hợp đồng!');
+            console.error("Error updating contract:", error);
         } finally {
             setModalLoading(false);
         }
+    };
+
+    const handleCancelModal = () => {
+        setIsModalVisible(false);
+        setSelectedContract(null);
     };
 
     return (
@@ -116,8 +112,8 @@ const ContractRequestsPage = () => {
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
-                        <Title level={3} className="!mb-2">Đơn từ khách hàng</Title>
-                        <Paragraph className="!mb-0">Danh sách các đơn yêu cầu hợp đồng từ khách hàng (chưa gửi khảo sát).</Paragraph>
+                        <Title level={3} className="!mb-2">Hợp đồng đang hoạt động</Title>
+                        <Paragraph className="!mb-0">Danh sách hợp đồng đã được ký kết và đang trong quá trình lắp đặt hoặc hoàn thành.</Paragraph>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
@@ -166,4 +162,4 @@ const ContractRequestsPage = () => {
     );
 };
 
-export default ContractRequestsPage;
+export default ActiveContractsPage;

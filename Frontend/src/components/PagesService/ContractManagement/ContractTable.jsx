@@ -123,9 +123,8 @@ const columns = (onViewDetails) => [
           )}
           
           {status === 'PENDING' && (
-            <Button onClick={() => onViewDetails(record, 'view')}>
-              Xem
-            </Button>
+            // Không hiển thị nút gì thêm, chỉ dùng "Chi tiết"
+            null
           )}
 
           {status === 'PENDING_SURVEY_REVIEW' && (
@@ -151,20 +150,14 @@ const columns = (onViewDetails) => [
           )}
 
           {status === 'PENDING_SIGN' && (
-            <Button onClick={() => onViewDetails(record, 'view')}>
-              Xem
-            </Button>
+            // Không hiển thị nút gì thêm, chỉ dùng "Chi tiết"
+            null
           )}
 
           {status === 'SIGNED' && (
-            <>
-              <Button type="primary" onClick={() => onViewDetails(record, 'sendToInstall')}>
-                Lắp đặt
-              </Button>
-              <Button onClick={() => onViewDetails(record, 'view')}>
-                Xem
-              </Button>
-            </>
+            <Button type="primary" onClick={() => onViewDetails(record, 'sendToInstall')}>
+              Lắp đặt
+            </Button>
           )}
 
           {status === 'ACTIVE' && (

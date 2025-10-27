@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
+import { useAuth } from './hooks/use-auth';
 import Login from './components/Authentication/Login';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
@@ -21,6 +22,7 @@ import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage
 import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
 import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
 import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
+import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import StaffProfileView from './components/Staff/StaffProfileView';
@@ -28,44 +30,94 @@ import Register from './components/Authentication/Register';
 
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const { isAuthenticated, user } = useAuth();
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    if (token && userData) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(userData));
-    }
-  }, []);
   return (
-    <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-      <BrowserRouter>
-        <Header isAuthenticated={isAuthenticated} user={user} />
-        <main style={{ flex: 1 }}>
-          <Routes>
+    <BrowserRouter>
+      <Routes>
+        {/* === PUBLIC ROUTES - với Header + Footer === */}
+        <Route path="/" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <HomePage isAuthenticated={isAuthenticated} user={user} />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/login" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <Login />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/register" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <Register />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/about" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <AboutPage />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/profile" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <CustomerProfileUpdate />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/contract-request" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ContractRequestForm />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/my-requests" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ContractRequestStatusList />
+            </main>
+            <Footer />
+          </div>
+        } />
+        
+        <Route path="/staff/profile" element={
+          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <StaffProfileView />
+            </main>
+            <Footer />
+          </div>
+        } />
 
-        {/* Trang Login */}
-        <Route path="/login" element={<Login />} />
-        {/* Trang Đăng ký */}
-        <Route path="/register" element={<Register />} />
-        {/* --- CÁC ROUTE CHUNG --- */}
-        <Route path="/" element={<HomePage isAuthenticated={isAuthenticated} user={user} />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/staff/profile" element={<StaffProfileView />} />
-
-        {/* --- LUỒNG CỦA CUSTOMER --- */}
-        <Route path="/profile" element={<CustomerProfileUpdate />} />
-        <Route path="/contract-request" element={<ContractRequestForm />} />
-        <Route path="/my-requests" element={<ContractRequestStatusList />} />
-
-
+        {/* === STAFF ROUTES - không có Header/Footer === */}
         {/* --- LUỒNG CỦA TECHNICAL STAFF --- */}
-        {/* Tất cả các trang Kỹ thuật sẽ nằm dưới /technical
-          và dùng chung <LayoutTechnical />
-        */}
         <Route path="/technical" element={<LayoutTechnical />}>
 
           {/* Trang index của /technical (tức là /technical) 
@@ -106,21 +158,16 @@ function App() {
         <Route path="/service" element={<LayoutService />}>
           {/* Trang index của /service sẽ là dashboard */}
           <Route index element={<ServiceDashboardPage />} />
-          {/* Hoặc dùng Navigate nếu muốn URL luôn là /service/dashboard */}
-          {/* <Route index element={<Navigate to="/service/dashboard" replace />} /> */}
 
           {/* Các trang cụ thể */}
-          <Route path="dashboard" element={<ServiceDashboardPage />} />
           <Route path="requests" element={<ContractRequestsPage />} />
           <Route path="survey-reviews" element={<SurveyReviewPage />} />
           <Route path="approved-contracts" element={<ApprovedContractsPage />} />
+          <Route path="active-contracts" element={<ActiveContractsPage />} />
         </Route>
 
       </Routes>
-        </main>
-        <Footer />
-      </BrowserRouter>
-    </div>
+    </BrowserRouter>
   );
 }
 

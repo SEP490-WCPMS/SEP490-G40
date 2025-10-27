@@ -26,22 +26,6 @@ const HomePage = ({ isAuthenticated, user }) => {
     fetchWaterPrices();
   }, []);
 
-  const handleLoginClick = () => {
-    navigate('/login');
-  };
-
-  const handleDashboardClick = () => {
-    if (user?.role === 'TECHNICAL') {
-      navigate('/technical');
-    } else if (user?.role === 'SERVICE') {
-      navigate('/service/dashboard');
-    } else if (user?.role === 'CASHIER') {
-      navigate('/cashier');
-    } else {
-      navigate('/');
-    }
-  };
-
   // Payment methods
   const paymentMethods = [
     {

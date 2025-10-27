@@ -106,6 +106,10 @@ public class Contract {
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeterInstallation> meterInstallations;
 
+    // Một hợp đồng có thể có nhiều chi tiết sử dụng nước
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ContractUsageDetail> contractUsageDetails;
+
     // Enum cho payment_method
     public enum PaymentMethod {
         CASH, BANK_TRANSFER, INSTALLMENT

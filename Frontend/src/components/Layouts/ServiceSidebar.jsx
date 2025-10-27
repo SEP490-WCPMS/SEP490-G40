@@ -17,7 +17,7 @@ import { Link, useLocation } from 'react-router-dom';
 const mainMenuItems = [
   {
     title: 'Bảng điều khiển',
-    url: '/service/dashboard',
+    url: '/service',
     icon: LayoutDashboard,
   },
   {
@@ -26,7 +26,7 @@ const mainMenuItems = [
     icon: FileText,
   },
   {
-    title: 'Hợp đồng khảo sát xong',
+    title: 'Hợp đồng khảo sát',
     url: '/service/survey-reviews',
     icon: Eye,
   },
@@ -34,6 +34,11 @@ const mainMenuItems = [
     title: 'Hợp đồng đã duyệt',
     url: '/service/approved-contracts',
     icon: CheckCircle,
+  },
+  {
+    title: 'Hợp đồng đang hoạt động',
+    url: '/service/active-contracts',
+    icon: Zap,
   },
 ];
 
@@ -89,7 +94,7 @@ const contractStatusItems = [
   },
 ];
 
-export function WebSidebar({ activeContractStatus, onContractStatusChange }) {
+export function ServiceSidebar({ activeContractStatus, onContractStatusChange }) {
   const location = useLocation();
 
   return (
