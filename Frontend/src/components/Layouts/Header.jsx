@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
-import { Menu, X, LogOut, User, Bell } from 'lucide-react';
+import { Menu, X, LogOut, User, Bell, LayoutDashboard } from 'lucide-react';
 import './Header.css';
 
 const Header = ({ isAuthenticated, user }) => {
@@ -22,6 +22,20 @@ const Header = ({ isAuthenticated, user }) => {
 
   const handleProfileClick = () => {
     navigate('/staff/profile');
+    setIsAvatarDropdownOpen(false);
+  };
+
+  // Xử lý click Dashboard - chuyển đến dashboard của role tương ứng
+  const handleDashboardClick = () => {
+    if (user?.roleName === 'CASHIER_STAFF') {
+      navigate('/cashier');
+    } else if (user?.roleName === 'TECHNICAL_STAFF') {
+      navigate('/technical');
+    } else if (user?.roleName === 'SERVICE_STAFF') {
+      navigate('/service');
+    } else {
+      navigate('/');
+    }
     setIsAvatarDropdownOpen(false);
   };
 
@@ -73,15 +87,13 @@ const Header = ({ isAuthenticated, user }) => {
               <button 
                 className="avatar-button"
                 onClick={() => setIsAvatarDropdownOpen(!isAvatarDropdownOpen)}
-                title={user?.name || 'User'}
+                title={user?.fullName || 'User'}
               >
                 <div className="avatar-circle">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} />
+                    <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
-                    <span className="avatar-initials">
-                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
+                    <User size={24} className="avatar-icon" />
                   )}
                 </div>
               </button>
@@ -89,10 +101,17 @@ const Header = ({ isAuthenticated, user }) => {
               {isAvatarDropdownOpen && (
                 <div className="avatar-dropdown-menu">
                   <div className="dropdown-header">
-                    <span className="user-name">{user?.name || 'User'}</span>
-                    <span className="user-role">{user?.role || 'Staff'}</span>
+                    <span className="user-name">{user?.fullName || 'User'}</span>
+                    <span className="user-role">{user?.roleName || 'Staff'}</span>
                   </div>
                   <hr className="dropdown-divider" />
+                  <button 
+                    className="dropdown-item"
+                    onClick={handleDashboardClick}
+                  >
+                    <LayoutDashboard size={16} />
+                    <span>Dashboard</span>
+                  </button>
                   <button 
                     className="dropdown-item"
                     onClick={handleProfileClick}

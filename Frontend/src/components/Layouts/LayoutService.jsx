@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Dropdown } from 'antd';
-import { MenuOutlined } from '@ant-design/icons';
+import { useAuth } from '../../hooks/use-auth';
+import { Home, LogOut } from 'lucide-react';
 import { ServiceSidebar } from './ServiceSidebar';
+import './LayoutService.css';
 
 const LayoutService = () => {
   const [activeContractStatus, setActiveContractStatus] = useState('ALL');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleContractStatusChange = (status) => {
     setActiveContractStatus(status);
@@ -15,27 +18,14 @@ const LayoutService = () => {
 
   const handleHome = () => {
     navigate('/');
+    setIsDropdownOpen(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    logout(); // Gọi logout từ AuthContext
     navigate('/');
+    setIsDropdownOpen(false);
   };
-
-  const menuItems = [
-    {
-      key: 'home',
-      label: 'Về trang chủ',
-      onClick: handleHome,
-    },
-    {
-      key: 'logout',
-      label: 'Đăng xuất',
-      onClick: handleLogout,
-      danger: true,
-    },
-  ];
 
   return (
     <SidebarProvider style={{ width: '100%', height: '100%' }}>
@@ -53,13 +43,39 @@ const LayoutService = () => {
           <h2 className="text-xl font-semibold text-gray-800">Nhân viên Dịch Vụ</h2>
           
           {/* User Menu bên phải */}
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-4 relative">
             <span className="text-gray-700">Xin chào, Dịch Vụ</span>
-            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-              <MenuOutlined 
-                style={{ fontSize: '18px', cursor: 'pointer', color: '#1890ff' }}
-              />
-            </Dropdown>
+            <button 
+              className="menu-button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              title="Menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
+
+            {isDropdownOpen && (
+              <div className="service-dropdown-menu">
+                <button 
+                  className="dropdown-item"
+                  onClick={handleHome}
+                >
+                  <Home size={16} />
+                  <span>Về trang chủ</span>
+                </button>
+                <hr className="dropdown-divider" />
+                <button 
+                  className="dropdown-item logout"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} />
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 

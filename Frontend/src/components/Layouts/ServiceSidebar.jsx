@@ -17,7 +17,7 @@ import { Link, useLocation } from 'react-router-dom';
 const mainMenuItems = [
   {
     title: 'Bảng điều khiển',
-    url: '/service/dashboard',
+    url: '/service',
     icon: LayoutDashboard,
   },
   {
