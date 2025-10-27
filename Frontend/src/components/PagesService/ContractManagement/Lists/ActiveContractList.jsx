@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, Button, message } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
+import { getServiceContracts } from '../../../Services/apiService';
 
 const ActiveContractList = () => {
   const [contracts, setContracts] = useState([]);
@@ -72,18 +73,21 @@ const ActiveContractList = () => {
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
-      // Sử dụng dữ liệu mẫu
-      const { mockContracts } = await import('../mockData');
-      const activeContracts = mockContracts.filter(contract => 
-        contract.contractStatus === 'ACTIVE'
-      );
-      setContracts(activeContracts);
+      const response = await getServiceContracts({
+        page: (params.current || pagination.current) - 1,
+        size: params.pageSize || pagination.pageSize,
+        status: 'ACTIVE'
+      });
+      setContracts(response.data?.content || []);
       setPagination({
         ...pagination,
-        total: activeContracts.length
+        total: response.data?.totalElements || 0,
+        current: params.current || pagination.current,
+        pageSize: params.pageSize || pagination.pageSize
       });
     } catch (error) {
       message.error('Không thể tải danh sách hợp đồng');
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }

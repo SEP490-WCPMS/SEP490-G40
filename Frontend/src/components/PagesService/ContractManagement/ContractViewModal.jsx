@@ -23,12 +23,13 @@ const CONTRACT_STATUS_MAP = {
  * Modal chỉ xem chi tiết hợp đồng (không chỉnh sửa)
  * Dùng khi click "Chi tiết" ở dashboard
  */
-const ContractViewModal = ({ open, onCancel, initialData, loading }) => {
+const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) => {
     const [form] = Form.useForm();
+    const isOpen = Boolean(typeof visible === 'undefined' ? open : visible);
 
     // Load dữ liệu vào form khi modal mở
     useEffect(() => {
-        if (initialData && open) {
+        if (initialData && isOpen) {
             console.log('ContractViewModal - initialData:', initialData);
             form.setFieldsValue({
                 contractNumber: initialData.contractNumber,
@@ -39,15 +40,15 @@ const ContractViewModal = ({ open, onCancel, initialData, loading }) => {
                 estimatedCost: initialData.estimatedCost || 'N/A',
                 customerNotes: initialData.customerNotes || initialData.notes || 'Không có',
             });
-        } else if (!open) {
+        } else if (!isOpen) {
             form.resetFields();
         }
-    }, [initialData, open, form]);
+    }, [initialData, isOpen, form]);
 
     return (
         <Modal
             title={`Chi tiết Hợp đồng #${initialData?.contractNumber || ''}`}
-            open={open}
+            open={isOpen}
             onCancel={onCancel}
             onOk={onCancel}
             okText="Đóng"

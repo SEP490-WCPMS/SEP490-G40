@@ -1,23 +1,38 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, Input, Spin, message } from 'antd';
+import { getTechnicalStaff } from '../../Services/apiService';
 
 const { TextArea } = Input;
 
-const ContractDetailModal = ({ visible, onCancel, onSave, loading, initialData }) => {
+const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initialData }) => {
   const [form] = Form.useForm();
   const [technicalStaff, setTechnicalStaff] = useState([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const isOpen = Boolean(typeof visible === 'undefined' ? open : visible);
 
+  // Load danh sách nhân viên kỹ thuật từ API
   useEffect(() => {
-    if (visible) {
-      setTechnicalStaff([
-        { id: 4, fullName: 'Lê Văn Kỹ Thuật A' },
-        { id: 9, fullName: 'Nguyễn Thị Kỹ Thuật B' },
-      ]);
+    if (isOpen) {
+      setStaffLoading(true);
+      getTechnicalStaff()
+        .then((response) => {
+          console.log('Technical staff response:', response);
+          const payload = response?.data ?? [];
+          const staff = payload?.data ?? payload?.content ?? payload;
+          setTechnicalStaff(Array.isArray(staff) ? staff : []);
+        })
+        .catch((error) => {
+          console.error('Error loading technical staff:', error);
+          message.error('Lỗi khi tải danh sách nhân viên kỹ thuật');
+        })
+        .finally(() => {
+          setStaffLoading(false);
+        });
     }
-  }, [visible]);
+  }, [isOpen]);
 
   useEffect(() => {
-    if (visible && initialData) {
+    if (isOpen && initialData) {
       console.log('ContractDetailModal - initialData:', initialData);
       form.setFieldsValue({
         contractNumber: initialData.contractNumber,
@@ -27,10 +42,10 @@ const ContractDetailModal = ({ visible, onCancel, onSave, loading, initialData }
         technicalStaffId: initialData.technicalStaffId,
         notes: initialData.serviceStaffNotes || '',
       });
-    } else if (!visible) {
+    } else if (!isOpen) {
       form.resetFields();
     }
-  }, [initialData, visible, form]);
+  }, [initialData, isOpen, form]);
 
   const handleOk = () => {
     form.validateFields(['technicalStaffId']).then((values) => {
@@ -38,7 +53,6 @@ const ContractDetailModal = ({ visible, onCancel, onSave, loading, initialData }
         ...initialData,
         technicalStaffId: values.technicalStaffId,
         notes: values.notes,
-        contractStatus: 'PENDING',
       });
     }).catch(() => {
       message.warning('Vui lòng chọn NV Kỹ thuật!');
@@ -48,7 +62,7 @@ const ContractDetailModal = ({ visible, onCancel, onSave, loading, initialData }
   return (
     <Modal
       title="Gửi Khảo Sát"
-      open={visible}
+      open={isOpen}
       onCancel={onCancel}
       onOk={handleOk}
       confirmLoading={loading}
@@ -85,10 +99,13 @@ const ContractDetailModal = ({ visible, onCancel, onSave, loading, initialData }
             label="Gán NV Kỹ thuật"
             rules={[{ required: true, message: 'Vui lòng chọn NV Kỹ thuật!' }]}
           >
-            <Select placeholder="Chọn nhân viên kỹ thuật...">
+            <Select 
+              placeholder="Chọn nhân viên kỹ thuật..."
+              loading={staffLoading}
+            >
               {technicalStaff.map((staff) => (
                 <Select.Option key={staff.id} value={staff.id}>
-                  {staff.fullName}
+                  {staff.fullName || staff.username || staff.name || `NV #${staff.id}`}
                 </Select.Option>
               ))}
             </Select>

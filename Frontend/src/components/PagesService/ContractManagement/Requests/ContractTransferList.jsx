@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, Button, message } from 'antd';
 import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { getTransferRequests, approveTransferRequest, rejectTransferRequest } from '../../../Services/apiService';
 
 const ContractTransferList = () => {
   const [transfers, setTransfers] = useState([]);
@@ -101,26 +102,45 @@ const ContractTransferList = () => {
     // Xử lý xem chi tiết yêu cầu chuyển nhượng
   };
 
-  const handleApprove = (record) => {
-    // Xử lý duyệt yêu cầu
+  const handleApprove = async (record) => {
+    try {
+      await approveTransferRequest(record.id);
+      message.success('Duyệt yêu cầu chuyển nhượng thành công!');
+      fetchData();
+    } catch (error) {
+      message.error('Duyệt yêu cầu thất bại!');
+      console.error('Approve error:', error);
+    }
   };
 
-  const handleReject = (record) => {
-    // Xử lý từ chối yêu cầu
+  const handleReject = async (record) => {
+    try {
+      await rejectTransferRequest(record.id, 'Từ chối yêu cầu');
+      message.success('Từ chối yêu cầu chuyển nhượng thành công!');
+      fetchData();
+    } catch (error) {
+      message.error('Từ chối yêu cầu thất bại!');
+      console.error('Reject error:', error);
+    }
   };
 
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
-      // Sử dụng dữ liệu mẫu
-      const { mockTransferRequests } = await import('../mockData');
-      setTransfers(mockTransferRequests);
+      const response = await getTransferRequests({
+        page: (params.current || pagination.current) - 1,
+        size: params.pageSize || pagination.pageSize
+      });
+      setTransfers(response.data?.content || []);
       setPagination({
         ...pagination,
-        total: mockTransferRequests.length
+        total: response.data?.totalElements || 0,
+        current: params.current || pagination.current,
+        pageSize: params.pageSize || pagination.pageSize
       });
     } catch (error) {
       message.error('Không thể tải danh sách yêu cầu chuyển nhượng');
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }
