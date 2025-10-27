@@ -1,6 +1,7 @@
 package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Account;
+import com.sep490.wcpms.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -25,8 +26,8 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
     //  Kiểm tra email đã tồn tại chưa
     boolean existsByEmail(String email);
 
-    //  Lấy tất cả tài khoản theo vai trò (VD: "service_staff", "technical_staff", ...)
-    List<Account> findByRole_RoleName(String roleName);
+    //  Lấy tất cả tài khoản theo vai trò (Enum RoleName)
+    List<Account> findByRole_RoleName(Role.RoleName roleName);
 
     //  Lấy tài khoản theo mã khách hàng (nếu account có customer_code)
     Optional<Account> findByCustomerCode(String customerCode);

@@ -30,6 +30,7 @@ import {
     getServiceStaffChartData,
     getRecentServiceStaffTasks,
     getServiceContracts,
+    getServiceContractDetail,
     submitContractForSurvey
 } from '../Services/apiService';
 
@@ -297,14 +298,20 @@ const ServiceDashboardPage = () => {
     };
 
     // Xử lý click "Chi tiết" hoặc "Gửi khảo sát"
-    const handleViewDetails = (record, action) => {
-        console.log('handleViewDetails - record:', record);
-        console.log('handleViewDetails - action:', action);
-        setSelectedContract(record);
-        // action = 'submit' → edit (Gửi khảo sát)
-        // action = undefined/null/'view' → view (Chi tiết)
-        setModalMode(action === 'submit' ? 'edit' : 'view');
-        setIsModalVisible(true);
+    const handleViewDetails = async (record, action = 'view') => {
+        setModalLoading(true);
+        try {
+            const response = await getServiceContractDetail(record.id);
+            const contractData = response.data || record;
+            setSelectedContract(contractData);
+            setModalMode(action === 'submit' ? 'edit' : 'view');
+            setIsModalVisible(true);
+        } catch (error) {
+            console.error('Error fetching contract detail from dashboard:', error);
+            message.error(`Không thể tải chi tiết hợp đồng #${record.contractNumber || record.id}`);
+        } finally {
+            setModalLoading(false);
+        }
     };
 
     // Đóng modal
@@ -504,21 +511,25 @@ const ServiceDashboardPage = () => {
             </Card>
 
             {/* Modal chi tiết hợp đồng - Chỉ xem */}
-            <ContractViewModal
-                visible={isModalVisible && modalMode === 'view'}
-                onCancel={handleModalClose}
-                contract={selectedContract}
-                loading={modalLoading}
-            />
+            {modalMode === 'view' && (
+                <ContractViewModal
+                    visible={isModalVisible}
+                    onCancel={handleModalClose}
+                    initialData={selectedContract}
+                    loading={modalLoading}
+                />
+            )}
 
             {/* Modal gửi khảo sát - Có thể chỉnh sửa */}
-            <ContractDetailModal
-                visible={isModalVisible && modalMode === 'edit'}
-                onCancel={handleModalClose}
-                onSave={handleModalSave}
-                initialData={selectedContract}
-                loading={modalLoading}
-            />
+            {modalMode === 'edit' && (
+                <ContractDetailModal
+                    visible={isModalVisible}
+                    onCancel={handleModalClose}
+                    onSave={handleModalSave}
+                    initialData={selectedContract}
+                    loading={modalLoading}
+                />
+            )}
         </div>
     );
 };
