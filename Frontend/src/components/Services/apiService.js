@@ -78,6 +78,35 @@ export const getRecentTechnicalTasks = (status, limit = 5) => {
     return apiClient.get(`${DASHBOARD_API_URL}/recent-tasks`, { params });
 };
 
+// === API CHO CONTRACTS GENERAL ===
+const CONTRACTS_API_URL = `${API_BASE_URL}/v1/contracts`;
+
+/**
+ * Lấy tất cả hợp đồng
+ * @returns {Promise<ContractDTO[]>}
+ */
+export const getAllContracts = () => {
+    return axios.get(CONTRACTS_API_URL);
+};
+
+/**
+ * Lấy chi tiết hợp đồng theo ID
+ * @param {number} id ID của hợp đồng
+ * @returns {Promise<ContractDTO>}
+ */
+export const getContractByIdGeneral = (id) => {
+    return axios.get(`${CONTRACTS_API_URL}/${id}`);
+};
+
+/**
+ * Lấy thông tin profile (account) theo ID
+ * @param {number} accountId ID của account
+ * @returns {Promise<{fullName: string, ...}>}
+ */
+export const getProfileById = (accountId) => {
+    return axios.get(`${API_BASE_URL}/profile/${accountId}`);
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
