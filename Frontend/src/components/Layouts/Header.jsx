@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/use-auth';
 import { Menu, X, LogOut, User, Bell } from 'lucide-react';
 import './Header.css';
 
 const Header = ({ isAuthenticated, user }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
 
   const handleLogout = () => {
-    // TODO: Call logout API
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    logout(); // Gọi logout từ AuthContext
     setIsAvatarDropdownOpen(false);
     navigate('/');
   };
@@ -23,6 +23,17 @@ const Header = ({ isAuthenticated, user }) => {
   const handleProfileClick = () => {
     navigate('/staff/profile');
     setIsAvatarDropdownOpen(false);
+  };
+
+  // Xử lý click "Giá nước" - chuyển về home rồi scroll
+  const handleWaterPriceClick = () => {
+    navigate('/');
+    setTimeout(() => {
+      const element = document.getElementById('gia-nuoc');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   return (
@@ -45,7 +56,13 @@ const Header = ({ isAuthenticated, user }) => {
         <nav className="nav-menu">
           <Link to="/about" className="nav-item">Giới thiệu</Link>
           <a href="#tin-tuc" className="nav-item">Tin tức</a>
-          <a href="#gia-nuoc" className="nav-item">Giá nước</a>
+          <button 
+            onClick={handleWaterPriceClick}
+            className="nav-item"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Giá nước
+          </button>
           <a href="#lien-he" className="nav-item">Liên hệ</a>
         </nav>
 
@@ -122,7 +139,13 @@ const Header = ({ isAuthenticated, user }) => {
         <nav className="mobile-nav-menu">
           <Link to="/about" className="mobile-nav-item">Giới thiệu</Link>
           <a href="#tin-tuc" className="mobile-nav-item">Tin tức</a>
-          <a href="#gia-nuoc" className="mobile-nav-item">Giá nước</a>
+          <button 
+            onClick={handleWaterPriceClick}
+            className="mobile-nav-item"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: '12px 0' }}
+          >
+            Giá nước
+          </button>
           <a href="#lien-he" className="mobile-nav-item">Liên hệ</a>
         </nav>
       )}
