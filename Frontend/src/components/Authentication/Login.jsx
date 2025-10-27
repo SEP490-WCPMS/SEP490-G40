@@ -25,12 +25,15 @@ export default function Login() {
     try {
       await login(username, password);
       
-      // Lấy thông tin role để chuyển hướng (Tùy chọn)
+      // Lấy thông tin role để chuyển hướng đến dashboard tương ứng
       const user = JSON.parse(localStorage.getItem('user'));
       if (user && user.roleName) {
-        // Ví dụ: Chuyển hướng Cashier đến trang Cashier
         if (user.roleName === 'CASHIER_STAFF') {
           navigate('/cashier');
+        } else if (user.roleName === 'TECHNICAL_STAFF') {
+          navigate('/technical');
+        } else if (user.roleName === 'SERVICE_STAFF') {
+          navigate('/service');
         } else if (user.roleName === 'ADMIN') {
           navigate('/admin/dashboard');
         } else {
