@@ -1,0 +1,548 @@
+.homepage {
+  background-color: #f9fafb;
+  min-height: 100vh;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: #22c55e;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #16a34a;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #1e40af;
+}
+
+.btn-secondary:hover {
+  background-color: #f3f4f6;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.hero-info {
+  font-size: 14px;
+  color: #93c5fd;
+  margin-top: 20px;
+}
+
+/* Company Banner Section */
+.company-banner-section {
+  position: relative;
+  height: auto;
+  margin: 0 -9999px;
+  padding-left: 9999px;
+  padding-right: 9999px;
+  padding-bottom: 60px;
+  overflow: hidden;
+}
+
+.company-banner-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.company-building-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to right, rgba(30, 64, 175, 0.85), rgba(30, 58, 138, 0.75));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: white;
+  padding: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.company-building-overlay h2 {
+  font-size: 36px;
+  font-weight: 800;
+  margin: 0 0 20px 0;
+}
+
+.company-building-overlay p {
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 10px 0;
+  max-width: 600px;
+  color: #dbeafe;
+}
+
+/* Water Price Section */
+.water-price-section {
+  padding: 80px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+}
+
+.water-price-section h2 {
+  font-size: 36px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 40px;
+  color: #1f2937;
+}
+
+.loading,
+.no-data {
+  text-align: center;
+  font-size: 16px;
+  color: #6b7280;
+  padding: 40px;
+}
+
+.water-price-table {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.water-price-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.water-price-table thead {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+  color: white;
+}
+
+.water-price-table th {
+  padding: 16px 20px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.water-price-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #374151;
+}
+
+.water-price-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.water-price-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Payment Methods Section */
+.payment-methods-section {
+  padding: 80px 20px;
+  background: white;
+  margin-bottom: 40px;
+}
+
+.payment-methods-section h2 {
+  font-size: 32px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 50px;
+  color: #1e40af;
+  text-transform: uppercase;
+}
+
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.payment-method-card {
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  border: 2px solid #93c5fd;
+  transition: all 0.3s ease;
+}
+
+.payment-method-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(30, 64, 175, 0.15);
+  border-color: #1e40af;
+}
+
+.payment-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.payment-method-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e40af;
+  margin: 0 0 15px 0;
+  text-transform: uppercase;
+}
+
+.payment-method-card p {
+  font-size: 14px;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Stats Section with Background */
+.stats-section {
+  position: relative;
+  padding: 80px 20px;
+  margin-bottom: 60px;
+  background-size: cover;
+  background-position: center;
+  background-image: url('https://capnuocphutho.vn/wp-content/uploads/2020/03/VTI1-1024x768.jpg');
+  background-attachment: fixed;
+  color: white;
+  margin: 0 -9999px;
+  padding-left: calc(20px + 9999px);
+  padding-right: calc(20px + 9999px);
+}
+
+.stats-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.8), rgba(30, 58, 138, 0.8));
+  z-index: 1;
+}
+
+.stats-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 40px;
+  position: relative;
+  z-index: 2;
+}
+
+.stat-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-icon {
+  color: white;
+}
+
+.stat-number {
+  font-size: 48px;
+  font-weight: 800;
+  margin: 0;
+  color: white !important;
+}
+
+.stat-label {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white !important;
+}
+
+.stat-description {
+  font-size: 13px;
+  color: #dbeafe;
+  line-height: 1.5;
+}
+
+/* Banks Section */
+.banks-section {
+  padding: 80px 20px;
+  background: linear-gradient(to bottom, #f9fafb, white);
+  margin-bottom: 40px;
+}
+
+.banks-section h2 {
+  font-size: 32px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 50px;
+  color: #1f2937;
+}
+
+.banks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.bank-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.bank-item:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 16px rgba(30, 64, 175, 0.12);
+  border-color: #60a5fa;
+}
+
+.bank-logo {
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+}
+
+.bank-logo-image {
+  width: 100%;
+  height: 60px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.bank-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 60px 20px;
+  }
+
+  .hero-logo {
+    width: 100px;
+    height: 100px;
+  }
+
+  .hero-title {
+    font-size: 36px;
+  }
+
+  .hero-slogan {
+    font-size: 18px;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .company-building-section {
+    height: 300px;
+  }
+
+  .company-building-overlay {
+    padding: 30px;
+  }
+
+  .company-building-overlay h2 {
+    font-size: 28px;
+  }
+
+  .company-building-overlay p {
+    font-size: 14px;
+  }
+
+  .features-section h2,
+  .payment-methods-section h2,
+  .quick-links-section h2,
+  .banks-section h2 {
+    font-size: 28px;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-methods-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-links-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+  }
+
+  .stat-number {
+    font-size: 36px;
+  }
+
+  .banks-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 40px 20px;
+  }
+
+  .hero-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .hero-title {
+    font-size: 28px;
+  }
+
+  .hero-slogan {
+    font-size: 16px;
+  }
+
+  .hero-description {
+    font-size: 14px;
+  }
+
+  .company-building-section {
+    height: 250px;
+    margin-bottom: 40px;
+  }
+
+  .company-building-overlay {
+    padding: 20px;
+  }
+
+  .company-building-overlay h2 {
+    font-size: 22px;
+  }
+
+  .company-building-overlay p {
+    font-size: 13px;
+  }
+
+  .features-section,
+  .payment-methods-section,
+  .quick-links-section,
+  .banks-section {
+    padding: 40px 15px;
+  }
+
+  .features-section h2,
+  .payment-methods-section h2,
+  .quick-links-section h2,
+  .banks-section h2 {
+    font-size: 24px;
+    margin-bottom: 30px;
+  }
+
+  .quick-links-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .quick-link {
+    padding: 16px;
+  }
+
+  .quick-link span {
+    font-size: 24px;
+  }
+
+  .stats-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .stat-number {
+    font-size: 32px;
+  }
+
+  .stat-label {
+    font-size: 14px;
+  }
+
+  .stat-description {
+    font-size: 12px;
+  }
+
+  .banks-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .bank-item {
+    padding: 15px;
+  }
+
+  .bank-logo {
+    font-size: 40px;
+    height: 50px;
+  }
+
+  .bank-name {
+    font-size: 13px;
+  }
+
+  .payment-methods-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-icon {
+    font-size: 40px;
+  }
+
+  .payment-method-card h3 {
+    font-size: 16px;
+  }
+
+  .payment-method-card p {
+    font-size: 13px;
+  }
+}

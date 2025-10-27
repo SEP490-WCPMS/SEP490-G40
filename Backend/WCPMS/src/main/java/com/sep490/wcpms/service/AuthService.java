@@ -3,6 +3,7 @@ package com.sep490.wcpms.service;
 import com.sep490.wcpms.dto.LoginRequest;
 import com.sep490.wcpms.dto.LoginResponse;
 import com.sep490.wcpms.dto.RegisterRequest;
+import com.sep490.wcpms.dto.RegisterResponse;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Role;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
@@ -66,7 +67,7 @@ public class AuthService {
                 .build();
     }
 
-    public Account register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request) {
 
         // 1. Kiểm tra username/email/phone đã tồn tại (Tùy chọn, nên thêm vào Production)
         // if (accountRepository.findByUsername(request.getUsername()).isPresent()) { ... throw new BadRequestException }
@@ -95,7 +96,17 @@ public class AuthService {
         // UpdatedAt và LastLogin sẽ được Spring/Hibernate xử lý
 
         // 5. Lưu vào Database
-        return accountRepository.save(newAccount);
+        Account savedAccount = accountRepository.save(newAccount);
+
+        // 6. Trả về RegisterResponse DTO
+        return RegisterResponse.builder()
+                .id(savedAccount.getId())
+                .username(savedAccount.getUsername())
+                .fullName(savedAccount.getFullName())
+                .customerCode(savedAccount.getCustomerCode())
+                .roleName(savedAccount.getRole().getRoleName().name()) // Lấy tên enum dạng String
+                .message("Đăng ký tài khoản thành công.")
+                .build();
     }
     private String generateNewCustomerCode() {
         // Tìm mã khách hàng lớn nhất hiện có

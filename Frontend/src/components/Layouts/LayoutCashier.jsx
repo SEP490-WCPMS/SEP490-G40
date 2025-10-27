@@ -1,28 +1,40 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'; // Component UI
+import { Outlet } from 'react-router-dom';
+import { CashierSidebar } from './CashierSidebar'; // Import Sidebar mới
 
-function LayoutCashier() {
+const LayoutCashier = () => {
   return (
-    <div className="app-container">
-      <nav className="navbar">
-        {/* Link này trỏ về trang chủ Thu Ngân */}
-        <Link to="/cashier" className="nav-logo">WCPMS (Cashier)</Link>
-        <div className="nav-links">
-          
-          {/* Link đến trang Ghi Chỉ Số (Scan) */}
-          <Link to="scan" className="nav-link">Ghi Chỉ Số (Scan)</Link>
-          {/* (Bạn có thể thêm các link khác cho Thu Ngân ở đây) */}
+    // Bọc ngoài bằng SidebarProvider
+    <SidebarProvider style={{ width: '100%', height: '100%' }}>
+      
+      {/* Sidebar Thu Ngân */}
+      <CashierSidebar /> 
+      
+      {/* Phần Nội dung chính (Header + Main) */}
+      <div className="flex flex-col flex-1 w-full"> {/* Thêm w-full */}
+        
+        {/* Header */}
+        <header className="px-6 py-4 bg-white border-b flex items-center sticky top-0 z-40 shadow-sm">
+          <SidebarTrigger className="mr-4 lg:hidden" /> {/* Nút ẩn/hiện Sidebar trên mobile */}
+          <h2 className="text-xl font-semibold text-gray-800">Nhân viên Thu Ngân</h2> {/* Đổi tiêu đề */}
+          {/* User Menu */}
+          <div className="ml-auto">
+             <span>Xin chào, [Cashier Staff Name]</span> {/* Đổi tên hiển thị */}
+          </div>
+        </header>
 
-        </div>
-        <div className="nav-user">
-          <span>Xin chào, [Cashier Staff Name]</span>
-        </div>
-      </nav>
-      <main className="main-content">
-        <Outlet /> {/* Các trang con của Thu Ngân sẽ ở đây */}
-      </main>
-    </div>
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto bg-gray-50">
+           {/* Thêm padding cho nội dung bên trong */}
+           <div style={{ padding: '24px' }}>
+               <Outlet /> {/* Trang con sẽ hiển thị ở đây */}
+           </div>
+        </main>
+
+      </div>
+    </SidebarProvider>
   );
-}
+};
 
 export default LayoutCashier;
