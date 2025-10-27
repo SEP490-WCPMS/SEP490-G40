@@ -105,13 +105,19 @@ const Header = ({ isAuthenticated, user }) => {
                     <span className="user-role">{user?.roleName || 'Staff'}</span>
                   </div>
                   <hr className="dropdown-divider" />
-                  <button 
-                    className="dropdown-item"
-                    onClick={handleDashboardClick}
-                  >
-                    <LayoutDashboard size={16} />
-                    <span>Dashboard</span>
-                  </button>
+                  {/* Chỉ hiển thị Dashboard cho Staff users */}
+                  {(user?.roleName === 'CASHIER_STAFF' || user?.roleName === 'TECHNICAL_STAFF' || user?.roleName === 'SERVICE_STAFF') && (
+                    <>
+                      <button 
+                        className="dropdown-item"
+                        onClick={handleDashboardClick}
+                      >
+                        <LayoutDashboard size={16} />
+                        <span>Dashboard</span>
+                      </button>
+                      <hr className="dropdown-divider" />
+                    </>
+                  )}
                   <button 
                     className="dropdown-item"
                     onClick={handleProfileClick}
