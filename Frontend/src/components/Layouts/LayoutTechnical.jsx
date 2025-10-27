@@ -6,7 +6,7 @@ import { TechnicalSidebar } from './TechnicalSidebar'; // Import Sidebar mới
 const LayoutTechnical = () => {
   return (
     // Bọc ngoài bằng SidebarProvider
-    <SidebarProvider style={{ width: '100%', height: '100vh', display: 'flex' }}> {/* Thêm display: flex */}
+    <SidebarProvider style={{ width: '100%', height: '100%' }}> {/* Thêm display: flex */}
       
       {/* Sidebar Kỹ Thuật */}
       <TechnicalSidebar /> 

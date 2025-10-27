@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut, User, Bell } from 'lucide-react';
+import { useAuth } from '../../hooks/use-auth';
+import { Menu, X, LogOut, User, Bell, LayoutDashboard } from 'lucide-react';
 import './Header.css';
 
 const Header = ({ isAuthenticated, user }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
 
   const handleLogout = () => {
-    // TODO: Call logout API
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    logout(); // Gọi logout từ AuthContext
     setIsAvatarDropdownOpen(false);
     navigate('/');
   };
@@ -23,6 +23,31 @@ const Header = ({ isAuthenticated, user }) => {
   const handleProfileClick = () => {
     navigate('/staff/profile');
     setIsAvatarDropdownOpen(false);
+  };
+
+  // Xử lý click Dashboard - chuyển đến dashboard của role tương ứng
+  const handleDashboardClick = () => {
+    if (user?.roleName === 'CASHIER_STAFF') {
+      navigate('/cashier');
+    } else if (user?.roleName === 'TECHNICAL_STAFF') {
+      navigate('/technical');
+    } else if (user?.roleName === 'SERVICE_STAFF') {
+      navigate('/service');
+    } else {
+      navigate('/');
+    }
+    setIsAvatarDropdownOpen(false);
+  };
+
+  // Xử lý click "Giá nước" - chuyển về home rồi scroll
+  const handleWaterPriceClick = () => {
+    navigate('/');
+    setTimeout(() => {
+      const element = document.getElementById('gia-nuoc');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   return (
@@ -45,7 +70,13 @@ const Header = ({ isAuthenticated, user }) => {
         <nav className="nav-menu">
           <Link to="/about" className="nav-item">Giới thiệu</Link>
           <a href="#tin-tuc" className="nav-item">Tin tức</a>
-          <a href="#gia-nuoc" className="nav-item">Giá nước</a>
+          <button 
+            onClick={handleWaterPriceClick}
+            className="nav-item"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            Giá nước
+          </button>
           <a href="#lien-he" className="nav-item">Liên hệ</a>
         </nav>
 
@@ -56,15 +87,13 @@ const Header = ({ isAuthenticated, user }) => {
               <button 
                 className="avatar-button"
                 onClick={() => setIsAvatarDropdownOpen(!isAvatarDropdownOpen)}
-                title={user?.name || 'User'}
+                title={user?.fullName || 'User'}
               >
                 <div className="avatar-circle">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} />
+                    <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
-                    <span className="avatar-initials">
-                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
+                    <User size={24} className="avatar-icon" />
                   )}
                 </div>
               </button>
@@ -72,10 +101,17 @@ const Header = ({ isAuthenticated, user }) => {
               {isAvatarDropdownOpen && (
                 <div className="avatar-dropdown-menu">
                   <div className="dropdown-header">
-                    <span className="user-name">{user?.name || 'User'}</span>
-                    <span className="user-role">{user?.role || 'Staff'}</span>
+                    <span className="user-name">{user?.fullName || 'User'}</span>
+                    <span className="user-role">{user?.roleName || 'Staff'}</span>
                   </div>
                   <hr className="dropdown-divider" />
+                  <button 
+                    className="dropdown-item"
+                    onClick={handleDashboardClick}
+                  >
+                    <LayoutDashboard size={16} />
+                    <span>Dashboard</span>
+                  </button>
                   <button 
                     className="dropdown-item"
                     onClick={handleProfileClick}
@@ -122,7 +158,13 @@ const Header = ({ isAuthenticated, user }) => {
         <nav className="mobile-nav-menu">
           <Link to="/about" className="mobile-nav-item">Giới thiệu</Link>
           <a href="#tin-tuc" className="mobile-nav-item">Tin tức</a>
-          <a href="#gia-nuoc" className="mobile-nav-item">Giá nước</a>
+          <button 
+            onClick={handleWaterPriceClick}
+            className="mobile-nav-item"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: '12px 0' }}
+          >
+            Giá nước
+          </button>
           <a href="#lien-he" className="mobile-nav-item">Liên hệ</a>
         </nav>
       )}

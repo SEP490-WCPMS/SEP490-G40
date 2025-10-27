@@ -33,14 +33,14 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     // --- CÁC PHƯƠNG THỨC CHO BIỂU ĐỒ DASHBOARD ---
 
     /** Đếm số khảo sát hoàn thành vào một ngày cụ thể */
-    @Query("SELECT COUNT(c) FROM Contract c WHERE c.technicalStaff = :staff AND c.contractStatus = com.sep490.wcpms.entity.Contract$ContractStatus.PENDING_SURVEY_REVIEW AND c.surveyDate = :date")
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.technicalStaff = :staff AND c.contractStatus = 'PENDING_SURVEY_REVIEW' AND c.surveyDate = :date")
     long countCompletedSurveysByDate(
             @Param("staff") Account staff,
             @Param("date") LocalDate date
     );
 
     /** Đếm số lắp đặt hoàn thành vào một ngày cụ thể */
-    @Query("SELECT COUNT(c) FROM Contract c WHERE c.technicalStaff = :staff AND c.contractStatus = com.sep490.wcpms.entity.Contract$ContractStatus.ACTIVE AND c.installationDate = :date")
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.technicalStaff = :staff AND c.contractStatus = 'ACTIVE' AND c.installationDate = :date")
     long countCompletedInstallationsByDate(
             @Param("staff") Account staff,
             @Param("date") LocalDate date
@@ -68,4 +68,37 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     List<Contract> findByCustomer_Account_IdAndContractStatusInOrderByIdDesc(Integer accountId, Collection<Contract.ContractStatus> statuses);
 
     List<Contract> findByCustomer_Account_IdOrderByIdDesc(Integer accountId);
+
+    // --- SERVICE STAFF METHODS ---
+
+    /** Đếm số hợp đồng của service staff với trạng thái cụ thể */
+    long countByServiceStaffAndContractStatus(Account serviceStaff, Contract.ContractStatus contractStatus);
+
+    /** Tìm hợp đồng của service staff với các trạng thái cụ thể, có phân trang */
+    List<Contract> findByServiceStaffAndContractStatusIn(
+            Account serviceStaff,
+            Collection<Contract.ContractStatus> statuses,
+            Pageable pageable
+    );
+
+    /** Tìm hợp đồng của service staff với một trạng thái, có phân trang */
+    List<Contract> findByServiceStaffAndContractStatus(
+            Account serviceStaff,
+            Contract.ContractStatus contractStatus,
+            Pageable pageable
+    );
+
+    /** Đếm số hợp đồng gửi khảo sát (PENDING) vào một ngày cụ thể */
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'PENDING' AND CAST(c.createdAt AS date) = :date")
+    long countSentToTechnicalByDate(
+            @Param("staff") Account staff,
+            @Param("date") LocalDate date
+    );
+
+    /** Đếm số hợp đồng được duyệt (APPROVED) vào một ngày cụ thể */
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'APPROVED' AND CAST(c.updatedAt AS date) = :date")
+    long countApprovedByDate(
+            @Param("staff") Account staff,
+            @Param("date") LocalDate date
+    );
 }
