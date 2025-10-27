@@ -45,20 +45,6 @@ const AboutPage = () => {
           {/* Google Map */}
           <div className="about-map">
             <div className="map-contact">
-              <div className="contact-column">
-                <div className="contact-phone">
-                  <div className="contact-icon">📱</div>
-                  <h4>ĐIỆN THOẠI</h4>
-                  <p>0210 3846 531</p>
-                  <p className="fax">FAX: 0210 3848 064</p>
-                </div>
-                <div className="contact-address">
-                  <div className="contact-icon">📍</div>
-                  <h4>ĐỊA CHỈ</h4>
-                  <p>Số 8, Trần Phú, Phường Tân Dân, TP Việt Trì, Phú Thọ</p>
-                </div>
-              </div>
-
               <div className="map-column">
                 <iframe 
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1288.9835019072348!2d105.40249138964111!3d21.323954268710352!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31348d544214c7e9%3A0x8251a3ced9755dff!2zQ8O0bmcgVHkgQ3AgQ-G6pXAgTsaw4bubYyBQaMO6IFRo4buN!5e0!3m2!1svi!2s!4v1584880715987!5m2!1svi!2s"
@@ -116,32 +102,8 @@ const AboutPage = () => {
             </div>
           </div>
 
-          {/* Stats Section */}
-          <div className="about-stats">
-            <h3>SỰ KIỆN NỔI BẬT</h3>
-            <div className="stats-grid">
-              <div className="stat-box">
-                <div className="stat-number">180,000+</div>
-                <div className="stat-label">Khách hàng</div>
-                <p>Công ty đang cung cấp nước sạch cho hơn 180.000 khách hàng trên toàn tỉnh</p>
-              </div>
-              <div className="stat-box">
-                <div className="stat-number">19</div>
-                <div className="stat-label">Xí nghiệp, Xưởng SX, Tổ</div>
-                <p>19 xí nghiệp, xưởng sản xuất, tổ trực thuộc</p>
-              </div>
-              <div className="stat-box">
-                <div className="stat-number">400+</div>
-                <div className="stat-label">Cán bộ nhân viên</div>
-                <p>Tổng số lao động trong toàn Công ty đến thời điểm tháng 12/2011 là: 400 người</p>
-              </div>
-              <div className="stat-box">
-                <div className="stat-number">10</div>
-                <div className="stat-label">Phòng chức năng</div>
-                <p>Công ty có 10 phòng ban tại văn phòng công ty</p>
-              </div>
-            </div>
-          </div>
+          {/* Stats Section - REMOVED */}
+
         </div>
       </section>
     </div>
