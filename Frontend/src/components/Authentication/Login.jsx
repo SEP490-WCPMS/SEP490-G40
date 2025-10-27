@@ -33,6 +33,8 @@ export default function Login() {
           navigate('/cashier');
         } else if (user.roleName === 'ADMIN') {
           navigate('/admin/dashboard');
+        } else if (user.roleName === 'TECHNICAL_STAFF') {
+          navigate('/technical');
         } else {
           // Mặc định hoặc CUSTOMER
           navigate('/');
