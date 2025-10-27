@@ -26,7 +26,7 @@ const mainMenuItems = [
     icon: FileText,
   },
   {
-    title: 'Hợp đồng khảo sát xong',
+    title: 'Hợp đồng khảo sát',
     url: '/service/survey-reviews',
     icon: Eye,
   },

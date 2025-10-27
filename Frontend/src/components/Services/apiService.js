@@ -190,6 +190,11 @@ export const updateServiceContract = (id, updateData) => {
     return axios.put(`${SERVICE_API_BASE_URL}/contracts/${id}`, updateData);
 };
 
+/** Gửi hợp đồng cho Technical khảo sát (DRAFT → PENDING) */
+export const submitContractForSurvey = (id, submitData) => {
+    return axios.put(`${SERVICE_API_BASE_URL}/contracts/${id}/submit`, submitData);
+};
+
 /** Lấy số liệu thống kê cho dashboard */
 export const getDashboardStats = () => {
     return axios.get(`${SERVICE_API_BASE_URL}/dashboard/stats`);

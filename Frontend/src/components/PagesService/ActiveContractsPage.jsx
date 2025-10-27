@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import { getRecentServiceStaffTasks, getServiceContractDetail, updateServiceContract } from '../Services/apiService';
+import { getServiceContracts, getServiceContractDetail, updateServiceContract } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -28,28 +28,20 @@ const ActiveContractsPage = () => {
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
         setLoading(true);
         try {
-            const response = await getRecentServiceStaffTasks('ACTIVE', pageSize * 100);
-            if (response.data && Array.isArray(response.data)) {
-                // Filter by keyword if provided
-                let filteredData = response.data;
-                if (filters.keyword) {
-                    const keyword = filters.keyword.toLowerCase();
-                    filteredData = filteredData.filter(contract => 
-                        contract.contractNumber?.toLowerCase().includes(keyword) ||
-                        contract.customerName?.toLowerCase().includes(keyword) ||
-                        contract.customerCode?.toLowerCase().includes(keyword)
-                    );
-                }
-
-                // Pagination
-                const start = (page - 1) * pageSize;
-                const paginatedData = filteredData.slice(start, start + pageSize);
-
-                setContracts(paginatedData);
+            const response = await getServiceContracts({
+                page: page - 1, // API dùng 0-based indexing
+                size: pageSize,
+                status: 'ACTIVE',
+                keyword: filters.keyword
+            });
+            
+            if (response.data) {
+                const data = response.data.content || [];
+                setContracts(data);
                 setPagination({
                     current: page,
                     pageSize: pageSize,
-                    total: filteredData.length,
+                    total: response.data.totalElements || 0,
                 });
             }
         } catch (error) {
