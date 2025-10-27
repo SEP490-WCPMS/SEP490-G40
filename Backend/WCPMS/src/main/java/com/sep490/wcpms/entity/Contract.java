@@ -1,6 +1,5 @@
 package com.sep490.wcpms.entity;
 
-import com.sep490.wcpms.util.Constant;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
