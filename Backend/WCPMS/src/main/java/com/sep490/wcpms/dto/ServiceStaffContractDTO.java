@@ -28,4 +28,6 @@ public class ServiceStaffContractDTO {
 
     private LocalDate surveyDate;
     private String technicalDesign;
+
+    private String priceTypeName;
 }

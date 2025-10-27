@@ -158,6 +158,16 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         }
         dto.setSurveyDate(c.getSurveyDate());
         dto.setTechnicalDesign(c.getTechnicalDesign());
+
+        // Lấy priceTypeName từ ContractUsageDetail
+        if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
+            // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
+            var firstUsageDetail = c.getContractUsageDetails().get(0);
+            if (firstUsageDetail.getPriceType() != null) {
+                dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
+            }
+        }
+
         return dto;
     }
 }
