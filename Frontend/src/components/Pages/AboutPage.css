@@ -141,8 +141,9 @@
 }
 
 .map-contact {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   gap: 0;
   min-height: 300px;
 }
@@ -195,6 +196,8 @@
 
 .map-column {
   border-radius: 0;
+  width: 100%;
+  max-width: 800px;
 }
 
 /* Timeline Section */

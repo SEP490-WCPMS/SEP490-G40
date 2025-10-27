@@ -50,12 +50,26 @@ const ContractRequestForm = () => {
         setError('');
 
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user || !user.accountId) {
+
+        // --- DÒNG DEBUG ---
+        console.log("KIỂM TRA USER TRONG handleSubmit:", user);
+        // --- HẾT DÒNG DEBUG ---
+
+        if (!user || !user.id) { // <-- Sửa ở đây
+            // --- DÒNG DEBUG ---
+            console.log("ĐIỀU KIỆN IF BỊ TRUE, CHUẨN BỊ CHUYỂN HƯỚNG!");
+            if (user) {
+                console.log("user.id LÀ:", user.id); // Xem user.id là gì
+                console.log("user.accountId LÀ:", user.accountId); // Xem user.accountId là gì
+            }
+            // --- HẾT DÒNG DEBUG ---
+
             setError('Bạn cần đăng nhập để thực hiện chức năng này.');
             setLoading(false);
             navigate('/login');
             return;
         }
+        //... (phần còn lại của hàm giữ nguyên)
 
         if (!selectedPriceType) {
             setError('Vui lòng chọn một loại hình sử dụng.');
@@ -64,7 +78,7 @@ const ContractRequestForm = () => {
         }
 
         const requestData = {
-            accountId: user.accountId,
+            accountId: user.id,
             priceTypeId: parseInt(selectedPriceType, 10),
             occupants: parseInt(occupants, 10),
             notes: notes
@@ -72,7 +86,7 @@ const ContractRequestForm = () => {
 
         try {
             // Gọi API
-            await axios.post('http://localhost:8080/api/contracts/request', requestData);
+            await axios.post('http://localhost:8080/api/contract-request/request', requestData);
 
             // --- THAY ĐỔI CHÍNH: TỰ ĐỘNG CHUYỂN HƯỚNG ---
             // Sau khi gửi thành công, chuyển thẳng đến trang xem trạng thái
@@ -189,7 +203,6 @@ const ContractRequestForm = () => {
                     />
                     <small>Đối với hộ gia đình, đây là số người trong hộ khẩu.</small>
                 </div>
-
                 <div className="form-group">
                     <label htmlFor="notes">Ghi chú</label>
                     <textarea
