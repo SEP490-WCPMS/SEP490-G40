@@ -222,7 +222,15 @@ const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service-staff/dashboard
  * }>}
  */
 export const getServiceStaffDashboardStats = () => {
-    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const staffId = user?.id;
+    
+    const params = {};
+    if (staffId) {
+        params.staffId = staffId;
+    }
+    
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`, { params });
 };
 
 /**
@@ -239,9 +247,17 @@ export const getServiceStaffChartData = (startDate, endDate) => {
     // Convert Date to YYYY-MM-DD string format
     const start = startDate instanceof Date ? startDate.toISOString().split('T')[0] : startDate;
     const end = endDate instanceof Date ? endDate.toISOString().split('T')[0] : endDate;
-    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, {
-        params: { startDate: start, endDate: end }
-    });
+    
+    // Lấy staffId từ localStorage (nếu có)
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const staffId = user?.id;
+    
+    const params = { startDate: start, endDate: end };
+    if (staffId) {
+        params.staffId = staffId;
+    }
+    
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, { params });
 };
 
 /**
@@ -251,7 +267,13 @@ export const getServiceStaffChartData = (startDate, endDate) => {
  * @returns {Promise<ContractDetailsDTO[]>}
  */
 export const getRecentServiceStaffTasks = (status, limit = 5) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const staffId = user?.id;
+    
     const params = { limit };
+    if (staffId) {
+        params.staffId = staffId;
+    }
     if (status && status !== 'all') {
         params.status = status;
     }

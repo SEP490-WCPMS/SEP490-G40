@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, Button, message } from 'antd';
 import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { getAnnulRequests, approveAnnulRequest, rejectAnnulRequest } from '../../../Services/apiService';
 
 const ContractAnnulList = () => {
   const [annuls, setAnnuls] = useState([]);
@@ -102,26 +103,45 @@ const ContractAnnulList = () => {
     // Xử lý xem chi tiết yêu cầu hủy hợp đồng
   };
 
-  const handleApprove = (record) => {
-    // Xử lý duyệt yêu cầu
+  const handleApprove = async (record) => {
+    try {
+      await approveAnnulRequest(record.id);
+      message.success('Duyệt yêu cầu hủy hợp đồng thành công!');
+      fetchData();
+    } catch (error) {
+      message.error('Duyệt yêu cầu thất bại!');
+      console.error('Approve error:', error);
+    }
   };
 
-  const handleReject = (record) => {
-    // Xử lý từ chối yêu cầu
+  const handleReject = async (record) => {
+    try {
+      await rejectAnnulRequest(record.id, 'Từ chối yêu cầu');
+      message.success('Từ chối yêu cầu hủy hợp đồng thành công!');
+      fetchData();
+    } catch (error) {
+      message.error('Từ chối yêu cầu thất bại!');
+      console.error('Reject error:', error);
+    }
   };
 
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
-      // Sử dụng dữ liệu mẫu
-      const { mockAnnulRequests } = await import('../mockData');
-      setAnnuls(mockAnnulRequests);
+      const response = await getAnnulRequests({
+        page: (params.current || pagination.current) - 1,
+        size: params.pageSize || pagination.pageSize
+      });
+      setAnnuls(response.data?.content || []);
       setPagination({
         ...pagination,
-        total: mockAnnulRequests.length
+        total: response.data?.totalElements || 0,
+        current: params.current || pagination.current,
+        pageSize: params.pageSize || pagination.pageSize
       });
     } catch (error) {
       message.error('Không thể tải danh sách yêu cầu hủy hợp đồng');
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, Button, message } from 'antd';
 import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { getServiceContracts, updateContractStatus } from '../../../Services/apiService';
 
 const PendingContractList = () => {
   const [contracts, setContracts] = useState([]);
@@ -103,29 +104,53 @@ const PendingContractList = () => {
     // Xử lý xem chi tiết hợp đồng
   };
 
-  const handleApprove = (record) => {
-    // Xử lý duyệt hợp đồng
+  const handleApprove = async (record) => {
+    try {
+      await updateContractStatus(record.id, 'APPROVED', 'Duyệt hợp đồng');
+      message.success('Duyệt hợp đồng thành công!');
+      fetchData();
+    } catch (error) {
+      message.error('Duyệt hợp đồng thất bại!');
+      console.error('Approve error:', error);
+    }
   };
 
-  const handleReject = (record) => {
-    // Xử lý từ chối hợp đồng
+  const handleReject = async (record) => {
+    try {
+      await updateContractStatus(record.id, 'REJECTED', 'Từ chối hợp đồng');
+      message.success('Từ chối hợp đồng thành công!');
+      fetchData();
+    } catch (error) {
+      message.error('Từ chối hợp đồng thất bại!');
+      console.error('Reject error:', error);
+    }
   };
 
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
-      // Sử dụng dữ liệu mẫu
-      const { mockContracts } = await import('../mockData');
-      const pendingContracts = mockContracts.filter(contract => 
-        ['PENDING', 'PENDING_SURVEY_REVIEW', 'PENDING_SIGN'].includes(contract.contractStatus)
-      );
-      setContracts(pendingContracts);
+      const statuses = ['PENDING', 'PENDING_SURVEY_REVIEW', 'PENDING_SIGN'];
+      const allContracts = [];
+      
+      for (const status of statuses) {
+        const response = await getServiceContracts({
+          page: 0,
+          size: 100,
+          status: status
+        });
+        allContracts.push(...(response.data?.content || []));
+      }
+      
+      setContracts(allContracts);
       setPagination({
         ...pagination,
-        total: pendingContracts.length
+        total: allContracts.length,
+        current: params.current || pagination.current,
+        pageSize: params.pageSize || pagination.pageSize
       });
     } catch (error) {
       message.error('Không thể tải danh sách hợp đồng');
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }
