@@ -55,8 +55,8 @@ const Header = ({ isAuthenticated, user }) => {
       <div className="header-container">
         {/* Logo and Company Name */}
         <Link to="/" className="header-logo">
-          <img 
-            src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png" 
+          <img
+            src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
             alt="Logo"
             className="logo-image"
           />
@@ -70,7 +70,7 @@ const Header = ({ isAuthenticated, user }) => {
         <nav className="nav-menu">
           <Link to="/about" className="nav-item">Giới thiệu</Link>
           <a href="#tin-tuc" className="nav-item">Tin tức</a>
-          <button 
+          <button
             onClick={handleWaterPriceClick}
             className="nav-item"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -78,13 +78,14 @@ const Header = ({ isAuthenticated, user }) => {
             Giá nước
           </button>
           <a href="#lien-he" className="nav-item">Liên hệ</a>
+          <Link to="/contract-request" className="nav-item">Đăng ký cấp nước</Link>
         </nav>
 
         {/* Avatar / Login Button */}
         <div className="header-right">
           {isAuthenticated ? (
             <div className="avatar-dropdown-container">
-              <button 
+              <button
                 className="avatar-button"
                 onClick={() => setIsAvatarDropdownOpen(!isAvatarDropdownOpen)}
                 title={user?.fullName || 'User'}
@@ -108,7 +109,7 @@ const Header = ({ isAuthenticated, user }) => {
                   {/* Chỉ hiển thị Dashboard cho Staff users */}
                   {(user?.roleName === 'CASHIER_STAFF' || user?.roleName === 'TECHNICAL_STAFF' || user?.roleName === 'SERVICE_STAFF') && (
                     <>
-                      <button 
+                      <button
                         className="dropdown-item"
                         onClick={handleDashboardClick}
                       >
@@ -118,7 +119,7 @@ const Header = ({ isAuthenticated, user }) => {
                       <hr className="dropdown-divider" />
                     </>
                   )}
-                  <button 
+                  <button
                     className="dropdown-item"
                     onClick={handleProfileClick}
                   >
@@ -130,7 +131,7 @@ const Header = ({ isAuthenticated, user }) => {
                     <span>Thông báo</span>
                   </button>
                   <hr className="dropdown-divider" />
-                  <button 
+                  <button
                     className="dropdown-item logout"
                     onClick={handleLogout}
                   >
@@ -141,7 +142,7 @@ const Header = ({ isAuthenticated, user }) => {
               )}
             </div>
           ) : (
-            <button 
+            <button
               className="login-button"
               onClick={handleLoginClick}
             >
@@ -151,7 +152,7 @@ const Header = ({ isAuthenticated, user }) => {
         </div>
 
         {/* Mobile Menu Toggle */}
-        <button 
+        <button
           className="mobile-menu-toggle"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
@@ -164,7 +165,7 @@ const Header = ({ isAuthenticated, user }) => {
         <nav className="mobile-nav-menu">
           <Link to="/about" className="mobile-nav-item">Giới thiệu</Link>
           <a href="#tin-tuc" className="mobile-nav-item">Tin tức</a>
-          <button 
+          <button
             onClick={handleWaterPriceClick}
             className="mobile-nav-item"
             style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: '12px 0' }}
