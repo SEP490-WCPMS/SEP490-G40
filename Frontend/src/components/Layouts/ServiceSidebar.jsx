@@ -35,6 +35,11 @@ const mainMenuItems = [
     url: '/service/approved-contracts',
     icon: CheckCircle,
   },
+  {
+    title: 'Hợp đồng đang hoạt động',
+    url: '/service/active-contracts',
+    icon: Zap,
+  },
 ];
 
 // Contract status filter items

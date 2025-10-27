@@ -201,3 +201,54 @@ export const getContractChartData = (startDate, endDate) => {
         params: { startDate, endDate }
     });
 };
+
+// === API CHO SERVICE STAFF DASHBOARD (NEW) ===
+const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service-staff/dashboard`;
+
+/**
+ * Lấy số liệu thống kê cho service staff dashboard
+ * @returns {Promise<{
+ *   draftCount: number,
+ *   pendingTechnicalCount: number,
+ *   pendingSurveyReviewCount: number,
+ *   approvedCount: number,
+ *   pendingSignCount: number,
+ *   signedCount: number
+ * }>}
+ */
+export const getServiceStaffDashboardStats = () => {
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`);
+};
+
+/**
+ * Lấy dữ liệu biểu đồ cho service staff dashboard
+ * @param {Date|string} startDate - ngày bắt đầu (YYYY-MM-DD)
+ * @param {Date|string} endDate - ngày kết thúc (YYYY-MM-DD)
+ * @returns {Promise<{
+ *   labels: string[],
+ *   surveyCompletedCounts: number[],
+ *   installationCompletedCounts: number[]
+ * }>}
+ */
+export const getServiceStaffChartData = (startDate, endDate) => {
+    // Convert Date to YYYY-MM-DD string format
+    const start = startDate instanceof Date ? startDate.toISOString().split('T')[0] : startDate;
+    const end = endDate instanceof Date ? endDate.toISOString().split('T')[0] : endDate;
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, {
+        params: { startDate: start, endDate: end }
+    });
+};
+
+/**
+ * Lấy danh sách công việc gần đây của service staff
+ * @param {string|null} status - trạng thái filter (optional)
+ * @param {number} limit - số lượng (default 5)
+ * @returns {Promise<ContractDetailsDTO[]>}
+ */
+export const getRecentServiceStaffTasks = (status, limit = 5) => {
+    const params = { limit };
+    if (status && status !== 'all') {
+        params.status = status;
+    }
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/recent-tasks`, { params });
+};

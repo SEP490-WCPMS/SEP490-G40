@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Typography, message, Spin, Card, Select, DatePicker, Button } from 'antd';
+import { Row, Col, Typography, message, Spin, Card, Select, Button, Tooltip } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { 
     FileAddOutlined, 
     ClockCircleOutlined, 
@@ -8,6 +9,7 @@ import {
     FilterOutlined,
     ReloadOutlined
 } from '@ant-design/icons';
+import moment from 'moment';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -15,20 +17,19 @@ import {
     PointElement,
     LineElement,
     Title as ChartTitle,
-    Tooltip,
+    Tooltip as ChartTooltip,
     Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import StatisticCard from '../common/StatisticCard';
 import ContractTable from './ContractManagement/ContractTable';
 import { 
-    getDashboardStats, 
-    getContractChartData,
-    getServiceContracts 
+    getServiceStaffDashboardStats, 
+    getServiceStaffChartData,
+    getRecentServiceStaffTasks
 } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
-const { RangePicker } = DatePicker;
 
 // Đăng ký các components cần thiết cho Chart.js
 ChartJS.register(
@@ -37,13 +38,14 @@ ChartJS.register(
     PointElement,
     LineElement,
     ChartTitle,
-    Tooltip,
+    ChartTooltip,
     Legend
 );
 
 // Options cho biểu đồ
 const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
         legend: {
             position: 'top',
@@ -56,19 +58,24 @@ const chartOptions = {
         y: {
             beginAtZero: true,
             ticks: {
-                stepSize: 1
+                stepSize: 1,
+                precision: 0
             }
         }
     }
 };
 
 const ServiceDashboardPage = () => {
+    const navigate = useNavigate();
+    
     // State cho dữ liệu thống kê
     const [stats, setStats] = useState({
-        newRequests: 0,
-        pendingSurvey: 0,
-        pendingInstallation: 0,
-        supportTickets: 0,
+        draftCount: 0,
+        pendingTechnicalCount: 0,
+        pendingSurveyReviewCount: 0,
+        approvedCount: 0,
+        pendingSignCount: 0,
+        signedCount: 0,
     });
     
     // State cho bảng yêu cầu gần đây
@@ -84,30 +91,35 @@ const ServiceDashboardPage = () => {
                 data: [],
                 borderColor: '#1890ff',
                 backgroundColor: '#1890ff',
+                tension: 0.1,
             },
             {
                 label: 'Hoàn thành',
                 data: [],
                 borderColor: '#52c41a',
                 backgroundColor: '#52c41a',
+                tension: 0.1,
             },
         ],
     });
     const [filterStatus, setFilterStatus] = useState('all');
-    const [dateRange, setDateRange] = useState(null);
+    const [dateRange, setDateRange] = useState([moment().subtract(6, 'days'), moment()]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     // Lấy số liệu thống kê từ API
     const fetchStats = async () => {
         try {
             setLoading(true);
-            const response = await getDashboardStats();
+            setError(null);
+            const response = await getServiceStaffDashboardStats();
             if (response.data) {
                 setStats(response.data);
             }
         } catch (error) {
-            message.error('Không thể lấy dữ liệu thống kê');
             console.error('Error fetching stats:', error);
+            setError('Lỗi tải dữ liệu thống kê');
+            message.error('Không thể lấy dữ liệu thống kê');
         } finally {
             setLoading(false);
         }
@@ -117,49 +129,66 @@ const ServiceDashboardPage = () => {
     const fetchChartData = async (start, end) => {
         try {
             setLoading(true);
-            const response = await getContractChartData(start, end);
+            setError(null);
+            
+            // Kiểm tra start/end có hợp lệ
+            let startDate, endDate;
+            if (moment.isMoment(start)) {
+                startDate = start.toDate();
+            } else {
+                startDate = new Date(start);
+            }
+            if (moment.isMoment(end)) {
+                endDate = end.toDate();
+            } else {
+                endDate = new Date(end);
+            }
+            
+            const response = await getServiceStaffChartData(startDate, endDate);
             if (response.data) {
                 setChartData({
-                    labels: response.data.labels,
+                    labels: response.data.labels || [],
                     datasets: [
                         {
-                            label: 'Yêu cầu mới',
-                            data: response.data.newRequests,
+                            label: 'Gửi khảo sát',
+                            data: response.data.surveyCompletedCounts || [],
                             borderColor: '#1890ff',
                             backgroundColor: '#1890ff',
+                            tension: 0.1,
                         },
                         {
                             label: 'Hoàn thành',
-                            data: response.data.completed,
+                            data: response.data.installationCompletedCounts || [],
                             borderColor: '#52c41a',
                             backgroundColor: '#52c41a',
+                            tension: 0.1,
                         },
                     ],
                 });
             }
         } catch (error) {
-            message.error('Không thể lấy dữ liệu biểu đồ');
             console.error('Error fetching chart data:', error);
+            setError('Lỗi tải dữ liệu biểu đồ');
+            message.error('Không thể lấy dữ liệu biểu đồ');
         } finally {
             setLoading(false);
         }
     };
 
-    // Lấy danh sách hợp đồng gần đây
+    // Lấy danh sách công việc gần đây
     const fetchRecentContracts = async () => {
         try {
             setLoadingRecent(true);
-            const response = await getServiceContracts({
-                status: filterStatus !== 'all' ? filterStatus : undefined,
-                pageSize: 5,
-                page: 1
-            });
+            const response = await getRecentServiceStaffTasks(
+                filterStatus !== 'all' ? filterStatus : null,
+                5
+            );
             if (response.data) {
-                setRecentContracts(response.data.data || []);
+                setRecentContracts(response.data);
             }
         } catch (error) {
-            message.error('Không thể lấy danh sách hợp đồng');
-            console.error('Error fetching contracts:', error);
+            message.error('Không thể lấy danh sách công việc');
+            console.error('Error fetching tasks:', error);
         } finally {
             setLoadingRecent(false);
         }
@@ -168,11 +197,8 @@ const ServiceDashboardPage = () => {
     // Load dữ liệu khi component mount
     useEffect(() => {
         fetchStats();
-        // Lấy dữ liệu cho 7 ngày gần nhất làm mặc định
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 6);
-        fetchChartData(start.toISOString(), end.toISOString());
+        // Fetch chart với 7 ngày gần nhất (mặc định)
+        fetchChartData(dateRange[0], dateRange[1]);
         fetchRecentContracts();
     }, []);
 
@@ -185,97 +211,124 @@ const ServiceDashboardPage = () => {
     const handleDateRangeChange = (dates) => {
         if (!dates || !dates[0] || !dates[1]) return;
         setDateRange(dates);
-        fetchChartData(dates[0].toISOString(), dates[1].toISOString());
+        fetchChartData(dates[0], dates[1]);
     };
 
     return (
         <div className="space-y-6">
-            {/* Header Section */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <Title level={2} className="!mb-2">Tổng quan công việc</Title>
-                    <Paragraph className="!mb-0">Dưới đây là tóm tắt các công việc cần xử lý.</Paragraph>
-                </div>
-                <Button
-                    icon={<ReloadOutlined />}
-                    onClick={() => {
-                        fetchStats();
-                        fetchRecentContracts();
-                    }}
-                >
-                    Làm mới
-                </Button>
-            </div>
-
-            {/* Statistics Cards */}
+            {/* Statistics Cards - Bắt đầu từ đây */}
             <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12} lg={6}>
-                    <StatisticCard
-                        title="Yêu cầu mới"
-                        value={stats.newRequests}
-                        icon={<FileAddOutlined />}
-                        color="#1890ff"
-                        suffix=" yêu cầu"
-                    />
+                {/* Bản nháp (DRAFT) - Chưa gửi khảo sát */}
+                <Col xs={24} sm={12} lg={6} onClick={() => navigate('/service/requests')} style={{ cursor: 'pointer' }}>
+                    <Tooltip title="Danh sách đơn yêu cầu từ khách hàng chưa gửi khảo sát">
+                        <StatisticCard
+                            title="Bản nháp"
+                            value={stats.draftCount}
+                            icon={<FileAddOutlined />}
+                            color="#1890ff"
+                            suffix=" hợp đồng"
+                        />
+                    </Tooltip>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <StatisticCard
-                        title="Chờ khảo sát"
-                        value={stats.pendingSurvey}
-                        icon={<ClockCircleOutlined />}
-                        color="#faad14"
-                        suffix=" yêu cầu"
-                    />
+                
+                {/* Chờ khảo sát (PENDING) & Chờ duyệt báo cáo (PENDING_SURVEY_REVIEW) - Cùng 1 trang quản lý */}
+                <Col xs={24} sm={12} lg={6} onClick={() => navigate('/service/survey-reviews')} style={{ cursor: 'pointer' }}>
+                    <Tooltip title="Đơn yêu cầu đang chờ bộ phận kỹ thuật khảo sát">
+                        <StatisticCard
+                            title="Chờ khảo sát"
+                            value={stats.pendingTechnicalCount}
+                            icon={<ClockCircleOutlined />}
+                            color="#faad14"
+                            suffix=" hợp đồng"
+                        />
+                    </Tooltip>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <StatisticCard
-                        title="Chờ lắp đặt"
-                        value={stats.pendingInstallation}
-                        icon={<CheckCircleOutlined />}
-                        color="#52c41a"
-                        suffix=" hợp đồng"
-                    />
+                
+                <Col xs={24} sm={12} lg={6} onClick={() => navigate('/service/survey-reviews')} style={{ cursor: 'pointer' }}>
+                    <Tooltip title="Báo cáo khảo sát đã về, chờ bạn duyệt và tạo hợp đồng chính thức">
+                        <StatisticCard
+                            title="Chờ duyệt báo cáo"
+                            value={stats.pendingSurveyReviewCount}
+                            icon={<CheckCircleOutlined />}
+                            color="#52c41a"
+                            suffix=" hợp đồng"
+                        />
+                    </Tooltip>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <StatisticCard
-                        title="Hỗ trợ cần trả lời"
-                        value={stats.supportTickets}
-                        icon={<IssuesCloseOutlined />}
-                        color="#f5222d"
-                        suffix=" yêu cầu"
-                    />
+                
+                {/* Đã duyệt (APPROVED) - Sẵn sàng ký */}
+                <Col xs={24} sm={12} lg={6} onClick={() => navigate('/service/approved-contracts')} style={{ cursor: 'pointer' }}>
+                    <Tooltip title="Hợp đồng đã được duyệt, sẵn sàng gửi ký cho khách hàng">
+                        <StatisticCard
+                            title="Đã duyệt"
+                            value={stats.approvedCount}
+                            icon={<IssuesCloseOutlined />}
+                            color="#f5222d"
+                            suffix=" hợp đồng"
+                        />
+                    </Tooltip>
                 </Col>
             </Row>
 
             {/* Chart Section */}
             <Card className="shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                    <Title level={4} className="!mb-0">Thống kê yêu cầu trong tuần</Title>
-                    <RangePicker
-                        onChange={handleDateRangeChange}
-                        className="w-64"
-                    />
+                    <Typography.Title level={4} className="!mb-0">Thống kê hoàn thành</Typography.Title>
+                    <div className="flex gap-3 items-center">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                value={dateRange[0].format('YYYY-MM-DD')}
+                                onChange={(e) => handleDateRangeChange([moment(e.target.value), dateRange[1]])}
+                            />
+                            <span className="text-gray-500">—</span>
+                            <input
+                                type="date"
+                                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                value={dateRange[1].format('YYYY-MM-DD')}
+                                onChange={(e) => handleDateRangeChange([dateRange[0], moment(e.target.value)])}
+                                min={dateRange[0].format('YYYY-MM-DD')}
+                            />
+                        </div>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => {
+                                const end = moment();
+                                const start = moment().subtract(6, 'days');
+                                setDateRange([start, end]);
+                                fetchChartData(start, end);
+                            }}
+                        />
+                    </div>
                 </div>
-                <div className="h-[300px]">
-                    <Line options={chartOptions} data={chartData} />
-                </div>
+                <Spin spinning={loading}>
+                    <div style={{ height: '300px' }}>
+                        <Line options={chartOptions} data={chartData} />
+                    </div>
+                </Spin>
             </Card>
 
             {/* Recent Contracts Section */}
             <Card className="shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                    <Title level={4} className="!mb-0">Các yêu cầu gần đây cần xử lý</Title>
+                    <Typography.Title level={4} className="!mb-0">Các yêu cầu gần đây cần xử lý</Typography.Title>
                     <div className="flex gap-3">
                         <Select
                             placeholder="Lọc theo trạng thái"
                             style={{ width: 200 }}
+                            value={filterStatus}
                             onChange={(value) => setFilterStatus(value)}
                             allowClear
                             suffixIcon={<FilterOutlined />}
                         >
                             <Select.Option value="all">Tất cả</Select.Option>
                             <Select.Option value="DRAFT">Bản nháp</Select.Option>
-                            <Select.Option value="PENDING">Đang chờ</Select.Option>
+                            <Select.Option value="PENDING">Dạng chờ xử lý</Select.Option>
+                            <Select.Option value="PENDING_SURVEY_REVIEW">Dạng chờ báo cáo khảo sát</Select.Option>
+                            <Select.Option value="APPROVED">Đã duyệt</Select.Option>
+                            <Select.Option value="PENDING_SIGN">Dạng chờ khách ký</Select.Option>
+                            <Select.Option value="SIGNED">Khách đã ký, chờ lắp đặt</Select.Option>
                         </Select>
                     </div>
                 </div>
