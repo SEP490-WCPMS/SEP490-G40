@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table } from 'antd';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import { getRecentServiceStaffTasks, getServiceContractDetail, updateServiceContract } from '../Services/apiService';
@@ -8,7 +7,7 @@ import { getRecentServiceStaffTasks, getServiceContractDetail, updateServiceCont
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-const SurveyReviewPage = () => {
+const ActiveContractsPage = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -25,11 +24,11 @@ const SurveyReviewPage = () => {
         keyword: null,
     });
 
-    // Hàm gọi API lấy danh sách báo cáo khảo sát (PENDING_SURVEY_REVIEW)
+    // Hàm gọi API lấy danh sách hợp đồng đang hoạt động (ACTIVE)
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
         setLoading(true);
         try {
-            const response = await getRecentServiceStaffTasks('PENDING_SURVEY_REVIEW', pageSize * 100);
+            const response = await getRecentServiceStaffTasks('ACTIVE', pageSize * 100);
             if (response.data && Array.isArray(response.data)) {
                 // Filter by keyword if provided
                 let filteredData = response.data;
@@ -54,7 +53,7 @@ const SurveyReviewPage = () => {
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách báo cáo khảo sát!');
+            message.error('Lỗi khi tải danh sách hợp đồng đang hoạt động!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
             setPagination(prev => ({ ...prev, total: 0 }));
@@ -79,44 +78,41 @@ const SurveyReviewPage = () => {
         setPagination(prev => ({ ...prev, current: 1 }));
     };
 
-    // Mở Modal
-    const handleViewDetails = async (contract) => {
-        setModalLoading(true);
-        setIsModalVisible(true);
+    const handleViewDetails = async (record) => {
         try {
-            const response = await getServiceContractDetail(contract.id);
-            setSelectedContract(response.data);
+            setModalLoading(true);
+            const response = await getServiceContractDetail(record.id);
+            if (response.data) {
+                setSelectedContract(response.data);
+                setIsModalVisible(true);
+            }
         } catch (error) {
-            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
-            console.error("Fetch contract detail error:", error);
-            setIsModalVisible(false);
+            message.error('Lỗi khi tải chi tiết hợp đồng!');
+            console.error("Error fetching contract details:", error);
         } finally {
             setModalLoading(false);
         }
     };
 
-    // Đóng Modal
-    const handleCancelModal = () => {
-        setIsModalVisible(false);
-        setSelectedContract(null);
-    };
-
-    // Lưu thay đổi từ Modal
-    const handleSaveModal = async (formData) => {
-        if (!selectedContract) return;
-        setModalLoading(true);
+    const handleSaveModal = async (updatedData) => {
         try {
-            await updateServiceContract(selectedContract.id, formData);
+            setModalLoading(true);
+            await updateServiceContract(updatedData.id, updatedData);
             message.success('Cập nhật hợp đồng thành công!');
             setIsModalVisible(false);
             setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
+            fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
-            message.error('Cập nhật hợp đồng thất bại!');
-            console.error("Update contract error:", error);
+            message.error('Lỗi khi cập nhật hợp đồng!');
+            console.error("Error updating contract:", error);
         } finally {
             setModalLoading(false);
         }
+    };
+
+    const handleCancelModal = () => {
+        setIsModalVisible(false);
+        setSelectedContract(null);
     };
 
     return (
@@ -124,8 +120,8 @@ const SurveyReviewPage = () => {
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
-                        <Title level={3} className="!mb-2">Hợp đồng khảo sát xong</Title>
-                        <Paragraph className="!mb-0">Danh sách các hợp đồng đã hoàn thành khảo sát từ bộ phận kỹ thuật chờ duyệt.</Paragraph>
+                        <Title level={3} className="!mb-2">Hợp đồng đang hoạt động</Title>
+                        <Paragraph className="!mb-0">Danh sách hợp đồng đã được ký kết và đang trong quá trình lắp đặt hoặc hoàn thành.</Paragraph>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
@@ -174,4 +170,4 @@ const SurveyReviewPage = () => {
     );
 };
 
-export default SurveyReviewPage;
+export default ActiveContractsPage;
