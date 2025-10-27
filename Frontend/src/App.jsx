@@ -158,11 +158,8 @@ function App() {
         <Route path="/service" element={<LayoutService />}>
           {/* Trang index của /service sẽ là dashboard */}
           <Route index element={<ServiceDashboardPage />} />
-          {/* Hoặc dùng Navigate nếu muốn URL luôn là /service/dashboard */}
-          {/* <Route index element={<Navigate to="/service/dashboard" replace />} /> */}
 
           {/* Các trang cụ thể */}
-          <Route path="dashboard" element={<ServiceDashboardPage />} />
           <Route path="requests" element={<ContractRequestsPage />} />
           <Route path="survey-reviews" element={<SurveyReviewPage />} />
           <Route path="approved-contracts" element={<ApprovedContractsPage />} />

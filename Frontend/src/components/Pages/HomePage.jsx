@@ -34,7 +34,7 @@ const HomePage = ({ isAuthenticated, user }) => {
     if (user?.role === 'TECHNICAL') {
       navigate('/technical');
     } else if (user?.role === 'SERVICE') {
-      navigate('/service/dashboard');
+      navigate('/service');
     } else if (user?.role === 'CASHIER') {
       navigate('/cashier');
     } else {
