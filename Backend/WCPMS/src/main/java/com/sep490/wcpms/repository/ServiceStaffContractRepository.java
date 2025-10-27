@@ -12,8 +12,10 @@ import org.springframework.stereotype.Repository;
 public interface ServiceStaffContractRepository extends JpaRepository<Contract, Integer> {
 
     @Query("""
-        SELECT c FROM Contract c 
+        SELECT DISTINCT c FROM Contract c 
         JOIN c.customer cu 
+        LEFT JOIN c.contractUsageDetails cud
+        LEFT JOIN cud.priceType pt
         WHERE (:status IS NULL OR c.contractStatus = :status)
           AND (:keyword IS NULL OR LOWER(cu.customerName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                               OR LOWER(cu.customerCode) LIKE LOWER(CONCAT('%', :keyword, '%')))

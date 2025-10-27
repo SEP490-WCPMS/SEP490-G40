@@ -23,10 +23,14 @@ import {
 import { Line } from 'react-chartjs-2';
 import StatisticCard from '../common/StatisticCard';
 import ContractTable from './ContractManagement/ContractTable';
+import ContractDetailModal from './ContractManagement/ContractDetailModal';
+import ContractViewModal from './ContractManagement/ContractViewModal';
 import { 
     getServiceStaffDashboardStats, 
     getServiceStaffChartData,
-    getRecentServiceStaffTasks
+    getRecentServiceStaffTasks,
+    getServiceContracts,
+    submitContractForSurvey
 } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -82,6 +86,12 @@ const ServiceDashboardPage = () => {
     const [recentContracts, setRecentContracts] = useState([]);
     const [loadingRecent, setLoadingRecent] = useState(false);
     
+    // State cho modal chi tiết
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [selectedContract, setSelectedContract] = useState(null);
+    const [modalLoading, setModalLoading] = useState(false);
+    const [modalMode, setModalMode] = useState('view'); // 'view' hoặc 'edit'
+    
     // State cho biểu đồ và filters
     const [chartData, setChartData] = useState({
         labels: [],
@@ -112,16 +122,46 @@ const ServiceDashboardPage = () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await getServiceStaffDashboardStats();
-            if (response.data) {
-                setStats(response.data);
-            }
+            
+            // Luôn dùng fallback: fetch counts từ contracts API
+            await fetchStatsFallback();
         } catch (error) {
             console.error('Error fetching stats:', error);
             setError('Lỗi tải dữ liệu thống kê');
             message.error('Không thể lấy dữ liệu thống kê');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Fallback: lấy count từ getServiceContracts API
+    const fetchStatsFallback = async () => {
+        try {
+            const statuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW', 'APPROVED', 'PENDING_SIGN', 'SIGNED'];
+            
+            // Fetch tất cả status song song để nhanh hơn
+            const promises = statuses.map(status => 
+                getServiceContracts({
+                    page: 0,
+                    size: 1,
+                    status: status
+                })
+            );
+            
+            const responses = await Promise.all(promises);
+            
+            setStats({
+                draftCount: responses[0]?.data?.totalElements || 0,
+                pendingTechnicalCount: responses[1]?.data?.totalElements || 0,
+                pendingSurveyReviewCount: responses[2]?.data?.totalElements || 0,
+                approvedCount: responses[3]?.data?.totalElements || 0,
+                pendingSignCount: responses[4]?.data?.totalElements || 0,
+                signedCount: responses[5]?.data?.totalElements || 0,
+            });
+        } catch (error) {
+            console.error('Error fetching stats fallback:', error);
+            setError('Lỗi tải dữ liệu thống kê');
+            message.error('Không thể lấy dữ liệu thống kê');
         }
     };
 
@@ -145,7 +185,7 @@ const ServiceDashboardPage = () => {
             }
             
             const response = await getServiceStaffChartData(startDate, endDate);
-            if (response.data) {
+            if (response.data && response.data.labels) {
                 setChartData({
                     labels: response.data.labels || [],
                     datasets: [
@@ -165,11 +205,38 @@ const ServiceDashboardPage = () => {
                         },
                     ],
                 });
+            } else {
+                // Fallback: khởi tạo biểu đồ với dữ liệu trống nhưng có labels theo date range
+                const labels = [];
+                const current = moment(startDate);
+                while (current.isBefore(endDate)) {
+                    labels.push(current.format('YYYY-MM-DD'));
+                    current.add(1, 'day');
+                }
+                setChartData({
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Gửi khảo sát',
+                            data: labels.map(() => 0),
+                            borderColor: '#1890ff',
+                            backgroundColor: '#1890ff',
+                            tension: 0.1,
+                        },
+                        {
+                            label: 'Hoàn thành',
+                            data: labels.map(() => 0),
+                            borderColor: '#52c41a',
+                            backgroundColor: '#52c41a',
+                            tension: 0.1,
+                        },
+                    ],
+                });
             }
         } catch (error) {
             console.error('Error fetching chart data:', error);
             setError('Lỗi tải dữ liệu biểu đồ');
-            message.error('Không thể lấy dữ liệu biểu đồ');
+            // Vẫn hiển thị biểu đồ trống thay vì lỗi
         } finally {
             setLoading(false);
         }
@@ -179,18 +246,112 @@ const ServiceDashboardPage = () => {
     const fetchRecentContracts = async () => {
         try {
             setLoadingRecent(true);
+            
+            // Thử gọi endpoint stats trước
             const response = await getRecentServiceStaffTasks(
                 filterStatus !== 'all' ? filterStatus : null,
                 5
             );
-            if (response.data) {
+            
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
                 setRecentContracts(response.data);
+            } else {
+                // Fallback: lấy từ contracts API
+                const fallbackResponse = await getServiceContracts({
+                    page: 0,
+                    size: 5,
+                    status: filterStatus !== 'all' ? filterStatus : undefined
+                });
+                
+                if (fallbackResponse.data?.content) {
+                    console.log('Recent contracts from fallback:', fallbackResponse.data.content);
+                    setRecentContracts(fallbackResponse.data.content);
+                } else {
+                    setRecentContracts([]);
+                }
             }
         } catch (error) {
-            message.error('Không thể lấy danh sách công việc');
             console.error('Error fetching tasks:', error);
+            
+            // Double fallback: lấy từ contracts API khi endpoint stats lỗi
+            try {
+                const fallbackResponse = await getServiceContracts({
+                    page: 0,
+                    size: 5,
+                    status: filterStatus !== 'all' ? filterStatus : undefined
+                });
+                
+                if (fallbackResponse.data?.content) {
+                    setRecentContracts(fallbackResponse.data.content);
+                } else {
+                    setRecentContracts([]);
+                }
+            } catch (fallbackError) {
+                console.error('Error fetching tasks fallback:', fallbackError);
+                message.error('Không thể lấy danh sách công việc');
+                setRecentContracts([]);
+            }
         } finally {
             setLoadingRecent(false);
+        }
+    };
+
+    // Xử lý click "Chi tiết" hoặc "Gửi khảo sát"
+    const handleViewDetails = (record, action) => {
+        console.log('handleViewDetails - record:', record);
+        console.log('handleViewDetails - action:', action);
+        setSelectedContract(record);
+        // action = 'submit' → edit (Gửi khảo sát)
+        // action = undefined/null/'view' → view (Chi tiết)
+        setModalMode(action === 'submit' ? 'edit' : 'view');
+        setIsModalVisible(true);
+    };
+
+    // Đóng modal
+    const handleModalClose = () => {
+        setIsModalVisible(false);
+        setSelectedContract(null);
+    };
+
+    // Xử lý save modal
+    const handleModalSave = async (formattedValues) => {
+        try {
+            setModalLoading(true);
+            console.log('Saving contract:', formattedValues);
+            
+            // Gọi API submit endpoint (DRAFT → PENDING)
+            const response = await submitContractForSurvey(formattedValues.id, {
+                technicalStaffId: formattedValues.technicalStaffId,
+                notes: formattedValues.notes
+            });
+            
+            console.log('Submit response:', response);
+            
+            // Cập nhật local contract data ngay lập tức
+            if (selectedContract) {
+                setSelectedContract({
+                    ...selectedContract,
+                    contractStatus: 'PENDING',
+                    notes: formattedValues.notes,
+                    technicalStaffId: formattedValues.technicalStaffId
+                });
+            }
+            
+            message.success('Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
+            
+            handleModalClose();
+            
+            // Refresh danh sách để hiển thị trạng thái mới
+            setTimeout(() => {
+                fetchRecentContracts();
+                // Cập nhật stats
+                fetchStatsFallback();
+            }, 500);
+        } catch (error) {
+            console.error('Error saving contract:', error);
+            message.error('Lỗi khi gửi khảo sát!');
+        } finally {
+            setModalLoading(false);
         }
     };
 
@@ -337,9 +498,27 @@ const ServiceDashboardPage = () => {
                         data={recentContracts}
                         loading={loadingRecent}
                         pagination={false}
+                        onViewDetails={handleViewDetails}
                     />
                 </Spin>
             </Card>
+
+            {/* Modal chi tiết hợp đồng - Chỉ xem */}
+            <ContractViewModal
+                visible={isModalVisible && modalMode === 'view'}
+                onCancel={handleModalClose}
+                contract={selectedContract}
+                loading={modalLoading}
+            />
+
+            {/* Modal gửi khảo sát - Có thể chỉnh sửa */}
+            <ContractDetailModal
+                visible={isModalVisible && modalMode === 'edit'}
+                onCancel={handleModalClose}
+                onSave={handleModalSave}
+                initialData={selectedContract}
+                loading={modalLoading}
+            />
         </div>
     );
 };
