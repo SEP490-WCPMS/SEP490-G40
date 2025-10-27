@@ -257,3 +257,21 @@ export const getRecentServiceStaffTasks = (status, limit = 5) => {
     }
     return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/recent-tasks`, { params });
 };
+
+/**
+ * Lấy danh sách nhân viên kỹ thuật
+ * @returns {Promise<Account[]>}
+ */
+export const getTechnicalStaff = async () => {
+    try {
+        return await apiClient.get('/accounts/technical-staff');
+    } catch (error) {
+        // Fallback sang query param nếu backend không có endpoint mới
+        if (error.response?.status === 400 || error.response?.status === 404) {
+            return apiClient.get('/accounts', {
+                params: { role: 'TECHNICAL_STAFF' }
+            });
+        }
+        throw error;
+    }
+};
