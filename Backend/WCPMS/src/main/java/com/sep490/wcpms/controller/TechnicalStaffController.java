@@ -7,6 +7,12 @@ import com.sep490.wcpms.service.TechnicalStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+// --- Import các thư viện cần thiết ---
+import com.sep490.wcpms.exception.AccessDeniedException; // Hoặc dùng SecurityException
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+// --- THAY DÒNG IMPORT NÀY BẰNG ĐƯỜNG DẪN VÀ TÊN LỚP UserDetails ĐÚNG ---
+import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Sửa ở đây nếu cần
 
 import java.util.List;
 
@@ -21,9 +27,34 @@ public class TechnicalStaffController {
     /**
      * TODO: Thay thế hàm này bằng logic lấy ID từ Spring Security Principal
      */
+    // --- HÀM LẤY ID CHUẨN ---
     private Integer getAuthenticatedStaffId() {
-        // Ví dụ: return ((UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
-        return 1; // <<<<< HARDCODE ĐỂ TEST - CẦN THAY THẾ
+        // 1. Lấy đối tượng Authentication từ context bảo mật hiện tại
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        // 2. Kiểm tra xem người dùng đã được xác thực chưa
+        if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal() == null || "anonymousUser".equals(authentication.getPrincipal())) {
+            // Nếu chưa đăng nhập hoặc là người dùng ẩn danh, ném lỗi
+            throw new AccessDeniedException("Người dùng chưa được xác thực. Vui lòng đăng nhập.");
+            // Hoặc throw new SecurityException("User is not authenticated.");
+        }
+
+        // 3. Lấy đối tượng Principal (chứa thông tin người dùng)
+        Object principal = authentication.getPrincipal();
+
+        // 4. Kiểm tra xem Principal có phải là kiểu UserDetails mong đợi không
+        // === THAY UserDetailsImpl BẰNG TÊN LỚP ĐÚNG CỦA BẠN ===
+        if (principal instanceof UserDetailsImpl) { // <-- Sửa tên lớp ở đây
+            // 5. Ép kiểu Principal về đúng lớp UserDetails của bạn
+            UserDetailsImpl userDetails = (UserDetailsImpl) principal; // <-- Sửa tên lớp ở đây
+            // 6. Gọi hàm getId() để lấy ID (kiểu Integer)
+            return userDetails.getId(); // <-- Đảm bảo lớp UserDetails có hàm getId()
+        }
+        // === HẾT PHẦN CẦN SỬA TÊN LỚP ===
+
+        // 7. Nếu kiểu Principal không đúng như mong đợi, ném lỗi
+        System.err.println("Unexpected Principal type found: " + principal.getClass().getName());
+        throw new IllegalStateException("Không thể xác định ID người dùng từ Principal.");
     }
 
     // === API LUỒNG 1: SURVEY & DESIGN ===
