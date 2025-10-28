@@ -145,6 +145,86 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 .map(this::convertToDTO);
     }
 
+    // === ACTIVE Contract Management ===
+
+    @Override
+    public Page<ServiceStaffContractDTO> getActiveContracts(String keyword, Pageable pageable) {
+        return contractRepository.findByStatusAndKeyword(ContractStatus.ACTIVE, keyword, pageable)
+                .map(this::convertToDTO);
+    }
+
+    @Override
+    public ServiceStaffContractDTO updateActiveContract(Integer contractId, ServiceStaffUpdateContractRequestDTO updateRequest) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        // Chỉ cho phép cập nhật hợp đồng ACTIVE
+        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
+            throw new RuntimeException("Only ACTIVE contracts can be updated. Current status: " + contract.getContractStatus());
+        }
+
+        // Update chỉ những trường được phép
+        if (updateRequest.getContractValue() != null) {
+            contract.setContractValue(updateRequest.getContractValue());
+        }
+        if (updateRequest.getEndDate() != null) {
+            contract.setEndDate(updateRequest.getEndDate());
+        }
+        if (updateRequest.getNotes() != null) {
+            contract.setNotes(updateRequest.getNotes());
+        }
+
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    public ServiceStaffContractDTO renewContract(Integer contractId, ServiceStaffUpdateContractRequestDTO renewRequest) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        // Chỉ cho phép gia hạn hợp đồng ACTIVE
+        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
+            throw new RuntimeException("Only ACTIVE contracts can be renewed. Current status: " + contract.getContractStatus());
+        }
+
+        // Update ngày kết thúc mới
+        if (renewRequest.getEndDate() != null) {
+            contract.setEndDate(renewRequest.getEndDate());
+        } else {
+            throw new IllegalArgumentException("End date is required for renewal");
+        }
+
+        if (renewRequest.getNotes() != null) {
+            contract.setNotes(renewRequest.getNotes());
+        }
+
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    public ServiceStaffContractDTO terminateContract(Integer contractId, String reason) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        // Chỉ cho phép hủy hợp đồng ACTIVE
+        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
+            throw new RuntimeException("Only ACTIVE contracts can be terminated. Current status: " + contract.getContractStatus());
+        }
+
+        // Chuyển sang TERMINATED
+        contract.setContractStatus(ContractStatus.TERMINATED);
+        contract.setEndDate(java.time.LocalDate.now());
+
+        if (reason != null && !reason.isBlank()) {
+            contract.setNotes(reason);
+        }
+
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
     private ServiceStaffContractDTO convertToDTO(Contract c) {
         ServiceStaffContractDTO dto = new ServiceStaffContractDTO();
         dto.setId(c.getId());
