@@ -26,6 +26,8 @@ function SurveyForm() {
         setError(null); // Reset lỗi trước khi fetch
         getContractDetails(contractId)
             .then(response => {
+                // --- BẠN THÊM DÒNG NÀY VÀO ---
+                console.log("Dữ liệu gốc từ server:", response.data.applicationDate);
                 setContractDetails(response.data);
             })
             .catch(err => {

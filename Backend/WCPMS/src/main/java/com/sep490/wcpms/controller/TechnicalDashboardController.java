@@ -3,6 +3,7 @@ package com.sep490.wcpms.controller;
 import com.sep490.wcpms.dto.ContractDetailsDTO; // Giả định dùng DTO này cho bảng
 import com.sep490.wcpms.dto.dashboard.ChartDataDTO; // DTO mới cho biểu đồ
 import com.sep490.wcpms.dto.dashboard.TechnicalStatsDTO; // DTO mới cho thẻ
+import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.TechnicalDashboardService; // Service mới
 //import com.sep490.wcpms.security.services.UserDetailsImpl; // Để lấy ID user
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,13 +25,12 @@ public class TechnicalDashboardController {
 
     // Hàm lấy ID staff (giống các controller khác)
     private Integer getAuthenticatedStaffId() {
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-//            return ((UserDetailsImpl) authentication.getPrincipal()).getId();
-//        }
-//        // Nên ném lỗi nếu không xác thực được
-//        throw new RuntimeException("User not authenticated");
-        return 1; // <<<<< HARDCODE ĐỂ TEST - CẦN THAY THẾ
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        }
+        // Nên ném lỗi nếu không xác thực được
+        throw new RuntimeException("User not authenticated");
     }
 
     /** API lấy số liệu cho các thẻ thống kê */
