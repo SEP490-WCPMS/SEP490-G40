@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, FileText, FileCheck, Clock, Eye, CheckCircle, AlertCircle, Zap, FileCheck as FileCheckIcon } from 'lucide-react';
+import { LayoutDashboard, FileText, FileCheck, Clock, Eye, CheckCircle, AlertCircle, Zap, FileCheck as FileCheckIcon, Shuffle, Trash2 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 // Menu items chính
@@ -39,6 +39,16 @@ const mainMenuItems = [
     title: 'Hợp đồng đang hoạt động',
     url: '/service/active-contracts',
     icon: Zap,
+  },
+  {
+    title: 'Yêu cầu chuyển nhượng',
+    url: '/service/contract-transfers',
+    icon: Shuffle,
+  },
+  {
+    title: 'Yêu cầu hủy hợp đồng',
+    url: '/service/contract-annuls',
+    icon: Trash2,
   },
 ];
 

@@ -6,6 +6,7 @@ import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.Contract.ContractStatus;
 import com.sep490.wcpms.entity.Contract.PaymentMethod;
+import com.sep490.wcpms.entity.Role;
 import com.sep490.wcpms.repository.ServiceStaffContractRepository;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.service.ServiceStaffContractService;
@@ -92,7 +93,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     }
 
     @Override
-    public ServiceStaffContractDTO submitContractForSurvey(Integer contractId) {
+    public ServiceStaffContractDTO submitContractForSurvey(Integer contractId, Integer technicalStaffId) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
 
@@ -101,6 +102,17 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new RuntimeException("Cannot submit non-DRAFT contract. Current status: " + contract.getContractStatus());
         }
 
+        // Tìm và gán nhân viên kỹ thuật
+        Account technicalStaff = accountRepository.findById(technicalStaffId)
+                .orElseThrow(() -> new RuntimeException("Technical staff not found with id: " + technicalStaffId));
+        
+
+        // Kiểm tra vai trò của account (tùy chọn nhưng nên có)
+        if (technicalStaff.getRole() == null || technicalStaff.getRole().getRoleName() != Role.RoleName.TECHNICAL_STAFF) {
+            throw new IllegalArgumentException("Account is not a technical staff.");
+        }
+
+        contract.setTechnicalStaff(technicalStaff);
         contract.setContractStatus(ContractStatus.PENDING);
         Contract updated = contractRepository.save(contract);
         return convertToDTO(updated);
@@ -156,17 +168,17 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             dto.setTechnicalStaffId(c.getTechnicalStaff().getId());
             dto.setTechnicalStaffName(c.getTechnicalStaff().getFullName());
         }
-        dto.setSurveyDate(c.getSurveyDate());
-        dto.setTechnicalDesign(c.getTechnicalDesign());
+        // dto.setSurveyDate(c.getSurveyDate());
+        // dto.setTechnicalDesign(c.getTechnicalDesign());
 
         // Lấy priceTypeName từ ContractUsageDetail
-        if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
-            // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
-            var firstUsageDetail = c.getContractUsageDetails().get(0);
-            if (firstUsageDetail.getPriceType() != null) {
-                dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
-            }
-        }
+        // if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
+        //     // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
+        //     var firstUsageDetail = c.getContractUsageDetails().get(0);
+        //     if (firstUsageDetail.getPriceType() != null) {
+        //         dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
+        //     }
+        // }
 
         return dto;
     }
