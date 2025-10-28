@@ -39,4 +39,26 @@ public interface ServiceStaffContractService {
      * Lấy danh sách hợp đồng APPROVED (Đã duyệt, chuẩn bị gửi khách ký)
      */
     Page<ServiceStaffContractDTO> getApprovedContracts(String keyword, Pageable pageable);
+
+    // === ACTIVE Contract Management ===
+
+    /**
+     * Lấy danh sách hợp đồng ACTIVE (Đang hoạt động)
+     */
+    Page<ServiceStaffContractDTO> getActiveContracts(String keyword, Pageable pageable);
+
+    /**
+     * Cập nhật thông tin hợp đồng ACTIVE (giá, ngày kết thúc, v.v.)
+     */
+    ServiceStaffContractDTO updateActiveContract(Integer contractId, ServiceStaffUpdateContractRequestDTO updateRequest);
+
+    /**
+     * Gia hạn hợp đồng ACTIVE (kéo dài thời hạn)
+     */
+    ServiceStaffContractDTO renewContract(Integer contractId, ServiceStaffUpdateContractRequestDTO renewRequest);
+
+    /**
+     * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
+     */
+    ServiceStaffContractDTO terminateContract(Integer contractId, String reason);
 }

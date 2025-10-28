@@ -370,3 +370,46 @@ export const getTechnicalStaff = async () => {
         throw error;
     }
 };
+
+// === API CHO QUẢN LÝ HỢP ĐỒNG ACTIVE ===
+
+/**
+ * Lấy danh sách hợp đồng ACTIVE (đang hoạt động)
+ * @param {object} params { page, size, keyword }
+ */
+export const getActiveContracts = (params) => {
+    const queryParams = {
+        page: params.page || 0,
+        size: params.size || 10,
+        keyword: params.keyword
+    };
+    Object.keys(queryParams).forEach(key => (queryParams[key] == null || queryParams[key] === '') && delete queryParams[key]);
+    return apiClient.get(`/service/contracts/active`, { params: queryParams });
+};
+
+/**
+ * Cập nhật thông tin hợp đồng ACTIVE (giá, ngày kết thúc, v.v.)
+ * @param {number} id ID của hợp đồng
+ * @param {object} updateData { contractValue, endDate, notes }
+ */
+export const updateActiveContract = (id, updateData) => {
+    return apiClient.put(`/service/contracts/${id}/update-active`, updateData);
+};
+
+/**
+ * Gia hạn hợp đồng ACTIVE (kéo dài thời hạn)
+ * @param {number} id ID của hợp đồng
+ * @param {object} renewData { endDate, notes }
+ */
+export const renewContract = (id, renewData) => {
+    return apiClient.put(`/service/contracts/${id}/renew`, renewData);
+};
+
+/**
+ * Hủy/Chấm dứt hợp đồng ACTIVE
+ * @param {number} id ID của hợp đồng
+ * @param {string} reason Lý do hủy
+ */
+export const terminateContract = (id, reason) => {
+    return apiClient.put(`/service/contracts/${id}/terminate?reason=${encodeURIComponent(reason)}`);
+};
