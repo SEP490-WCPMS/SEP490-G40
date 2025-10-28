@@ -13,6 +13,8 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy; // <-- Cần cho STATELESS
+import org.springframework.security.config.Customizer;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -89,6 +91,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // Cấu hình phân quyền truy cập
+                .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép CORS Preflight Requests (OPTIONS) đi qua
                                 // Trong SecurityConfig.java -> filterChain() -> authorizeHttpRequests()
@@ -115,6 +119,12 @@ public class SecurityConfig {
 
                 // Tắt các cơ chế xác thực mặc định không dùng (form login, http basic)
                 .formLogin(form -> form.disable())
+                        .requestMatchers("/api/meter-scan/**").permitAll()
+                        .requestMatchers("/api/accounts/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .anyRequest().permitAll()
+                )
+                .formLogin(login -> login.disable())
                 .httpBasic(basic -> basic.disable());
 
         // Đăng ký AuthenticationProvider đã cấu hình ở trên

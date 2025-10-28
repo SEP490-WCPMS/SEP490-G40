@@ -5,7 +5,6 @@ import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.ContractAnnulTransferRequestMapper;
 import com.sep490.wcpms.repository.*;
-import com.sep490.wcpms.util.Constant;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -47,7 +46,7 @@ public class ContractAnnulTransferRequestService {
 
         // Không cho 2 request PENDING cùng loại trên 1 contract
         if (repository.existsByContractIdAndRequestTypeAndApprovalStatus(
-                contract.getId(), type.toLowerCase(), Constant.ApprovalStatus.PENDING)) {
+                contract.getId(), type.toLowerCase(), String.valueOf(ContractAnnulTransferRequest.ApprovalStatus.PENDING))) {
             throw new IllegalStateException("A pending request of the same type already exists for this contract.");
         }
 
@@ -68,7 +67,7 @@ public class ContractAnnulTransferRequestService {
         // đảm bảo default
         entity.setRequestType(type.toLowerCase());
         if (entity.getApprovalStatus() == null) {
-            entity.setApprovalStatus(Constant.ApprovalStatus.PENDING);
+            entity.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING);
         }
 
         entity = repository.save(entity);
@@ -105,13 +104,13 @@ public class ContractAnnulTransferRequestService {
         ContractAnnulTransferRequest entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
 
-        if (!Objects.equals(entity.getApprovalStatus(), Constant.ApprovalStatus.PENDING)) {
+        if (!Objects.equals(entity.getApprovalStatus(), ContractAnnulTransferRequest.ApprovalStatus.PENDING)) {
             throw new IllegalStateException("Only PENDING requests can be approved/rejected.");
         }
 
-        String current = String.valueOf(entity.getContract().getContractStatus());
-        if (Constant.ContractStatus.TERMINATED.equalsIgnoreCase(current)
-                || Constant.ContractStatus.EXPIRED.equalsIgnoreCase(current)) {
+        Contract.ContractStatus current = entity.getContract().getContractStatus();
+        if (current == Contract.ContractStatus.TERMINATED
+                || current == Contract.ContractStatus.EXPIRED) {
             throw new IllegalStateException("Contract is already in a final state: " + current);
         }
 
@@ -121,8 +120,8 @@ public class ContractAnnulTransferRequestService {
                     .orElseThrow(() -> new ResourceNotFoundException("Approver account not found: " + dto.getApprovedById()));
         }
 
-        if (Constant.ApprovalStatus.APPROVED.equalsIgnoreCase(dto.getApprovalStatus())
-                || Constant.ApprovalStatus.REJECTED.equalsIgnoreCase(dto.getApprovalStatus())) {
+        if (dto.getApprovalStatus() == ContractAnnulTransferRequest.ApprovalStatus.APPROVED
+                || dto.getApprovalStatus() == ContractAnnulTransferRequest.ApprovalStatus.REJECTED) {
             if (approvedBy == null) {
                 throw new IllegalArgumentException("approvedById is required when approving/rejecting.");
             }
@@ -134,11 +133,11 @@ public class ContractAnnulTransferRequestService {
         mapper.updateApproval(entity, dto, approvedBy);
 
         // Hệ quả khi APPROVED
-        if (Constant.ApprovalStatus.APPROVED.equalsIgnoreCase(dto.getApprovalStatus())) {
+        if (ContractAnnulTransferRequest.ApprovalStatus.APPROVED.equals(dto.getApprovalStatus())) {
             Contract contract = entity.getContract();
 
             if ("annul".equalsIgnoreCase(entity.getRequestType())) {
-                contract.setContractStatus(Contract.ContractStatus.valueOf(Constant.ContractStatus.TERMINATED));
+                contract.setContractStatus(Contract.ContractStatus.valueOf(String.valueOf(Contract.ContractStatus.TERMINATED)));
                 if (contract.getEndDate() == null) {
                     contract.setEndDate(LocalDate.now());
                 }

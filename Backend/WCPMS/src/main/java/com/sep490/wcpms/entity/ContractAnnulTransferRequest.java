@@ -1,6 +1,6 @@
 package com.sep490.wcpms.entity;
 
-import com.sep490.wcpms.util.Constant;
+//import com.sep490.wcpms.util.Constant;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -57,8 +57,9 @@ public class ContractAnnulTransferRequest {
     @Column(name = "approval_date")
     private LocalDate approvalDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "approval_status", nullable = false, length = 20)
-    private String approvalStatus = Constant.ApprovalStatus.PENDING;
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
     // transfer only
     @ManyToOne(fetch = FetchType.LAZY)
@@ -79,5 +80,11 @@ public class ContractAnnulTransferRequest {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDate updatedAt;
+
+    public enum ApprovalStatus {
+        PENDING,
+        APPROVED,
+        REJECTED
+    }
 }
 

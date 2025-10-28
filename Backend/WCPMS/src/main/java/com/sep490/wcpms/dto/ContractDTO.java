@@ -1,6 +1,7 @@
 package com.sep490.wcpms.dto;
 
-import com.sep490.wcpms.util.Constant;
+//import com.sep490.wcpms.util.Constant;
+import com.sep490.wcpms.entity.Contract;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,8 +26,8 @@ public class ContractDTO {
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal contractValue;
-    private Constant.PaymentMethod paymentMethod;
-    private Constant.ContractStatus contractStatus;
+    private Contract.PaymentMethod paymentMethod;
+    private Contract.ContractStatus contractStatus;
     private Integer serviceStaffId;
     private Integer technicalStaffId;
     private String notes;

@@ -3,7 +3,8 @@ import { Input, Row, Col, Typography, message, Spin, Button, Table } from 'antd'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import { getServiceContracts, getServiceContractDetail, updateServiceContract } from '../Services/apiService';
+import ContractViewModal from './ContractManagement/ContractViewModal';
+import { getServiceContracts, getServiceContractDetail, updateServiceContract, submitContractForSurvey } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -12,6 +13,7 @@ const ContractRequestsPage = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [modalMode, setModalMode] = useState('view');
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
 
@@ -72,12 +74,13 @@ const ContractRequestsPage = () => {
     };
 
     // Mở Modal
-    const handleViewDetails = async (contract) => {
+    const handleViewDetails = async (contract, action = 'view') => {
         setModalLoading(true);
-        setIsModalVisible(true);
         try {
             const response = await getServiceContractDetail(contract.id);
             setSelectedContract(response.data);
+            setModalMode(action === 'submit' ? 'edit' : 'view');
+            setIsModalVisible(true);
         } catch (error) {
             message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
             console.error("Fetch contract detail error:", error);
@@ -91,6 +94,7 @@ const ContractRequestsPage = () => {
     const handleCancelModal = () => {
         setIsModalVisible(false);
         setSelectedContract(null);
+        setModalMode('view');
     };
 
     // Lưu thay đổi từ Modal
@@ -98,14 +102,28 @@ const ContractRequestsPage = () => {
         if (!selectedContract) return;
         setModalLoading(true);
         try {
-            await updateServiceContract(selectedContract.id, formData);
-            message.success('Cập nhật hợp đồng thành công!');
+            console.log('ContractRequestsPage - handleSaveModal - formData:', formData);
+            
+            // Gọi API gửi khảo sát (DRAFT → PENDING)
+            const response = await submitContractForSurvey(selectedContract.id, {
+                technicalStaffId: formData.technicalStaffId,
+                notes: formData.notes
+            });
+            
+            console.log('Submit survey response:', response);
+            
+            message.success('Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
             setIsModalVisible(false);
             setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
+            setModalMode('view');
+            
+            // Refresh danh sách sau khi gửi thành công
+            setTimeout(() => {
+                fetchContracts(pagination.current, pagination.pageSize);
+            }, 500);
         } catch (error) {
-            message.error('Cập nhật hợp đồng thất bại!');
-            console.error("Update contract error:", error);
+            console.error('Error submitting survey:', error);
+            message.error('Gửi khảo sát thất bại!');
         } finally {
             setModalLoading(false);
         }
@@ -154,13 +172,22 @@ const ContractRequestsPage = () => {
 
             {/* --- Modal chi tiết/cập nhật --- */}
             {isModalVisible && selectedContract && (
-                <ContractDetailModal
-                    open={isModalVisible}
-                    onCancel={handleCancelModal}
-                    onSave={handleSaveModal}
-                    loading={modalLoading}
-                    initialData={selectedContract}
-                />
+                modalMode === 'view' ? (
+                    <ContractViewModal
+                        visible={isModalVisible}
+                        onCancel={handleCancelModal}
+                        initialData={selectedContract}
+                        loading={modalLoading}
+                    />
+                ) : (
+                    <ContractDetailModal
+                        visible={isModalVisible}
+                        onCancel={handleCancelModal}
+                        onSave={handleSaveModal}
+                        loading={modalLoading}
+                        initialData={selectedContract}
+                    />
+                )
             )}
         </div>
     );

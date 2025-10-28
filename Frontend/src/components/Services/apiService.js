@@ -104,6 +104,35 @@ export const getRecentTechnicalTasks = (status, limit = 5, page = 0) => { // ADD
     return apiClient.get(`/technical/dashboard/recent-tasks`, { params });
 };
 
+// === API CHO CONTRACTS GENERAL ===
+const CONTRACTS_API_URL = `${API_BASE_URL}/v1/contracts`;
+
+/**
+ * Lấy tất cả hợp đồng
+ * @returns {Promise<ContractDTO[]>}
+ */
+export const getAllContracts = () => {
+    return axios.get(CONTRACTS_API_URL);
+};
+
+/**
+ * Lấy chi tiết hợp đồng theo ID
+ * @param {number} id ID của hợp đồng
+ * @returns {Promise<ContractDTO>}
+ */
+export const getContractByIdGeneral = (id) => {
+    return axios.get(`${CONTRACTS_API_URL}/${id}`);
+};
+
+/**
+ * Lấy thông tin profile (account) theo ID
+ * @param {number} accountId ID của account
+ * @returns {Promise<{fullName: string, ...}>}
+ */
+export const getProfileById = (accountId) => {
+    return axios.get(`${API_BASE_URL}/profile/${accountId}`);
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
@@ -252,7 +281,15 @@ const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service-staff/dashboard
  * }>}
  */
 export const getServiceStaffDashboardStats = () => {
-    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`);
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const staffId = user?.id;
+    
+    const params = {};
+    if (staffId) {
+        params.staffId = staffId;
+    }
+    
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`, { params });
 };
 
 /**
@@ -269,9 +306,17 @@ export const getServiceStaffChartData = (startDate, endDate) => {
     // Convert Date to YYYY-MM-DD string format
     const start = startDate instanceof Date ? startDate.toISOString().split('T')[0] : startDate;
     const end = endDate instanceof Date ? endDate.toISOString().split('T')[0] : endDate;
-    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, {
-        params: { startDate: start, endDate: end }
-    });
+    
+    // Lấy staffId từ localStorage (nếu có)
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const staffId = user?.id;
+    
+    const params = { startDate: start, endDate: end };
+    if (staffId) {
+        params.staffId = staffId;
+    }
+    
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, { params });
 };
 
 /**
@@ -281,9 +326,33 @@ export const getServiceStaffChartData = (startDate, endDate) => {
  * @returns {Promise<ContractDetailsDTO[]>}
  */
 export const getRecentServiceStaffTasks = (status, limit = 5) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const staffId = user?.id;
+    
     const params = { limit };
+    if (staffId) {
+        params.staffId = staffId;
+    }
     if (status && status !== 'all') {
         params.status = status;
     }
     return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/recent-tasks`, { params });
+};
+
+/**
+ * Lấy danh sách nhân viên kỹ thuật
+ * @returns {Promise<Account[]>}
+ */
+export const getTechnicalStaff = async () => {
+    try {
+        return await apiClient.get('/accounts/technical-staff');
+    } catch (error) {
+        // Fallback sang query param nếu backend không có endpoint mới
+        if (error.response?.status === 400 || error.response?.status === 404) {
+            return apiClient.get('/accounts', {
+                params: { role: 'TECHNICAL_STAFF' }
+            });
+        }
+        throw error;
+    }
 };
