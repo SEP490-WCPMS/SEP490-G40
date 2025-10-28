@@ -14,4 +14,5 @@ public class ServiceStaffUpdateContractRequestDTO {
     private BigDecimal contractValue;
     private String paymentMethod; // e.g. "CASH" or "BANK_TRANSFER", will map to enum
     private Integer serviceStaffId; // optional - to assign service staff
+    private Integer technicalStaffId; // to assign technical staff for survey
 }

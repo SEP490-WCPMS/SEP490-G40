@@ -51,14 +51,15 @@ public class ServiceStaffContractController {
     ) {
         return service.getDraftContracts(keyword, PageRequest.of(page, size));
     }
-
     /**
      * Màn 1: Gửi hợp đồng cho Technical khảo sát (DRAFT → PENDING)
      * PUT /api/service/contracts/{id}/submit
      */
     @PutMapping("/{id}/submit")
-    public ServiceStaffContractDTO submitContractForSurvey(@PathVariable Integer id) {
-        return service.submitContractForSurvey(id);
+    public ServiceStaffContractDTO submitContractForSurvey(
+            @PathVariable Integer id,
+            @RequestBody ServiceStaffUpdateContractRequestDTO request) {
+        return service.submitContractForSurvey(id, request.getTechnicalStaffId());
     }
 
     /**
