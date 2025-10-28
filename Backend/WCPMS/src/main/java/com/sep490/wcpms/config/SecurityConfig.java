@@ -116,14 +116,6 @@ public class SecurityConfig {
 
                                 .anyRequest().authenticated() // Mọi thứ khác cần đăng nhập
                 )
-
-                // Tắt các cơ chế xác thực mặc định không dùng (form login, http basic)
-                .formLogin(form -> form.disable())
-                        .requestMatchers("/api/meter-scan/**").permitAll()
-                        .requestMatchers("/api/accounts/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .anyRequest().permitAll()
-                )
                 .formLogin(login -> login.disable())
                 .httpBasic(basic -> basic.disable());
 
