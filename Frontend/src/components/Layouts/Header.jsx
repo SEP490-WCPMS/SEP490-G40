@@ -78,7 +78,20 @@ const Header = ({ isAuthenticated, user }) => {
             Giá nước
           </button>
           <a href="#lien-he" className="nav-item">Liên hệ</a>
-          <Link to="/contract-request" className="nav-item">Đăng ký cấp nước</Link>
+          <div className="nav-item nav-dropdown">
+            <span>Hợp đồng</span>
+            <ul className="dropdown-menu">
+              <li>
+                <Link to="/contract-request">Đăng ký cấp nước</Link>
+              </li>
+              <li>
+                <Link to="/my-requests">Xem trạng thái đơn</Link>
+              </li>
+              <li>
+                <Link to="/contract-list">Danh sách hợp đồng</Link>
+              </li>
+            </ul>
+          </div>
         </nav>
 
         {/* Avatar / Login Button */}
