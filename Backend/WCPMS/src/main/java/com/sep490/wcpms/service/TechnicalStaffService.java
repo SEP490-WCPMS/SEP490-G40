@@ -9,7 +9,7 @@ public interface TechnicalStaffService {
 
     // === LUỒNG 1: SURVEY & DESIGN ===
 
-    /** Lấy danh sách yêu cầu (status=DRAFT) gán cho staff */
+    /** Lấy danh sách yêu cầu (status=PENDING) gán cho staff */
     List<ContractDetailsDTO> getAssignedSurveyContracts(Integer staffId);
 
     /** Nộp báo cáo khảo sát (Survey Form) */
@@ -17,7 +17,7 @@ public interface TechnicalStaffService {
 
     // === LUỒNG 2: INSTALLATION ===
 
-    /** Lấy danh sách hợp đồng (status=APPROVED) gán cho staff */
+    /** Lấy danh sách hợp đồng (status=SIGNED) gán cho staff */
     List<ContractDetailsDTO> getAssignedInstallationContracts(Integer staffId);
 
     /** Đánh dấu hợp đồng đã hoàn thành lắp đặt (chuyển sang ACTIVE) */

@@ -36,8 +36,8 @@ export default function Login() {
           navigate('/service');
         } else if (user.roleName === 'ADMIN') {
           navigate('/admin/dashboard');
-        } else if (user.roleName === 'TECHNICAL_STAFF') {
-          navigate('/technical');
+        } else if (user.roleName === 'ACCOUNTING_STAFF') {
+          navigate('/accounting');
         } else {
           // Mặc định hoặc CUSTOMER
           navigate('/');
