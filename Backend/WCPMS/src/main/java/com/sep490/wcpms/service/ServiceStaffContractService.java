@@ -23,7 +23,7 @@ public interface ServiceStaffContractService {
     /**
      * Chuyển hợp đồng từ DRAFT sang PENDING (Gửi cho Technical khảo sát)
      */
-    ServiceStaffContractDTO submitContractForSurvey(Integer contractId);
+    ServiceStaffContractDTO submitContractForSurvey(Integer contractId, Integer technicalStaffId);
 
     /**
      * Lấy danh sách hợp đồng PENDING_SURVEY_REVIEW (Chờ Service Staff duyệt báo cáo khảo sát)
