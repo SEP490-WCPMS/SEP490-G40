@@ -105,6 +105,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/water-price-types/**").permitAll()
                                 .requestMatchers("/api/water-prices/**").permitAll()
                                 .requestMatchers("/api/contract-request/**").permitAll()
+                                .requestMatchers("/api/change-password/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")

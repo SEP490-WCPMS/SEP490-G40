@@ -12,7 +12,11 @@ const ContractRequestStatusList = () => {
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user || !user.id) {
+        // --- SỬA 1: Đọc token từ đúng key ---
+        const token = localStorage.getItem('token');
+
+        // --- SỬA 2: Kiểm tra cả user.id và token ---
+        if (!user || !user.id || !token) {
             navigate('/login');
             return;
         }
@@ -20,7 +24,12 @@ const ContractRequestStatusList = () => {
         const fetchRequests = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`http://localhost:8080/api/contract-request/my-requests/${user.id}`);
+                // --- SỬA 3: Thêm Header Authorization vào request GET ---
+                const response = await axios.get(`http://localhost:8080/api/contract-request/my-requests/${user.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 setRequests(response.data);
             } catch (err) {
                 setError('Không thể tải danh sách yêu cầu. Vui lòng thử lại.');
