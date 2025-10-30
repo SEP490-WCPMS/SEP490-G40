@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getContractDetails, markInstallationAsCompleted } from '../../Services/apiService'; // Đảm bảo đường dẫn đúng
+import { getContractDetails, markInstallationAsCompleted } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { ArrowLeft } from 'lucide-react'; // Icon quay lại
 
 function InstallationDetail() {

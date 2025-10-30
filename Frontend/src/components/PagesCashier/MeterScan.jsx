@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import { scanMeterImage } from "../Services/apiService"; // Đảm bảo đường dẫn đúng
+import { scanMeterImage } from "../Services/apiCashierStaff"; // Đảm bảo đường dẫn đúng
 import { Camera, RefreshCw } from 'lucide-react'; // Import icons
 
 // Không cần import CSS riêng nếu bạn đã cấu hình Tailwind đúng
