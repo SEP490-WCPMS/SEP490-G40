@@ -147,29 +147,43 @@ export const updateContractStatus = (contractId, newStatus, reason) => {
 };
 
 export const getTransferRequests = (params) => {
-    const { page, size } = params;
-    return apiClient.get(`/service/contracts/transfer-requests`, { params });
+    const queryParams = {
+        page: params.page || 0,
+        size: params.size || 10,
+        requestType: 'transfer' // Lọc loại yêu cầu = transfer
+    };
+    return apiClient.get(`/service/requests`, { params: queryParams });
 };
 
 export const getAnnulRequests = (params) => {
-    const { page, size } = params;
-    return apiClient.get(`/service/contracts/annul-requests`, { params });
+    const queryParams = {
+        page: params.page || 0,
+        size: params.size || 10,
+        requestType: 'annul' // Lọc loại yêu cầu = annul
+    };
+    return apiClient.get(`/service/requests`, { params: queryParams });
 };
 
 export const approveTransferRequest = (requestId) => {
-    return apiClient.put(`/service/contracts/transfer-requests/${requestId}/approve`);
+    return apiClient.post(`/service/requests/${requestId}/approve`, {});
 };
 
 export const rejectTransferRequest = (requestId, reason) => {
-    return apiClient.put(`/service/contracts/transfer-requests/${requestId}/reject`, { reason });
+    return apiClient.post(`/service/requests/${requestId}/reject`, { 
+        reason: reason,
+        approvalNote: reason
+    });
 };
 
 export const approveAnnulRequest = (requestId) => {
-    return apiClient.put(`/service/contracts/annul-requests/${requestId}/approve`);
+    return apiClient.post(`/service/requests/${requestId}/approve`, {});
 };
 
 export const rejectAnnulRequest = (requestId, reason) => {
-    return apiClient.put(`/service/contracts/annul-requests/${requestId}/reject`, { reason });
+    return apiClient.post(`/service/requests/${requestId}/reject`, { 
+        reason: reason,
+        approvalNote: reason
+    });
 };
 
 // === API CHO SERVICE STAFF ===
@@ -251,7 +265,7 @@ export const updateServiceContract = (id, updateData) => {
 
 /** Gửi hợp đồng cho Technical khảo sát (DRAFT → PENDING) */
 export const submitContractForSurvey = (id, submitData) => {
-    return axios.put(`${SERVICE_API_BASE_URL}/contracts/${id}/submit`, submitData);
+    return apiClient.put(`/service/contracts/${id}/submit`, submitData);
 };
 
 /** Lấy số liệu thống kê cho dashboard */
@@ -267,7 +281,7 @@ export const getContractChartData = (startDate, endDate) => {
 };
 
 // === API CHO SERVICE STAFF DASHBOARD (NEW) ===
-const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service-staff/dashboard`;
+const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service/dashboard`;
 
 /**
  * Lấy số liệu thống kê cho service staff dashboard
@@ -355,4 +369,47 @@ export const getTechnicalStaff = async () => {
         }
         throw error;
     }
+};
+
+// === API CHO QUẢN LÝ HỢP ĐỒNG ACTIVE ===
+
+/**
+ * Lấy danh sách hợp đồng ACTIVE (đang hoạt động)
+ * @param {object} params { page, size, keyword }
+ */
+export const getActiveContracts = (params) => {
+    const queryParams = {
+        page: params.page || 0,
+        size: params.size || 10,
+        keyword: params.keyword
+    };
+    Object.keys(queryParams).forEach(key => (queryParams[key] == null || queryParams[key] === '') && delete queryParams[key]);
+    return apiClient.get(`/service/contracts/active`, { params: queryParams });
+};
+
+/**
+ * Cập nhật thông tin hợp đồng ACTIVE (giá, ngày kết thúc, v.v.)
+ * @param {number} id ID của hợp đồng
+ * @param {object} updateData { contractValue, endDate, notes }
+ */
+export const updateActiveContract = (id, updateData) => {
+    return apiClient.put(`/service/contracts/${id}/update-active`, updateData);
+};
+
+/**
+ * Gia hạn hợp đồng ACTIVE (kéo dài thời hạn)
+ * @param {number} id ID của hợp đồng
+ * @param {object} renewData { endDate, notes }
+ */
+export const renewContract = (id, renewData) => {
+    return apiClient.put(`/service/contracts/${id}/renew`, renewData);
+};
+
+/**
+ * Hủy/Chấm dứt hợp đồng ACTIVE
+ * @param {number} id ID của hợp đồng
+ * @param {string} reason Lý do hủy
+ */
+export const terminateContract = (id, reason) => {
+    return apiClient.put(`/service/contracts/${id}/terminate?reason=${encodeURIComponent(reason)}`);
 };

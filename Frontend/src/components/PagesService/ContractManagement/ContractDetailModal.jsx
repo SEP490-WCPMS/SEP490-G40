@@ -38,9 +38,8 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
         contractNumber: initialData.contractNumber,
         customerName: initialData.customerName,
         contractType: initialData.priceTypeName || 'N/A',
-        customerNotes: initialData.customerNotes || initialData.notes || '',
+        customerNotes: initialData.notes || initialData.customerNotes || '', // Ưu tiên initialData.notes
         technicalStaffId: initialData.technicalStaffId,
-        notes: initialData.serviceStaffNotes || '',
       });
     } else if (!isOpen) {
       form.resetFields();
@@ -48,11 +47,18 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
   }, [initialData, isOpen, form]);
 
   const handleOk = () => {
-    form.validateFields(['technicalStaffId']).then((values) => {
+    form.validateFields(['technicalStaffId']).then(() => {
+      const formValues = form.getFieldsValue(['technicalStaffId']);
+      console.log('Form values:', formValues);
+      
+      if (!formValues.technicalStaffId) {
+        message.warning('Vui lòng chọn NV Kỹ thuật!');
+        return;
+      }
+      
       onSave({
         ...initialData,
-        technicalStaffId: values.technicalStaffId,
-        notes: values.notes,
+        technicalStaffId: formValues.technicalStaffId,
       });
     }).catch(() => {
       message.warning('Vui lòng chọn NV Kỹ thuật!');
@@ -111,13 +117,7 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
             </Select>
           </Form.Item>
 
-          <Form.Item name="notes" label="Ghi chú của bạn">
-            <TextArea 
-              rows={3} 
-              placeholder="Thêm ghi chú nếu cần..."
-              style={{ color: '#000' }}
-            />
-          </Form.Item>
+          {/* Bỏ trường ghi chú của nhân viên */}
 
           <div style={{ background: '#e6f7ff', padding: '12px', borderRadius: '4px', border: '1px solid #91d5ff' }}>
             <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#0050b3', fontWeight: 'bold' }}>ℹ Hệ thống sẽ:</p>

@@ -38,7 +38,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                 occupants: initialData.occupants || 'N/A',
                 contractStatus: CONTRACT_STATUS_MAP[initialData.contractStatus]?.text || initialData.contractStatus,
                 estimatedCost: initialData.estimatedCost || 'N/A',
-                customerNotes: initialData.customerNotes || initialData.notes || 'Không có',
+                customerNotes: initialData.notes || initialData.customerNotes || 'Không có', // Ưu tiên initialData.notes
             });
         } else if (!isOpen) {
             form.resetFields();

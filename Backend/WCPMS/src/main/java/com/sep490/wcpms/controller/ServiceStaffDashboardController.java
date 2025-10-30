@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/service-staff/dashboard")
+@RequestMapping("/api/service/dashboard")
 @CrossOrigin(origins = "http://localhost:5173")
 public class ServiceStaffDashboardController {
 

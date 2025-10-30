@@ -51,14 +51,15 @@ public class ServiceStaffContractController {
     ) {
         return service.getDraftContracts(keyword, PageRequest.of(page, size));
     }
-
     /**
      * Màn 1: Gửi hợp đồng cho Technical khảo sát (DRAFT → PENDING)
      * PUT /api/service/contracts/{id}/submit
      */
     @PutMapping("/{id}/submit")
-    public ServiceStaffContractDTO submitContractForSurvey(@PathVariable Integer id) {
-        return service.submitContractForSurvey(id);
+    public ServiceStaffContractDTO submitContractForSurvey(
+            @PathVariable Integer id,
+            @RequestBody ServiceStaffUpdateContractRequestDTO request) {
+        return service.submitContractForSurvey(id, request.getTechnicalStaffId());
     }
 
     /**
@@ -94,5 +95,54 @@ public class ServiceStaffContractController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return service.getApprovedContracts(keyword, PageRequest.of(page, size));
+    }
+
+    // === ACTIVE Contract Management ===
+
+    /**
+     * Lấy danh sách hợp đồng ACTIVE (Đang hoạt động)
+     * GET /api/service/contracts/active?keyword=...&page=0&size=10
+     */
+    @GetMapping("/active")
+    public Page<ServiceStaffContractDTO> getActiveContracts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return service.getActiveContracts(keyword, PageRequest.of(page, size));
+    }
+
+    /**
+     * Cập nhật thông tin hợp đồng ACTIVE (giá, ngày kết thúc, v.v.)
+     * PUT /api/service/contracts/{id}/update-active
+     */
+    @PutMapping("/{id}/update-active")
+    public ServiceStaffContractDTO updateActiveContract(
+            @PathVariable Integer id,
+            @RequestBody ServiceStaffUpdateContractRequestDTO updateRequest) {
+        return service.updateActiveContract(id, updateRequest);
+    }
+
+    /**
+     * Gia hạn hợp đồng ACTIVE (kéo dài thời hạn)
+     * PUT /api/service/contracts/{id}/renew
+     */
+    @PutMapping("/{id}/renew")
+    public ServiceStaffContractDTO renewContract(
+            @PathVariable Integer id,
+            @RequestBody ServiceStaffUpdateContractRequestDTO renewRequest) {
+        return service.renewContract(id, renewRequest);
+    }
+
+    /**
+     * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
+     * PUT /api/service/contracts/{id}/terminate
+     * Payload: { "reason": "Lý do hủy" }
+     */
+    @PutMapping("/{id}/terminate")
+    public ServiceStaffContractDTO terminateContract(
+            @PathVariable Integer id,
+            @RequestParam String reason) {
+        return service.terminateContract(id, reason);
     }
 }

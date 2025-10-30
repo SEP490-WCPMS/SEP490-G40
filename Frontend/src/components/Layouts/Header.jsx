@@ -21,7 +21,19 @@ const Header = ({ isAuthenticated, user }) => {
   };
 
   const handleProfileClick = () => {
-    navigate('/staff/profile');
+    // Lấy vai trò của người dùng từ prop 'user'
+    const role = user?.roleName;
+
+    // Kiểm tra vai trò để điều hướng
+    if (role === 'CUSTOMER') {
+      // Nếu là Khách hàng, chuyển đến trang hồ sơ khách hàng
+      navigate('/profile');
+    } else {
+      // Nếu là Staff hoặc Admin (hoặc bất cứ vai trò nào khác)
+      navigate('/staff/profile');
+    }
+
+    // Đóng dropdown sau khi bấm
     setIsAvatarDropdownOpen(false);
   };
 
@@ -78,7 +90,20 @@ const Header = ({ isAuthenticated, user }) => {
             Giá nước
           </button>
           <a href="#lien-he" className="nav-item">Liên hệ</a>
-          <Link to="/contract-request" className="nav-item">Đăng ký cấp nước</Link>
+          <div className="nav-item nav-dropdown">
+            <span>Hợp đồng</span>
+            <ul className="dropdown-menu">
+              <li>
+                <Link to="/contract-request">Đăng ký cấp nước</Link>
+              </li>
+              <li>
+                <Link to="/my-requests">Xem trạng thái đơn</Link>
+              </li>
+              <li>
+                <Link to="/contract-list">Danh sách hợp đồng</Link>
+              </li>
+            </ul>
+          </div>
         </nav>
 
         {/* Avatar / Login Button */}
@@ -126,6 +151,18 @@ const Header = ({ isAuthenticated, user }) => {
                     <User size={16} />
                     <span>Hồ sơ</span>
                   </button>
+                  {user?.roleName === 'CUSTOMER' && (
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        navigate('/change-password');
+                        setIsAvatarDropdownOpen(false);
+                      }}
+                    >
+                      <LogOut size={16} /> {/* Thay bằng icon chìa khóa nếu có */}
+                      <span>Đổi mật khẩu</span>
+                    </button>
+                  )}
                   <button className="dropdown-item">
                     <Bell size={16} />
                     <span>Thông báo</span>

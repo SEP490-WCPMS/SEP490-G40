@@ -360,3 +360,82 @@
     font-size: 13px;
   }
 }
+
+/* --- THÊM VÀO CUỐI FILE Header.css --- */
+
+/* 1. Class cha ("Hợp đồng")
+   - Bắt buộc phải có "position: relative"
+   - Đảm bảo nó là một "nav-item" để giữ nguyên style
+*/
+.nav-item.nav-dropdown {
+  position: relative;
+  cursor: pointer;
+  height: 100%; /* Đảm bảo nó chiếm đủ chiều cao */
+  display: flex;
+  align-items: center;
+}
+/* Style cho chữ "Hợp đồng" */
+.nav-item.nav-dropdown > span {
+  padding: 0 15px; /* Giống như các .nav-item khác */
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.nav-item.nav-dropdown:hover > span {
+    background-color: #f4f7fc; /* Màu nền khi hover (giống link) */
+    color: #0A77E2; /* Màu chữ xanh khi hover (giống link) */
+}
+
+
+/* 2. Menu con (danh sách xổ xuống)
+   - "display: none" để ẩn đi
+   - "position: absolute" để nó "nổi" lên trên
+*/
+.nav-dropdown .dropdown-menu {
+  display: none; /* Ẩn đi mặc định */
+  position: absolute;
+  top: 95%; /* Vị trí ngay dưới (điều chỉnh 95% hoặc 100%) */
+  left: 0;
+  background-color: #ffffff;
+  min-width: 220px; /* Độ rộng tối thiểu */
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: 8px 0;
+  list-style: none; /* Bỏ dấu chấm */
+  
+  /* Ghi đè các thuộc tính bị kế thừa từ .main-nav */
+  flex-direction: column;
+  height: auto;
+  margin: 0; 
+}
+
+/* 3. Hiển thị menu con khi di chuột vào cha */
+.nav-dropdown:hover .dropdown-menu {
+  display: block; /* Hiện ra khi hover */
+}
+
+/* 4. Các mục con bên trong menu */
+.dropdown-menu li {
+  width: 100%;
+  height: auto;
+  margin: 0; /* Ghi đè margin-left nếu có */
+}
+
+.dropdown-menu li a {
+  display: block;
+  width: 100%;
+  padding: 10px 20px;
+  color: #334155;
+  text-decoration: none;
+  white-space: nowrap; /* Không xuống dòng */
+  
+  /* Ghi đè các thuộc tính bị kế thừa từ .nav-item */
+  height: auto; 
+  background-color: transparent;
+}
+
+.dropdown-menu li a:hover {
+  background-color: #f4f7fc;
+  color: #0A77E2;
+}

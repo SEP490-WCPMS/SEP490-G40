@@ -50,26 +50,16 @@ const ContractRequestForm = () => {
         setError('');
 
         const user = JSON.parse(localStorage.getItem('user'));
+        // --- SỬA 1: Đọc token từ đúng key ---
+        const token = localStorage.getItem('token');
 
-        // --- DÒNG DEBUG ---
-        console.log("KIỂM TRA USER TRONG handleSubmit:", user);
-        // --- HẾT DÒNG DEBUG ---
-
-        if (!user || !user.id) { // <-- Sửa ở đây
-            // --- DÒNG DEBUG ---
-            console.log("ĐIỀU KIỆN IF BỊ TRUE, CHUẨN BỊ CHUYỂN HƯỚNG!");
-            if (user) {
-                console.log("user.id LÀ:", user.id); // Xem user.id là gì
-                console.log("user.accountId LÀ:", user.accountId); // Xem user.accountId là gì
-            }
-            // --- HẾT DÒNG DEBUG ---
-
+        // --- SỬA 2: Kiểm tra cả user.id và token ---
+        if (!user || !user.id || !token) {
             setError('Bạn cần đăng nhập để thực hiện chức năng này.');
             setLoading(false);
             navigate('/login');
             return;
         }
-        //... (phần còn lại của hàm giữ nguyên)
 
         if (!selectedPriceType) {
             setError('Vui lòng chọn một loại hình sử dụng.');
@@ -78,18 +68,20 @@ const ContractRequestForm = () => {
         }
 
         const requestData = {
-            accountId: user.id,
+            accountId: user.id, // Dùng user.id
             priceTypeId: parseInt(selectedPriceType, 10),
             occupants: parseInt(occupants, 10),
             notes: notes
         };
 
         try {
-            // Gọi API
-            await axios.post('http://localhost:8080/api/contract-request/request', requestData);
+            // --- SỬA 3: Thêm Header Authorization vào request POST ---
+            await axios.post('http://localhost:8080/api/contract-request/request', requestData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
-            // --- THAY ĐỔI CHÍNH: TỰ ĐỘNG CHUYỂN HƯỚNG ---
-            // Sau khi gửi thành công, chuyển thẳng đến trang xem trạng thái
             navigate('/my-requests');
 
         } catch (err) {
