@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAssignedSurveyContracts } from '../../Services/apiService'; // Đảm bảo đường dẫn đúng
+import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw } from 'lucide-react'; // Icon làm mới
 
 function SurveyContractsList() {
