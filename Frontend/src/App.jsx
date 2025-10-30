@@ -41,7 +41,7 @@ function App() {
       <Routes>
         {/* === PUBLIC ROUTES - với Header + Footer === */}
         <Route path="/" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <HomePage isAuthenticated={isAuthenticated} user={user} />
@@ -49,9 +49,9 @@ function App() {
             <Footer />
           </div>
         } />
-        
+
         <Route path="/login" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <Login />
@@ -59,9 +59,9 @@ function App() {
             <Footer />
           </div>
         } />
-        
+
         <Route path="/register" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <Register />
@@ -69,9 +69,9 @@ function App() {
             <Footer />
           </div>
         } />
-        
+
         <Route path="/about" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <AboutPage />
@@ -79,9 +79,9 @@ function App() {
             <Footer />
           </div>
         } />
-        
+
         <Route path="/profile" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <CustomerProfileUpdate />
@@ -89,9 +89,9 @@ function App() {
             <Footer />
           </div>
         } />
-        
+
         <Route path="/contract-request" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <ContractRequestForm />
@@ -100,28 +100,28 @@ function App() {
           </div>
         } />
 
-      <Route path="/contract-list" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-              <Header isAuthenticated={isAuthenticated} user={user} />
-              <main style={{ flex: 1 }}>
-                  <ContractList />
-              </main>
-              <Footer />
+        <Route path="/contract-list" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ContractList />
+            </main>
+            <Footer />
           </div>
-      } />
+        } />
 
-      <Route path="/contract-detail" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-              <Header isAuthenticated={isAuthenticated} user={user} />
-              <main style={{ flex: 1 }}>
-                  <ContractDetail />
-              </main>
-              <Footer />
+        <Route path="/contract-detail" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ContractDetail />
+            </main>
+            <Footer />
           </div>
-      } />
-        
+        } />
+
         <Route path="/my-requests" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <ContractRequestStatusList />
@@ -129,9 +129,9 @@ function App() {
             <Footer />
           </div>
         } />
-        
+
         <Route path="/staff/profile" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
             <Header isAuthenticated={isAuthenticated} user={user} />
             <main style={{ flex: 1 }}>
               <StaffProfileView />
