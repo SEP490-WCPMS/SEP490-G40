@@ -20,7 +20,7 @@ import {
     getTechnicalDashboardStats,
     getTechnicalChartData,
     getRecentTechnicalTasks
-} from '../Services/apiService';
+} from '../Services/apiTechnicalStaff';
 
 // Đăng ký Chart.js
 ChartJS.register( CategoryScale, LinearScale, PointElement, LineElement, ChartTitle, Tooltip, Legend );
