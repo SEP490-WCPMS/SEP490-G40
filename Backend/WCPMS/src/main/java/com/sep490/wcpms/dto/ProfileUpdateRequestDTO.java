@@ -17,7 +17,7 @@ public class ProfileUpdateRequestDTO {
     @NotBlank(message = "Số điện thoại không được để trống")
     private String phone;
 
-    @NotBlank(message = "Số nhà không được để trống")
+    @NotBlank(message = "Địa chỉ không được để trống")
     private String address;
 
     @NotBlank(message = "Đường/Phố không được để trống")
