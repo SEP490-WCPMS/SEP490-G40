@@ -34,21 +34,27 @@ public class MeterReadingServiceImpl implements MeterReadingService {
     @Override
     @Transactional(readOnly = true) // <-- THÊM DÒNG NÀY (readOnly = true để tối ưu)
     public ReadingConfirmationDTO getConfirmationDataByMeterCode(String meterCode) {
-        // 1. Lấy Đồng hồ (Bảng 10) từ meterCode (vd: "345728")
+        // 1. Lấy Đồng hồ (Bảng 10)
         WaterMeter meter = waterMeterRepository.findByMeterCode(meterCode)
-                .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found with code: " + meterCode));
+                .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found: " + meterCode));
 
-        // 2. Lấy thông tin Lắp đặt (Bảng 11) từ Đồng hồ
+        // 2. Lấy thông tin Lắp đặt (Bảng 11)
         MeterInstallation installation = meterInstallationRepository.findByWaterMeter(meter)
                 .orElseThrow(() -> new ResourceNotFoundException("MeterInstallation not found for meter: " + meterCode));
 
-        // 3. Lấy Hợp đồng (Bảng 8) từ Lắp đặt
-        Contract contract = installation.getContract();
-        if (contract == null) {
-            throw new ResourceNotFoundException("No Contract associated with this meter installation.");
+        // 3. LẤY HỢP ĐỒNG DỊCH VỤ (BẢNG 9) TỪ LẮP ĐẶT
+        WaterServiceContract serviceContract = installation.getWaterServiceContract();
+        if (serviceContract == null) {
+            throw new ResourceNotFoundException("No active WaterServiceContract associated with this meter installation.");
         }
 
-        // 4. Tìm chỉ số CŨ (Logic cũ giữ nguyên)
+        // 4. Lấy Khách hàng (Bảng 7) từ HĐ Dịch vụ
+        Customer customer = serviceContract.getCustomer();
+        if(customer == null) {
+            throw new ResourceNotFoundException("No Customer associated with this service contract.");
+        }
+
+        // 5. Tìm chỉ số CŨ (Giữ nguyên logic)
         BigDecimal previousReading;
         Optional<MeterReading> lastReading = meterReadingRepository
                 .findTopByMeterInstallationOrderByReadingDateDesc(installation);
@@ -59,11 +65,11 @@ public class MeterReadingServiceImpl implements MeterReadingService {
             previousReading = installation.getInitialReading();
         }
 
-        // 5. Tạo DTO trả về
+        // 6. Tạo DTO trả về
         ReadingConfirmationDTO dto = new ReadingConfirmationDTO();
-        dto.setContractNumber(contract.getContractNumber());
-        dto.setCustomerName(contract.getCustomer().getCustomerName());
-        dto.setCustomerAddress(contract.getCustomer().getAddress());
+        dto.setContractNumber(serviceContract.getContractNumber()); // <-- LẤY SỐ HĐ TỪ BẢNG 9
+        dto.setCustomerName(customer.getCustomerName());
+        dto.setCustomerAddress(customer.getAddress());
         dto.setMeterInstallationId(installation.getId());
         dto.setPreviousReading(previousReading);
 

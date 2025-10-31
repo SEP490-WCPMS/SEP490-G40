@@ -87,7 +87,7 @@ public class Contract {
     private Account technicalStaff;
 
     // Hợp đồng cấp nước chính hiện tại
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "primary_water_contract_id",
             foreignKey = @ForeignKey(name = "fk_contracts_water_service_contracts"))
     private WaterServiceContract primaryWaterContract;
