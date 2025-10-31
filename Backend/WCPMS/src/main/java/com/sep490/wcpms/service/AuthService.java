@@ -83,7 +83,7 @@ public class AuthService {
             throw new ResourceNotFoundException("Tài khoản không tìm thấy sau khi xác thực.");
         }
         // Kiểm tra lại trạng thái account và role (an toàn hơn)
-        if (!userDetails.isEnabled() || account.getStatus() == null || !account.getStatus()) {
+        if (!userDetails.isEnabled() || account.getStatus() == null || account.getStatus() != 1) {
             throw new InvalidCredentialsException("Tài khoản đã bị vô hiệu hóa.");
         }
         Role role = account.getRole();
@@ -143,7 +143,7 @@ public class AuthService {
         newAccount.setRole(customerRole);
         newAccount.setDepartment(null);
         newAccount.setCustomerCode(newCustomerCode);
-        newAccount.setStatus(Boolean.TRUE); // Kích hoạt tài khoản
+        newAccount.setStatus(1); // 1 = Kích hoạt // Kích hoạt tài khoản
         // createdAt tự động bởi @CreationTimestamp
 
         Account savedAccount = accountRepository.save(newAccount);
