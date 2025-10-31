@@ -14,7 +14,8 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
 
     boolean existsByRequestNumber(String requestNumber);
 
-    boolean existsByContractIdAndRequestTypeAndApprovalStatus(Integer contractId, String requestType, String approvalStatus);
+    boolean existsByContractIdAndRequestTypeAndApprovalStatus(Integer contractId, ContractAnnulTransferRequest.RequestType requestType,
+                                                              ContractAnnulTransferRequest.ApprovalStatus approvalStatus);
 
     @EntityGraph(attributePaths = {"contract", "requestedBy", "approvedBy"})
     Optional<ContractAnnulTransferRequest> findWithRelationsById(Integer id);
