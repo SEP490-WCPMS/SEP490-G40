@@ -1,6 +1,7 @@
 package com.sep490.wcpms.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,22 +34,24 @@ public class Account {
     @Column(length = 20, unique = true)
     private String phone;
 
-    @Column(name = "full_name", length = 100)
+    @Column(name = "full_name", length = 100, nullable = false)
     private String fullName;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", foreignKey = @ForeignKey(name = "fk_accounts_roles"))
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "role_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_accounts_roles"))
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 50)
+    @Column(name = "department", length = 50)
     private Department department;
 
     @Column(name = "customer_code", length = 50)
     private String customerCode;
 
-    @Column
-    private Boolean status;
+    @Column(name = "status")
+    private Integer status = 1;  // 1=Active, 0=Inactive
 
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
@@ -61,14 +64,17 @@ public class Account {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Staff liên kết đến hợp đồng
+    // Staff relationships
     @OneToMany(mappedBy = "serviceStaff")
     private List<Contract> serviceContracts;
 
     @OneToMany(mappedBy = "technicalStaff")
     private List<Contract> technicalContracts;
 
-    // Enum
+    // Account xử lý nhiều feedback
+    @OneToMany(mappedBy = "assignedTo")
+    private List<CustomerFeedback> assignedFeedbacks;
+
     public enum Department {
         CASHIER, ACCOUNTING, SERVICE, TECHNICAL
     }

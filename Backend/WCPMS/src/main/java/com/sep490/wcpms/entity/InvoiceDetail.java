@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,23 +20,26 @@ public class InvoiceDetail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "invoice_id", foreignKey = @ForeignKey(name = "fk_invoice_details_invoices"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "invoice_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_invoice_details_invoices"))
     private Invoice invoice;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "price_type_id", foreignKey = @ForeignKey(name = "fk_invoice_details_price_types"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "price_type_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_invoice_details_price_types"))
     private WaterPriceType priceType;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "consumption", precision = 15, scale = 2, nullable = false)
     private BigDecimal consumption;
 
-    @Column(name = "unit_price", precision = 15, scale = 2)
+    @Column(name = "unit_price", precision = 15, scale = 2, nullable = false)
     private BigDecimal unitPrice;
 
-    @Column(precision = 15, scale = 2)
+    @Column(name = "amount", precision = 15, scale = 2, nullable = false)
     private BigDecimal amount;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }

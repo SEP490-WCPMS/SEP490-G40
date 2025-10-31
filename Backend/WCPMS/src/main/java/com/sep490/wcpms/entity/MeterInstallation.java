@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,6 +28,11 @@ public class MeterInstallation {
     private Contract contract;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "water_service_contract_id",
+            foreignKey = @ForeignKey(name = "fk_meter_installations_water_service_contracts"))
+    private WaterServiceContract waterServiceContract;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meter_id", foreignKey = @ForeignKey(name = "fk_meter_installations_water_meters"))
     private WaterMeter waterMeter;
 
@@ -36,26 +43,26 @@ public class MeterInstallation {
     @Column(name = "installation_date")
     private LocalDate installationDate;
 
-    // --- SỬA LẠI CHỖ NÀY ---
     @ManyToOne(fetch = FetchType.LAZY)
-    // Đổi @JoinColumn "name" cho khớp với tên cột mới
     @JoinColumn(name = "technical_staff_id", foreignKey = @ForeignKey(name = "fk_meter_installations_accounts"))
-    private Account technicalStaff; // Đổi tên biến cho nhất quán
+    private Account technicalStaff;
 
     @Column(name = "initial_reading", precision = 15, scale = 2)
-    private BigDecimal initialReading;
+    private BigDecimal initialReading = BigDecimal.ZERO;
 
     @Lob
-    private String notes;
-
-    // --- THÊM TRƯỜNG NÀY ---
-    @Lob // Dùng @Lob để map với kiểu LONGTEXT
-    @Column(name = "installation_image_base64")
+    @Column(name = "installation_image_base64", columnDefinition = "LONGTEXT")
     private String installationImageBase64;
 
-    @Column(name = "created_at")
+    @Lob
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

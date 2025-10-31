@@ -51,6 +51,33 @@ public class Customer {
     @Column(name = "province", length = 100)
     private String province;
 
+    // Thông tin ngân hàng, thuế, chức vụ (NEW)
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
+
+    @Column(name = "tax_id", length = 20)
+    private String taxId;
+
+    @Column(name = "position_title", length = 100)
+    private String positionTitle;
+
+    @Column(name = "organization_name", length = 255)
+    private String organizationName;
+
+    @Column(name = "contact_person_name", length = 100)
+    private String contactPersonName;
+
+    @Column(name = "contact_person_phone", length = 20)
+    private String contactPersonPhone;
+
+    // Thông tin đồng hồ
+    @Column(name = "meter_code", length = 50, unique = true)
+    private String meterCode;
+
+    @Column(name = "meter_serial_number", length = 100)
+    private String meterSerialNumber;
+
+    // Thông tin tuyến đọc
     @Column(name = "route_id")
     private Integer routeId;
 
@@ -82,6 +109,10 @@ public class Customer {
     @Column(name = "connection_type", length = 20)
     private ConnectionType connectionType;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "price_type_id", foreignKey = @ForeignKey(name = "fk_customers_water_price_types"))
+    private WaterPriceType priceType;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "connection_status", length = 20)
     private ConnectionStatus connectionStatus;
@@ -101,6 +132,14 @@ public class Customer {
     // Một customer có nhiều hợp đồng
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Contract> contracts;
+
+    // Một customer có thể có nhiều hợp đồng cấp nước
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<WaterServiceContract> waterServiceContracts;
+
+    // Một customer có thể có nhiều feedback/khiếu nại
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CustomerFeedback> customerFeedbacks;
 
     public enum ConnectionType { RESIDENTIAL, COMMERCIAL, ADMINISTRATIVE }
     public enum ConnectionStatus { ACTIVE, INACTIVE, SUSPENDED, TERMINATED }

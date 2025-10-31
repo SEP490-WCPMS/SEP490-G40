@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,18 +27,28 @@ public class Ward {
     @Column(name = "ward_name", length = 100, nullable = false)
     private String wardName;
 
-    @Column(length = 100)
+    @Column(name = "district", length = 100, nullable = false)
     private String district;
 
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private Status status;
+    @Column(name = "province", length = 100, nullable = false)
+    private String province = "Phú Thọ";
 
-    @Column(name = "created_at")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20, nullable = false)
+    private Status status = Status.ACTIVE;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "ward")
     private List<Customer> customers;
 
-    public enum Status { ACTIVE, INACTIVE }
+    public enum Status {
+        ACTIVE, INACTIVE
+    }
 }
