@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.dto.ChangePasswordRequestDTO;
 import com.sep490.wcpms.dto.ProfileResponseDTO;
 import com.sep490.wcpms.dto.ProfileUpdateRequestDTO;
 import com.sep490.wcpms.entity.Account;
@@ -9,6 +10,7 @@ import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.CustomerRepository;
 import com.sep490.wcpms.service.ProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,24 +23,52 @@ public class ProfileServiceImpl implements ProfileService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // --- THÊM LOGIC ĐỔI MẬT KHẨU ---
     @Override
-    public ProfileResponseDTO getProfileByAccountId(Integer accountId) {
+    @Transactional
+    public void changePassword(Integer accountId, ChangePasswordRequestDTO dto) {
+        // 1. Kiểm tra mật khẩu mới có khớp không
+        if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới và xác nhận mật khẩu không khớp.");
+        }
+
+        // 2. Lấy tài khoản
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + accountId));
-        Customer customer = customerRepository.findByAccount_Id(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng cho tài khoản ID: " + accountId));
+
+        // 3. Kiểm tra mật khẩu cũ
+        if (!passwordEncoder.matches(dto.getOldPassword(), account.getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu cũ không chính xác.");
+        }
+
+        // 4. Mã hóa và cập nhật mật khẩu mới
+        account.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+
+        // 5. Lưu lại
+        accountRepository.save(account);
+    }
+
+    @Override
+    public ProfileResponseDTO getProfileById(Integer id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + id));
+        Customer customer = customerRepository.findByAccount_Id(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng cho tài khoản ID: " + id));
 
         return mapToProfileResponseDTO(account, customer);
     }
 
+    // --- SỬA TÊN HÀM VÀ THAM SỐ ---
     @Override
-    @Transactional // Rất quan trọng! Đảm bảo cả 2 bảng được cập nhật hoặc không có gì cả.
-    public ProfileResponseDTO updateProfile(Integer accountId, ProfileUpdateRequestDTO dto) {
-        // 1. Lấy các entity hiện có từ DB
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + accountId));
-        Customer customer = customerRepository.findByAccount_Id(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng cho tài khoản ID: " + accountId));
+    @Transactional
+    public ProfileResponseDTO updateProfile(Integer id, ProfileUpdateRequestDTO dto) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + id));
+        Customer customer = customerRepository.findByAccount_Id(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng cho tài khoản ID: " + id));
 
         // 2. Cập nhật các trường cho bảng Account
         account.setFullName(dto.getFullName());

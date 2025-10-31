@@ -31,7 +31,19 @@ import ContractList from './components/Customer/ContractList';
 import ContractDetail from './components/Customer/ContractDetail';
 import StaffProfileView from './components/Staff/StaffProfileView';
 import Register from './components/Authentication/Register';
+import PrivateRoute from './PrivateRoute';
 
+
+// Wrapper cho các trang Public (có Header/Footer chung)
+const PublicLayout = ({ children, isAuthenticated, user }) => (
+  <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+    <Header isAuthenticated={isAuthenticated} user={user} />
+    <main style={{ flex: 1 }}>
+      {children}
+    </main>
+    <Footer />
+  </div>
+);
 
 function App() {
   const { isAuthenticated, user } = useAuth();
@@ -39,158 +51,65 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* === PUBLIC ROUTES - với Header + Footer === */}
-        <Route path="/" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <HomePage isAuthenticated={isAuthenticated} user={user} />
-            </main>
-            <Footer />
-          </div>
-        } />
         
-        <Route path="/login" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <Login />
-            </main>
-            <Footer />
-          </div>
-        } />
-        
-        <Route path="/register" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <Register />
-            </main>
-            <Footer />
-          </div>
-        } />
-        
-        <Route path="/about" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <AboutPage />
-            </main>
-            <Footer />
-          </div>
-        } />
-        
-        <Route path="/profile" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <CustomerProfileUpdate />
-            </main>
-            <Footer />
-          </div>
-        } />
-        
-        <Route path="/contract-request" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <ContractRequestForm />
-            </main>
-            <Footer />
-          </div>
-        } />
+        {/* === PUBLIC ROUTES (Đăng nhập, Đăng ký) === */}
+        {/* Các trang này không cần layout hoặc layout riêng */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
+        <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
 
-      <Route path="/contract-list" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-              <Header isAuthenticated={isAuthenticated} user={user} />
-              <main style={{ flex: 1 }}>
-                  <ContractList />
-              </main>
-              <Footer />
-          </div>
-      } />
 
-      <Route path="/contract-detail" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-              <Header isAuthenticated={isAuthenticated} user={user} />
-              <main style={{ flex: 1 }}>
-                  <ContractDetail />
-              </main>
-              <Footer />
-          </div>
-      } />
+        {/* === CUSTOMER ROUTES (Cần đăng nhập, vai trò CUSTOMER) === */}
+        <Route element={<PrivateRoute allowedRoles={['CUSTOMER']} />}>
+          <Route path="/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerProfileUpdate /></PublicLayout>} />
+          <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
+          <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />
+          <Route path="/contract-list" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractList /></PublicLayout>} />
+          <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
+        </Route>
         
-        <Route path="/my-requests" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <ContractRequestStatusList />
-            </main>
-            <Footer />
-          </div>
-        } />
-        
-        <Route path="/staff/profile" element={
-          <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
-            <Header isAuthenticated={isAuthenticated} user={user} />
-            <main style={{ flex: 1 }}>
-              <StaffProfileView />
-            </main>
-            <Footer />
-          </div>
-        } />
 
-        {/* === STAFF ROUTES - không có Header/Footer === */}
+        {/* === STAFF COMMON ROUTES (Cần đăng nhập, nhiều vai trò) === */}
+        <Route element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
+           <Route path="/staff/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+        </Route>
+        
+
+        {/* === STAFF LAYOUT ROUTES (Layout riêng, không Header/Footer chung) === */}
+
         {/* --- LUỒNG CỦA TECHNICAL STAFF --- */}
-        <Route path="/technical" element={<LayoutTechnical />}>
-
-          {/* Trang index của /technical (tức là /technical) 
-            sẽ là TechnicalDashboard 
-          */}
-          <Route index element={<TechnicalDashboard />} />
-
-          {/* Luồng 1: Survey & Design
-            - /technical/survey
-            - /technical/survey/report/:contractId
-          */}
-          <Route path="survey" element={<SurveyContractsList />} />
-          <Route path="survey/report/:contractId" element={<SurveyForm />} />
-
-          {/* Luồng 2: Installation
-            - /technical/install
-            - /technical/install/detail/:contractId
-          */}
-          <Route path="install" element={<InstallContractsList />} />
-          <Route path="install/detail/:contractId" element={<InstallationDetail />} />
+        <Route element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF']} />}>
+          <Route path="/technical" element={<LayoutTechnical />}>
+            <Route index element={<TechnicalDashboard />} />
+            <Route path="survey" element={<SurveyContractsList />} />
+            <Route path="survey/report/:contractId" element={<SurveyForm />} />
+            <Route path="install" element={<InstallContractsList />} />
+            <Route path="install/detail/:contractId" element={<InstallationDetail />} />
+          </Route>
         </Route>
 
-
-        {/* --- LUỒNG CỦA TECHNICAL STAFF --- */}
-        {/* Tất cả các trang Kỹ thuật sẽ nằm dưới /technical
-          và dùng chung <LayoutTechnical />
-        */}
-        <Route path="/cashier" element={<LayoutCashier />}>
-          {/* <Route index element={<CashierDashboard />} /> (Trang chủ Thu ngân nếu có) */}
-
-          {/* LUỒNG GHI CHỈ SỐ MỚI (Từ yêu cầu của bạn) */}
-          <Route path="scan" element={<MeterScan />} />
-          <Route path="submit-reading" element={<ReadingConfirmation />} />
-
+        {/* --- LUỒNG CỦA CASHIER STAFF --- */}
+        <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
+          <Route path="/cashier" element={<LayoutCashier />}>
+            {/* <Route index element={<CashierDashboard />} /> */}
+            <Route path="scan" element={<MeterScan />} />
+            <Route path="submit-reading" element={<ReadingConfirmation />} />
+          </Route>
         </Route>
 
         {/* --- LUỒNG CỦA SERVICE STAFF --- */}
-        <Route path="/service" element={<LayoutService />}>
-          {/* Trang index của /service sẽ là dashboard */}
-          <Route index element={<ServiceDashboardPage />} />
-
-          {/* Các trang cụ thể */}
-          <Route path="requests" element={<ContractRequestsPage />} />
-          <Route path="survey-reviews" element={<SurveyReviewPage />} />
-          <Route path="approved-contracts" element={<ApprovedContractsPage />} />
-          <Route path="active-contracts" element={<ActiveContractsPage />} />
-          <Route path="contract-transfers" element={<ContractTransferList />} />
-          <Route path="contract-annuls" element={<ContractAnnulList />} />
+        <Route element={<PrivateRoute allowedRoles={['SERVICE_STAFF']} />}>
+          <Route path="/service" element={<LayoutService />}>
+            <Route index element={<ServiceDashboardPage />} />
+            <Route path="requests" element={<ContractRequestsPage />} />
+            <Route path="survey-reviews" element={<SurveyReviewPage />} />
+            <Route path="approved-contracts" element={<ApprovedContractsPage />} />
+            <Route path="active-contracts" element={<ActiveContractsPage />} />
+          </Route>
         </Route>
+
+        {/* (Thêm luồng ADMIN ở đây nếu cần) */}
 
       </Routes>
     </BrowserRouter>

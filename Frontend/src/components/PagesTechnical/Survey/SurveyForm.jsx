@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getContractDetails, submitSurveyReport } from '../../Services/apiService'; // Đảm bảo đường dẫn đúng
+import { getContractDetails, submitSurveyReport } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { ArrowLeft } from 'lucide-react'; // Icon quay lại
 import moment from 'moment'; // Import moment để format ngày
 
@@ -27,7 +27,7 @@ function SurveyForm() {
         getContractDetails(contractId)
             .then(response => {
                 // --- BẠN THÊM DÒNG NÀY VÀO ---
-                console.log("Dữ liệu gốc từ server:", response.data.applicationDate);
+                console.log("Dữ liệu gốc từ server:", response.data.applicationDate);
                 setContractDetails(response.data);
             })
             .catch(err => {
