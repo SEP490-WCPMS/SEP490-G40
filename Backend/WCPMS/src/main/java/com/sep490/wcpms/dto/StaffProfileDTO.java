@@ -19,7 +19,7 @@ public class StaffProfileDTO {
     private String phone;
     private String roleName;
     private Account.Department department;
-    private Boolean status;
+    private Integer status;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
 

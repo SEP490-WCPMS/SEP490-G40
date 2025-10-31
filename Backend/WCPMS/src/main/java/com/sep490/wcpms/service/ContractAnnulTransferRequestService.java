@@ -46,7 +46,9 @@ public class ContractAnnulTransferRequestService {
 
         // Không cho 2 request PENDING cùng loại trên 1 contract
         if (repository.existsByContractIdAndRequestTypeAndApprovalStatus(
-                contract.getId(), type.toLowerCase(), String.valueOf(ContractAnnulTransferRequest.ApprovalStatus.PENDING))) {
+                contract.getId(),
+                ContractAnnulTransferRequest.RequestType.valueOf(type.toUpperCase()),
+                ContractAnnulTransferRequest.ApprovalStatus.PENDING)) {
             throw new IllegalStateException("A pending request of the same type already exists for this contract.");
         }
 
@@ -64,8 +66,8 @@ public class ContractAnnulTransferRequestService {
         ContractAnnulTransferRequest entity =
                 mapper.toEntity(dto, contract, requestedBy, fromCustomer, toCustomer);
 
-        // đảm bảo default
-        entity.setRequestType(type.toLowerCase());
+// đảm bảo default
+        entity.setRequestType(ContractAnnulTransferRequest.RequestType.valueOf(type.toUpperCase()));
         if (entity.getApprovalStatus() == null) {
             entity.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING);
         }
@@ -136,22 +138,22 @@ public class ContractAnnulTransferRequestService {
         if (ContractAnnulTransferRequest.ApprovalStatus.APPROVED.equals(dto.getApprovalStatus())) {
             Contract contract = entity.getContract();
 
-            if ("annul".equalsIgnoreCase(entity.getRequestType())) {
-                contract.setContractStatus(Contract.ContractStatus.valueOf(String.valueOf(Contract.ContractStatus.TERMINATED)));
+            if (entity.getRequestType() == ContractAnnulTransferRequest.RequestType.ANNUL) {
+                contract.setContractStatus(Contract.ContractStatus.TERMINATED);
                 if (contract.getEndDate() == null) {
                     contract.setEndDate(LocalDate.now());
                 }
                 contractRepository.save(contract);
             }
 
-            if ("transfer".equalsIgnoreCase(entity.getRequestType())) {
+            if (entity.getRequestType() == ContractAnnulTransferRequest.RequestType.TRANSFER) {
                 if (entity.getToCustomer() == null) {
                     throw new IllegalStateException("toCustomer is required for transfer approval.");
                 }
-                // cần Contract có field 'customer'
                 contract.setCustomer(entity.getToCustomer());
                 contractRepository.save(contract);
             }
+
         }
 
         return mapper.toDTO(entity);

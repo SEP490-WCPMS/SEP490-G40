@@ -46,7 +46,10 @@ public interface ContractAnnulTransferRequestMapper {
     @Mapping(target = "fromCustomer",   expression = "java(fromCustomer)")
     @Mapping(target = "toCustomer",     expression = "java(toCustomer)")
 
-    @Mapping(target = "requestType",    expression = "java(dto.getRequestType() == null ? null : dto.getRequestType().toLowerCase())")
+    @Mapping(
+            target = "requestType",
+            expression = "java(dto.getRequestType() == null ? null : com.sep490.wcpms.entity.ContractAnnulTransferRequest.RequestType.valueOf(dto.getRequestType().toUpperCase()))"
+    )
     @Mapping(target = "requestNumber",  source = "dto.requestNumber")
     @Mapping(target = "requestDate",    source = "dto.requestDate")
     @Mapping(target = "reason",         source = "dto.reason")
