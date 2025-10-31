@@ -1,5 +1,5 @@
-import apiClient from './apiClient'; // <-- Import apiClient đã có interceptor
-
+import apiClient, { API_BASE_URL } from './apiClient'; // <-- 1. SỬA DÒNG NÀY
+import axios from 'axios'; // <-- 2. THÊM DÒNG NÀY
 /** Lấy thông tin Hợp đồng và Chỉ số cũ bằng Mã Đồng Hồ (meterCode) */
 export const getReadingConfirmationDataByMeterCode = (meterCode) => {
     return apiClient.get(`/readings/confirm-data/by-meter/${meterCode}`);
