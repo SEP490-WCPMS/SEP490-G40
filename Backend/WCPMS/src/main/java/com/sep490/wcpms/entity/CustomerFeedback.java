@@ -10,53 +10,50 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "customer_complaints")
+@Table(name = "customer_feedback")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomerComplaint {
+public class CustomerFeedback {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "complaint_number", length = 50, unique = true, nullable = false)
-    private String complaintNumber;
+    @Column(name = "feedback_number", length = 50, unique = true, nullable = false)
+    private String feedbackNumber;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_customer_complaints_customers"))
+            foreignKey = @ForeignKey(name = "fk_customer_feedback_customers"))
     private Customer customer;
 
-    @Column(name = "complaint_type", length = 50)
-    private String complaintType;  // QUALITY, SERVICE, BILLING, METER, PRESSURE
+    @Enumerated(EnumType.STRING)
+    @Column(name = "feedback_type", length = 20, nullable = false)
+    private FeedbackType feedbackType = FeedbackType.FEEDBACK;
 
     @Lob
     @Column(name = "description", columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Column(name = "complaint_date")
-    private LocalDateTime complaintDate;
+    @Column(name = "submitted_date")
+    private LocalDateTime submittedDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20)
-    private ComplaintStatus status = ComplaintStatus.PENDING;
+    @Column(name = "status", length = 20, nullable = false)
+    private FeedbackStatus status = FeedbackStatus.PENDING;
 
     @Lob
-    @Column(name = "resolution", columnDefinition = "TEXT")
-    private String resolution;
+    @Column(name = "response", columnDefinition = "TEXT")
+    private String response;
 
     @Column(name = "resolved_date")
     private LocalDateTime resolvedDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to",
-            foreignKey = @ForeignKey(name = "fk_customer_complaints_assigned_to"))
+            foreignKey = @ForeignKey(name = "fk_customer_feedback_assigned_to"))
     private Account assignedTo;
-
-    @Lob
-    @Column(name = "notes", columnDefinition = "TEXT")
-    private String notes;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -66,8 +63,15 @@ public class CustomerComplaint {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum ComplaintStatus {
-        PENDING, IN_PROGRESS, RESOLVED, REJECTED
+    public enum FeedbackType {
+        FEEDBACK,           // Gợi ý cải thiện
+        SUPPORT_REQUEST     // Khiếu nại/Hỗ trợ
+    }
+
+    public enum FeedbackStatus {
+        PENDING,       // Chờ xử lý
+        IN_PROGRESS,   // Đang xử lý
+        RESOLVED       // Đã giải quyết
     }
 }
 
