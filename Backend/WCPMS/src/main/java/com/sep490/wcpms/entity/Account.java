@@ -71,6 +71,10 @@ public class Account {
     @OneToMany(mappedBy = "technicalStaff")
     private List<Contract> technicalContracts;
 
+    // Account xử lý nhiều feedback
+    @OneToMany(mappedBy = "assignedTo")
+    private List<CustomerFeedback> assignedFeedbacks;
+
     public enum Department {
         CASHIER, ACCOUNTING, SERVICE, TECHNICAL
     }
