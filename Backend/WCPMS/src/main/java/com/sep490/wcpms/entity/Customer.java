@@ -137,6 +137,10 @@ public class Customer {
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WaterServiceContract> waterServiceContracts;
 
+    // Một customer có thể có nhiều feedback/khiếu nại
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CustomerFeedback> customerFeedbacks;
+
     public enum ConnectionType { RESIDENTIAL, COMMERCIAL, ADMINISTRATIVE }
     public enum ConnectionStatus { ACTIVE, INACTIVE, SUSPENDED, TERMINATED }
     public enum MeterStatus { WORKING, BROKEN, STOLEN, UNDER_MAINTENANCE }
