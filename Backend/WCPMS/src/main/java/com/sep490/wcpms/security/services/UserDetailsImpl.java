@@ -25,13 +25,13 @@ public class UserDetailsImpl implements UserDetails {
     @JsonIgnore // Không bao giờ trả về password qua API
     private final String password; // Password đã mã hóa
 
-    private final Boolean status; // Trạng thái kích hoạt của Account
+    private final Integer status; // Trạng thái kích hoạt của Account
 
     // Lưu quyền hạn (role) của người dùng
     private final GrantedAuthority authority;
 
     // Constructor (private để khuyến khích dùng hàm build)
-    private UserDetailsImpl(Integer id, String username, String email, String password, Boolean status, GrantedAuthority authority) {
+    private UserDetailsImpl(Integer id, String username, String email, String password, Integer status, GrantedAuthority authority) {
         this.id = id;
         this.username = username;
         this.email = email;
@@ -125,8 +125,8 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        // Tài khoản được kích hoạt nếu trường 'status' trong DB là true
-        return status != null && status;
+        // Tài khoản được kích hoạt nếu status = 1
+        return status != null && status == 1;
     }
 
     // --- (Tùy chọn) Các phương thức equals và hashCode ---
