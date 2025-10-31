@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -31,12 +33,22 @@ public class ReadingRoute {
     @Column(name = "area_coverage")
     private String areaCoverage;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_reader_id",
+            foreignKey = @ForeignKey(name = "fk_reading_routes_accounts"))
+    private Account assignedReader;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private Status status;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     public enum Status { ACTIVE, INACTIVE }
 }
