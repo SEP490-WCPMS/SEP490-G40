@@ -86,6 +86,12 @@ public class Contract {
             foreignKey = @ForeignKey(name = "fk_contracts_accounts_technical"))
     private Account technicalStaff;
 
+    // Hợp đồng cấp nước chính hiện tại
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_water_contract_id",
+            foreignKey = @ForeignKey(name = "fk_contracts_water_service_contracts"))
+    private WaterServiceContract primaryWaterContract;
+
     @Lob
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;

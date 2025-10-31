@@ -1,12 +1,13 @@
 package com.sep490.wcpms.entity;
 
-//import com.sep490.wcpms.util.Constant;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
@@ -19,67 +20,86 @@ public class ContractAnnulTransferRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // FK: contracts.id
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contract_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_annul_contract"))
     private Contract contract;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "request_type", nullable = false, length = 20)
-    private String requestType;
+    private RequestType requestType;
 
-    @Column(name = "request_number", length = 50, nullable = false)
+    @Column(name = "request_number", length = 50, nullable = false, unique = true)
     private String requestNumber;
 
     @Column(name = "request_date", nullable = false)
-    private LocalDate requestDate;
+    private LocalDateTime requestDate;
 
     @Lob
-    @Column(name = "reason", nullable = false)
+    @Column(name = "reason", columnDefinition = "TEXT", nullable = false)
     private String reason;
 
     @Lob
-    @Column(name = "attached_evidence")
-    private String attachedEvidence; // JSON list/URLs/paths tùy bạn quy ước
+    @Column(name = "attached_evidence", columnDefinition = "TEXT")
+    private String attachedEvidence;
 
-    // FK: accounts.id (người tạo yêu cầu)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "requested_by", nullable = false,
             foreignKey = @ForeignKey(name = "fk_annul_requested_by"))
     private Account requestedBy;
 
-    // FK: accounts.id (người duyệt)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "approved_by",
             foreignKey = @ForeignKey(name = "fk_annul_approved_by"))
     private Account approvedBy;
 
     @Column(name = "approval_date")
-    private LocalDate approvalDate;
+    private LocalDateTime approvalDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status", nullable = false, length = 20)
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
-    // transfer only
+    // Transfer-only fields
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "from_customer_id")
+    @JoinColumn(name = "from_customer_id",
+            foreignKey = @ForeignKey(name = "fk_annul_from_customer"))
     private Customer fromCustomer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "to_customer_id")
+    @JoinColumn(name = "to_customer_id",
+            foreignKey = @ForeignKey(name = "fk_annul_to_customer"))
     private Customer toCustomer;
 
-    @Column(name = "notes")
+    @Column(name = "settlement_amount", precision = 15, scale = 2)
+    private BigDecimal settlementAmount;
+
+    // Thời hạn theo hợp đồng
+    @Column(name = "deadline_days")
+    private Integer deadlineDays = 15;
+
+    @Column(name = "expected_completion_date")
+    private LocalDate expectedCompletionDate;
+
+    @Column(name = "completion_date")
+    private LocalDate completionDate;
+
+    @Lob
+    @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDate createdAt;
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDate updatedAt;
+    private LocalDateTime updatedAt;
+
+    public enum RequestType {
+        ANNUL,      // Hủy
+        TRANSFER    // Chuyển nhượng
+    }
 
     public enum ApprovalStatus {
         PENDING,

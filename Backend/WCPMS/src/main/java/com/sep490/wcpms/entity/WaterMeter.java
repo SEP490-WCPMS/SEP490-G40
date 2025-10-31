@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,7 +26,7 @@ public class WaterMeter {
     @Column(name = "meter_code", length = 50, nullable = false, unique = true)
     private String meterCode;
 
-    @Column(name = "serial_number", length = 100)
+    @Column(name = "serial_number", length = 100, nullable = false)
     private String serialNumber;
 
     @Column(name = "meter_type", length = 50)
@@ -33,14 +35,14 @@ public class WaterMeter {
     @Column(name = "meter_name", length = 100)
     private String meterName;
 
-    @Column(length = 100)
+    @Column(name = "supplier", length = 100)
     private String supplier;
 
-    @Column(length = 20)
+    @Column(name = "size", length = 20)
     private String size;
 
-    @Column(precision = 10, scale = 2)
-    private BigDecimal multiplier;
+    @Column(name = "multiplier", precision = 10, scale = 2)
+    private BigDecimal multiplier = BigDecimal.ONE;
 
     @Column(name = "purchase_price", precision = 15, scale = 2)
     private BigDecimal purchasePrice;
@@ -56,10 +58,15 @@ public class WaterMeter {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "meter_status", length = 20)
-    private MeterStatus meterStatus;
+    private MeterStatus meterStatus = MeterStatus.IN_STOCK;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "waterMeter", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MeterInstallation> installations;
