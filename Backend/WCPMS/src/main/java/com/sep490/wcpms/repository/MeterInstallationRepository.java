@@ -16,4 +16,7 @@ public interface MeterInstallationRepository extends JpaRepository<MeterInstalla
     /** THÊM HÀM NÀY: Tìm bản ghi lắp đặt bằng đối tượng Đồng hồ */
     // Giả định một đồng hồ chỉ được lắp 1 lần (hoặc tìm bản mới nhất)
     Optional<MeterInstallation> findByWaterMeter(WaterMeter waterMeter);
+
+    // HÀM MỚI: Tìm bản ghi lắp đặt (mới nhất) dựa trên đối tượng WaterMeter
+    Optional<MeterInstallation> findTopByWaterMeterOrderByInstallationDateDesc(WaterMeter waterMeter);
 }

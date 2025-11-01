@@ -14,6 +14,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 // --- THAY DÒNG IMPORT NÀY BẰNG ĐƯỜNG DẪN VÀ TÊN LỚP UserDetails ĐÚNG ---
 import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Sửa ở đây nếu cần
 
+import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
+import com.sep490.wcpms.dto.MeterInfoDTO;
+import org.springframework.http.HttpStatus;
+
+import com.sep490.wcpms.dto.OnSiteCalibrationDTO;
+
 import java.util.List;
 
 @RestController
@@ -107,5 +113,29 @@ public class TechnicalStaffController {
         Integer staffId = getAuthenticatedStaffId();
         ContractDetailsDTO contract = technicalStaffService.getContractDetails(id, staffId);
         return ResponseEntity.ok(contract);
+    }
+
+    // --- API MỚI (1): LẤY THÔNG TIN ĐỒNG HỒ CŨ ---
+    @GetMapping("/meter-info/{meterCode}")
+    public ResponseEntity<MeterInfoDTO> getMeterInfoByCode(@PathVariable String meterCode) {
+        Integer staffId = getAuthenticatedStaffId();
+        MeterInfoDTO info = technicalStaffService.getMeterInfoByCode(meterCode, staffId);
+        return ResponseEntity.ok(info);
+    }
+
+    // --- API MỚI (2): XỬ LÝ THAY THẾ ĐỒNG HỒ ---
+    @PostMapping("/meter-replacement")
+    public ResponseEntity<Void> processMeterReplacement(@RequestBody MeterReplacementRequestDTO dto) {
+        Integer staffId = getAuthenticatedStaffId();
+        technicalStaffService.processMeterReplacement(dto, staffId);
+        return ResponseEntity.status(HttpStatus.CREATED).build(); // 201 Created
+    }
+
+    // --- API MỚI CHO KIỂM ĐỊNH TẠI CHỖ ---
+    @PostMapping("/calibrate-on-site")
+    public ResponseEntity<Void> processOnSiteCalibration(@RequestBody OnSiteCalibrationDTO dto) {
+        Integer staffId = getAuthenticatedStaffId();
+        technicalStaffService.processOnSiteCalibration(dto, staffId);
+        return ResponseEntity.ok().build(); // Trả về 200 OK
     }
 }
