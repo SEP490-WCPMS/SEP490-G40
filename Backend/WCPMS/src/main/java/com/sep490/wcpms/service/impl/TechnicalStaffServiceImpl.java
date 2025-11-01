@@ -20,6 +20,17 @@ import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
 import com.sep490.wcpms.entity.ContractUsageDetail;
 
+import com.sep490.wcpms.dto.MeterInfoDTO;
+import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
+import com.sep490.wcpms.entity.MeterCalibration;
+import com.sep490.wcpms.repository.MeterCalibrationRepository;
+import com.sep490.wcpms.repository.MeterReadingRepository;
+import java.math.BigDecimal;
+import java.util.Optional;
+
+import com.sep490.wcpms.dto.OnSiteCalibrationDTO;
+import com.sep490.wcpms.entity.MeterCalibration;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,6 +50,10 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private WaterMeterRepository waterMeterRepository;
     @Autowired
     private WaterServiceContractRepository waterServiceContractRepository; // Repo cho Bảng 9
+    @Autowired
+    private MeterReadingRepository meterReadingRepository;
+    @Autowired
+    private MeterCalibrationRepository meterCalibrationRepository;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -192,5 +207,166 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     public ContractDetailsDTO getContractDetails(Integer contractId, Integer staffId) {
         Contract contract = getContractAndVerifyAccess(contractId, staffId);
         return contractMapper.toDto(contract);
+    }
+
+    // --- HÀM MỚI 1: LẤY THÔNG TIN ĐỒNG HỒ CŨ ---
+    @Override
+    @Transactional(readOnly = true)
+    public MeterInfoDTO getMeterInfoByCode(String meterCode, Integer staffId) {
+        // 1. Tìm đồng hồ CŨ
+        WaterMeter oldMeter = waterMeterRepository.findByMeterCode(meterCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ với mã: " + meterCode));
+
+        // 2. Tìm bản ghi lắp đặt MỚI NHẤT của đồng hồ đó
+        MeterInstallation oldInstallation = meterInstallationRepository.findTopByWaterMeterOrderByInstallationDateDesc(oldMeter)
+                .orElseThrow(() -> new ResourceNotFoundException("Đồng hồ này chưa được ghi nhận lắp đặt: " + meterCode));
+
+        // 3. Lấy HĐ Dịch vụ và Khách hàng
+        WaterServiceContract serviceContract = oldInstallation.getWaterServiceContract();
+        if (serviceContract == null) {
+            throw new ResourceNotFoundException("Không tìm thấy HĐ Dịch Vụ cho việc lắp đặt này.");
+        }
+        Customer customer = serviceContract.getCustomer();
+
+        // 4. Tìm chỉ số đọc CUỐI CÙNG
+        BigDecimal lastReading;
+        Optional<MeterReading> lastReadingRecord = meterReadingRepository
+                .findTopByMeterInstallationOrderByReadingDateDesc(oldInstallation);
+
+        if (lastReadingRecord.isPresent()) {
+            lastReading = lastReadingRecord.get().getCurrentReading(); // Lấy chỉ số MỚI của lần đọc trước
+        } else {
+            lastReading = oldInstallation.getInitialReading(); // Lấy chỉ số GỐC
+        }
+
+        // 5. Trả về DTO
+        MeterInfoDTO dto = new MeterInfoDTO();
+        dto.setCustomerName(customer.getCustomerName());
+        dto.setCustomerAddress(customer.getAddress());
+        dto.setContractNumber(serviceContract.getContractNumber()); // Số HĐ Dịch vụ
+        dto.setMeterInstallationId(oldInstallation.getId()); // ID Lắp đặt CŨ
+        dto.setLastReading(lastReading); // Chỉ số CŨ
+
+        return dto;
+    }
+
+    // --- HÀM MỚI 2: XỬ LÝ THAY THẾ ĐỒNG HỒ ---
+    @Override
+    @Transactional
+    public void processMeterReplacement(MeterReplacementRequestDTO dto, Integer staffId) {
+        Account staff = getStaffAccountById(staffId);
+
+        // 1. Lấy Đồng hồ CŨ
+        WaterMeter oldMeter = waterMeterRepository.findByMeterCode(dto.getOldMeterCode())
+                .orElseThrow(() -> new ResourceNotFoundException("Đồng hồ CŨ mã " + dto.getOldMeterCode() + " không tìm thấy."));
+
+        // 2. Lấy Bản ghi Lắp đặt CŨ
+        MeterInstallation oldInstallation = meterInstallationRepository.findTopByWaterMeterOrderByInstallationDateDesc(oldMeter)
+                .orElseThrow(() -> new ResourceNotFoundException("Bản ghi lắp đặt cho đồng hồ CŨ không tìm thấy."));
+
+        // 3. Lấy HĐ Dịch vụ và Khách hàng (từ bản ghi CŨ)
+        WaterServiceContract serviceContract = oldInstallation.getWaterServiceContract();
+        Customer customer = oldInstallation.getCustomer();
+
+        // 4. CHỐT SỔ ĐỒNG HỒ CŨ (Tạo bản ghi MeterReading cuối cùng)
+        MeterReading finalReading = new MeterReading();
+        finalReading.setMeterInstallation(oldInstallation);
+        finalReading.setReader(staff); // NV Kỹ thuật là người chốt sổ
+        finalReading.setReadingDate(LocalDate.now());
+
+        // Lấy chỉ số trước đó
+        BigDecimal previousReading;
+        Optional<MeterReading> lastReadingRecord = meterReadingRepository
+                .findTopByMeterInstallationOrderByReadingDateDesc(oldInstallation);
+        previousReading = lastReadingRecord.map(MeterReading::getCurrentReading).orElse(oldInstallation.getInitialReading());
+
+        finalReading.setPreviousReading(previousReading);
+        finalReading.setCurrentReading(dto.getOldMeterFinalReading()); // Chỉ số cuối cùng
+
+        if (dto.getOldMeterFinalReading().compareTo(previousReading) < 0) {
+            throw new IllegalArgumentException("Chỉ số cuối của đồng hồ cũ không thể nhỏ hơn chỉ số đọc trước đó.");
+        }
+        finalReading.setConsumption(dto.getOldMeterFinalReading().subtract(previousReading));
+        finalReading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED); // Đã xác nhận
+        finalReading.setNotes("Chốt sổ do thay thế đồng hồ. Lý do: " + dto.getReplacementReason());
+        meterReadingRepository.save(finalReading);
+
+        // 5. Lấy Đồng hồ MỚI
+        WaterMeter newMeter = waterMeterRepository.findByMeterCode(dto.getNewMeterCode())
+                .orElseThrow(() -> new ResourceNotFoundException("Đồng hồ MỚI mã " + dto.getNewMeterCode() + " không tìm thấy."));
+
+        if (newMeter.getMeterStatus() != WaterMeter.MeterStatus.IN_STOCK) {
+            throw new IllegalStateException("Đồng hồ MỚI không ở trạng thái 'Trong Kho'.");
+        }
+
+        // 6. TẠO BẢN GHI LẮP ĐẶT MỚI (Bảng 13)
+        MeterInstallation newInstallation = new MeterInstallation();
+        newInstallation.setContract(oldInstallation.getContract()); // Giữ HĐ Lắp đặt (Bảng 8)
+        newInstallation.setWaterServiceContract(serviceContract); // Giữ HĐ Dịch vụ (Bảng 9)
+        newInstallation.setCustomer(customer);
+        newInstallation.setWaterMeter(newMeter); // Gán đồng hồ MỚI
+        newInstallation.setTechnicalStaff(staff);
+        newInstallation.setInstallationDate(LocalDate.now());
+        newInstallation.setInitialReading(dto.getNewMeterInitialReading()); // Chỉ số ĐẦU MỚI
+        newInstallation.setInstallationImageBase64(dto.getInstallationImageBase64());
+        newInstallation.setNotes(dto.getNotes());
+        meterInstallationRepository.save(newInstallation);
+
+        // 7. XỬ LÝ LÝ DO & CẬP NHẬT TRẠNG THÁI ĐỒNG HỒ (Bảng 10)
+        if ("CALIBRATION".equalsIgnoreCase(dto.getReplacementReason())) {
+            oldMeter.setMeterStatus(WaterMeter.MeterStatus.UNDER_MAINTENANCE); // Gửi đi kiểm định
+
+            // Tạo bản ghi Kiểm định (Bảng 14)
+            MeterCalibration calibration = new MeterCalibration();
+            calibration.setMeter(oldMeter);
+            calibration.setCalibrationDate(LocalDate.now());
+            calibration.setCalibrationStatus(MeterCalibration.CalibrationStatus.PENDING); // Đang chờ kết quả
+            calibration.setCalibrationCost(dto.getCalibrationCost()); // Gán chi phí
+            calibration.setNotes("Tháo dỡ để kiểm định định kỳ 5 năm.");
+            meterCalibrationRepository.save(calibration);
+
+        } else { // Mặc định là 'BROKEN'
+            oldMeter.setMeterStatus(WaterMeter.MeterStatus.BROKEN);
+        }
+
+        newMeter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
+
+        waterMeterRepository.save(oldMeter);
+
+        waterMeterRepository.save(newMeter);
+    }
+
+    // --- HÀM MỚI CHO KIỂM ĐỊNH TẠI CHỖ ---
+    @Override
+    @Transactional
+    public void processOnSiteCalibration(OnSiteCalibrationDTO dto, Integer staffId) {
+        // 1. Lấy Đồng hồ (Bảng 10)
+        WaterMeter meter = waterMeterRepository.findByMeterCode(dto.getMeterCode())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ với mã: " + dto.getMeterCode()));
+
+        // 2. TẠO BẢN GHI KIỂM ĐỊNH MỚI (Bảng 14)
+        MeterCalibration calibration = new MeterCalibration();
+        calibration.setMeter(meter);
+        calibration.setCalibrationDate(dto.getCalibrationDate());
+        calibration.setCalibrationStatus(dto.getCalibrationStatus());
+        calibration.setNextCalibrationDate(dto.getNextCalibrationDate()); // Ngày hẹn 5 năm sau
+        calibration.setCalibrationCertificateNumber(dto.getCalibrationCertificateNumber());
+        calibration.setCalibrationCost(dto.getCalibrationCost()); // Chi phí
+        calibration.setNotes(dto.getNotes() + " (Kiểm định tại chỗ)");
+
+        meterCalibrationRepository.save(calibration);
+
+        // 3. Cập nhật Đồng hồ (Bảng 10)
+        meter.setNextMaintenanceDate(dto.getNextCalibrationDate()); // Cập nhật ngày kiểm định tiếp theo
+
+        // Nếu kiểm định hỏng (FAILED), đánh dấu đồng hồ là BROKEN
+        if (dto.getCalibrationStatus() == MeterCalibration.CalibrationStatus.FAILED) {
+            meter.setMeterStatus(WaterMeter.MeterStatus.BROKEN);
+            // (Lúc này, hệ thống có thể tạo 1 ticket mới yêu cầu "Thay thế" đồng hồ này)
+        } else {
+            meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED); // Vẫn đang hoạt động tốt
+        }
+
+        waterMeterRepository.save(meter);
     }
 }

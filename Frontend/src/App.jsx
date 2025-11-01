@@ -33,6 +33,8 @@ import StaffProfileView from './components/Staff/StaffProfileView';
 import Register from './components/Authentication/Register';
 import PrivateRoute from './PrivateRoute';
 import CustomerChangePassword from './components/Customer/CustomerChangePassword';
+import MeterReplacementForm from './components/PagesTechnical/Replacement/MeterReplacementForm'; // <-- Trang mới
+import OnSiteCalibrationForm from './components/PagesTechnical/OnSiteCalibration/OnSiteCalibrationForm'; // <-- Trang mới
 
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -89,6 +91,8 @@ function App() {
             <Route path="survey/report/:contractId" element={<SurveyForm />} />
             <Route path="install" element={<InstallContractsList />} />
             <Route path="install/detail/:contractId" element={<InstallationDetail />} />
+            <Route path="replace-meter" element={<MeterReplacementForm />} />
+            <Route path="calibrate-on-site" element={<OnSiteCalibrationForm />} />
           </Route>
         </Route>
 
