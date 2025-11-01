@@ -106,39 +106,152 @@ const CustomerProfileUpdate = () => {
 
   // Giao diện của component
   return (
-    // <CartLayout>
-    <section className="user-dashboard-section section-b-space">
-      <div className="container d-flex justify-content-center">
-        <div className="profile-form-wrapper col-12 col-md-10 col-lg-8 col-xl-6">
-          <div className="dashboard-right-sidebar">
-            <div className="title text-center">
-              <h2>Chỉnh sửa hồ sơ</h2>
-            </div>
-
-            {message && <div className={`alert ${message.includes("❌") ? 'alert-danger' : 'alert-success'} mt-3`}>{message}</div>}
-
-            <form onSubmit={handleSubmit} className="row g-4 mt-2">
-              {/* --- THÔNG TIN CÁ NHÂN --- */}
-              <div className="col-12"><input type="text" className="form-control" name="fullName" value={user.fullName} onChange={handleChange} placeholder="Họ và tên" required /></div>
-              <div className="col-12"><input type="email" className="form-control" name="email" value={user.email} onChange={handleChange} placeholder="Email" required /></div>
-              <div className="col-12"><input type="text" className="form-control" name="phone" value={user.phone} onChange={handleChange} placeholder="Số điện thoại" required /></div>
-
-              {/* --- ĐỊA CHỈ --- */}
-              <div className="col-12"><input type="text" className="form-control" name="address" value={user.address} onChange={handleChange} placeholder="Địa chỉ" required /></div>
-              <div className="col-12"><input type="text" className="form-control" name="street" value={user.street} onChange={handleChange} placeholder="Đường/Phố" required /></div>
-              <div className="col-md-6"><input type="text" className="form-control" name="district" value={user.district} onChange={handleChange} placeholder="Quận/Huyện" required /></div>
-              <div className="col-md-6"><input type="text" className="form-control" name="province" value={user.province} onChange={handleChange} placeholder="Tỉnh/Thành phố" required /></div>
-
-              {/* --- NÚT SUBMIT --- */}
-              <div className="col-12 text-center mt-4">
-                <button type="submit" className="btn theme-bg-color btn-md fw-bold text-light">Lưu thay đổi</button>
-              </div>
-            </form>
+    <section className="profile-update-section">
+      <div className="profile-container">
+        {/* Header */}
+        <div className="profile-header">
+          <div className="profile-header-icon">👤</div>
+          <div className="profile-header-content">
+            <h1>Chỉnh sửa hồ sơ cá nhân</h1>
+            <p>Cập nhật thông tin tài khoản của bạn</p>
           </div>
         </div>
+
+        {/* Message Alert */}
+        {message && (
+          <div className={`profile-alert ${message.includes("❌") ? 'alert-error' : 'alert-success'}`}>
+            <span className="alert-icon">{message.includes("❌") ? "⚠️" : "✅"}</span>
+            <span>{message.replace(/^[❌✅]\s*/, '')}</span>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="profile-form">
+          {/* Section 1: Thông tin cá nhân */}
+          <div className="form-section">
+            <div className="section-title">
+              <span className="section-icon">👤</span>
+              <h3>Thông tin cá nhân</h3>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="fullName">Họ và tên</label>
+                <input
+                  type="text"
+                  id="fullName"
+                  className="form-input"
+                  name="fullName"
+                  value={user.fullName}
+                  onChange={handleChange}
+                  placeholder="Nhập họ và tên đầy đủ"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  className="form-input"
+                  name="email"
+                  value={user.email}
+                  onChange={handleChange}
+                  placeholder="Nhập địa chỉ email"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="phone">Số điện thoại</label>
+                <input
+                  type="text"
+                  id="phone"
+                  className="form-input"
+                  name="phone"
+                  value={user.phone}
+                  onChange={handleChange}
+                  placeholder="Nhập số điện thoại"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Địa chỉ */}
+          <div className="form-section">
+            <div className="section-title">
+              <span className="section-icon">📍</span>
+              <h3>Địa chỉ</h3>
+            </div>
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label htmlFor="address">Địa chỉ</label>
+                <input
+                  type="text"
+                  id="address"
+                  className="form-input"
+                  name="address"
+                  value={user.address}
+                  onChange={handleChange}
+                  placeholder="Nhập địa chỉ đầy đủ"
+                  required
+                />
+              </div>
+              <div className="form-group full-width">
+                <label htmlFor="street">Đường/Phố</label>
+                <input
+                  type="text"
+                  id="street"
+                  className="form-input"
+                  name="street"
+                  value={user.street}
+                  onChange={handleChange}
+                  placeholder="Nhập tên đường/phố"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="district">Quận/Huyện</label>
+                <input
+                  type="text"
+                  id="district"
+                  className="form-input"
+                  name="district"
+                  value={user.district}
+                  onChange={handleChange}
+                  placeholder="Nhập quận/huyện"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="province">Tỉnh/Thành phố</label>
+                <input
+                  type="text"
+                  id="province"
+                  className="form-input"
+                  name="province"
+                  value={user.province}
+                  onChange={handleChange}
+                  placeholder="Nhập tỉnh/thành phố"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">
+              <span>💾</span>
+              Lưu thay đổi
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
+              <span>↩️</span>
+              Quay lại
+            </button>
+          </div>
+        </form>
       </div>
     </section>
-    // </CartLayout>
   );
 };
 
