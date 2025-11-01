@@ -2,6 +2,7 @@ package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.ContractRequestDTO;
 import com.sep490.wcpms.dto.ContractRequestStatusDTO;
+import com.sep490.wcpms.dto.ContractRequestDetailDTO;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.Contract.ContractStatus; // Import Enum
 import com.sep490.wcpms.entity.ContractUsageDetail;
@@ -82,5 +83,26 @@ public class ContractServiceImpl implements ContractService {
         return contracts.stream()
                 .map(ContractRequestStatusDTO::new) // DTO này sẽ lấy `status.name()` (là chuỗi "DRAFT")
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public ContractRequestDetailDTO getContractRequestDetail(Integer contractId, Integer accountId) {
+        // Tìm hợp đồng theo ID
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng với ID: " + contractId));
+
+        // Xác minh rằng hợp đồng này thuộc về khách hàng của account được chỉ định
+        if (contract.getCustomer() == null ||
+            contract.getCustomer().getAccount() == null ||
+            !contract.getCustomer().getAccount().getId().equals(accountId)) {
+            throw new ResourceNotFoundException("Bạn không có quyền truy cập vào hợp đồng này.");
+        }
+
+        // Tìm ContractUsageDetail của hợp đồng này
+        ContractUsageDetail usageDetail = contractUsageDetailRepository.findByContract_Id(contractId)
+                .orElse(null); // Nếu không có, truyền null
+
+        // Trả về DTO với chi tiết đầy đủ
+        return new ContractRequestDetailDTO(contract, usageDetail);
     }
 }

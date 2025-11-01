@@ -2,6 +2,7 @@ package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.ContractRequestDTO;
 import com.sep490.wcpms.dto.ContractRequestStatusDTO;
+import com.sep490.wcpms.dto.ContractRequestDetailDTO;
 import com.sep490.wcpms.service.ContractService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,19 @@ public class ContractRequestController {
             return ResponseEntity.ok(requests);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @GetMapping("/{contractId}/details/{accountId}")
+    public ResponseEntity<?> getContractRequestDetail(
+            @PathVariable Integer contractId,
+            @PathVariable Integer accountId) {
+        try {
+            ContractRequestDetailDTO detail = contractService.getContractRequestDetail(contractId, accountId);
+            return ResponseEntity.ok(detail);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Lỗi: " + e.getMessage());
         }
     }
 }
