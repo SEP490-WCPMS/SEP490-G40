@@ -2,16 +2,22 @@ package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.ContractCreateDTO;
 import com.sep490.wcpms.dto.ContractDTO;
+import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Contract;
+import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.exception.DuplicateResourceException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
+import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.ContractRepository;
+import com.sep490.wcpms.repository.CustomerRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +25,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ContractCustomerService {
     private final ContractRepository contractRepository;
+    private final CustomerRepository customerRepository;
+    private final AccountRepository accountRepository;
 
     public List<ContractDTO> getAllContracts() {
         return contractRepository.findAll().stream()
@@ -40,10 +48,40 @@ public class ContractCustomerService {
         }
 
         Contract contract = new Contract();
-        BeanUtils.copyProperties(createDTO, contract);
+        BeanUtils.copyProperties(createDTO, contract, "customerId", "serviceStaffId", "technicalStaffId");
+
+        // --- Map relations ---
+        Customer customer = customerRepository.findById(createDTO.getCustomerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+
+        Account serviceStaff = accountRepository.findById(createDTO.getServiceStaffId())
+                .orElseThrow(() -> new ResourceNotFoundException("Service staff not found"));
+
+        Account technicalStaff = accountRepository.findById(createDTO.getTechnicalStaffId())
+                .orElseThrow(() -> new ResourceNotFoundException("Technical staff not found"));
+
+        contract.setCustomer(customer);
+        contract.setServiceStaff(serviceStaff);
+        contract.setTechnicalStaff(technicalStaff);
+
+        contract.setContractNumber("temp");
 
         Contract savedContract = contractRepository.save(contract);
+
+        String contractNumber = generateContractNumber(savedContract.getId(), savedContract.getStartDate());
+
+        if (contractRepository.existsByContractNumber(contractNumber)) {
+            throw new DuplicateResourceException("Contract number already exists: " + contractNumber);
+        }
+        savedContract.setContractNumber(contractNumber);
+        savedContract = contractRepository.save(savedContract);
+
         return convertToDTO(savedContract);
+    }
+
+    private String generateContractNumber(Integer contractId, LocalDate startDate) {
+        String dateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE); // yyyy-MM-dd
+        return contractId + "_" + dateStr;
     }
 
     @Transactional

@@ -24,7 +24,9 @@ public class CustomerQueryServiceImpl implements CustomerQueryService {
         // Nếu cả 2 param đều null hoặc rỗng, trả về danh sách rỗng
         if ((customerName == null || customerName.trim().isEmpty()) &&
                 (identityNumber == null || identityNumber.trim().isEmpty())) {
-            return List.of();
+            return customerRepository.findAll().stream()
+                    .map(CustomerDTO::fromEntity)
+                    .collect(Collectors.toList());
         }
 
         List<Customer> customers = customerRepository.findByCustomerNameAndIdentityNumber(
