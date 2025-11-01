@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import ContractRequestDetailModal from './ContractRequestDetailModal';
 import './ContractRequestStatusList.css'; // Sẽ tạo ở bước sau
 // import Layout from '...'; // Import layout chung của bạn
 
@@ -8,6 +9,8 @@ const ContractRequestStatusList = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [selectedContractId, setSelectedContractId] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -66,6 +69,16 @@ const ContractRequestStatusList = () => {
         return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
+    const handleViewDetail = (contractId) => {
+        setSelectedContractId(contractId);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedContractId(null);
+    };
+
     if (loading) {
         return <div className="loading-container">Đang tải dữ liệu...</div>;
     }
@@ -75,34 +88,51 @@ const ContractRequestStatusList = () => {
     }
 
     return (
-        // <Layout>
-        <div className="status-list-container">
-            <h2>Lịch sử Yêu cầu Hợp đồng</h2>
-            {requests.length === 0 ? (
-                <p className="no-requests">Bạn chưa có yêu cầu hợp đồng nào.</p>
-            ) : (
-                <div className="request-list">
-                    {requests.map(req => {
-                        const statusDisplay = getStatusDisplay(req.status);
-                        return (
-                            <div key={req.contractId} className="request-card">
-                                <div className="request-header">
-                                    <span className="request-number">{req.contractNumber}</span>
-                                    <span className={`status-badge ${statusDisplay.className}`}>
-                                        {statusDisplay.text}
-                                    </span>
+        <>
+            <div className="status-list-container">
+                <h2>Lịch sử Yêu cầu Hợp đồng</h2>
+                {requests.length === 0 ? (
+                    <p className="no-requests">Bạn chưa có yêu cầu hợp đồng nào.</p>
+                ) : (
+                    <div className="request-list">
+                        {requests.map(req => {
+                            const statusDisplay = getStatusDisplay(req.status);
+                            return (
+                                <div key={req.contractId} className="request-card">
+                                    <div className="request-header">
+                                        <span className="request-number">{req.contractNumber}</span>
+                                        <span className={`status-badge ${statusDisplay.className}`}>
+                                            {statusDisplay.text}
+                                        </span>
+                                    </div>
+                                    <div className="request-body">
+                                        <p><strong>Ngày gửi yêu cầu:</strong> {formatDate(req.applicationDate)}</p>
+                                        <p><strong>Ghi chú của bạn:</strong> {req.notes || '(Không có)'}</p>
+                                        <div className="request-actions">
+                                            <button
+                                                className="detail-button"
+                                                onClick={() => handleViewDetail(req.contractId)}
+                                            >
+                                                👁️ Xem chi tiết
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="request-body">
-                                    <p><strong>Ngày gửi yêu cầu:</strong> {formatDate(req.applicationDate)}</p>
-                                    <p><strong>Ghi chú của bạn:</strong> {req.notes || '(Không có)'}</p>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-        // </Layout>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Modal chi tiết hợp đồng */}
+            <ContractRequestDetailModal
+                isOpen={isModalOpen}
+                contractId={selectedContractId}
+                accountId={JSON.parse(localStorage.getItem('user'))?.id}
+                token={localStorage.getItem('token')}
+                onClose={handleCloseModal}
+            />
+        </>
     );
 };
 
