@@ -32,13 +32,14 @@ import ContractDetail from './components/Customer/ContractDetail';
 import StaffProfileView from './components/Staff/StaffProfileView';
 import Register from './components/Authentication/Register';
 import PrivateRoute from './PrivateRoute';
+import CustomerChangePassword from './components/Customer/CustomerChangePassword';
 import MeterReplacementForm from './components/PagesTechnical/Replacement/MeterReplacementForm'; // <-- Trang mới
 import OnSiteCalibrationForm from './components/PagesTechnical/OnSiteCalibration/OnSiteCalibrationForm'; // <-- Trang mới
 
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
-  <div style={{display: 'flex', flexDirection: 'column', minHeight: '100vh'}}>
+  <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
     <Header isAuthenticated={isAuthenticated} user={user} />
     <main style={{ flex: 1 }}>
       {children}
@@ -53,7 +54,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        
+
         {/* === PUBLIC ROUTES (Đăng nhập, Đăng ký) === */}
         {/* Các trang này không cần layout hoặc layout riêng */}
         <Route path="/login" element={<Login />} />
@@ -69,14 +70,16 @@ function App() {
           <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />
           <Route path="/contract-list" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractList /></PublicLayout>} />
           <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
+          <Route path="/change-password" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerChangePassword /></PublicLayout>} />
+
         </Route>
-        
+
 
         {/* === STAFF COMMON ROUTES (Cần đăng nhập, nhiều vai trò) === */}
         <Route element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
-           <Route path="/staff/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+          <Route path="/staff/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
         </Route>
-        
+
 
         {/* === STAFF LAYOUT ROUTES (Layout riêng, không Header/Footer chung) === */}
 
