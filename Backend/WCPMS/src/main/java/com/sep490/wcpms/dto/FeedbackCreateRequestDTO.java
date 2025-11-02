@@ -14,5 +14,12 @@ public class FeedbackCreateRequestDTO {
     @NotEmpty(message = "Nội dung không được để trống")
     private String description; // Nội dung báo hỏng/yêu cầu
 
-    // (FeedbackType sẽ được set cứng là SUPPORT_REQUEST trong service)
+    // --- THÊM TRƯỜNG MỚI ---
+    /**
+     * Loại yêu cầu do FE gửi lên,
+     * sẽ là "FEEDBACK" hoặc "SUPPORT_REQUEST"
+     */
+    @NotEmpty(message = "Loại yêu cầu không được để trống")
+    private String feedbackType;
+    // --- HẾT PHẦN THÊM ---
 }

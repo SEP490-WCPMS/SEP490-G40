@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitSupportTicket } from '../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
+import { submitSupportTicket } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
 
 /**
  * Trang "Cách A": Cho phép Khách hàng tự gửi Yêu cầu Hỗ trợ (Báo hỏng).
  */
 function CustomerSupportForm() {
+    // --- THÊM STATE MỚI ---
+    const [feedbackType, setFeedbackType] = useState('SUPPORT_REQUEST'); // Mặc định là 'Báo hỏng'
+    // ---
     const [description, setDescription] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -25,9 +28,10 @@ function CustomerSupportForm() {
         
         try {
             // Gọi API "Cách A"
-            await submitSupportTicket(description);
+            await submitSupportTicket(description, feedbackType);
             setSuccess("Gửi yêu cầu hỗ trợ thành công! Nhân viên dịch vụ sẽ sớm liên hệ với bạn.");
             setDescription(''); // Xóa form
+            setFeedbackType('SUPPORT_REQUEST'); // Reset lại giá trị mặc định
             // Tùy chọn: Chuyển hướng sau vài giây
             // setTimeout(() => navigate('/my-requests'), 2000);
         } catch (err) {
@@ -65,6 +69,26 @@ function CustomerSupportForm() {
                         <p>{success}</p>
                     </div>
                 )}
+
+                {/* --- THÊM Ô CHỌN LOẠI YÊU CẦU --- */}
+                <div>
+                    <label htmlFor="feedbackType" className="block mb-1.5 text-sm font-medium text-gray-700">
+                        Loại yêu cầu <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        id="feedbackType"
+                        name="feedbackType" // Thêm name
+                        value={feedbackType}
+                        onChange={(e) => setFeedbackType(e.target.value)}
+                        required
+                        disabled={submitting}
+                        className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="SUPPORT_REQUEST">Yêu cầu Hỗ trợ (Báo hỏng, Khiếu nại)</option>
+                        <option value="FEEDBACK">Góp ý / Cải thiện dịch vụ</option>
+                    </select>
+                </div>
+                {/* --- HẾT PHẦN THÊM --- */}
 
                 {/* Ô nhập nội dung */}
                 <div>

@@ -292,18 +292,52 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 .collect(Collectors.toList());
     }
 
+    // === CẬP NHẬT HÀM NÀY (Bước 4) ===
     @Override
     @Transactional(readOnly = true)
     public Page<SupportTicketDTO> getSupportTickets(Pageable pageable) {
-        // Lấy các ticket loại "Yêu cầu Hỗ trợ" VÀ đang "Chờ xử lý"
-        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByFeedbackTypeAndStatus(
-                CustomerFeedback.FeedbackType.SUPPORT_REQUEST,
+        // SỬA LẠI: Lấy TẤT CẢ các ticket (cả SUPPORT_REQUEST và FEEDBACK)
+        // đang ở trạng thái PENDING, bằng cách gọi hàm findByStatus.
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByStatus(
                 CustomerFeedback.Status.PENDING,
                 pageable
         );
         // Map kết quả sang DTO để trả về
         return tickets.map(supportTicketMapper::toDto);
     }
+    // --- HẾT PHẦN CẬP NHẬT ---
+
+    // === HÀM MỚI (Bước 4) ===
+    @Override
+    @Transactional
+    public SupportTicketDTO submitFeedbackReply(Integer ticketId, FeedbackReplyDTO dto, Integer staffId) {
+        // 1. Tìm ticket
+        CustomerFeedback ticket = customerFeedbackRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Góp ý (Ticket) với ID: " + ticketId));
+
+        // 2. Tìm NV Dịch vụ (người trả lời)
+        Account staff = accountRepository.findById(staffId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Nhân viên Dịch vụ với ID: " + staffId));
+
+        // 3. Kiểm tra loại và trạng thái
+        if (ticket.getFeedbackType() != CustomerFeedback.FeedbackType.FEEDBACK) {
+            throw new IllegalStateException("Chức năng này chỉ dùng để trả lời 'FEEDBACK'. (Yêu cầu Hỗ trợ cần được 'Gán việc').");
+        }
+        if (ticket.getStatus() != CustomerFeedback.Status.PENDING) {
+            throw new IllegalStateException("Chỉ có thể trả lời các Góp ý đang ở trạng thái PENDING.");
+        }
+
+        // 4. Cập nhật nội dung trả lời và trạng thái
+        ticket.setResponse(dto.getResponseContent()); // Gán nội dung trả lời
+        ticket.setAssignedTo(staff); // Ghi nhận NV Dịch vụ đã xử lý (cột assigned_to)
+        ticket.setStatus(CustomerFeedback.Status.RESOLVED); // Chuyển sang "Đã giải quyết"
+        ticket.setResolvedDate(LocalDateTime.now()); // Ghi nhận ngày giải quyết
+
+        CustomerFeedback savedTicket = customerFeedbackRepository.save(ticket);
+
+        return supportTicketMapper.toDto(savedTicket);
+    }
+    // --- HẾT PHẦN THÊM ---
 
     @Override
     @Transactional

@@ -1,11 +1,13 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.*;
+import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.ServiceStaffContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 // --- CÁC IMPORT BỊ THIẾU ---
@@ -14,6 +16,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault; // <-- Bị thiếu
 import org.springframework.http.ResponseEntity; // <-- Bị thiếu
 import com.sep490.wcpms.service.CustomerFeedbackService;
+import org.springframework.security.core.Authentication;
+import com.sep490.wcpms.exception.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 // --- HẾT PHẦN IMPORT ---
@@ -25,6 +29,19 @@ public class ServiceStaffContractController {
 
     private final ServiceStaffContractService service;
     private final CustomerFeedbackService customerFeedbackService; // Inject service feedback
+
+    // === HÀM HELPER LẤY ID (Giữ nguyên) ===
+    private Integer getAuthenticatedStaffId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AccessDeniedException("User is not authenticated.");
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetailsImpl) { // SỬA TÊN NÀY
+            return ((UserDetailsImpl) principal).getId(); // SỬA TÊN NÀY
+        }
+        throw new IllegalStateException("Cannot determine user ID from Principal.");
+    }
 
     @GetMapping
     public Page<ServiceStaffContractDTO> listContracts(
@@ -202,6 +219,24 @@ public class ServiceStaffContractController {
         SupportTicketDTO assignedTicket = service.assignTechToTicket(ticketId, technicalStaffId); // Dùng 'service'
         return ResponseEntity.ok(assignedTicket);
     }
+
+    // === THÊM API MỚI (Bước 5) ===
+
+    /**
+     * API Trả lời ticket Góp ý (FEEDBACK)
+     * Path: PUT /api/service/support-tickets/{ticketId}/reply
+     * Body: { "responseContent": "..." }
+     */
+    @PutMapping("/support-tickets/{ticketId}/reply")
+    public ResponseEntity<SupportTicketDTO> submitFeedbackReply(
+            @PathVariable Integer ticketId,
+            @RequestBody FeedbackReplyDTO dto // Dùng DTO mới
+    ) {
+        Integer staffId = getAuthenticatedStaffId(); // Lấy ID NV Dịch vụ
+        SupportTicketDTO resolvedTicket = service.submitFeedbackReply(ticketId, dto, staffId);
+        return ResponseEntity.ok(resolvedTicket);
+    }
+    // --- HẾT PHẦN THÊM ---
 
 
     // === API MỚI CHO "CÁCH B" (Bước 8) ===

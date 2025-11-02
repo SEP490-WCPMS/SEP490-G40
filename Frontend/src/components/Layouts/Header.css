@@ -415,6 +415,136 @@
   display: block; /* Hiện ra khi hover */
 }
 
+/* --- BẮT ĐẦU: CSS NÂNG CẤP CHO DROPDOWN --- */
+/* (Xóa đoạn CSS cũ của bạn cho nav-dropdown và thay bằng đoạn này) */
+
+/* 1. Class cha ("Hỗ Trợ", "Hợp đồng") */
+.nav-item.nav-dropdown {
+  position: relative;
+  /* Chúng ta không cần các style flex hay height ở đây nữa */
+}
+
+/* 2. Trigger (Bao gồm chữ "Hỗ Trợ" + icon) */
+.nav-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* Khoảng cách giữa chữ và icon */
+  cursor: pointer;
+  
+  /* Phần này quan trọng: 
+    Giúp nó kế thừa style của .nav-item thông thường 
+    và có chỗ cho đường gạch chân animation
+  */
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  position: relative;
+  /* Đẩy đường gạch chân xuống dưới giống các nav-item khác */
+  padding-bottom: 5px; 
+}
+
+/* 3. Icon chevron (mũi tên) */
+.nav-dropdown-chevron {
+  transition: transform 0.3s ease;
+  margin-top: 2px; /* Căn chỉnh icon một chút */
+}
+
+/* 4. Menu con (danh sách xổ xuống) - Cải tiến animation */
+.nav-dropdown .dropdown-menu {
+  display: block; /* Luôn là block để animation hoạt động */
+  position: absolute;
+  top: 100%; /* Ngay dưới phần tử cha */
+  left: 50%; /* Bắt đầu từ giữa */
+  transform: translateX(-50%); /* Căn ra giữa */
+  margin-top: 10px; /* Khoảng hở đẹp mắt */
+
+  background-color: #ffffff;
+  min-width: 240px; /* Tăng độ rộng một chút cho đẹp */
+  border-radius: 8px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1); /* Shadow đẹp hơn */
+  z-index: 1000;
+  padding: 8px; /* Padding cho cả menu */
+  list-style: none;
+  
+  /* Ghi đè các thuộc tính kế thừa không mong muốn */
+  flex-direction: column;
+  height: auto;
+  margin-left: 0;
+
+  /* --- ANIMATION --- */
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px); /* Bắt đầu từ dưới 10px */
+  visibility: hidden; /* Quan trọng: ẩn khỏi DOM */
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+/* 5. Hiển thị menu con khi di chuột */
+.nav-dropdown:hover .dropdown-menu {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0); /* Về vị trí 0 */
+  visibility: visible; /* Hiện ra */
+}
+
+/* 6. Xoay icon chevron khi hover */
+.nav-dropdown:hover .nav-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+/* 7. Đồng bộ hover effect cho trigger (Giống .nav-item:hover) */
+.nav-dropdown:hover .nav-dropdown-trigger {
+  color: #93c5fd;
+}
+
+/* 8. Thêm đường gạch chân (Giống .nav-item::after) */
+.nav-dropdown-trigger::after {
+  content: '';
+  position: absolute;
+  bottom: 0; 
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #60a5fa;
+  transition: width 0.3s ease;
+}
+
+/* 9. Hiện đường gạch chân khi hover (Giống .nav-item:hover::after) */
+.nav-dropdown:hover .nav-dropdown-trigger::after {
+  width: 100%;
+}
+
+
+/* 10. Các mục con bên trong menu (li a) */
+.dropdown-menu li {
+  width: 100%;
+  height: auto;
+  margin: 0;
+}
+
+.dropdown-menu li a {
+  display: block;
+  width: 100%;
+  padding: 10px 16px; /* Padding nhất quán */
+  color: #334155; /* Màu chữ tối (slate-700) */
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 6px; /* Bo tròn cho từng item */
+  font-size: 14px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  
+  /* Ghi đè */
+  height: auto;
+  background-color: transparent;
+}
+
+/* 11. Hover cho từng mục con */
+.dropdown-menu li a:hover {
+  background-color: #f3f4f6; /* Màu xám nhạt (gray-100) */
+  color: #1e40af; /* Màu xanh chủ đạo (blue-800) */
+}
+
+/* --- HẾT: CSS NÂNG CẤP CHO DROPDOWN --- */
+
 /* 4. Các mục con bên trong menu */
 .dropdown-menu li {
   width: 100%;

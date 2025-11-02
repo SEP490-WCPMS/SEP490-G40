@@ -42,6 +42,11 @@ public class SupportTicketMapper {
             dto.setAssignedToName(assignedTo.getFullName());
         }
 
+        // --- THÊM 2 DÒNG BỊ THIẾU ---
+        dto.setResponse(entity.getResponse()); // Lấy nội dung phản hồi
+        dto.setResolvedDate(entity.getResolvedDate()); // Lấy ngày giải quyết
+        // --- HẾT PHẦN THÊM ---
+
         return dto;
     }
 }
