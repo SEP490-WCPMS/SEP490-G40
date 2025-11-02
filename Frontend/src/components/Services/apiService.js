@@ -133,6 +133,85 @@ export const getProfileById = (accountId) => {
     return axios.get(`${API_BASE_URL}/profile/${accountId}`);
 };
 
+/**
+ * Lấy danh sách tất cả khách hàng
+ * @returns {Promise<Array<{id: number, customerName: string, customerCode: string}>>}
+ */
+export const getAllCustomers = () => {
+    return apiClient.get('/accounts/customer');
+};
+
+/**
+ * Lấy danh sách nhân viên kỹ thuật
+ * @returns {Promise<Array<{id: number, fullName: string}>>}
+ */
+export const getTechnicalStaffList = async () => {
+    try {
+        return await apiClient.get('/accounts/technical-staff');
+    } catch (error) {
+        // Fallback sang query param nếu backend không có endpoint mới
+        if (error.response?.status === 400 || error.response?.status === 404) {
+            return apiClient.get('/accounts', {
+                params: { role: 'TECHNICAL_STAFF' }
+            });
+        }
+        throw error;
+    }
+};
+
+/**
+ * Tạo hợp đồng mới
+ * @param {object} contractData Dữ liệu hợp đồng
+ * @returns {Promise<ContractDTO>}
+ */
+export const createContract = (contractData) => {
+    return apiClient.post(`${API_BASE_URL}/v1/contracts`, contractData);
+};
+
+/**
+ * Tạo yêu cầu hủy/chuyển nhượng hợp đồng
+ * @param {object} requestData Dữ liệu yêu cầu
+ * @returns {Promise}
+ */
+export const createContractRequest = (requestData) => {
+    return apiClient.post('/v1/contract-requests', requestData);
+};
+
+/**
+ * Tìm kiếm khách hàng theo tên hoặc CMND/CCCD
+ * @param {object} params { customerName, identityNumber }
+ * @returns {Promise}
+ */
+export const searchCustomers = (params) => {
+    const queryParams = {};
+    if (params.customerName) queryParams.customerName = params.customerName;
+    if (params.identityNumber) queryParams.identityNumber = params.identityNumber;
+    return apiClient.get('/accounts/customer', { params: queryParams });
+};
+
+/**
+ * Lấy thông tin khách hàng đang đăng nhập
+ * @returns {Promise}
+ */
+export const getCurrentCustomerInfo = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const accountId = user?.id;
+    if (!accountId) {
+        return Promise.reject(new Error('No logged in user'));
+    }
+    // Giả sử bạn có API để lấy customer info từ account id
+    return apiClient.get(`/accounts/${accountId}/customer`);
+};
+
+/**
+ * Lấy danh sách hợp đồng của một khách hàng cụ thể
+ * @param {number} customerId ID của khách hàng
+ * @returns {Promise}
+ */
+export const getContractsByCustomerId = (customerId) => {
+    return apiClient.get(`/v1/contracts/customer/${customerId}`);
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {

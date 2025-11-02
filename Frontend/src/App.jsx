@@ -25,6 +25,7 @@ import ApprovedContractsPage from './components/PagesService/ApprovedContractsPa
 import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
 import ContractTransferList from './components/PagesService/ContractManagement/Requests/ContractTransferList';
 import ContractAnnulList from './components/PagesService/ContractManagement/Requests/ContractAnnulList';
+import ContractCreatePage from './components/PagesService/ContractManagement/ContractCreatePage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import ContractList from './components/Customer/ContractList';
@@ -41,7 +42,7 @@ import CustomerSupportForm from './components/Customer/Feedback/CustomerSupportF
 import MySupportTicketList from './components/Customer/Feedback/MySupportTicketList'; // <-- Trang mới
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
-
+import ContractRequestChange from './components/Customer/ContractRequestChange';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -73,6 +74,7 @@ function App() {
         <Route element={<PrivateRoute allowedRoles={['CUSTOMER']} />}>
           <Route path="/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerProfileUpdate /></PublicLayout>} />
           <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
+          <Route path="/contract-request-change" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestChange /></PublicLayout>} />
           <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />
           <Route path="/contract-list" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractList /></PublicLayout>} />
           <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
@@ -120,6 +122,7 @@ function App() {
           <Route path="/service" element={<LayoutService />}>
             <Route index element={<ServiceDashboardPage />} />
             <Route path="requests" element={<ContractRequestsPage />} />
+            <Route path="contract-create" element={<ContractCreatePage />} />
             <Route path="survey-reviews" element={<SurveyReviewPage />} />
             <Route path="approved-contracts" element={<ApprovedContractsPage />} />
             <Route path="active-contracts" element={<ActiveContractsPage />} />

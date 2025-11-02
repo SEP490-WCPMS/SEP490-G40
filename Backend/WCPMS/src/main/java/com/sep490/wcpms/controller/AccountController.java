@@ -1,8 +1,10 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.AccountSummaryDTO;
+import com.sep490.wcpms.dto.CustomerDTO;
 import com.sep490.wcpms.entity.Role;
 import com.sep490.wcpms.service.AccountQueryService;
+import com.sep490.wcpms.service.CustomerQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +19,7 @@ import java.util.List;
 public class AccountController {
 
     private final AccountQueryService accountQueryService;
+    private final CustomerQueryService customerQueryService;
 
     // GET /api/accounts?role=TECHNICAL_STAFF hoặc roleName=TECHNICAL_STAFF
     @GetMapping
@@ -37,5 +40,13 @@ public class AccountController {
     @GetMapping("/technical-staff")
     public List<AccountSummaryDTO> findTechnicalStaff() {
         return accountQueryService.findByRole(Role.RoleName.TECHNICAL_STAFF);
+    }
+
+    // GET /api/accounts/customer?customerName=xxx&identityNumber=yyy
+    @GetMapping("/customer")
+    public List<CustomerDTO> findCustomer(
+            @RequestParam(required = false) String customerName,
+            @RequestParam(required = false) String identityNumber) {
+        return customerQueryService.findCustomers(customerName, identityNumber);
     }
 }
