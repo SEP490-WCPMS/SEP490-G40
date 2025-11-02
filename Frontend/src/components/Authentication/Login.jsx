@@ -23,28 +23,37 @@ export default function Login() {
     }
 
     try {
-      await login(username, password);
+      // 1. Gọi login (giả định hàm này LƯU token + user vào localStorage)
+      const loginResponse = await login(username, password); 
       
-      // Lấy thông tin role để chuyển hướng đến dashboard tương ứng
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user && user.roleName) {
-        if (user.roleName === 'CASHIER_STAFF') {
-          navigate('/cashier');
-        } else if (user.roleName === 'TECHNICAL_STAFF') {
-          navigate('/technical');
-        } else if (user.roleName === 'SERVICE_STAFF') {
-          navigate('/service');
-        } else if (user.roleName === 'ADMIN') {
-          navigate('/admin/dashboard');
-        } else if (user.roleName === 'ACCOUNTING_STAFF') {
-          navigate('/accounting');
-        } else {
-          // Mặc định hoặc CUSTOMER
-          navigate('/');
+      // 2. Lấy roleName từ response (an toàn hơn là đọc lại từ localStorage)
+      const roleName = loginResponse?.user?.roleName || JSON.parse(localStorage.getItem('user'))?.roleName;
+
+      // 3. Quyết định đường dẫn
+      let targetPath = '/'; // Mặc định
+      if (roleName) {
+        if (roleName === 'CASHIER_STAFF') {
+          targetPath = '/cashier';
+        } else if (roleName === 'TECHNICAL_STAFF') {
+          targetPath = '/technical';
+        } else if (roleName === 'SERVICE_STAFF') {
+          targetPath = '/service';
+        } else if (roleName === 'ADMIN') {
+          targetPath = '/admin/dashboard';
+        } else if (roleName === 'ACCOUNTING_STAFF') {
+          targetPath = '/accounting';
         }
-      } else {
-         navigate('/');
       }
+
+      // 4. Navigate VÀ TẢI LẠI TRANG
+      // navigate(targetPath); // <-- CÁCH CŨ (GÂY LỖI)
+      
+      // --- SỬA LẠI THÀNH CÁCH NÀY ---
+      // Gán thẳng URL và tải lại trang.
+      // Điều này đảm bảo toàn bộ ứng dụng (bao gồm apiService.js)
+      // được khởi tạo lại và Interceptor sẽ đọc token mới nhất.
+      window.location.href = targetPath; 
+      // --- HẾT PHẦN SỬA ---
 
     } catch (err) {
       // Hiển thị lỗi từ API (ví dụ: "Mật khẩu không đúng." )
