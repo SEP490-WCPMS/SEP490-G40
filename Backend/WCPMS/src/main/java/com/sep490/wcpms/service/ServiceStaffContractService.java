@@ -1,9 +1,13 @@
 package com.sep490.wcpms.service;
 
+import com.sep490.wcpms.dto.AccountDTO; // <-- THÊM
 import com.sep490.wcpms.dto.ServiceStaffContractDTO;
 import com.sep490.wcpms.dto.ServiceStaffUpdateContractRequestDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.sep490.wcpms.dto.SupportTicketDTO; // <-- THÊM IMPORT
+import java.util.List; // <-- THÊM
+import com.sep490.wcpms.dto.CustomerSimpleDTO; // <-- Import cho hàm lấy DS KH
 
 public interface ServiceStaffContractService {
 
@@ -61,4 +65,23 @@ public interface ServiceStaffContractService {
      * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
      */
     ServiceStaffContractDTO terminateContract(Integer contractId, String reason);
+
+    // === THÊM 3 HÀM MỚI CHO BƯỚC 2 ===
+
+    /** Lấy danh sách NV Kỹ thuật (để gán việc) */
+    List<AccountDTO> getAvailableTechStaff();
+
+    /** Lấy danh sách Yêu cầu Hỗ trợ (PENDING) */
+    Page<SupportTicketDTO> getSupportTickets(Pageable pageable);
+
+    /** Gán ticket cho NV Kỹ thuật và đổi status sang IN_PROGRESS */
+    SupportTicketDTO assignTechToTicket(Integer ticketId, Integer technicalStaffId);
+
+    /**
+     * Lấy danh sách Khách hàng rút gọn (ID, Tên, Mã).
+     * Dùng cho form "Tạo Ticket Hộ Khách Hàng".
+     * (Hàm thứ 1 của "Bước 8")
+     */
+    List<CustomerSimpleDTO> getSimpleCustomerList();
+
 }

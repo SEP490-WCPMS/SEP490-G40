@@ -23,25 +23,24 @@ public class CustomerFeedback {
     @Column(name = "feedback_number", length = 50, unique = true, nullable = false)
     private String feedbackNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_customer_feedback_customers"))
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "feedback_type", length = 20, nullable = false)
+    @Column(name = "feedback_type")
     private FeedbackType feedbackType = FeedbackType.FEEDBACK;
 
     @Lob
-    @Column(name = "description", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "submitted_date")
     private LocalDateTime submittedDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20, nullable = false)
-    private FeedbackStatus status = FeedbackStatus.PENDING;
+    @Column(name = "status")
+    private Status status = Status.PENDING;
 
     @Lob
     @Column(name = "response", columnDefinition = "TEXT")
@@ -51,9 +50,15 @@ public class CustomerFeedback {
     private LocalDateTime resolvedDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_to",
-            foreignKey = @ForeignKey(name = "fk_customer_feedback_assigned_to"))
+    @JoinColumn(name = "assigned_to") // Có thể là Service Staff hoặc Technical Staff
     private Account assignedTo;
+
+    // --- THÊM TRƯỜNG NÀY VÀO ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "requested_by", // Khớp với tên cột SQL
+            foreignKey = @ForeignKey(name = "fk_feedback_requested_by")) // Thêm tên FK
+    private Account requestedBy; // Người tạo ticket (Customer hoặc Service Staff)
+    // --- HẾT PHẦN THÊM ---
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -64,14 +69,13 @@ public class CustomerFeedback {
     private LocalDateTime updatedAt;
 
     public enum FeedbackType {
-        FEEDBACK,           // Gợi ý cải thiện
-        SUPPORT_REQUEST     // Khiếu nại/Hỗ trợ
+        FEEDBACK,
+        SUPPORT_REQUEST // Yêu cầu hỗ trợ (gồm hỏng, kiểm định...)
     }
 
-    public enum FeedbackStatus {
-        PENDING,       // Chờ xử lý
-        IN_PROGRESS,   // Đang xử lý
-        RESOLVED       // Đã giải quyết
+    public enum Status {
+        PENDING,     // Chờ xử lý (Service Staff thấy)
+        IN_PROGRESS, // Đang xử lý (Đã gán cho Technical Staff)
+        RESOLVED     // Đã giải quyết
     }
 }
-

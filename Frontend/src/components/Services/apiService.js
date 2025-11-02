@@ -315,6 +315,47 @@ export const getContractChartData = (startDate, endDate) => {
     });
 };
 
+// === API QUẢN LÝ YÊU CẦU HỖ TRỢ (BƯỚC 2) ===
+
+/** Lấy danh sách NV Kỹ thuật (để điền vào dropdown gán việc) */
+export const getAvailableTechStaff = () => {
+    // API này chúng ta đã thêm vào ServiceStaffController
+    return apiClient.get('/service/contracts/accounts/technical-staff');
+};
+
+/** Lấy danh sách Yêu cầu Hỗ trợ (Tickets) đang chờ xử lý (PENDING) */
+export const getSupportTickets = (params) => {
+    // params: { page?: number, size?: number, sort?: string }
+    return apiClient.get('/service/contracts/support-tickets', { params });
+};
+
+/** Gán một ticket cho NV Kỹ thuật */
+export const assignTechToTicket = (ticketId, technicalStaffId) => {
+    // API này nhận body là { "technicalStaffId": ... }
+    return apiClient.put(`/service/contracts/support-tickets/${ticketId}/assign`, { technicalStaffId });
+};
+
+
+// === API MỚI CHO "CÁCH B" (NV DỊCH VỤ TẠO TICKET HỘ) ===
+
+/** (Hàm mới 1) Lấy danh sách Khách hàng rút gọn */
+export const getAllCustomersSimple = () => {
+    return apiClient.get('/service/contracts/customers/simple-list'); 
+};
+
+/** (Hàm mới 2 - Cách B) Service Staff tạo ticket hộ khách hàng */
+export const createSupportTicketForCustomer = (customerId, description) => {
+    const dto = {
+        customerId: customerId,
+        description: description
+    };
+    // Gọi API BE đã tạo: /api/feedback/service
+    // (Lưu ý: API này nằm trong CustomerFeedbackController, nhưng Service Staff có quyền gọi)
+    return apiClient.post('/feedback/service', dto);
+};
+// --- HẾT PHẦN THÊM MỚI ---
+
+
 // === API CHO SERVICE STAFF DASHBOARD (NEW) ===
 const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service/dashboard`;
 

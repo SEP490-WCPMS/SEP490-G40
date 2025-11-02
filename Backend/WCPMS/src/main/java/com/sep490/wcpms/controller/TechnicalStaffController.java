@@ -1,5 +1,7 @@
 package com.sep490.wcpms.controller;
 
+import com.sep490.wcpms.dto.*; // Import hết
+import lombok.RequiredArgsConstructor; // Dùng RequiredArgsConstructor
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.InstallationCompleteRequestDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
@@ -11,13 +13,25 @@ import org.springframework.web.bind.annotation.*;
 import com.sep490.wcpms.exception.AccessDeniedException; // Hoặc dùng SecurityException
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.sep490.wcpms.exception.AccessDeniedException;
 // --- THAY DÒNG IMPORT NÀY BẰNG ĐƯỜNG DẪN VÀ TÊN LỚP UserDetails ĐÚNG ---
 import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Sửa ở đây nếu cần
+
+import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
+import com.sep490.wcpms.dto.MeterInfoDTO;
+import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+
+import com.sep490.wcpms.dto.OnSiteCalibrationDTO;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/technical")
+@RequiredArgsConstructor // Dùng RequiredArgsConstructor
 @CrossOrigin("*")
 public class TechnicalStaffController {
 
@@ -107,5 +121,44 @@ public class TechnicalStaffController {
         Integer staffId = getAuthenticatedStaffId();
         ContractDetailsDTO contract = technicalStaffService.getContractDetails(id, staffId);
         return ResponseEntity.ok(contract);
+    }
+
+    // --- API MỚI (1): LẤY THÔNG TIN ĐỒNG HỒ CŨ ---
+    @GetMapping("/meter-info/{meterCode}")
+    public ResponseEntity<MeterInfoDTO> getMeterInfoByCode(@PathVariable String meterCode) {
+        Integer staffId = getAuthenticatedStaffId();
+        MeterInfoDTO info = technicalStaffService.getMeterInfoByCode(meterCode, staffId);
+        return ResponseEntity.ok(info);
+    }
+
+    // --- API MỚI (2): XỬ LÝ THAY THẾ ĐỒNG HỒ ---
+    @PostMapping("/meter-replacement")
+    public ResponseEntity<Void> processMeterReplacement(@RequestBody MeterReplacementRequestDTO dto) {
+        Integer staffId = getAuthenticatedStaffId();
+        technicalStaffService.processMeterReplacement(dto, staffId);
+        return ResponseEntity.status(HttpStatus.CREATED).build(); // 201 Created
+    }
+
+    // --- API MỚI CHO KIỂM ĐỊNH TẠI CHỖ ---
+    @PostMapping("/calibrate-on-site")
+    public ResponseEntity<Void> processOnSiteCalibration(@RequestBody OnSiteCalibrationDTO dto) {
+        Integer staffId = getAuthenticatedStaffId();
+        technicalStaffService.processOnSiteCalibration(dto, staffId);
+        return ResponseEntity.ok().build(); // Trả về 200 OK
+    }
+
+    // === API MỚI CHO BƯỚC 3 ===
+
+    /**
+     * API Lấy danh sách Yêu cầu Bảo trì (Hỏng, Kiểm định...)
+     * được gán cho NV Kỹ thuật đang đăng nhập.
+     */
+    @GetMapping("/maintenance-requests")
+    public ResponseEntity<Page<SupportTicketDTO>> getMyMaintenanceRequests(
+            @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Integer staffId = getAuthenticatedStaffId();
+        Page<SupportTicketDTO> tickets = technicalStaffService.getMyMaintenanceRequests(staffId, pageable);
+        return ResponseEntity.ok(tickets);
     }
 }

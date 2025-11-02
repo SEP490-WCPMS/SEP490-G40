@@ -111,7 +111,13 @@ public class SecurityConfig {
 //// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
                                 .requestMatchers("/api/readings/**").hasAuthority("CASHIER_STAFF")
-                                .requestMatchers("/api/service/**").permitAll()
+                                .requestMatchers("/api/service/**").hasAuthority("SERVICE_STAFF")
+
+                                // --- THÊM 2 DÒNG NÀY ---
+                                .requestMatchers("/api/feedback/customer").hasAuthority("CUSTOMER") // Cho phép Customer tạo
+                                .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF") // Cho phép Service Staff tạo
+                                // --- HẾT PHẦN THÊM ---
+
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()
                                 .requestMatchers("/staff/profile").hasAnyAuthority("TECHNICAL_STAFF", "CASHIER_STAFF", "SERVICE_STAFF")
 //// --- HẾT PHÂN QUYỀN ĐÚNG ---

@@ -102,6 +102,9 @@ const Header = ({ isAuthenticated, user }) => {
               <li>
                 <Link to="/contract-list">Danh sách hợp đồng</Link>
               </li>
+              <li>
+                <Link to="/support-request">Feedback</Link>
+              </li>
             </ul>
           </div>
         </nav>

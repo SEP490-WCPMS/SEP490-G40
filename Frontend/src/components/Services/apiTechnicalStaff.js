@@ -41,3 +41,37 @@ export const getRecentTechnicalTasks = (status, limit = 5, page = 0) => { // ADD
     if (status && status !== 'all') { params.status = status; }
     return apiClient.get(`/technical/dashboard/recent-tasks`, { params });
 };
+
+// === THÊM CÁC HÀM MỚI CHO THAY THẾ ĐỒNG HỒ ===
+
+/** Lấy thông tin HĐ/Khách hàng/Chỉ số cũ dựa trên MÃ ĐỒNG HỒ CŨ */
+export const getMeterInfoByCode = (meterCode) => {
+    return apiClient.get(`/technical/meter-info/${meterCode}`);
+};
+
+/** Gửi thông tin thay thế đồng hồ (chốt sổ cũ, mở sổ mới) */
+export const submitMeterReplacement = (replacementData) => {
+    // replacementData là MeterReplacementRequestDTO
+    return apiClient.post('/technical/replace-meter', replacementData);
+};
+
+// --- API MỚI CHO KIỂM ĐỊNH TẠI CHỖ ---
+/**
+ * Gửi dữ liệu kiểm định tại chỗ (Bảng 14)
+ * @param {object} calibrationData - DTO OnSiteCalibrationDTO
+ * @returns {Promise}
+ */
+export const submitOnSiteCalibration = (calibrationData) => {
+    return apiClient.post('/technical/calibrate-on-site', calibrationData);
+};
+
+// --- THÊM HÀM MỚI (BƯỚC 9) ---
+/**
+ * Lấy danh sách Yêu cầu Bảo trì (Hỏng, Kiểm định...)
+ * đã được gán cho NV Kỹ thuật này (status = IN_PROGRESS).
+ */
+export const getMyMaintenanceRequests = (params) => {
+    // params: { page: number, size: number, sort: string }
+    return apiClient.get('/technical/maintenance-requests', { params });
+};
+// --- HẾT PHẦN THÊM ---

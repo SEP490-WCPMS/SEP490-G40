@@ -10,20 +10,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
-import {
-    LayoutDashboard,
-    FileText,
-    FileCheck,
-    Clock,
-    Eye,
-    CheckCircle,
-    AlertCircle,
-    Zap,
-    FileCheck as FileCheckIcon,
-    Shuffle,
-    Trash2,
-    FilePlus
-} from 'lucide-react';
+import { LayoutDashboard, FileText, FileCheck, Clock, Eye, CheckCircle, AlertCircle, Zap, FileCheck as FileCheckIcon, Shuffle, Trash2, BellRing, PlusCircle, FilePlus } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 // Menu items chính
@@ -68,6 +55,20 @@ const mainMenuItems = [
     url: '/service/contract-annuls',
     icon: Trash2,
   },
+  // --- THÊM MENU MỚI ---
+  {
+    title: 'Yêu Cầu Hỗ Trợ', // (Ticket Hỏng/Kiểm định 5 năm)
+    url: '/service/support-tickets',
+    icon: BellRing,
+  },
+  // --- HẾT PHẦN THÊM ---
+  // --- THÊM MENU MỚI (CHO CÁCH B) ---
+  {
+    title: 'Tạo Ticket Mới', // (Form tạo hộ KH)
+    url: '/service/create-ticket',
+    icon: PlusCircle,
+  },
+  // --- HẾT ---
 ];
 
 // Contract status filter items

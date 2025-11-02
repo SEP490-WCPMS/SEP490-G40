@@ -1,12 +1,22 @@
 package com.sep490.wcpms.controller;
 
-import com.sep490.wcpms.dto.ServiceStaffContractDTO;
-import com.sep490.wcpms.dto.ServiceStaffUpdateContractRequestDTO;
+import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.service.ServiceStaffContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+// --- CÁC IMPORT BỊ THIẾU ---
+import org.springframework.data.domain.Pageable; // <-- Bị thiếu
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault; // <-- Bị thiếu
+import org.springframework.http.ResponseEntity; // <-- Bị thiếu
+import com.sep490.wcpms.service.CustomerFeedbackService;
+import java.util.List;
+import java.util.Map;
+// --- HẾT PHẦN IMPORT ---
 
 @RestController
 @RequestMapping("/api/service/contracts")
@@ -14,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class ServiceStaffContractController {
 
     private final ServiceStaffContractService service;
+    private final CustomerFeedbackService customerFeedbackService; // Inject service feedback
 
     @GetMapping
     public Page<ServiceStaffContractDTO> listContracts(
@@ -145,4 +156,64 @@ public class ServiceStaffContractController {
             @RequestParam String reason) {
         return service.terminateContract(id, reason);
     }
+
+
+    // === API MỚI CHO BƯỚC 2 (Quản lý Ticket) ===
+    // (Lưu ý: Các API này sẽ có đường dẫn là /api/service/contracts/...)
+
+    /**
+     * API Lấy danh sách NV Kỹ thuật (để điền vào dropdown gán việc).
+     * Path: GET /api/service/contracts/accounts/technical-staff
+     */
+    @GetMapping("/accounts/technical-staff")
+    public ResponseEntity<List<AccountDTO>> getAvailableTechStaff() {
+        // --- SỬA LỖI TẠI ĐÂY ---
+        List<AccountDTO> techStaff = service.getAvailableTechStaff(); // Dùng 'service'
+        return ResponseEntity.ok(techStaff);
+    }
+
+    /**
+     * API Lấy danh sách Yêu cầu Hỗ trợ (Tickets) đang chờ xử lý (PENDING).
+     * Path: GET /api/service/contracts/support-tickets
+     */
+    @GetMapping("/support-tickets")
+    public ResponseEntity<Page<SupportTicketDTO>> getSupportTickets(
+            @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        // --- SỬA LỖI TẠI ĐÂY ---
+        Page<SupportTicketDTO> tickets = service.getSupportTickets(pageable); // Dùng 'service'
+        return ResponseEntity.ok(tickets);
+    }
+
+    /**
+     * API Gán một ticket cho NV Kỹ thuật.
+     * Path: PUT /api/service/contracts/support-tickets/{ticketId}/assign
+     */
+    @PutMapping("/support-tickets/{ticketId}/assign")
+    public ResponseEntity<SupportTicketDTO> assignTechToTicket(
+            @PathVariable Integer ticketId,
+            @RequestBody Map<String, Integer> payload
+    ) {
+        Integer technicalStaffId = payload.get("technicalStaffId");
+        if (technicalStaffId == null) {
+            throw new IllegalArgumentException("Missing 'technicalStaffId' in request body.");
+        }
+        // --- SỬA LỖI TẠI ĐÂY ---
+        SupportTicketDTO assignedTicket = service.assignTechToTicket(ticketId, technicalStaffId); // Dùng 'service'
+        return ResponseEntity.ok(assignedTicket);
+    }
+
+
+    // === API MỚI CHO "CÁCH B" (Bước 8) ===
+
+    /**
+     * API Lấy danh sách Khách hàng rút gọn (để tạo ticket hộ).
+     * Path: GET /api/service/customers/simple-list
+     */
+    @GetMapping("/customers/simple-list")
+    public ResponseEntity<List<CustomerSimpleDTO>> getSimpleCustomerList() {
+        List<CustomerSimpleDTO> customers = service.getSimpleCustomerList();
+        return ResponseEntity.ok(customers);
+    }
+
 }

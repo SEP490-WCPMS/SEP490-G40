@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'; // Đường dẫn component UI của bạn
-import { LayoutDashboard, Eye, Wrench } from 'lucide-react'; // Icons
+import { LayoutDashboard, Eye, Wrench, Replace, ClipboardCheck, BellRing } from 'lucide-react'; // Icons
 import { Link, useLocation } from 'react-router-dom';
 
 // Menu Items cho Kỹ Thuật
@@ -28,6 +28,24 @@ const technicalMenuItems = [
     title: 'Lắp đặt',
     url: '/technical/install', // Đường dẫn tuyệt đối
     icon: Wrench,
+  },
+  // --- THÊM MENU MỚI (BƯỚC 3 TRONG LUỒNG) ---
+  {
+    title: 'Yêu Cầu Bảo Trì', // (Ticket Hỏng/Kiểm định 5 năm)
+    url: '/technical/maintenance-requests',
+    icon: BellRing, // <-- SỬ DỤNG ICON MỚI
+  },
+  // --- HẾT PHẦN THÊM ---
+  // --- THÊM MENU MỚI ---
+  {
+    title: 'Thay thế Đồng hồ',
+    url: '/technical/replace-meter',
+    icon: Replace, // Icon thay thế
+  },
+  {
+    title: 'Kiểm định tại chỗ',
+    url: '/technical/calibrate-on-site',
+    icon: ClipboardCheck,
   },
 ];
 

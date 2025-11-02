@@ -5,7 +5,6 @@ import com.sep490.wcpms.dto.dashboard.ChartDataDTO; // DTO mới cho biểu đ�
 import com.sep490.wcpms.dto.dashboard.TechnicalStatsDTO; // DTO mới cho thẻ
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.TechnicalDashboardService; // Service mới
-//import com.sep490.wcpms.security.services.UserDetailsImpl; // Để lấy ID user
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
