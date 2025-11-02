@@ -28,6 +28,12 @@ public class ContractController {
         return ApiResponse.success(contract, "Contract retrieved successfully");
     }
 
+    @GetMapping("/customer/{customerId}")
+    public ApiResponse<List<ContractDTO>> getContractsByCustomerId(@PathVariable Integer customerId) {
+        List<ContractDTO> contracts = contractCustomerService.getContractsByCustomerId(customerId);
+        return ApiResponse.success(contracts, "Contracts retrieved successfully for customer");
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<ContractDTO> createContract(@RequestBody ContractCreateDTO createDTO) {

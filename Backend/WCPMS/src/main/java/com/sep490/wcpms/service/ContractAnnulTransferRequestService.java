@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -57,8 +58,14 @@ public class ContractAnnulTransferRequestService {
             if (dto.getFromCustomerId() == null || dto.getToCustomerId() == null) {
                 throw new IllegalArgumentException("fromCustomerId and toCustomerId are required for transfer.");
             }
-            fromCustomer = customerRepository.findById(dto.getFromCustomerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("From-customer not found: " + dto.getFromCustomerId()));
+            Integer accoundId = dto.getRequestedById();
+            Optional<Customer> customer = customerRepository.findByAccount_Id(accoundId);
+            if (!customer.isPresent()) {
+                throw new ResourceNotFoundException("Customer not found with id: " + accoundId);
+            }
+
+            fromCustomer = customer.get();
+
             toCustomer = customerRepository.findById(dto.getToCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("To-customer not found: " + dto.getToCustomerId()));
         }
