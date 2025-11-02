@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +39,28 @@ public class ContractCustomerService {
         return contractRepository.findById(id)
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
+    }
+
+    public List<ContractDTO> getContractsByCustomerId(Integer accountId) {
+        // Kiểm tra customer có tồn tại không
+        if (!accountRepository.existsById(accountId)) {
+            throw new ResourceNotFoundException("Account not found with id: " + accountId);
+        }
+
+        Optional<Customer> customer = customerRepository.findByAccount_Id(accountId);
+        if (!customer.isPresent()) {
+            throw new ResourceNotFoundException("Customer not found with id: " + accountId);
+        }
+
+        Integer customerId = customer.get().getId();
+
+        // Tìm tất cả contracts của customer
+        List<Contract> contracts = contractRepository.findByCustomer_IdOrderByIdDesc(customerId);
+
+        // Convert sang DTO
+        return contracts.stream()
+                .map(this::convertToDTO) // hoặc sử dụng mapper của bạn
+                .collect(Collectors.toList());
     }
 
     @Transactional
