@@ -1,7 +1,6 @@
 package com.sep490.wcpms.service.impl;
 
-import com.sep490.wcpms.dto.ServiceStaffContractDTO;
-import com.sep490.wcpms.dto.ServiceStaffUpdateContractRequestDTO;
+import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.Contract.ContractStatus;
@@ -14,8 +13,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import com.sep490.wcpms.mapper.ContractMapper; // <-- Cần import
+import com.sep490.wcpms.mapper.SupportTicketMapper;
+import com.sep490.wcpms.repository.CustomerFeedbackRepository;
+import org.springframework.transaction.annotation.Transactional;
+import com.sep490.wcpms.exception.ResourceNotFoundException;
+import com.sep490.wcpms.entity.CustomerFeedback; // <-- THÊM DÒNG NÀY
+import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY
+import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +33,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     private final ServiceStaffContractRepository contractRepository;
     private final AccountRepository accountRepository; // optional, used if you assign serviceStaff or technicalStaff
+    private final CustomerFeedbackRepository customerFeedbackRepository;
+    private final SupportTicketMapper supportTicketMapper;
+    private final CustomerRepository customerRepository;
+    // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
+    // private final ContractMapper contractMapper;
 
     @Override
     public Page<ServiceStaffContractDTO> findContractsForServiceStaff(String status, String keyword, Pageable pageable) {
@@ -252,14 +267,83 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         // dto.setTechnicalDesign(c.getTechnicalDesign());
 
         // Lấy priceTypeName từ ContractUsageDetail
-        // if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
-        //     // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
-        //     var firstUsageDetail = c.getContractUsageDetails().get(0);
-        //     if (firstUsageDetail.getPriceType() != null) {
-        //         dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
-        //     }
-        // }
+        if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
+            // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
+            var firstUsageDetail = c.getContractUsageDetails().get(0);
+            if (firstUsageDetail != null && firstUsageDetail.getPriceType() != null) { // Thêm kiểm tra null
+                dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
+            }
+        }
 
         return dto;
     }
+
+    // === TRIỂN KHAI 3 HÀM MỚI (BƯỚC 2) ===
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AccountDTO> getAvailableTechStaff() {
+        // Lấy tất cả tài khoản có vai trò TECHNICAL_STAFF
+        List<Account> techStaffList = accountRepository.findByRole_RoleName(Role.RoleName.TECHNICAL_STAFF);
+
+        // Chuyển đổi Account sang AccountDTO (chỉ lấy ID và Tên)
+        return techStaffList.stream()
+                .map(account -> new AccountDTO(account.getId(), account.getFullName()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupportTicketDTO> getSupportTickets(Pageable pageable) {
+        // Lấy các ticket loại "Yêu cầu Hỗ trợ" VÀ đang "Chờ xử lý"
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByFeedbackTypeAndStatus(
+                CustomerFeedback.FeedbackType.SUPPORT_REQUEST,
+                CustomerFeedback.Status.PENDING,
+                pageable
+        );
+        // Map kết quả sang DTO để trả về
+        return tickets.map(supportTicketMapper::toDto);
+    }
+
+    @Override
+    @Transactional
+    public SupportTicketDTO assignTechToTicket(Integer ticketId, Integer technicalStaffId) {
+        // 1. Tìm Yêu cầu (Ticket)
+        CustomerFeedback ticket = customerFeedbackRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Yêu cầu Hỗ trợ (Ticket) với ID: " + ticketId));
+
+        // 2. Tìm NV Kỹ thuật
+        Account techStaff = accountRepository.findById(technicalStaffId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Nhân viên Kỹ thuật với ID: " + technicalStaffId));
+
+        // 3. (Khuyến nghị) Kiểm tra xem có đúng là NV Kỹ thuật không
+        if (techStaff.getRole() == null || techStaff.getRole().getRoleName() != Role.RoleName.TECHNICAL_STAFF) {
+            throw new IllegalArgumentException("Tài khoản được gán không phải là Nhân viên Kỹ thuật.");
+        }
+
+        // 4. Kiểm tra trạng thái ticket
+        if (ticket.getStatus() != CustomerFeedback.Status.PENDING) {
+            throw new IllegalStateException("Chỉ có thể gán các Yêu cầu đang ở trạng thái PENDING.");
+        }
+
+        // 5. Gán việc và đổi trạng thái
+        ticket.setAssignedTo(techStaff); // Gán NV Kỹ thuật
+        ticket.setStatus(CustomerFeedback.Status.IN_PROGRESS); // Chuyển sang "Đang xử lý"
+        ticket.setUpdatedAt(LocalDateTime.now()); // Cập nhật thời gian
+
+        CustomerFeedback savedTicket = customerFeedbackRepository.save(ticket);
+
+        return supportTicketMapper.toDto(savedTicket);
+    }
+
+    // === TRIỂN KHAI HÀM MỚI ===
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerSimpleDTO> getSimpleCustomerList() {
+        // Gọi hàm mới trong CustomerRepository
+        return customerRepository.findSimpleList();
+    }
+    // --- HẾT PHẦN THÊM ---
+
 }

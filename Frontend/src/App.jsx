@@ -35,6 +35,10 @@ import PrivateRoute from './PrivateRoute';
 import CustomerChangePassword from './components/Customer/CustomerChangePassword';
 import MeterReplacementForm from './components/PagesTechnical/Replacement/MeterReplacementForm'; // <-- Trang mới
 import OnSiteCalibrationForm from './components/PagesTechnical/OnSiteCalibration/OnSiteCalibrationForm'; // <-- Trang mới
+import SupportTicketList from './components/PagesService/SupportTicketList'; // <-- Trang mới
+import MaintenanceRequestList from './components/PagesTechnical/MaintenanceRequestList'; // <-- Trang mới
+import CustomerSupportForm from './components/Customer/CustomerSupportForm'; // <-- Trang mới
+import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -71,6 +75,7 @@ function App() {
           <Route path="/contract-list" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractList /></PublicLayout>} />
           <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
           <Route path="/change-password" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerChangePassword /></PublicLayout>} />
+          <Route path="/support-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerSupportForm /></PublicLayout>} />
 
         </Route>
 
@@ -93,6 +98,7 @@ function App() {
             <Route path="install/detail/:contractId" element={<InstallationDetail />} />
             <Route path="replace-meter" element={<MeterReplacementForm />} />
             <Route path="calibrate-on-site" element={<OnSiteCalibrationForm />} />
+            <Route path="maintenance-requests" element={<MaintenanceRequestList />} />
           </Route>
         </Route>
 
@@ -113,6 +119,8 @@ function App() {
             <Route path="survey-reviews" element={<SurveyReviewPage />} />
             <Route path="approved-contracts" element={<ApprovedContractsPage />} />
             <Route path="active-contracts" element={<ActiveContractsPage />} />
+            <Route path="support-tickets" element={<SupportTicketList />} />
+            <Route path="create-ticket" element={<ServiceCreateTicketForm />} />
           </Route>
         </Route>
 
