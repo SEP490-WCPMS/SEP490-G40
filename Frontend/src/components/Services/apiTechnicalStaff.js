@@ -64,3 +64,14 @@ export const submitMeterReplacement = (replacementData) => {
 export const submitOnSiteCalibration = (calibrationData) => {
     return apiClient.post('/technical/calibrate-on-site', calibrationData);
 };
+
+// --- THÊM HÀM MỚI (BƯỚC 9) ---
+/**
+ * Lấy danh sách Yêu cầu Bảo trì (Hỏng, Kiểm định...)
+ * đã được gán cho NV Kỹ thuật này (status = IN_PROGRESS).
+ */
+export const getMyMaintenanceRequests = (params) => {
+    // params: { page: number, size: number, sort: string }
+    return apiClient.get('/technical/maintenance-requests', { params });
+};
+// --- HẾT PHẦN THÊM ---

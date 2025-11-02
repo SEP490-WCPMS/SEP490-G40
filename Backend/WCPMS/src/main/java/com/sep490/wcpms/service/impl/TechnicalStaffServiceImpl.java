@@ -1,15 +1,19 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.dto.*; // Import hết DTO
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.ContractMapper;
+import com.sep490.wcpms.mapper.SupportTicketMapper; // <-- THÊM
+import com.sep490.wcpms.repository.*; // Import tất cả Repo
+import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
+import com.sep490.wcpms.service.TechnicalStaffService; // <-- SỬA TÊN INTERFACE
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.ContractRepository;
 import com.sep490.wcpms.repository.WaterMeterRepository;
-import com.sep490.wcpms.service.TechnicalStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,8 +32,10 @@ import com.sep490.wcpms.repository.MeterReadingRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.sep490.wcpms.dto.OnSiteCalibrationDTO;
-import com.sep490.wcpms.entity.MeterCalibration;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -54,6 +60,10 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private MeterReadingRepository meterReadingRepository;
     @Autowired
     private MeterCalibrationRepository meterCalibrationRepository;
+    @Autowired
+    private CustomerFeedbackRepository customerFeedbackRepository;
+    @Autowired
+    private SupportTicketMapper supportTicketMapper;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -368,5 +378,21 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         }
 
         waterMeterRepository.save(meter);
+    }
+
+    // === BƯỚC 3 (LUỒNG TICKET): LẤY VIỆC ĐƯỢC GIAO ===
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, Pageable pageable) {
+        Account staff = getStaffAccountById(staffId);
+
+        // Tìm các ticket được gán cho staff này VÀ đang "IN_PROGRESS"
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByAssignedToAndStatus(
+                staff,
+                CustomerFeedback.Status.IN_PROGRESS,
+                pageable
+        );
+        return tickets.map(supportTicketMapper::toDto);
     }
 }

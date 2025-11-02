@@ -6,6 +6,9 @@ import com.sep490.wcpms.dto.SurveyReportRequestDTO;
 import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
 import com.sep490.wcpms.dto.MeterInfoDTO;
 import com.sep490.wcpms.dto.OnSiteCalibrationDTO; // Import DTO mới
+import com.sep490.wcpms.dto.*; // Import tất cả DTO
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -44,4 +47,11 @@ public interface TechnicalStaffService {
     // --- THÊM HÀM MỚI ---
     /** Ghi nhận kết quả kiểm định đồng hồ tại chỗ */
     void processOnSiteCalibration(OnSiteCalibrationDTO dto, Integer staffId);
+
+    // === THÊM HÀM MỚI CHO BƯỚC 3 ===
+    /**
+     * Lấy danh sách Yêu cầu Bảo trì (Hỏng, Kiểm định...)
+     * đã được gán cho NV Kỹ thuật này (status = IN_PROGRESS).
+     */
+    Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, Pageable pageable);
 }
