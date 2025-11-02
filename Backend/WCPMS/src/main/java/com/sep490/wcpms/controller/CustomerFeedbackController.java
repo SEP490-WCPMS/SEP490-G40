@@ -12,6 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page; // <-- THÊM IMPORT
+import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
+import org.springframework.data.web.PageableDefault; // <-- THÊM IMPORT
+import org.springframework.data.domain.Sort; // <-- THÊM IMPORT
 
 @RestController
 @RequestMapping("/api/feedback") // API chung cho Feedback/Ticket
@@ -53,4 +57,33 @@ public class CustomerFeedbackController {
         }
         throw new IllegalStateException("Cannot determine user ID from Principal.");
     }
+
+    // --- THÊM 2 API MỚI ---
+
+    /**
+     * API cho "Cách A": Khách hàng (CUSTOMER) lấy danh sách ticket CỦA MÌNH.
+     * Path: GET /api/feedback/customer/my-tickets
+     */
+    @GetMapping("/customer/my-tickets")
+    public ResponseEntity<Page<SupportTicketDTO>> getMyTickets(
+            @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Integer customerAccountId = getAuthenticatedUserId();
+        Page<SupportTicketDTO> tickets = customerFeedbackService.getMyTickets(customerAccountId, pageable);
+        return ResponseEntity.ok(tickets);
+    }
+
+    /**
+     * API cho "Cách A": Khách hàng (CUSTOMER) xem chi tiết 1 ticket CỦA MÌNH.
+     * Path: GET /api/feedback/customer/my-tickets/{ticketId}
+     */
+    @GetMapping("/customer/my-tickets/{ticketId}")
+    public ResponseEntity<SupportTicketDTO> getMyTicketDetail(
+            @PathVariable Integer ticketId
+    ) {
+        Integer customerAccountId = getAuthenticatedUserId();
+        SupportTicketDTO ticket = customerFeedbackService.getMyTicketDetail(customerAccountId, ticketId);
+        return ResponseEntity.ok(ticket);
+    }
+    // --- HẾT PHẦN THÊM ---
 }

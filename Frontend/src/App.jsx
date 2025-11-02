@@ -37,7 +37,9 @@ import MeterReplacementForm from './components/PagesTechnical/Replacement/MeterR
 import OnSiteCalibrationForm from './components/PagesTechnical/OnSiteCalibration/OnSiteCalibrationForm'; // <-- Trang mới
 import SupportTicketList from './components/PagesService/SupportTicketList'; // <-- Trang mới
 import MaintenanceRequestList from './components/PagesTechnical/MaintenanceRequestList'; // <-- Trang mới
-import CustomerSupportForm from './components/Customer/CustomerSupportForm'; // <-- Trang mới
+import CustomerSupportForm from './components/Customer/Feedback/CustomerSupportForm'; // <-- Trang mới
+import MySupportTicketList from './components/Customer/Feedback/MySupportTicketList'; // <-- Trang mới
+import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 
 
@@ -76,6 +78,8 @@ function App() {
           <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
           <Route path="/change-password" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerChangePassword /></PublicLayout>} />
           <Route path="/support-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerSupportForm /></PublicLayout>} />
+          <Route path="/my-support-tickets" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MySupportTicketList /></PublicLayout>} />
+          <Route path="/my-support-tickets/:ticketId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><SupportTicketDetail /></PublicLayout>} />
 
         </Route>
 

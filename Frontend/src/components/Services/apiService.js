@@ -320,6 +320,18 @@ export const createSupportTicketForCustomer = (customerId, description) => {
 };
 // --- HẾT PHẦN THÊM MỚI ---
 
+// --- THÊM HÀM MỚI (Bước 6) ---
+/**
+ * Gửi trả lời cho một ticket (FEEDBACK).
+ * @param {number} ticketId ID của ticket
+ * @param {string} responseContent Nội dung trả lời
+ */
+export const submitFeedbackReply = (ticketId, responseContent) => {
+    // Gọi API BE đã tạo: PUT /api/service/contracts/support-tickets/{ticketId}/reply
+    return apiClient.put(`/service/contracts/support-tickets/${ticketId}/reply`, { responseContent });
+};
+// --- HẾT PHẦN THÊM ---
+
 
 // === API CHO SERVICE STAFF DASHBOARD (NEW) ===
 const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service/dashboard`;

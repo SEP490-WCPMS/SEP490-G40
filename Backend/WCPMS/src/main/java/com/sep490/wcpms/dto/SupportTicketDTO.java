@@ -28,4 +28,16 @@ public class SupportTicketDTO {
     // Thông tin người gán / người xử lý
     private Integer assignedToId; // ID của NV Kỹ thuật được gán
     private String assignedToName; // Tên NV Kỹ thuật
+
+    // --- THÊM 2 TRƯỜNG BỊ THIẾU ---
+    /**
+     * Nội dung phản hồi của NV Dịch vụ (Lấy từ Bảng 20)
+     */
+    private String response;
+
+    /**
+     * Ngày giải quyết/phản hồi
+     */
+    private LocalDateTime resolvedDate;
+    // --- HẾT PHẦN THÊM ---
 }

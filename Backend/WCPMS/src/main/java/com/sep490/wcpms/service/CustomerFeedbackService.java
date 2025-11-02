@@ -2,6 +2,8 @@ package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.FeedbackCreateRequestDTO;
 import com.sep490.wcpms.dto.SupportTicketDTO;
+import org.springframework.data.domain.Page; // <-- THÊM IMPORT
+import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
 
 public interface CustomerFeedbackService {
 
@@ -20,4 +22,18 @@ public interface CustomerFeedbackService {
      * @return SupportTicketDTO
      */
     SupportTicketDTO createTicketAsServiceStaff(FeedbackCreateRequestDTO dto, Integer serviceStaffId);
+
+    // --- THÊM 2 HÀM MỚI ---
+
+    /**
+     * Lấy danh sách ticket (phân trang) của Khách hàng đang đăng nhập.
+     */
+    Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, Pageable pageable);
+
+    /**
+     * Lấy chi tiết 1 ticket, xác thực đúng là của Khách hàng đang đăng nhập.
+     */
+    SupportTicketDTO getMyTicketDetail(Integer customerAccountId, Integer ticketId);
+
+    // --- HẾT PHẦN THÊM ---
 }

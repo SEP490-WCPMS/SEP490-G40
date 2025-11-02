@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
-import { Menu, X, LogOut, User, Bell, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogOut, User, Bell, LayoutDashboard, ChevronDown } from 'lucide-react';
 import './Header.css';
 
 const Header = ({ isAuthenticated, user }) => {
@@ -90,8 +90,27 @@ const Header = ({ isAuthenticated, user }) => {
             Giá nước
           </button>
           <a href="#lien-he" className="nav-item">Liên hệ</a>
+          {/* --- BẮT ĐẦU THAY ĐỔI Ở ĐÂY --- */}
           <div className="nav-item nav-dropdown">
-            <span>Hợp đồng</span>
+            <span className="nav-dropdown-trigger">
+              Hỗ Trợ
+              <ChevronDown size={16} className="nav-dropdown-chevron" />
+            </span>
+            <ul className="dropdown-menu">
+              <li>
+                <Link to="/support-request">Tạo đơn yêu cầu hỗ trợ</Link>
+              </li>
+              <li>
+                <Link to="/my-support-tickets">Danh sách đơn của tôi</Link>
+              </li>
+            </ul>
+          </div>
+
+          <div className="nav-item nav-dropdown">
+            <span className="nav-dropdown-trigger">
+              Hợp đồng
+              <ChevronDown size={16} className="nav-dropdown-chevron" />
+            </span>
             <ul className="dropdown-menu">
               <li>
                 <Link to="/contract-request">Đăng ký cấp nước</Link>
@@ -102,11 +121,9 @@ const Header = ({ isAuthenticated, user }) => {
               <li>
                 <Link to="/contract-list">Danh sách hợp đồng</Link>
               </li>
-              <li>
-                <Link to="/support-request">Feedback</Link>
-              </li>
             </ul>
           </div>
+          {/* --- KẾT THÚC THAY ĐỔI --- */}
         </nav>
 
         {/* Avatar / Login Button */}
