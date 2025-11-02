@@ -14,6 +14,9 @@ import com.sep490.wcpms.service.CustomerFeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sep490.wcpms.exception.AccessDeniedException; // <-- THÊM IMPORT
+import org.springframework.data.domain.Page; // <-- THÊM IMPORT
+import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
 
 import java.time.LocalDateTime;
 
@@ -71,7 +74,18 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
 
         ticket.setCustomer(customer);
         ticket.setDescription(dto.getDescription());
-        ticket.setFeedbackType(CustomerFeedback.FeedbackType.SUPPORT_REQUEST); // Luôn là SUPPORT
+        // --- SỬA LẠI LOGIC Ở ĐÂY ---
+        // Đọc loại feedback từ DTO thay vì ghi cứng
+        CustomerFeedback.FeedbackType type;
+        try {
+            // Chuyển chuỗi "FEEDBACK" hoặc "SUPPORT_REQUEST" thành Enum
+            type = CustomerFeedback.FeedbackType.valueOf(dto.getFeedbackType().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            // Nếu FE gửi bậy, mặc định là FEEDBACK
+            type = CustomerFeedback.FeedbackType.FEEDBACK;
+        }
+        ticket.setFeedbackType(type); // <-- ĐÃ SỬA
+        // --- HẾT PHẦN SỬA ---
         ticket.setStatus(CustomerFeedback.Status.PENDING); // Luôn là PENDING
         ticket.setSubmittedDate(LocalDateTime.now());
         ticket.setRequestedBy(requestedBy); // Gán người yêu cầu (có thể là KH hoặc NV)
@@ -81,4 +95,42 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
 
         return supportTicketMapper.toDto(savedTicket);
     }
+
+    // --- THÊM 2 HÀM MỚI ---
+
+    /**
+     * Lấy danh sách ticket của Khách hàng đang đăng nhập.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, Pageable pageable) {
+        // 1. Tìm hồ sơ Customer từ Account ID
+        Customer customer = customerRepository.findByAccount_Id(customerAccountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng cho tài khoản: " + customerAccountId));
+
+        // 2. Lấy danh sách ticket của Customer đó
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByCustomer_Id(customer.getId(), pageable);
+
+        // 3. Map sang DTO
+        return tickets.map(supportTicketMapper::toDto);
+    }
+
+    /**
+     * Lấy chi tiết 1 ticket (xác thực đúng chủ sở hữu).
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public SupportTicketDTO getMyTicketDetail(Integer customerAccountId, Integer ticketId) {
+        // 1. Tìm hồ sơ Customer từ Account ID
+        Customer customer = customerRepository.findByAccount_Id(customerAccountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng cho tài khoản: " + customerAccountId));
+
+        // 2. Lấy ticket bằng ID VÀ Customer ID (để bảo mật)
+        CustomerFeedback ticket = customerFeedbackRepository.findByIdAndCustomer_Id(ticketId, customer.getId())
+                .orElseThrow(() -> new AccessDeniedException("Không tìm thấy hoặc không có quyền truy cập Yêu cầu Hỗ trợ này."));
+
+        // 3. Map sang DTO
+        return supportTicketMapper.toDto(ticket);
+    }
+    // --- HẾT PHẦN THÊM ---
 }

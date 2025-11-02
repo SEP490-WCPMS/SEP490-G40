@@ -115,7 +115,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/service/**").hasAuthority("SERVICE_STAFF")
 
                                 // --- THÊM 2 DÒNG NÀY ---
-                                .requestMatchers("/api/feedback/customer").hasAuthority("CUSTOMER") // Cho phép Customer tạo
+                                .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER") // Cho phép Customer tạo
                                 .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF") // Cho phép Service Staff tạo
                                 // --- HẾT PHẦN THÊM ---
 

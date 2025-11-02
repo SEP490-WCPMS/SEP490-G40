@@ -1,11 +1,13 @@
 package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Account;
+import com.sep490.wcpms.entity.Customer; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.CustomerFeedback;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.util.Optional; // <-- THÊM IMPORT
 
 @Repository
 public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedback, Integer> {
@@ -32,4 +34,26 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
             CustomerFeedback.Status status,
             Pageable pageable
     );
+
+    // --- THÊM 2 HÀM MỚI CHO CUSTOMER ---
+
+    /**
+     * Lấy danh sách ticket (phân trang) của một Khách hàng cụ thể.
+     */
+    Page<CustomerFeedback> findByCustomer_Id(Integer customerId, Pageable pageable);
+
+    /**
+     * Lấy chi tiết 1 ticket, đảm bảo ticket này đúng là của Khách hàng đó.
+     */
+    Optional<CustomerFeedback> findByIdAndCustomer_Id(Integer ticketId, Integer customerId);
+
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Lấy TẤT CẢ các ticket (cả FEEDBACK và SUPPORT_REQUEST)
+     * đang ở trạng thái PENDING.
+     */
+    Page<CustomerFeedback> findByStatus(CustomerFeedback.Status status, Pageable pageable);
+    // --- HẾT PHẦN THÊM ---
 }

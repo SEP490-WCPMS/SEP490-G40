@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import com.sep490.wcpms.dto.SupportTicketDTO; // <-- THÊM IMPORT
 import java.util.List; // <-- THÊM
 import com.sep490.wcpms.dto.CustomerSimpleDTO; // <-- Import cho hàm lấy DS KH
+import com.sep490.wcpms.dto.*; // Import tất cả DTO
 
 public interface ServiceStaffContractService {
 
@@ -83,5 +84,17 @@ public interface ServiceStaffContractService {
      * (Hàm thứ 1 của "Bước 8")
      */
     List<CustomerSimpleDTO> getSimpleCustomerList();
+
+    // --- THÊM HÀM MỚI (Bước 3) ---
+    /**
+     * NV Dịch vụ trả lời Góp ý (FEEDBACK) của khách hàng.
+     * Chuyển trạng thái ticket sang RESOLVED.
+     * @param ticketId ID của ticket (Bảng 20)
+     * @param dto DTO chứa nội dung trả lời
+     * @param staffId ID của NV Dịch vụ đang trả lời (lấy từ token)
+     * @return Ticket đã được cập nhật
+     */
+    SupportTicketDTO submitFeedbackReply(Integer ticketId, FeedbackReplyDTO dto, Integer staffId);
+    // --- HẾT PHẦN THÊM ---
 
 }

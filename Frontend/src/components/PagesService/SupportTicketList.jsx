@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSupportTickets } from '../Services/apiService'; // Đảm bảo đường dẫn đúng
-import { RefreshCw, UserCheck } from 'lucide-react'; // Import icons
-import AssignTicketModal from './AssignTicketModal'; // Import Modal
-import moment from 'moment'; // <-- THÊM DÒNG NÀY
-
+// Sửa lại import, chỉ lấy từ apiServiceStaff
+import { getSupportTickets } from '../Services/apiService'; 
+import { RefreshCw, UserCheck, MessageSquare } from 'lucide-react'; // <-- Thêm MessageSquare
+import AssignTicketModal from './AssignTicketModal';
+import ReplyTicketModal from './ReplyTicketModal'; // <-- THÊM MODAL MỚI
+import moment from 'moment';
 // (Bạn có thể cần import component Phân trang nếu dùng)
 
 function SupportTicketList() {
@@ -12,10 +13,6 @@ function SupportTicketList() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-
-    // State cho Modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedTicket, setSelectedTicket] = useState(null); // Ticket đang được chọn để gán
     
     // State cho Phân trang
     const [pagination, setPagination] = useState({
@@ -24,8 +21,15 @@ function SupportTicketList() {
         totalElements: 0,
     });
 
-    // Hàm fetch dữ liệu
-    const fetchData = (page = pagination.page, size = pagination.size) => {
+    // State cho Modal Gán việc
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [selectedTicket, setSelectedTicket] = useState(null); // Ticket đang được chọn
+    
+    // --- THÊM STATE CHO MODAL TRẢ LỜI ---
+    const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+
+    // Hàm fetch dữ liệu (Đã đúng, vì BE đã sửa)
+    const fetchData = (page = 0, size = 10) => {
         setLoading(true);
         setError(null);
         
@@ -40,8 +44,8 @@ function SupportTicketList() {
                 }));
             })
             .catch(err => {
-                console.error("Lỗi khi tải Yêu cầu Hỗ trợ:", err);
-                setError("Không thể tải dữ liệu. Vui lòng thử lại.");
+                 console.error("Lỗi khi tải Yêu cầu Hỗ trợ:", err);
+                 setError("Không thể tải dữ liệu. Vui lòng thử lại.");
             })
             .finally(() => {
                 setLoading(false);
@@ -50,27 +54,49 @@ function SupportTicketList() {
 
     // Load dữ liệu khi component mount
     useEffect(() => {
-        fetchData(0); // Luôn load trang đầu tiên khi mở
-    }, []);
+        fetchData(0, pagination.size);
+    }, []); // Chỉ chạy 1 lần
 
-    // Hàm mở Modal
+    // --- Cập nhật các hàm xử lý Modal ---
     const handleOpenAssignModal = (ticket) => {
         setSelectedTicket(ticket);
-        setIsModalOpen(true);
+        setIsAssignModalOpen(true);
+    };
+    const handleOpenReplyModal = (ticket) => {
+        setSelectedTicket(ticket);
+        setIsReplyModalOpen(true);
     };
 
-    // Hàm đóng Modal
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
+    const handleCloseModals = () => {
+        setIsAssignModalOpen(false);
+        setIsReplyModalOpen(false);
         setSelectedTicket(null);
     };
 
-    // Hàm xử lý sau khi gán thành công
+    // Hàm xử lý sau khi GÁN VIỆC thành công
     const handleAssignSuccess = (assignedTicket) => {
         // Cập nhật lại danh sách: Xóa ticket vừa được gán khỏi danh sách PENDING
         setTickets(prevTickets => prevTickets.filter(t => t.id !== assignedTicket.id));
-        handleCloseModal();
-        alert(`Gán ticket ${assignedTicket.feedbackNumber} cho NV Kỹ thuật ${assignedTicket.assignedToName} thành công!`);
+        handleCloseModals();
+        alert(`Gán ticket ${assignedTicket.feedbackNumber} thành công!`);
+    };
+    
+    // Hàm xử lý sau khi TRẢ LỜI thành công
+    const handleReplySuccess = (resolvedTicket) => {
+        // Cập nhật lại danh sách: Xóa ticket vừa được trả lời
+        setTickets(prevTickets => prevTickets.filter(t => t.id !== resolvedTicket.id));
+        handleCloseModals();
+        alert(`Trả lời ticket ${resolvedTicket.feedbackNumber} thành công!`);
+    };
+    
+    // Hàm helper để style badge
+    const getTypeClass = (type) => {
+        return type === 'SUPPORT_REQUEST'
+            ? 'bg-red-100 text-red-800' // Yêu cầu Hỗ trợ (Nóng)
+            : 'bg-blue-100 text-blue-800'; // Góp ý (Bình thường)
+    };
+    const getTypeText = (type) => {
+        return type === 'SUPPORT_REQUEST' ? 'Yêu Cầu Hỗ Trợ' : 'Góp Ý';
     };
 
     return (
@@ -78,8 +104,8 @@ function SupportTicketList() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Hỗ Trợ</h1>
-                    <p className="text-sm text-gray-600">Danh sách các yêu cầu (hỏng, kiểm định...) đang chờ gán việc (Trạng thái: PENDING).</p>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Hỗ Trợ & Góp Ý</h1>
+                    <p className="text-sm text-gray-600">Danh sách các yêu cầu và góp ý đang chờ xử lý (Trạng thái: PENDING).</p>
                 </div>
                 <button
                     onClick={() => fetchData(0)} // Luôn làm mới về trang 1
@@ -104,7 +130,10 @@ function SupportTicketList() {
                  <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     {loading && (
                          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-lg">
-                            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">...</svg>
+                             <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                             </svg>
                              <span className="ml-3 text-gray-500 text-lg">Đang tải danh sách...</span>
                          </div>
                     )}
@@ -114,6 +143,9 @@ function SupportTicketList() {
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Ticket</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách Hàng</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nội dung</th>
+                                {/* --- THÊM CỘT MỚI --- */}
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại Yêu Cầu</th>
+                                {/* --- HẾT --- */}
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày gửi</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao Tác</th>
                             </tr>
@@ -125,40 +157,77 @@ function SupportTicketList() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.feedbackNumber}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.customerName}</td>
                                         <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title={ticket.description}>{ticket.description}</td>
+                                        
+                                        {/* --- HIỂN THỊ LOẠI YÊU CẦU --- */}
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${getTypeClass(ticket.feedbackType)}`}>
+                                                {getTypeText(ticket.feedbackType)}
+                                            </span>
+                                        </td>
+                                        {/* --- HẾT --- */}
+
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(ticket.submittedDate).format('HH:mm DD/MM/YYYY')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button
-                                                onClick={() => handleOpenAssignModal(ticket)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                                            >
-                                                <UserCheck size={14} className="mr-1.5" />
-                                                Gán việc
-                                            </button>
+                                            
+                                            {/* --- HIỂN THỊ NÚT CÓ ĐIỀU KIỆN --- */}
+                                            {ticket.feedbackType === 'SUPPORT_REQUEST' ? (
+                                                // Nếu là Yêu cầu Hỗ trợ (Hỏng, Kiểm định) -> GÁN VIỆC
+                                                <button
+                                                    onClick={() => handleOpenAssignModal(ticket)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                                                >
+                                                    <UserCheck size={14} className="mr-1.5" />
+                                                    Gán việc
+                                                </button>
+                                            ) : (
+                                                // Nếu là Góp ý (Feedback) -> TRẢ LỜI
+                                                <button
+                                                    onClick={() => handleOpenReplyModal(ticket)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+                                                >
+                                                    <MessageSquare size={14} className="mr-1.5" />
+                                                    Trả lời
+                                                </button>
+                                            )}
+                                            {/* --- HẾT --- */}
+
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500 italic">
-                                        {loading ? 'Đang tải...' : 'Không có Yêu cầu Hỗ trợ nào đang chờ.'}
+                                    <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500 italic">
+                                        {loading ? 'Đang tải...' : 'Không có Yêu cầu/Góp ý nào đang chờ.'}
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                  </div>
-                 {/* (Bạn có thể thêm component Phân trang ở đây, truyền props pagination và hàm fetchData) */}
+                 {/* (Bạn có thể thêm component Phân trang ở đây) */}
             </div>
 
             {/* Modal Gán việc */}
-            {isModalOpen && (
+            {isAssignModalOpen && (
                 <AssignTicketModal
-                    open={isModalOpen}
+                    open={isAssignModalOpen}
                     ticket={selectedTicket}
-                    onClose={handleCloseModal}
+                    onClose={handleCloseModals}
                     onSuccess={handleAssignSuccess}
                 />
             )}
+
+            {/* --- THÊM MODAL MỚI --- */}
+            {isReplyModalOpen && (
+                <ReplyTicketModal
+                    open={isReplyModalOpen}
+                    ticket={selectedTicket}
+                    onClose={handleCloseModals}
+                    onSuccess={handleReplySuccess}
+                />
+            )}
+            {/* --- HẾT --- */}
+
         </div>
     );
 }
