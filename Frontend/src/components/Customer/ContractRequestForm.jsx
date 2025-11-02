@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import './ContractRequestForm.css'; // Sẽ tạo ở bước sau
-// import Layout from '...'; // Import layout chung của bạn
 
 const ContractRequestForm = () => {
     const [priceTypes, setPriceTypes] = useState([]);
@@ -116,21 +114,153 @@ const ContractRequestForm = () => {
         return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
+    const styles = {
+        container: {
+            maxWidth: '900px',
+            margin: '40px auto',
+            padding: '40px',
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+        },
+        form: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '24px',
+        },
+        title: {
+            fontSize: '28px',
+            fontWeight: 700,
+            color: '#1f2937',
+            marginBottom: '8px',
+        },
+        description: {
+            fontSize: '14px',
+            color: '#6b7280',
+            marginBottom: '24px',
+        },
+        alert: (isError) => ({
+            padding: '14px 16px',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontWeight: 500,
+            backgroundColor: isError ? '#fef2f2' : '#ecfdf5',
+            color: isError ? '#7f1d1d' : '#065f46',
+            borderLeft: `4px solid ${isError ? '#ef4444' : '#10b981'}`,
+        }),
+        formGroup: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+        },
+        label: {
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#1f2937',
+        },
+        input: {
+            padding: '12px 16px',
+            border: '2px solid #e5e7eb',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            color: '#1f2937',
+            backgroundColor: '#f9fafb',
+            transition: 'all 0.3s ease',
+        },
+        textarea: {
+            padding: '12px 16px',
+            border: '2px solid #e5e7eb',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontFamily: 'inherit',
+            color: '#1f2937',
+            backgroundColor: '#f9fafb',
+            resize: 'vertical',
+            transition: 'all 0.3s ease',
+        },
+        small: {
+            fontSize: '12px',
+            color: '#6b7280',
+            marginTop: '4px',
+        },
+        tableWrapper: {
+            marginTop: '24px',
+            padding: '20px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            overflowX: 'auto',
+        },
+        table: {
+            width: '100%',
+            borderCollapse: 'collapse',
+        },
+        tableHeader: {
+            backgroundColor: '#0A77E2',
+            color: '#ffffff',
+        },
+        tableRow: {
+            borderBottom: '1px solid #e5e7eb',
+        },
+        tableCell: {
+            padding: '12px',
+            textAlign: 'left',
+            fontSize: '13px',
+        },
+        tableCellHeader: {
+            fontWeight: 600,
+            padding: '12px',
+        },
+        button: {
+            padding: '14px 32px',
+            border: 'none',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            backgroundColor: '#0A77E2',
+            color: '#ffffff',
+            transition: 'all 0.3s ease',
+            textTransform: 'uppercase',
+            letterSpacing: '0.3px',
+        },
+    };
+
     return (
-        // <Layout> {/* Bọc trong Layout của bạn */}
-        <div className="contract-request-container">
-            <form className="contract-request-form" onSubmit={handleSubmit}>
-                <h2>Yêu cầu Hợp đồng Cấp nước</h2>
-                <p>Vui lòng điền các thông tin dưới đây để gửi yêu cầu lắp đặt và ký hợp đồng mới.</p>
+        <div style={styles.container}>
+            <style>{`
+                input:focus, select:focus, textarea:focus {
+                    outline: none;
+                    border-color: #0A77E2;
+                    background-color: #ffffff;
+                    box-shadow: 0 0 0 4px rgba(10, 119, 226, 0.1);
+                }
+                input:hover:not(:focus), select:hover:not(:focus), textarea:hover:not(:focus) {
+                    border-color: #d1d5db;
+                    background-color: #fafbfc;
+                }
+                button:hover:not(:disabled) {
+                    transform: translateY(-3px);
+                    box-shadow: 0 6px 20px rgba(10, 119, 226, 0.3);
+                }
+                button:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+            `}</style>
+            <form style={styles.form} onSubmit={handleSubmit}>
+                <h2 style={styles.title}>📋 Yêu cầu Hợp đồng Cấp nước</h2>
+                <p style={styles.description}>Vui lòng điền các thông tin dưới đây để gửi yêu cầu lắp đặt và ký hợp đồng mới.</p>
 
-                {message && <div className="alert alert-success">{message}</div>}
-                {error && <div className="alert alert-danger">{error}</div>}
+                {message && <div style={styles.alert(false)}>{message}</div>}
+                {error && <div style={styles.alert(true)}>{error}</div>}
 
-                <div className="form-group">
-                    <label htmlFor="priceType">Loại hình sử dụng (*)</label>
+                <div style={styles.formGroup}>
+                    <label htmlFor="priceType" style={styles.label}>Loại hình sử dụng (*)</label>
                     <select
                         id="priceType"
-                        className="form-control"
+                        style={styles.input}
                         value={selectedPriceType}
                         onChange={(e) => setSelectedPriceType(e.target.value)}
                         required
@@ -142,39 +272,39 @@ const ContractRequestForm = () => {
                             </option>
                         ))}
                     </select>
-                    <small>Loại hình sử dụng sẽ quyết định biểu giá nước của bạn.</small>
+                    <div style={styles.small}>💡 Loại hình sử dụng sẽ quyết định biểu giá nước của bạn.</div>
                 </div>
 
                 {/* --- BẢNG GIÁ NƯỚC MỚI --- */}
-                <div className="price-details-wrapper">
-                    <label>Bảng giá chi tiết (tham khảo)</label>
-                    <div className="table-responsive">
-                        <table className="price-details-table">
-                            <thead>
-                                <tr>
-                                    <th>Tên loại giá</th>
-                                    <th>Đơn giá (VNĐ/m³)</th>
-                                    <th>Phí BVMT (VNĐ/m³)</th>
-                                    <th>VAT (%)</th>
-                                    <th>Ngày hiệu lực</th>
-                                    <th>Người duyệt</th>
+                <div style={styles.tableWrapper}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, display: 'block', marginBottom: '12px' }}>📊 Bảng giá chi tiết (tham khảo)</label>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={styles.table}>
+                            <thead style={styles.tableHeader}>
+                                <tr style={styles.tableRow}>
+                                    <th style={styles.tableCellHeader}>Tên loại giá</th>
+                                    <th style={styles.tableCellHeader}>Đơn giá (VNĐ/m³)</th>
+                                    <th style={styles.tableCellHeader}>Phí BVMT (VNĐ/m³)</th>
+                                    <th style={styles.tableCellHeader}>VAT (%)</th>
+                                    <th style={styles.tableCellHeader}>Ngày hiệu lực</th>
+                                    <th style={styles.tableCellHeader}>Người duyệt</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {priceDetails.length > 0 ? (
                                     priceDetails.map((price, index) => (
-                                        <tr key={index}>
-                                            <td>{price.typeName}</td>
-                                            <td>{formatCurrency(price.unitPrice)}</td>
-                                            <td>{formatCurrency(price.environmentFee)}</td>
-                                            <td>{price.vatRate}%</td>
-                                            <td>{formatDate(price.effectiveDate)}</td>
-                                            <td>{price.approvedBy || 'N/A'}</td>
+                                        <tr key={index} style={styles.tableRow}>
+                                            <td style={styles.tableCell}>{price.typeName}</td>
+                                            <td style={styles.tableCell}>{formatCurrency(price.unitPrice)}</td>
+                                            <td style={styles.tableCell}>{formatCurrency(price.environmentFee)}</td>
+                                            <td style={styles.tableCell}>{price.vatRate}%</td>
+                                            <td style={styles.tableCell}>{formatDate(price.effectiveDate)}</td>
+                                            <td style={styles.tableCell}>{price.approvedBy || 'N/A'}</td>
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan="6" style={{ textAlign: 'center' }}>Đang tải bảng giá...</td>
+                                    <tr style={styles.tableRow}>
+                                        <td style={{ ...styles.tableCell, textAlign: 'center' }} colSpan="6">⏳ Đang tải bảng giá...</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -182,39 +312,41 @@ const ContractRequestForm = () => {
                     </div>
                 </div>
 
-                <div className="form-group">
-                    <label htmlFor="occupants">Số người sử dụng (*)</label>
+                <div style={styles.formGroup}>
+                    <label htmlFor="occupants" style={styles.label}>Số người sử dụng (*)</label>
                     <input
                         type="number"
                         id="occupants"
-                        className="form-control"
+                        style={styles.input}
                         value={occupants}
                         onChange={(e) => setOccupants(e.target.value)}
                         min="1"
+                        placeholder="Nhập số người sử dụng"
                         required
                     />
-                    <small>Đối với hộ gia đình, đây là số người trong hộ khẩu.</small>
+                    <div style={styles.small}>👥 Đối với hộ gia đình, đây là số người trong hộ khẩu.</div>
                 </div>
-                <div className="form-group">
-                    <label htmlFor="notes">Ghi chú</label>
+
+                <div style={styles.formGroup}>
+                    <label htmlFor="notes" style={styles.label}>Ghi chú</label>
                     <textarea
                         id="notes"
-                        className="form-control"
-                        rows="4"
+                        style={{ ...styles.textarea, height: '120px' }}
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Bạn có yêu cầu gì thêm không? (ví dụ: mong muốn thời gian khảo sát...)"
                     />
                 </div>
 
-                <div className="form-actions">
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
-                        {loading ? 'Đang gửi...' : 'Gửi Yêu Cầu'}
-                    </button>
-                </div>
+                <button
+                    type="submit"
+                    style={styles.button}
+                    disabled={loading}
+                >
+                    {loading ? '⏳ Đang gửi...' : '✅ Gửi Yêu Cầu'}
+                </button>
             </form>
         </div>
-        // </Layout>
     );
 };
 
