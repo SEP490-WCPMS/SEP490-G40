@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import ContractRequestDetailModal from './ContractRequestDetailModal';
-import './ContractRequestStatusList.css'; // Sẽ tạo ở bước sau
-// import Layout from '...'; // Import layout chung của bạn
 
 const ContractRequestStatusList = () => {
     const [requests, setRequests] = useState([]);
@@ -79,50 +77,190 @@ const ContractRequestStatusList = () => {
         setSelectedContractId(null);
     };
 
+    const styles = {
+        container: {
+            maxWidth: '1000px',
+            margin: '40px auto',
+            padding: '40px 20px',
+        },
+        title: {
+            fontSize: '28px',
+            fontWeight: 700,
+            color: '#1f2937',
+            marginBottom: '30px',
+            textAlign: 'center',
+        },
+        loadingContainer: {
+            padding: '40px',
+            textAlign: 'center',
+            fontSize: '16px',
+            color: '#6b7280',
+        },
+        errorContainer: {
+            padding: '20px',
+            backgroundColor: '#fef2f2',
+            color: '#7f1d1d',
+            borderRadius: '10px',
+            borderLeft: '4px solid #ef4444',
+        },
+        noRequests: {
+            padding: '40px',
+            textAlign: 'center',
+            fontSize: '16px',
+            color: '#6b7280',
+            backgroundColor: '#f9fafb',
+            borderRadius: '10px',
+            border: '2px dashed #e5e7eb',
+        },
+        requestList: {
+            display: 'grid',
+            gap: '20px',
+        },
+        card: {
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+            overflow: 'hidden',
+            transition: 'all 0.3s ease',
+            border: '1px solid #e5e7eb',
+            '&:hover': {
+                boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12)',
+                transform: 'translateY(-2px)',
+            }
+        },
+        cardHeader: {
+            padding: '20px',
+            backgroundColor: '#f9fafb',
+            borderBottom: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        contractNumber: {
+            fontSize: '16px',
+            fontWeight: 600,
+            color: '#1f2937',
+        },
+        statusBadge: (status) => {
+            const statusColors = {
+                'status-processing': { bg: '#fef3c7', color: '#92400e', text: 'Đang xử lý' },
+                'status-approved': { bg: '#dcfce7', color: '#15803d', text: 'Đã chấp thuận' },
+                'status-rejected': { bg: '#fee2e2', color: '#991b1b', text: 'Đã từ chối/Hủy' },
+                'status-expired': { bg: '#f3f4f6', color: '#6b7280', text: 'Đã hết hạn' },
+                'status-default': { bg: '#f3f4f6', color: '#6b7280', text: 'Không rõ' },
+            };
+            const colors = statusColors[status] || statusColors['status-default'];
+            return {
+                display: 'inline-block',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: colors.bg,
+                color: colors.color,
+            };
+        },
+        cardBody: {
+            padding: '20px',
+        },
+        bodyRow: {
+            display: 'flex',
+            marginBottom: '12px',
+            fontSize: '14px',
+        },
+        bodyLabel: {
+            fontWeight: 600,
+            color: '#1f2937',
+            minWidth: '160px',
+            marginRight: '16px',
+        },
+        bodyValue: {
+            color: '#6b7280',
+            flex: 1,
+            wordBreak: 'break-word',
+        },
+        bodyRowLast: {
+            marginBottom: 0,
+        },
+        actions: {
+            display: 'flex',
+            gap: '12px',
+            marginTop: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e5e7eb',
+        },
+        detailButton: {
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            backgroundColor: '#0A77E2',
+            color: '#ffffff',
+            transition: 'all 0.3s ease',
+        },
+    };
+
     if (loading) {
-        return <div className="loading-container">Đang tải dữ liệu...</div>;
+        return <div style={styles.loadingContainer}>⏳ Đang tải dữ liệu...</div>;
     }
 
     if (error) {
-        return <div className="error-container">{error}</div>;
+        return <div style={styles.errorContainer}>❌ {error}</div>;
     }
 
     return (
-        <>
-            <div className="status-list-container">
-                <h2>Lịch sử Yêu cầu Hợp đồng</h2>
-                {requests.length === 0 ? (
-                    <p className="no-requests">Bạn chưa có yêu cầu hợp đồng nào.</p>
-                ) : (
-                    <div className="request-list">
-                        {requests.map(req => {
-                            const statusDisplay = getStatusDisplay(req.status);
-                            return (
-                                <div key={req.contractId} className="request-card">
-                                    <div className="request-header">
-                                        <span className="request-number">{req.contractNumber}</span>
-                                        <span className={`status-badge ${statusDisplay.className}`}>
-                                            {statusDisplay.text}
-                                        </span>
+        <div style={styles.container}>
+            <style>{`
+                .request-card:hover {
+                    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+                    transform: translateY(-2px);
+                }
+                button:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(10, 119, 226, 0.2);
+                }
+            `}</style>
+            <h2 style={styles.title}>📋 Lịch sử Yêu cầu Hợp đồng</h2>
+
+            {requests.length === 0 ? (
+                <p style={styles.noRequests}>📭 Bạn chưa có yêu cầu hợp đồng nào.</p>
+            ) : (
+                <div style={styles.requestList}>
+                    {requests.map(req => {
+                        const statusDisplay = getStatusDisplay(req.status);
+                        return (
+                            <div key={req.contractId} style={styles.card} className="request-card">
+                                <div style={styles.cardHeader}>
+                                    <span style={styles.contractNumber}>{req.contractNumber}</span>
+                                    <span style={styles.statusBadge(statusDisplay.className)}>
+                                        {statusDisplay.text}
+                                    </span>
+                                </div>
+                                <div style={styles.cardBody}>
+                                    <div style={styles.bodyRow}>
+                                        <span style={styles.bodyLabel}>📅 Ngày gửi yêu cầu:</span>
+                                        <span style={styles.bodyValue}>{formatDate(req.applicationDate)}</span>
                                     </div>
-                                    <div className="request-body">
-                                        <p><strong>Ngày gửi yêu cầu:</strong> {formatDate(req.applicationDate)}</p>
-                                        <p><strong>Ghi chú của bạn:</strong> {req.notes || '(Không có)'}</p>
-                                        <div className="request-actions">
-                                            <button
-                                                className="detail-button"
-                                                onClick={() => handleViewDetail(req.contractId)}
-                                            >
-                                                👁️ Xem chi tiết
-                                            </button>
-                                        </div>
+                                    <div style={styles.bodyRow}>
+                                        <span style={styles.bodyLabel}>📝 Ghi chú của bạn:</span>
+                                        <span style={styles.bodyValue}>{req.notes || '(Không có)'}</span>
+                                    </div>
+                                    <div style={styles.actions}>
+                                        <button
+                                            style={styles.detailButton}
+                                            onClick={() => handleViewDetail(req.contractId)}
+                                        >
+                                            👁️ Xem chi tiết
+                                        </button>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Modal chi tiết hợp đồng */}
             <ContractRequestDetailModal
@@ -132,7 +270,7 @@ const ContractRequestStatusList = () => {
                 token={localStorage.getItem('token')}
                 onClose={handleCloseModal}
             />
-        </>
+        </div>
     );
 };
 
