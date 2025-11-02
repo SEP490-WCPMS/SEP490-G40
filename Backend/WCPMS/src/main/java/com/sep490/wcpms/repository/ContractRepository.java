@@ -101,4 +101,6 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             @Param("staff") Account staff,
             @Param("date") LocalDate date
     );
+
+    List<Contract> findByCustomer_IdOrderByIdDesc(Integer customerId);
 }
