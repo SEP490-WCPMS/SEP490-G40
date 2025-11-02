@@ -30,7 +30,7 @@ public class ContractController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<ContractDTO> createContract(@Valid @RequestBody ContractCreateDTO createDTO) {
+    public ApiResponse<ContractDTO> createContract(@RequestBody ContractCreateDTO createDTO) {
         ContractDTO createdContract = contractCustomerService.createContract(createDTO);
         return ApiResponse.created(createdContract, "Contract created successfully");
     }

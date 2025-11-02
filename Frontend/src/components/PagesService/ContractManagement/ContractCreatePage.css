@@ -1,0 +1,72 @@
+/* Tùy chỉnh cho màn tạo hợp đồng */
+.contract-create-container {
+    padding: 24px;
+    background-color: #f5f5f5;
+    min-height: 100vh;
+}
+
+.contract-create-card {
+    background-color: #ffffff;
+    padding: 32px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.contract-create-form .ant-form-item-label > label {
+    font-weight: 600;
+}
+
+.contract-create-form .ant-input,
+.contract-create-form .ant-select-selector,
+.contract-create-form .ant-picker {
+    border-radius: 4px;
+}
+
+.contract-create-form .ant-input:hover,
+.contract-create-form .ant-select-selector:hover {
+    border-color: #40a9ff;
+}
+
+.form-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1890ff;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8e8e8;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e8e8e8;
+}
+
+.contract-create-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .contract-create-container {
+        padding: 16px;
+    }
+
+    .contract-create-card {
+        padding: 20px;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions button {
+        width: 100%;
+    }
+}
