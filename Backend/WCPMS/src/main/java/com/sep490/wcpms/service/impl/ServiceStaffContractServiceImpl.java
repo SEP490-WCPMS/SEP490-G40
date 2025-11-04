@@ -443,6 +443,19 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     @Transactional
+    public ServiceStaffContractDTO sendContractToInstallation(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+        if (contract.getContractStatus() != ContractStatus.PENDING_SIGN) {
+            throw new IllegalStateException("Only PENDING_SIGN contracts can be sent to installation.");
+        }
+        contract.setContractStatus(ContractStatus.SIGNED);
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    @Transactional
     public ServiceStaffContractDTO rejectSurveyReport(Integer contractId, String reason) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
@@ -462,5 +475,12 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         }
         Contract saved = contractRepository.save(contract);
         return convertToDTO(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ServiceStaffContractDTO> getPendingSignContracts(String keyword, Pageable pageable) {
+        return contractRepository.findByStatusAndKeyword(ContractStatus.PENDING_SIGN, keyword, pageable)
+                .map(this::convertToDTO);
     }
 }

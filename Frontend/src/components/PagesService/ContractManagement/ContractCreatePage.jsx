@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { getAllCustomers, getTechnicalStaffList, createContract } from '../../Services/apiService';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getAllCustomers, getTechnicalStaffList, createContract, getServiceContractDetail, approveServiceContract } from '../../Services/apiService';
 import moment from 'moment';
 import './ContractCreatePage.css';
 
@@ -14,16 +14,26 @@ const { Option } = Select;
 const ContractCreate = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [customers, setCustomers] = useState([]);
     const [technicalStaff, setTechnicalStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    
+    // State cho việc tạo hợp đồng từ survey
+    const [sourceContractId, setSourceContractId] = useState(null);
+    const [sourceContract, setSourceContract] = useState(null);
 
     // Lấy danh sách khách hàng và nhân viên kỹ thuật
     useEffect(() => {
+        // Kiểm tra xem có source contract từ location state không
+        if (location.state?.sourceContractId) {
+            setSourceContractId(location.state.sourceContractId);
+            fetchSourceContract(location.state.sourceContractId);
+        }
         fetchInitialData();
-    }, []);
+    }, [location]);
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -56,6 +66,34 @@ const ContractCreate = () => {
         }
     };
 
+    // Lấy chi tiết hợp đồng từ survey để điền dữ liệu
+    const fetchSourceContract = async (contractId) => {
+        try {
+            const response = await getServiceContractDetail(contractId);
+            if (response.data) {
+                setSourceContract(response.data);
+                // Điền dữ liệu vào form
+                form.setFieldsValue({
+                    customerId: response.data.customerId,
+                    applicationDate: response.data.applicationDate ? moment(response.data.applicationDate) : moment(),
+                    surveyDate: response.data.surveyDate ? moment(response.data.surveyDate) : undefined,
+                    technicalDesign: response.data.technicalDesign,
+                    estimatedCost: response.data.estimatedCost,
+                    installationDate: response.data.installationDate ? moment(response.data.installationDate) : undefined,
+                    startDate: response.data.startDate ? moment(response.data.startDate) : moment(),
+                    endDate: response.data.endDate ? moment(response.data.endDate) : undefined,
+                    contractValue: response.data.contractValue,
+                    paymentMethod: response.data.paymentMethod,
+                    technicalStaffId: response.data.technicalStaffId,
+                    notes: response.data.notes,
+                });
+            }
+        } catch (error) {
+            console.error("Fetch source contract error:", error);
+            message.error('Lỗi khi lấy thông tin hợp đồng khảo sát!');
+        }
+    };
+
     // Xử lý submit form
     const handleSubmit = async (values) => {
         setSubmitting(true);
@@ -63,6 +101,7 @@ const ContractCreate = () => {
             // Lấy thông tin user đang đăng nhập từ localStorage
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const currentUserId = user?.id;
+            
             // Chuẩn bị dữ liệu gửi lên backend
             const contractData = {
                 customerId: values.customerId,
@@ -82,21 +121,42 @@ const ContractCreate = () => {
 
             console.log('Sending contract data:', contractData);
 
-            const response = await createContract(contractData);
-
-            if (response.data && response.data.success) {
-                message.success('Tạo hợp đồng thành công!');
-
-                // Hiển thị contract_number nếu có
-                if (response.data.data && response.data.data.contractNumber) {
-                    message.info(`Số hợp đồng: ${response.data.data.contractNumber}`);
+            // Nếu có source contract (tạo từ survey), gọi API approve trước
+            if (sourceContractId) {
+                try {
+                    await approveServiceContract(sourceContractId);
+                    message.success('Hợp đồng đã duyệt thành công!');
+                } catch (error) {
+                    console.error('Approve contract error:', error);
+                    message.error('Lỗi khi duyệt hợp đồng!');
+                    setSubmitting(false);
+                    return;
                 }
+            } else {
+                // Nếu không có source contract, tạo contract mới
+                const response = await createContract(contractData);
 
-                // Chuyển về trang danh sách hợp đồng sau 1.5s
-                setTimeout(() => {
-                    navigate('/contract-list');
-                }, 1500);
+                if (response.data && response.data.success) {
+                    message.success('Tạo hợp đồng thành công!');
+
+                    // Hiển thị contract_number nếu có
+                    if (response.data.data && response.data.data.contractNumber) {
+                        message.info(`Số hợp đồng: ${response.data.data.contractNumber}`);
+                    }
+
+                    // Chuyển về trang danh sách hợp đồng sau 1.5s
+                    setTimeout(() => {
+                        navigate('/service/approved-contracts');
+                    }, 1500);
+                }
+                return;
             }
+
+            // Sau khi approve thành công, chuyển về trang approved contracts
+            setTimeout(() => {
+                message.success('Tạo hợp đồng chính thức thành công!');
+                navigate('/service/approved-contracts');
+            }, 1500);
         } catch (error) {
             console.error('Create contract error:', error);
             const errorMessage = error.response?.data?.message || 'Tạo hợp đồng thất bại!';

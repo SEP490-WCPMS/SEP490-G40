@@ -368,6 +368,23 @@ export const generateWaterServiceContract = (id, payload) => {
     return apiClient.post(`/service/contracts/${id}/generate-water-service-contract`, payload);
 };
 
+/** Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech) */
+export const getPendingSignContracts = (params) => {
+    // params: { page?: number, size?: number, keyword?: string }
+    const queryParams = {
+        page: params.page || 0,
+        size: params.size || 10,
+        keyword: params.keyword
+    };
+    Object.keys(queryParams).forEach(key => (queryParams[key] == null || queryParams[key] === '') && delete queryParams[key]);
+    return apiClient.get(`/service/contracts/pending-sign`, { params: queryParams });
+};
+
+/** Gửi hợp đồng cho Tech lắp đặt (PENDING_SIGN → SIGNED) */
+export const sendContractToInstallation = (id) => {
+    return apiClient.put(`/service/contracts/${id}/send-to-installation`);
+};
+
 /** Lấy số liệu thống kê cho dashboard */
 export const getDashboardStats = () => {
     return axios.get(`${SERVICE_API_BASE_URL}/dashboard/stats`);
@@ -448,15 +465,8 @@ const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service/dashboard`;
  * }>}
  */
 export const getServiceStaffDashboardStats = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const staffId = user?.id;
-    
-    const params = {};
-    if (staffId) {
-        params.staffId = staffId;
-    }
-    
-    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`, { params });
+    // Lấy thống kê ở phạm vi toàn bộ dịch vụ (không lọc theo staff) để đồng bộ với các trang danh sách
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`);
 };
 
 /**
@@ -474,15 +484,8 @@ export const getServiceStaffChartData = (startDate, endDate) => {
     const start = startDate instanceof Date ? startDate.toISOString().split('T')[0] : startDate;
     const end = endDate instanceof Date ? endDate.toISOString().split('T')[0] : endDate;
     
-    // Lấy staffId từ localStorage (nếu có)
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const staffId = user?.id;
-    
+    // Trả về dữ liệu biểu đồ phạm vi toàn dịch vụ (không lọc theo staff)
     const params = { startDate: start, endDate: end };
-    if (staffId) {
-        params.staffId = staffId;
-    }
-    
     return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, { params });
 };
 
@@ -493,16 +496,11 @@ export const getServiceStaffChartData = (startDate, endDate) => {
  * @returns {Promise<ContractDetailsDTO[]>}
  */
 export const getRecentServiceStaffTasks = (status, limit = 5) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const staffId = user?.id;
-    
     const params = { limit };
-    if (staffId) {
-        params.staffId = staffId;
-    }
     if (status && status !== 'all') {
         params.status = status;
     }
+    // Lấy danh sách công việc gần đây ở phạm vi toàn dịch vụ
     return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/recent-tasks`, { params });
 };
 
