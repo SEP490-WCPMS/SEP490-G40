@@ -98,14 +98,14 @@ const ServiceDashboardPage = () => {
         labels: [],
         datasets: [
             {
-                label: 'Yêu cầu mới',
+                label: 'Gửi khảo sát',
                 data: [],
                 borderColor: '#1890ff',
                 backgroundColor: '#1890ff',
                 tension: 0.1,
             },
             {
-                label: 'Hoàn thành',
+                label: 'Đã duyệt',
                 data: [],
                 borderColor: '#52c41a',
                 backgroundColor: '#52c41a',
@@ -113,18 +113,38 @@ const ServiceDashboardPage = () => {
             },
         ],
     });
+    const [chartMeta, setChartMeta] = useState({ source: 'unknown', sumSurvey: 0, sumInstall: 0 });
     const [filterStatus, setFilterStatus] = useState('all');
     const [dateRange, setDateRange] = useState([moment().subtract(6, 'days'), moment()]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Lấy số liệu thống kê từ API
+    // Lấy số liệu thống kê từ API (ưu tiên BE, fallback FE khi cần)
     const fetchStats = async () => {
         try {
             setLoading(true);
             setError(null);
-            
-            // Luôn dùng fallback: fetch counts từ contracts API
+
+            // Thử gọi BE trước
+            try {
+                const res = await getServiceStaffDashboardStats();
+                const data = res?.data;
+                if (data) {
+                    setStats({
+                        draftCount: data.draftCount ?? 0,
+                        pendingTechnicalCount: data.pendingTechnicalCount ?? 0,
+                        pendingSurveyReviewCount: data.pendingSurveyReviewCount ?? 0,
+                        approvedCount: data.approvedCount ?? 0,
+                        pendingSignCount: data.pendingSignCount ?? 0,
+                        signedCount: data.signedCount ?? 0,
+                    });
+                    return; // Đã set từ BE, không cần fallback
+                }
+            } catch (e) {
+                // Bỏ qua, sẽ fallback
+            }
+
+            // Fallback: fetch counts từ contracts API
             await fetchStatsFallback();
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -166,7 +186,31 @@ const ServiceDashboardPage = () => {
         }
     };
 
-    // Lấy dữ liệu biểu đồ từ API
+    // Helper: tạo mảng nhãn ngày [YYYY-MM-DD]
+    const buildLabels = (startDate, endDate) => {
+        const labels = [];
+        const cur = moment(startDate).startOf('day');
+        const last = moment(endDate).startOf('day');
+        while (cur.isSameOrBefore(last)) {
+            labels.push(cur.format('YYYY-MM-DD'));
+            cur.add(1, 'day');
+        }
+        return labels;
+    };
+
+    // Helper: gom nhóm theo ngày từ trường ngày (nếu thiếu sẽ bỏ qua)
+    const groupCountByDate = (items, dateField) => {
+        const map = new Map();
+        (items || []).forEach((it) => {
+            const raw = it?.[dateField];
+            if (!raw) return;
+            const d = moment(raw).format('YYYY-MM-DD');
+            map.set(d, (map.get(d) || 0) + 1);
+        });
+        return map;
+    };
+
+    // Lấy dữ liệu biểu đồ từ API (có fallback tự tính từ danh sách)
     const fetchChartData = async (start, end) => {
         try {
             setLoading(true);
@@ -185,59 +229,65 @@ const ServiceDashboardPage = () => {
                 endDate = new Date(end);
             }
             
+            // Gọi BE: giờ BE đã trả theo hướng C (actions) trong các field hiện có
             const response = await getServiceStaffChartData(startDate, endDate);
-            if (response.data && response.data.labels) {
+            const beLabels = response?.data?.labels;
+            const beSent = response?.data?.surveyCompletedCounts; // mapped: sent
+            const beApproved = response?.data?.installationCompletedCounts; // mapped: approved
+
+            const labels = beLabels?.length ? beLabels : buildLabels(startDate, endDate);
+
+            const beValid = Array.isArray(beSent) && Array.isArray(beApproved) &&
+                (beSent.some(x => x > 0) || beApproved.some(x => x > 0));
+
+            if (beValid) {
                 setChartData({
-                    labels: response.data.labels || [],
+                    labels,
                     datasets: [
-                        {
-                            label: 'Gửi khảo sát',
-                            data: response.data.surveyCompletedCounts || [],
-                            borderColor: '#1890ff',
-                            backgroundColor: '#1890ff',
-                            tension: 0.1,
-                        },
-                        {
-                            label: 'Hoàn thành',
-                            data: response.data.installationCompletedCounts || [],
-                            borderColor: '#52c41a',
-                            backgroundColor: '#52c41a',
-                            tension: 0.1,
-                        },
+                        { label: 'Gửi khảo sát', data: beSent, borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
+                        { label: 'Đã duyệt', data: beApproved, borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
                     ],
                 });
+                setChartMeta({ source: 'backend-actions', sumSurvey: (beSent || []).reduce((a,b)=>a+b,0), sumInstall: (beApproved || []).reduce((a,b)=>a+b,0) });
             } else {
-                // Fallback: khởi tạo biểu đồ với dữ liệu trống nhưng có labels theo date range
-                const labels = [];
-                const current = moment(startDate);
-                while (current.isBefore(endDate)) {
-                    labels.push(current.format('YYYY-MM-DD'));
-                    current.add(1, 'day');
-                }
+                // Fallback FE theo hướng C: hành động của Service Staff
+                // - "Gửi khảo sát": status PENDING, nhóm theo createdAt
+                // - "Đã duyệt": status APPROVED, nhóm theo updatedAt
+                const [pendingRes, approvedRes] = await Promise.all([
+                    getServiceContracts({ page: 0, size: 1000, status: 'PENDING' }),
+                    getServiceContracts({ page: 0, size: 1000, status: 'APPROVED' }),
+                ]);
+                const pendingItems = pendingRes?.data?.content || [];
+                const approvedItems = approvedRes?.data?.content || [];
+
+                const sentByDate = groupCountByDate(pendingItems, 'createdAt');
+                const approvedByDate = groupCountByDate(approvedItems, 'updatedAt');
+
+                const sentCounts = labels.map(d => sentByDate.get(d) || 0);
+                const approvedCounts = labels.map(d => approvedByDate.get(d) || 0);
+
                 setChartData({
-                    labels: labels,
+                    labels,
                     datasets: [
-                        {
-                            label: 'Gửi khảo sát',
-                            data: labels.map(() => 0),
-                            borderColor: '#1890ff',
-                            backgroundColor: '#1890ff',
-                            tension: 0.1,
-                        },
-                        {
-                            label: 'Hoàn thành',
-                            data: labels.map(() => 0),
-                            borderColor: '#52c41a',
-                            backgroundColor: '#52c41a',
-                            tension: 0.1,
-                        },
+                        { label: 'Gửi khảo sát', data: sentCounts, borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
+                        { label: 'Đã duyệt', data: approvedCounts, borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
                     ],
                 });
+                setChartMeta({ source: 'fallback-actions', sumSurvey: sentCounts.reduce((a,b)=>a+b,0), sumInstall: approvedCounts.reduce((a,b)=>a+b,0) });
             }
         } catch (error) {
             console.error('Error fetching chart data:', error);
             setError('Lỗi tải dữ liệu biểu đồ');
             // Vẫn hiển thị biểu đồ trống thay vì lỗi
+            const labels = buildLabels(start, end);
+            setChartData({
+                labels,
+                datasets: [
+                    { label: 'Khảo sát hoàn thành', data: labels.map(() => 0), borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
+                    { label: 'Lắp đặt hoàn thành', data: labels.map(() => 0), borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
+                ],
+            });
+            setChartMeta({ source: 'error', sumSurvey: 0, sumInstall: 0 });
         } finally {
             setLoading(false);
         }
@@ -441,7 +491,14 @@ const ServiceDashboardPage = () => {
             {/* Chart Section */}
             <Card className="shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                    <Typography.Title level={4} className="!mb-0">Thống kê hoàn thành</Typography.Title>
+                    <div className="flex items-center gap-2">
+                        <Typography.Title level={4} className="!mb-0">Thống kê hoàn thành</Typography.Title>
+                        <Tooltip
+                            title={`Nguồn: ${chartMeta.source === 'backend' ? 'Backend' : chartMeta.source === 'fallback' ? 'Fallback (tự tính)' : 'N/A'} | Tổng khảo sát: ${chartMeta.sumSurvey} | Tổng lắp đặt: ${chartMeta.sumInstall}`}
+                        >
+                            <span className="text-gray-400 cursor-default">ℹ️</span>
+                        </Tooltip>
+                    </div>
                     <div className="flex gap-3 items-center">
                         <div className="flex items-center gap-2">
                             <input
@@ -506,6 +563,7 @@ const ServiceDashboardPage = () => {
                         loading={loadingRecent}
                         pagination={false}
                         onViewDetails={handleViewDetails}
+                        showStatusFilter={true}
                     />
                 </Spin>
             </Card>

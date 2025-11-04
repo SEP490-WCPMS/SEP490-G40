@@ -74,40 +74,21 @@ const SurveyReviewPage = () => {
     }, [filters.keyword, activeTab]);
 
     useEffect(() => {
-        // Fetch stats when component mounts
+        // Fetch stats using same axios client to avoid env issues
         const fetchStats = async () => {
             try {
-                // Get PENDING contracts count
-                const pendingResponse = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/service/contracts?status=PENDING&pageSize=1`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token')}`,
-                        },
-                    }
-                );
-                const pendingData = await pendingResponse.json();
-                
-                // Get PENDING_SURVEY_REVIEW contracts count
-                const surveyResponse = await fetch(
-                    `${import.meta.env.VITE_API_URL}/api/service/contracts?status=PENDING_SURVEY_REVIEW&pageSize=1`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token')}`,
-                        },
-                    }
-                );
-                const surveyData = await surveyResponse.json();
-                
+                const [pendingRes, reviewRes] = await Promise.all([
+                    getServiceContracts({ page: 0, size: 1, status: 'PENDING' }),
+                    getServiceContracts({ page: 0, size: 1, status: 'PENDING_SURVEY_REVIEW' })
+                ]);
                 setStats({
-                    pendingTechnicalCount: pendingData?.data?.total || 0,
-                    pendingSurveyReviewCount: surveyData?.data?.total || 0
+                    pendingTechnicalCount: pendingRes?.data?.totalElements || 0,
+                    pendingSurveyReviewCount: reviewRes?.data?.totalElements || 0
                 });
             } catch (error) {
-                console.error("Fetch stats error:", error);
+                console.error('Fetch stats error:', error);
             }
         };
-        
         fetchStats();
     }, []);
 
@@ -248,6 +229,7 @@ const SurveyReviewPage = () => {
                                     pagination={pagination}
                                     onPageChange={handleTableChange}
                                     onViewDetails={handleViewDetails}
+                                    showStatusFilter={false}
                                 />
                             </Spin>
                         )
@@ -263,6 +245,7 @@ const SurveyReviewPage = () => {
                                     pagination={pagination}
                                     onPageChange={handleTableChange}
                                     onViewDetails={handleViewDetails}
+                                    showStatusFilter={false}
                                 />
                             </Spin>
                         )

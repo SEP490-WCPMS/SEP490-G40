@@ -171,6 +171,7 @@ const ApprovedContractsPage = () => {
                     pagination={pagination}
                     onPageChange={handleTableChange}
                     onViewDetails={handleViewDetails}
+                    showStatusFilter={false}
                 />
             </Spin>
 

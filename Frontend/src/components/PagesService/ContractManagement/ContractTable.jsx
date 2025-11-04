@@ -3,7 +3,7 @@ import { Table, Tag, Button, Space } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 
 // Định nghĩa các cột cho bảng
-const columns = (onViewDetails) => [
+const columns = (onViewDetails, showStatusFilter = false) => [
   {
     title: '#',
     dataIndex: 'id',
@@ -33,7 +33,7 @@ const columns = (onViewDetails) => [
     title: 'Trạng thái',
     dataIndex: 'contractStatus',
     key: 'contractStatus',
-    filters: [
+    filters: showStatusFilter ? [
       { text: 'Bản nháp', value: 'DRAFT' },
       { text: 'Đang chờ khảo sát', value: 'PENDING' },
       { text: 'Đã khảo sát', value: 'PENDING_SURVEY_REVIEW' },
@@ -44,8 +44,8 @@ const columns = (onViewDetails) => [
       { text: 'Hết hạn', value: 'EXPIRED' },
       { text: 'Đã chấm dứt', value: 'TERMINATED' },
       { text: 'Bị tạm ngưng', value: 'SUSPENDED' }
-    ],
-    onFilter: (value, record) => record.contractStatus === value,
+    ] : undefined,
+    onFilter: showStatusFilter ? ((value, record) => record.contractStatus === value) : undefined,
     render: (status) => {
       let color;
       let displayText;
@@ -185,10 +185,10 @@ const columns = (onViewDetails) => [
   },
 ];
 
-const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails }) => {
+const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, showStatusFilter = false }) => {
   return (
     <Table
-      columns={columns(onViewDetails)}
+      columns={columns(onViewDetails, showStatusFilter)}
       dataSource={data}
       loading={loading}
       pagination={pagination}
