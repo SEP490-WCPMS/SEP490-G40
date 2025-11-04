@@ -1,6 +1,8 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { Modal, Form, Select, Input, Spin, message } from 'antd';
+import { Modal, Form, Select, Input, Spin, message, Divider, Row, Col, Tag } from 'antd';
+import { FileTextOutlined, UserOutlined, AppstoreOutlined, InfoCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { getTechnicalStaff } from '../../Services/apiService';
+import './ContractModal.css';
 
 const { TextArea } = Input;
 
@@ -67,67 +69,101 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
 
   return (
     <Modal
-      title="Gửi Khảo Sát"
+      title={
+        <div className="contract-modal__title">
+          <span className="contract-modal__title-icon">📋</span>
+          <span>Gửi Khảo Sát</span>
+        </div>
+      }
       open={isOpen}
       onCancel={onCancel}
       onOk={handleOk}
       confirmLoading={loading}
-      width={600}
+      width={720}
       destroyOnClose
       okText="Gửi"
       cancelText="Hủy"
     >
       <Spin spinning={loading}>
-        <Form form={form} layout="vertical">
-          <Form.Item name="contractNumber" label="Số Hợp đồng">
-            <Input disabled style={{ backgroundColor: '#fafafa', color: '#000' }} />
-          </Form.Item>
+        <div className="contract-modal">
+          {/* Summary header */}
+          <div className="contract-modal__summary">
+            <div className="summary-item">
+              <span className="summary-icon"><FileTextOutlined /></span>
+              <div>
+                <div className="summary-label">Số hợp đồng</div>
+                <div className="summary-value">{initialData?.contractNumber || 'N/A'}</div>
+              </div>
+            </div>
+            <div className="summary-item">
+              <span className="summary-icon"><UserOutlined /></span>
+              <div>
+                <div className="summary-label">Khách hàng</div>
+                <div className="summary-value">{initialData?.customerName || 'N/A'}</div>
+              </div>
+            </div>
+            <div className="summary-item">
+              <span className="summary-icon"><AppstoreOutlined /></span>
+              <div>
+                <div className="summary-label">Loại hợp đồng</div>
+                <div className="summary-value">{initialData?.priceTypeName || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
 
-          <Form.Item name="customerName" label="Tên Khách hàng">
-            <Input disabled style={{ backgroundColor: '#fafafa', color: '#000' }} />
-          </Form.Item>
+          <Divider className="contract-modal__divider">Thiết lập khảo sát</Divider>
 
-          <Form.Item name="contractType" label="Loại hợp đồng">
-            <Input disabled style={{ backgroundColor: '#fafafa', color: '#000' }} />
-          </Form.Item>
+          <Form form={form} layout="vertical" className="contract-modal__form">
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item name="contractNumber" label="Số Hợp đồng">
+                  <Input disabled className="readonly" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item name="customerName" label="Tên Khách hàng">
+                  <Input disabled className="readonly" />
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Form.Item name="customerNotes" label="Ghi chú Khách hàng">
-            <TextArea 
-              disabled 
-              rows={3} 
-              style={{ backgroundColor: '#fafafa', color: '#000' }}
-              placeholder="(Không có ghi chú)"
-            />
-          </Form.Item>
+            <Row gutter={16}>
+              <Col xs={24} sm={12}>
+                <Form.Item name="contractType" label="Loại hợp đồng">
+                  <Input disabled className="readonly" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12}>
+                <Form.Item
+                  name="technicalStaffId"
+                  label="Gán NV Kỹ thuật"
+                  rules={[{ required: true, message: 'Vui lòng chọn NV Kỹ thuật!' }]}
+                >
+                  <Select placeholder="Chọn nhân viên kỹ thuật..." loading={staffLoading}>
+                    {technicalStaff.map((staff) => (
+                      <Select.Option key={staff.id} value={staff.id}>
+                        <TeamOutlined /> {staff.fullName || staff.username || staff.name || `NV #${staff.id}`}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Form.Item
-            name="technicalStaffId"
-            label="Gán NV Kỹ thuật"
-            rules={[{ required: true, message: 'Vui lòng chọn NV Kỹ thuật!' }]}
-          >
-            <Select 
-              placeholder="Chọn nhân viên kỹ thuật..."
-              loading={staffLoading}
-            >
-              {technicalStaff.map((staff) => (
-                <Select.Option key={staff.id} value={staff.id}>
-                  {staff.fullName || staff.username || staff.name || `NV #${staff.id}`}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Form.Item name="customerNotes" label="Ghi chú Khách hàng">
+              <TextArea disabled rows={3} className="readonly" placeholder="(Không có ghi chú)" />
+            </Form.Item>
+          </Form>
 
-          {/* Bỏ trường ghi chú của nhân viên */}
-
-          <div style={{ background: '#e6f7ff', padding: '12px', borderRadius: '4px', border: '1px solid #91d5ff' }}>
-            <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#0050b3', fontWeight: 'bold' }}>ℹ Hệ thống sẽ:</p>
-            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#0050b3' }}>
-              <li>Chuyển trạng thái  "Chờ khảo sát"</li>
-              <li>Gửi cho NV Kỹ thuật</li>
-              <li>NV kỹ thuật cập nhật ngày khảo sát & lắp</li>
+          <div className="contract-modal__info">
+            <p className="info-title"><InfoCircleOutlined /> Hệ thống sẽ</p>
+            <ul>
+              <li>Chuyển trạng thái sang <Tag color="gold">Chờ khảo sát</Tag></li>
+              <li>Gửi thông tin cho NV Kỹ thuật được gán</li>
+              <li>NV Kỹ thuật cập nhật ngày khảo sát & lắp</li>
             </ul>
           </div>
-        </Form>
+        </div>
       </Spin>
     </Modal>
   );

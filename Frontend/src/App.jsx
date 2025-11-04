@@ -22,6 +22,7 @@ import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage
 import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
 import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
 import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
+import SignedContractsPage from './components/PagesService/SignedContractsPage';
 import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
 import ContractTransferList from './components/PagesService/ContractManagement/Requests/ContractTransferList';
 import ContractAnnulList from './components/PagesService/ContractManagement/Requests/ContractAnnulList';
@@ -125,6 +126,7 @@ function App() {
             <Route path="contract-create" element={<ContractCreatePage />} />
             <Route path="survey-reviews" element={<SurveyReviewPage />} />
             <Route path="approved-contracts" element={<ApprovedContractsPage />} />
+            <Route path="signed-contracts" element={<SignedContractsPage />} />
             <Route path="active-contracts" element={<ActiveContractsPage />} />
             <Route path="support-tickets" element={<SupportTicketList />} />
             <Route path="create-ticket" element={<ServiceCreateTicketForm />} />

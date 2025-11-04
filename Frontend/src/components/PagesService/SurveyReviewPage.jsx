@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Tabs, Modal, Form } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import ContractViewModal from './ContractManagement/ContractViewModal';
@@ -10,6 +11,7 @@ const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
 const SurveyReviewPage = () => {
+    const navigate = useNavigate();
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -128,6 +130,12 @@ const SurveyReviewPage = () => {
             setRejectingContract(contract);
             rejectForm.resetFields();
             setRejectModalOpen(true);
+            return;
+        }
+        if (actionType === 'generateWater') {
+            // Điều hướng sang trang tạo hợp đồng (trang riêng)
+            // Truyền theo sourceContractId để trang tạo biết lấy thông tin gốc nếu cần
+            navigate('/service/contract-create', { state: { sourceContractId: contract.id } });
             return;
         }
 
@@ -275,11 +283,13 @@ const SurveyReviewPage = () => {
 
             {/* --- Modal từ chối báo cáo khảo sát --- */}
             <Modal
-                title={`Từ chối báo cáo khảo sát #${rejectingContract?.contractNumber || ''}`}
+                title={<span style={{display:'flex',alignItems:'center',gap:8}}>🚫 <span>Từ chối báo cáo khảo sát #{rejectingContract?.contractNumber || ''}</span></span>}
                 open={rejectModalOpen}
                 onCancel={() => setRejectModalOpen(false)}
                 okText="Từ chối"
                 cancelText="Hủy"
+                width={640}
+                destroyOnClose
                 onOk={async () => {
                     try {
                         const values = await rejectForm.validateFields();
@@ -295,6 +305,22 @@ const SurveyReviewPage = () => {
                     }
                 }}
             >
+                <div className="contract-modal__summary" style={{marginBottom:12}}>
+                    <div className="summary-item">
+                        <span className="summary-icon">#</span>
+                        <div>
+                            <div className="summary-label">Số hợp đồng</div>
+                            <div className="summary-value">{rejectingContract?.contractNumber || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div className="summary-item">
+                        <span className="summary-icon">👤</span>
+                        <div>
+                            <div className="summary-label">Khách hàng</div>
+                            <div className="summary-value">{rejectingContract?.customerName || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
                 <Form form={rejectForm} layout="vertical">
                     <Form.Item
                         label="Lý do từ chối"
@@ -306,9 +332,13 @@ const SurveyReviewPage = () => {
                     >
                         <Input.TextArea rows={4} placeholder="Nhập lý do (ví dụ: bổ sung bản vẽ, thiếu thông tin đo đạc, ...)" />
                     </Form.Item>
-                    <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-                        Lưu ý: Backend sẽ lưu lý do này vào ghi chú của hợp đồng để trace.
-                    </Typography.Paragraph>
+                    <div className="contract-modal__info warning">
+                        <p className="info-title">Lưu ý</p>
+                        <ul>
+                            <li>Lý do sẽ được lưu lại để đối soát sau.</li>
+                            <li>Hợp đồng sẽ quay lại trạng thái <strong>Chờ khảo sát</strong>.</li>
+                        </ul>
+                    </div>
                 </Form>
             </Modal>
         </div>

@@ -300,4 +300,27 @@ public class ServiceStaffContractController {
         ServiceStaffContractDTO dto = service.rejectSurveyReport(id, reason);
         return ResponseEntity.ok(dto);
     }
+
+    /**
+     * Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech lắp đặt)
+     * GET /api/service/contracts/pending-sign?keyword=...&page=0&size=10
+     */
+    @GetMapping("/pending-sign")
+    public Page<ServiceStaffContractDTO> getPendingSignContracts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return service.getPendingSignContracts(keyword, PageRequest.of(page, size));
+    }
+
+    /**
+     * Gửi hợp đồng cho Tech lắp đặt (PENDING_SIGN → SIGNED)
+     * PUT /api/service/contracts/{id}/send-to-installation
+     */
+    @PutMapping("/{id}/send-to-installation")
+    public ResponseEntity<ServiceStaffContractDTO> sendToInstallation(@PathVariable Integer id) {
+        ServiceStaffContractDTO dto = service.sendContractToInstallation(id);
+        return ResponseEntity.ok(dto);
+    }
 }

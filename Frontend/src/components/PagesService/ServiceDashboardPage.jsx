@@ -86,6 +86,7 @@ const ServiceDashboardPage = () => {
     // State cho bảng yêu cầu gần đây
     const [recentContracts, setRecentContracts] = useState([]);
     const [loadingRecent, setLoadingRecent] = useState(false);
+    const [recentPagination, setRecentPagination] = useState({ current: 1, pageSize: 10, total: 0 });
     
     // State cho modal chi tiết
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -125,26 +126,8 @@ const ServiceDashboardPage = () => {
             setLoading(true);
             setError(null);
 
-            // Thử gọi BE trước
-            try {
-                const res = await getServiceStaffDashboardStats();
-                const data = res?.data;
-                if (data) {
-                    setStats({
-                        draftCount: data.draftCount ?? 0,
-                        pendingTechnicalCount: data.pendingTechnicalCount ?? 0,
-                        pendingSurveyReviewCount: data.pendingSurveyReviewCount ?? 0,
-                        approvedCount: data.approvedCount ?? 0,
-                        pendingSignCount: data.pendingSignCount ?? 0,
-                        signedCount: data.signedCount ?? 0,
-                    });
-                    return; // Đã set từ BE, không cần fallback
-                }
-            } catch (e) {
-                // Bỏ qua, sẽ fallback
-            }
-
-            // Fallback: fetch counts từ contracts API
+            // Lấy số liệu thống kê phạm vi toàn dịch vụ để đồng nhất với các trang danh sách
+            // Ưu tiên tự tính từ danh sách (đáng tin cậy và đồng nhất)
             await fetchStatsFallback();
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -294,54 +277,24 @@ const ServiceDashboardPage = () => {
     };
 
     // Lấy danh sách công việc gần đây
-    const fetchRecentContracts = async () => {
+    const fetchRecentContracts = async (page = recentPagination.current, pageSize = recentPagination.pageSize) => {
         try {
             setLoadingRecent(true);
-            
-            // Thử gọi endpoint stats trước
-            const response = await getRecentServiceStaffTasks(
-                filterStatus !== 'all' ? filterStatus : null,
-                5
-            );
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                setRecentContracts(response.data);
-            } else {
-                // Fallback: lấy từ contracts API
-                const fallbackResponse = await getServiceContracts({
-                    page: 0,
-                    size: 5,
-                    status: filterStatus !== 'all' ? filterStatus : undefined
-                });
-                
-                if (fallbackResponse.data?.content) {
-                    console.log('Recent contracts from fallback:', fallbackResponse.data.content);
-                    setRecentContracts(fallbackResponse.data.content);
-                } else {
-                    setRecentContracts([]);
-                }
-            }
+            // Lấy từ contracts API để chủ động phân trang và hiển thị đầy đủ
+            const response = await getServiceContracts({
+                page: page - 1, // 0-based cho API
+                size: pageSize,
+                status: filterStatus !== 'all' ? filterStatus : undefined,
+            });
+
+            const data = response?.data?.content || [];
+            const total = response?.data?.totalElements || 0;
+            setRecentContracts(data);
+            setRecentPagination({ current: page, pageSize, total });
         } catch (error) {
             console.error('Error fetching tasks:', error);
-            
-            // Double fallback: lấy từ contracts API khi endpoint stats lỗi
-            try {
-                const fallbackResponse = await getServiceContracts({
-                    page: 0,
-                    size: 5,
-                    status: filterStatus !== 'all' ? filterStatus : undefined
-                });
-                
-                if (fallbackResponse.data?.content) {
-                    setRecentContracts(fallbackResponse.data.content);
-                } else {
-                    setRecentContracts([]);
-                }
-            } catch (fallbackError) {
-                console.error('Error fetching tasks fallback:', fallbackError);
-                message.error('Không thể lấy danh sách công việc');
-                setRecentContracts([]);
-            }
+            message.error('Không thể lấy danh sách công việc');
+            setRecentContracts([]);
         } finally {
             setLoadingRecent(false);
         }
@@ -422,8 +375,15 @@ const ServiceDashboardPage = () => {
 
     // Xử lý khi thay đổi filter status
     useEffect(() => {
-        fetchRecentContracts();
+        // Reset về trang đầu khi đổi filter
+        setRecentPagination(prev => ({ ...prev, current: 1 }));
+        fetchRecentContracts(1, recentPagination.pageSize);
     }, [filterStatus]);
+
+    const handleRecentTableChange = (pagination) => {
+        setRecentPagination(pagination);
+        fetchRecentContracts(pagination.current, pagination.pageSize);
+    };
 
     // Xử lý khi thay đổi date range
     const handleDateRangeChange = (dates) => {
@@ -436,11 +396,11 @@ const ServiceDashboardPage = () => {
         <div className="space-y-6">
             {/* Statistics Cards - Bắt đầu từ đây */}
             <Row gutter={[16, 16]}>
-                {/* Bản nháp (DRAFT) - Chưa gửi khảo sát */}
+                {/* Yêu cầu tạo đơn (DRAFT) - Chưa gửi khảo sát */}
                 <Col xs={24} sm={12} lg={6} onClick={() => navigate('/service/requests')} style={{ cursor: 'pointer' }}>
                     <Tooltip title="Danh sách đơn yêu cầu từ khách hàng chưa gửi khảo sát">
                         <StatisticCard
-                            title="Bản nháp"
+                            title="Yêu cầu tạo đơn"
                             value={stats.draftCount}
                             icon={<FileAddOutlined />}
                             color="#1890ff"
@@ -548,7 +508,7 @@ const ServiceDashboardPage = () => {
                             suffixIcon={<FilterOutlined />}
                         >
                             <Select.Option value="all">Tất cả</Select.Option>
-                            <Select.Option value="DRAFT">Bản nháp</Select.Option>
+                            <Select.Option value="DRAFT">Yêu cầu tạo đơn</Select.Option>
                             <Select.Option value="PENDING">Dạng chờ xử lý</Select.Option>
                             <Select.Option value="PENDING_SURVEY_REVIEW">Dạng chờ báo cáo khảo sát</Select.Option>
                             <Select.Option value="APPROVED">Đã duyệt</Select.Option>
@@ -561,7 +521,8 @@ const ServiceDashboardPage = () => {
                     <ContractTable
                         data={recentContracts}
                         loading={loadingRecent}
-                        pagination={false}
+                        pagination={recentPagination}
+                        onPageChange={handleRecentTableChange}
                         onViewDetails={handleViewDetails}
                         showStatusFilter={true}
                     />
