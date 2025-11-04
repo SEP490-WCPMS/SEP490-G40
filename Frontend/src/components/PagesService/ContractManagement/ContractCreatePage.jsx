@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getAllCustomers, getTechnicalStaffList, createContract, getServiceContractDetail, approveServiceContract } from '../../Services/apiService';
+import { getAllCustomers, getTechnicalStaffList, createContract, getServiceContractDetail, approveServiceContract, updateServiceContract } from '../../Services/apiService';
 import moment from 'moment';
 import './ContractCreatePage.css';
 
@@ -121,14 +121,25 @@ const ContractCreate = () => {
 
             console.log('Sending contract data:', contractData);
 
-            // Nếu có source contract (tạo từ survey), gọi API approve trước
+            // Nếu có source contract (tạo từ survey), cập nhật thông tin hợp đồng rồi duyệt sang APPROVED
             if (sourceContractId) {
                 try {
+                    // Cập nhật các trường chi tiết cho hợp đồng từ form
+                    await updateServiceContract(sourceContractId, {
+                        startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
+                        endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
+                        notes: values.notes,
+                        estimatedCost: values.estimatedCost,
+                        contractValue: values.contractValue,
+                        paymentMethod: values.paymentMethod,
+                        serviceStaffId: currentUserId,
+                    });
+
                     await approveServiceContract(sourceContractId);
-                    message.success('Hợp đồng đã duyệt thành công!');
+                    message.success('Đã lưu thông tin và duyệt hợp đồng thành công!');
                 } catch (error) {
                     console.error('Approve contract error:', error);
-                    message.error('Lỗi khi duyệt hợp đồng!');
+                    message.error('Lỗi khi lưu/duyệt hợp đồng!');
                     setSubmitting(false);
                     return;
                 }

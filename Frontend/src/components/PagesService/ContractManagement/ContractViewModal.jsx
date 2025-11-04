@@ -85,7 +85,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                             <span className="summary-icon"><DollarOutlined /></span>
                             <div>
                                 <div className="summary-label">Giá trị dự kiến</div>
-                                <div className="summary-value">{initialData?.estimatedCost ?? 'N/A'}</div>
+                                <div className="summary-value">{initialData?.estimatedCost != null ? new Intl.NumberFormat('vi-VN').format(initialData.estimatedCost) : 'N/A'}</div>
                             </div>
                         </div>
                     </div>
@@ -119,11 +119,11 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                     </Form.Item>
 
                     {/* --- Thông tin chi tiết (chỉ hiển thị nếu có dữ liệu) --- */}
-                    {(initialData?.priceTypeName || initialData?.occupants || initialData?.estimatedCost) && (
+                    {(initialData?.priceTypeName || initialData?.occupants || initialData?.estimatedCost != null || initialData?.contractValue != null || initialData?.paymentMethod) && (
                         <>
                             <Divider>Thông tin chi tiết</Divider>
                             
-                            {(initialData?.priceTypeName || initialData?.occupants) && (
+                            {(initialData?.priceTypeName || initialData?.occupants || initialData?.contractValue != null || initialData?.paymentMethod) && (
                                 <Row gutter={16}>
                                     {initialData?.priceTypeName && (
                                         <Col xs={24} sm={12}>
@@ -145,6 +145,20 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                             </Form.Item>
                                         </Col>
                                     )}
+                                    {initialData?.contractValue != null && (
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="Giá trị hợp đồng">
+                                                <Input value={new Intl.NumberFormat('vi-VN').format(initialData.contractValue)} className="readonly" />
+                                            </Form.Item>
+                                        </Col>
+                                    )}
+                                    {initialData?.paymentMethod && (
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="Phương thức thanh toán">
+                                                <Input value={initialData.paymentMethod} className="readonly" />
+                                            </Form.Item>
+                                        </Col>
+                                    )}
                                 </Row>
                             )}
 
@@ -153,9 +167,31 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     name="estimatedCost"
                                     label={<><DollarOutlined /> Giá trị dự kiến</>}
                                 >
-                                    <Input placeholder="N/A" className="readonly" />
+                                    <Input placeholder="N/A" className="readonly" value={new Intl.NumberFormat('vi-VN').format(initialData.estimatedCost)} />
                                 </Form.Item>
                             )}
+                        </>
+                    )}
+
+                    {(initialData?.startDate || initialData?.endDate) && (
+                        <>
+                            <Divider>Thời gian hiệu lực</Divider>
+                            <Row gutter={16}>
+                                {initialData?.startDate && (
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item label="Ngày bắt đầu">
+                                            <Input value={moment(initialData.startDate).format('DD/MM/YYYY')} className="readonly" />
+                                        </Form.Item>
+                                    </Col>
+                                )}
+                                {initialData?.endDate && (
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item label="Ngày kết thúc">
+                                            <Input value={moment(initialData.endDate).format('DD/MM/YYYY')} className="readonly" />
+                                        </Form.Item>
+                                    </Col>
+                                )}
+                            </Row>
                         </>
                     )}
 

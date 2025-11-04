@@ -3,6 +3,7 @@ import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form,
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
+import ContractViewModal from './ContractManagement/ContractViewModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../Services/apiService';
 import { useNavigate } from 'react-router-dom';
 
@@ -175,12 +176,11 @@ const ApprovedContractsPage = () => {
                 />
             </Spin>
 
-            {/* --- Modal chi tiết/cập nhật --- */}
+            {/* --- Modal xem chi tiết (đọc-only) --- */}
             {isModalVisible && selectedContract && (
-                <ContractDetailModal
+                <ContractViewModal
                     open={isModalVisible}
                     onCancel={handleCancelModal}
-                    onSave={handleSaveModal}
                     loading={modalLoading}
                     initialData={selectedContract}
                 />
