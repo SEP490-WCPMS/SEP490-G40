@@ -68,17 +68,17 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         Account staff = getStaffAccount(staffId);
         ChartDataDTO chartData = new ChartDataDTO();
         List<String> labels = new ArrayList<>();
-        List<Long> sentToTechnicalCounts = new ArrayList<>();
-        List<Long> approvalCounts = new ArrayList<>();
+        List<Long> surveyCompletedCounts = new ArrayList<>();
+        List<Long> installationCompletedCounts = new ArrayList<>();
 
         try {
             // Lặp qua từng ngày từ startDate đến endDate
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
                 labels.add(date.toString());
-                // Đếm số hợp đồng gửi khảo sát (PENDING) trong ngày
-                sentToTechnicalCounts.add(contractRepository.countSentToTechnicalByDate(staff, date));
-                // Đếm số hợp đồng được duyệt (APPROVED) trong ngày
-                approvalCounts.add(contractRepository.countApprovedByDate(staff, date));
+                // Số KHẢO SÁT HOÀN THÀNH trong ngày (PENDING_SURVEY_REVIEW theo surveyDate)
+                surveyCompletedCounts.add(contractRepository.countSurveyCompletedByDate(staff, date));
+                // Số LẮP ĐẶT HOÀN THÀNH trong ngày (ACTIVE theo installationDate)
+                installationCompletedCounts.add(contractRepository.countInstallationCompletedByDate(staff, date));
             }
         } catch (Exception e) {
             // Fallback: trả về list rỗng
@@ -86,8 +86,8 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         }
 
         chartData.setLabels(labels);
-        chartData.setSurveyCompletedCounts(sentToTechnicalCounts);
-        chartData.setInstallationCompletedCounts(approvalCounts);
+        chartData.setSurveyCompletedCounts(surveyCompletedCounts);
+        chartData.setInstallationCompletedCounts(installationCompletedCounts);
 
         return chartData;
     }
@@ -130,4 +130,3 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         }
     }
 }
-
