@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Typography, message, Spin, Card, Select, Button, Tooltip } from 'antd';
+import { Row, Col, Typography, message, Spin, Card, Select, Button, Tooltip, Modal, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { 
     FileAddOutlined, 
@@ -31,7 +31,10 @@ import {
     getRecentServiceStaffTasks,
     getServiceContracts,
     getServiceContractDetail,
-    submitContractForSurvey
+    submitContractForSurvey,
+    sendContractToSign,
+    sendContractToInstallation,
+    terminateContract
 } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -287,8 +290,11 @@ const ServiceDashboardPage = () => {
                 status: filterStatus !== 'all' ? filterStatus : undefined,
             });
 
-            const data = response?.data?.content || [];
-            const total = response?.data?.totalElements || 0;
+            let data = response?.data?.content || [];
+            // Theo phân quyền: loại bỏ các hợp đồng ở trạng thái SIGNED khỏi bảng của Service
+            data = data.filter(it => (it?.contractStatus || '').toUpperCase() !== 'SIGNED');
+            const totalFromApi = response?.data?.totalElements || 0;
+            const total = Math.max(0, totalFromApi - (response?.data?.content || []).filter(it => (it?.contractStatus || '').toUpperCase() === 'SIGNED').length);
             setRecentContracts(data);
             setRecentPagination({ current: page, pageSize, total });
         } catch (error) {
@@ -304,14 +310,75 @@ const ServiceDashboardPage = () => {
     const handleViewDetails = async (record, action = 'view') => {
         setModalLoading(true);
         try {
+            // Điều hướng/thực thi theo action, để các nút trong bảng Dashboard hoạt động đúng
+            if (action === 'sendToSign') {
+                await sendContractToSign(record.id);
+                message.success('Đã gửi hợp đồng cho khách hàng ký.');
+                // làm tươi bảng và thống kê
+                fetchRecentContracts();
+                fetchStatsFallback();
+                return;
+            }
+            if (action === 'sendToInstallation') {
+                await sendContractToInstallation(record.id);
+                message.success('Đã gửi hợp đồng cho kỹ thuật lắp đặt.');
+                fetchRecentContracts();
+                fetchStatsFallback();
+                return;
+            }
+            if (action === 'generateWater') {
+                // Chuyển sang trang tạo HĐ chính thức, truyền id nguồn
+                navigate('/service/contract-create', { state: { sourceContractId: record.id } });
+                return;
+            }
+            if (action === 'sendToInstall' || action === 'suspend' || action === 'reactivate') {
+                // Các hành động quản trị chuyên sâu -> điều hướng sang trang phù hợp
+                if (action === 'sendToInstall') {
+                    message.info('Đi tới danh sách Hợp đồng đã ký để thao tác lắp đặt.');
+                    navigate('/service/signed-contracts');
+                } else {
+                    message.info('Đi tới danh sách Hợp đồng đang hoạt động để thao tác.');
+                    navigate('/service/active-contracts');
+                }
+                return;
+            }
+
+            if (action === 'terminate') {
+                let reason = '';
+                Modal.confirm({
+                    title: `Chấm dứt hợp đồng #${record.contractNumber || record.id}`,
+                    content: (
+                        <div className="space-y-2">
+                            <p>Vui lòng nhập lý do chấm dứt:</p>
+                            <Input.TextArea rows={4} onChange={(e) => { reason = e.target.value; }} placeholder="Nhập lý do..." />
+                        </div>
+                    ),
+                    okText: 'Chấm dứt',
+                    cancelText: 'Hủy',
+                    async onOk() {
+                        if (!reason || !reason.trim()) {
+                            message.error('Vui lòng nhập lý do chấm dứt.');
+                            // Throw to keep modal open
+                            throw new Error('Reason required');
+                        }
+                        await terminateContract(record.id, reason.trim());
+                        message.success('Đã chấm dứt hợp đồng.');
+                        fetchRecentContracts();
+                        fetchStatsFallback();
+                    },
+                });
+                return;
+            }
+
+            // Mặc định: mở modal xem/hoặc gửi khảo sát (edit)
             const response = await getServiceContractDetail(record.id);
             const contractData = response.data || record;
             setSelectedContract(contractData);
             setModalMode(action === 'submit' ? 'edit' : 'view');
             setIsModalVisible(true);
         } catch (error) {
-            console.error('Error fetching contract detail from dashboard:', error);
-            message.error(`Không thể tải chi tiết hợp đồng #${record.contractNumber || record.id}`);
+            console.error('Error handling action from dashboard:', error);
+            message.error(`Không thể xử lý hành động cho hợp đồng #${record.contractNumber || record.id}`);
         } finally {
             setModalLoading(false);
         }
@@ -448,6 +515,7 @@ const ServiceDashboardPage = () => {
                 </Col>
             </Row>
 
+
             {/* Chart Section */}
             <Card className="shadow-sm">
                 <div className="flex justify-between items-center mb-4">
@@ -513,7 +581,7 @@ const ServiceDashboardPage = () => {
                             <Select.Option value="PENDING_SURVEY_REVIEW">Dạng chờ báo cáo khảo sát</Select.Option>
                             <Select.Option value="APPROVED">Đã duyệt</Select.Option>
                             <Select.Option value="PENDING_SIGN">Dạng chờ khách ký</Select.Option>
-                            <Select.Option value="SIGNED">Khách đã ký, chờ lắp đặt</Select.Option>
+                            {/* Không cho lọc SIGNED tại khu vực Service */}
                         </Select>
                     </div>
                 </div>
