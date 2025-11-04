@@ -3,7 +3,7 @@ import { Table, Tag, Button, Space } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 
 // Định nghĩa các cột cho bảng
-const columns = (onViewDetails) => [
+const columns = (onViewDetails, showStatusFilter = false) => [
   {
     title: '#',
     dataIndex: 'id',
@@ -33,19 +33,19 @@ const columns = (onViewDetails) => [
     title: 'Trạng thái',
     dataIndex: 'contractStatus',
     key: 'contractStatus',
-    filters: [
+    filters: showStatusFilter ? [
       { text: 'Bản nháp', value: 'DRAFT' },
       { text: 'Đang chờ khảo sát', value: 'PENDING' },
       { text: 'Đã khảo sát', value: 'PENDING_SURVEY_REVIEW' },
       { text: 'Đã duyệt', value: 'APPROVED' },
-      { text: 'Đang chờ khách ký', value: 'PENDING_SIGN' },
-      { text: 'Khách đã ký, chờ lắp đặt', value: 'SIGNED' },
+      { text: 'Khách đã ký', value: 'PENDING_SIGN' },
+      { text: 'Chờ lắp đặt', value: 'SIGNED' },
       { text: 'Đang hoạt động', value: 'ACTIVE' },
       { text: 'Hết hạn', value: 'EXPIRED' },
       { text: 'Đã chấm dứt', value: 'TERMINATED' },
       { text: 'Bị tạm ngưng', value: 'SUSPENDED' }
-    ],
-    onFilter: (value, record) => record.contractStatus === value,
+    ] : undefined,
+    onFilter: showStatusFilter ? ((value, record) => record.contractStatus === value) : undefined,
     render: (status) => {
       let color;
       let displayText;
@@ -53,7 +53,7 @@ const columns = (onViewDetails) => [
       switch (status?.toUpperCase()) {
         case 'DRAFT':
           color = 'blue';
-          displayText = 'Bản nháp';
+          displayText = 'Yêu cầu tạo đơn';
           break;
         case 'PENDING':
           color = 'gold';
@@ -69,11 +69,11 @@ const columns = (onViewDetails) => [
           break;
         case 'PENDING_SIGN':
           color = 'geekblue';
-          displayText = 'Đang chờ khách ký';
+          displayText = 'Khách đã ký';
           break;
         case 'SIGNED':
           color = 'purple';
-          displayText = 'Khách đã ký, chờ lắp đặt';
+          displayText = 'Chờ lắp đặt';
           break;
         case 'ACTIVE':
           color = 'green';
@@ -128,33 +128,21 @@ const columns = (onViewDetails) => [
           )}
 
           {status === 'PENDING_SURVEY_REVIEW' && (
-            <>
-              <Button type="primary" onClick={() => onViewDetails(record, 'approveSurvey')}>
-                Duyệt báo cáo
-              </Button>
-              <Button danger onClick={() => onViewDetails(record, 'rejectSurvey')}>
-                Từ chối
-              </Button>
-            </>
+            <Button type="primary" onClick={() => onViewDetails(record, 'generateWater')}>
+              Tạo HĐ chính thức
+            </Button>
           )}
 
           {status === 'APPROVED' && (
-            <>
-              <Button onClick={() => onViewDetails(record, 'generateWater')}>
-                Tạo HĐ chính thức
-              </Button>
-              <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
-                Gửi ký
-              </Button>
-              <Button onClick={() => onViewDetails(record, 'edit')}>
-                Sửa
-              </Button>
-            </>
+            <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
+              Gửi ký
+            </Button>
           )}
 
           {status === 'PENDING_SIGN' && (
-            // Không hiển thị nút gì thêm, chỉ dùng "Chi tiết"
-            null
+            <Button type="primary" onClick={() => onViewDetails(record, 'sendToInstallation')}>
+              Gửi lắp đặt
+            </Button>
           )}
 
           {status === 'SIGNED' && (
@@ -185,10 +173,10 @@ const columns = (onViewDetails) => [
   },
 ];
 
-const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails }) => {
+const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, showStatusFilter = false }) => {
   return (
     <Table
-      columns={columns(onViewDetails)}
+      columns={columns(onViewDetails, showStatusFilter)}
       dataSource={data}
       loading={loading}
       pagination={pagination}

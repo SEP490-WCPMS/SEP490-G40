@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Table, Space, Modal, Form, Input as FormInput, DatePicker } from 'antd';
-import { ReloadOutlined, EditOutlined, UndoOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getActiveContracts, getServiceContractDetail, updateActiveContract, renewContract, terminateContract } from '../Services/apiService';
+import { ReloadOutlined, UndoOutlined, DeleteOutlined } from '@ant-design/icons';
+import { getActiveContracts, getServiceContractDetail, renewContract, terminateContract } from '../Services/apiService';
 import moment from 'moment';
 
 const { Title, Paragraph } = Typography;
@@ -12,7 +12,7 @@ const ActiveContractsPage = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
-    const [modalType, setModalType] = useState(null); // 'view', 'update', 'renew', 'terminate'
+    const [modalType, setModalType] = useState(null); // 'view', 'renew', 'terminate'
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [form] = Form.useForm();
@@ -75,7 +75,7 @@ const ActiveContractsPage = () => {
             setSelectedContract(response.data);
             setModalType(type);
             
-            if (type === 'view' || type === 'update') {
+            if (type === 'view') {
                 form.setFieldsValue({
                     contractNumber: response.data.contractNumber,
                     customerName: response.data.customerName,
@@ -117,14 +117,7 @@ const ActiveContractsPage = () => {
             const values = await form.validateFields();
             setModalLoading(true);
 
-            if (modalType === 'update') {
-                await updateActiveContract(selectedContract.id, {
-                    contractValue: values.contractValue,
-                    endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
-                    notes: values.notes
-                });
-                message.success('Cập nhật hợp đồng thành công!');
-            } else if (modalType === 'renew') {
+            if (modalType === 'renew') {
                 await renewContract(selectedContract.id, {
                     endDate: values.newEndDate ? values.newEndDate.format('YYYY-MM-DD') : null,
                     notes: values.notes
@@ -194,13 +187,6 @@ const ActiveContractsPage = () => {
                     </Button>
                     <Button
                         size="small"
-                        icon={<EditOutlined />}
-                        onClick={() => handleOpenModal(record, 'update')}
-                    >
-                        Cập nhật
-                    </Button>
-                    <Button
-                        size="small"
                         icon={<UndoOutlined />}
                         onClick={() => handleOpenModal(record, 'renew')}
                     >
@@ -237,31 +223,6 @@ const ActiveContractsPage = () => {
                     </Form.Item>
                     <Form.Item name="notes" label="Ghi chú">
                         <TextArea rows={3} />
-                    </Form.Item>
-                </Form>
-            );
-        } else if (modalType === 'update') {
-            return (
-                <Form form={form} layout="vertical">
-                    <Form.Item name="contractNumber" label="Số Hợp đồng">
-                        <FormInput disabled />
-                    </Form.Item>
-                    <Form.Item 
-                        name="contractValue" 
-                        label="Giá trị mới"
-                        rules={[{ required: true, message: 'Vui lòng nhập giá trị!' }]}
-                    >
-                        <FormInput type="number" />
-                    </Form.Item>
-                    <Form.Item 
-                        name="endDate" 
-                        label="Ngày kết thúc mới"
-                        rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}
-                    >
-                        <DatePicker style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name="notes" label="Ghi chú">
-                        <TextArea rows={3} placeholder="Thêm ghi chú nếu cần..." />
                     </Form.Item>
                 </Form>
             );
@@ -307,7 +268,6 @@ const ActiveContractsPage = () => {
     const getModalTitle = () => {
         switch(modalType) {
             case 'view': return 'Chi tiết hợp đồng';
-            case 'update': return 'Cập nhật hợp đồng';
             case 'renew': return 'Gia hạn hợp đồng';
             case 'terminate': return 'Hủy hợp đồng';
             default: return '';
