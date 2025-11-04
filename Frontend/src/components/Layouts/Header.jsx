@@ -122,9 +122,6 @@ const Header = ({ isAuthenticated, user }) => {
                 <Link to="/contract-list">Danh sách hợp đồng</Link>
               </li>
               <li>
-                <Link to="/support-request">Feedback</Link>
-              </li>
-              <li>
                 <Link to="/contract-request-change">Tạo yêu cầu thay đổi hợp đồng</Link>
               </li>
             </ul>
