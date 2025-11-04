@@ -43,6 +43,7 @@ import MySupportTicketList from './components/Customer/Feedback/MySupportTicketL
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
+import StaffChangePassword from './components/Staff/StaffChangePassword';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -87,8 +88,9 @@ function App() {
 
 
         {/* === STAFF COMMON ROUTES (Cần đăng nhập, nhiều vai trò) === */}
-        <Route element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
-          <Route path="/staff/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+        <Route path="/staff" element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
+          <Route path="profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+          <Route path="change-password" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffChangePassword /></PublicLayout>} />
         </Route>
 
 
