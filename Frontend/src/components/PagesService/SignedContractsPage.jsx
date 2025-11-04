@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import { ReloadOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
-import ContractDetailModal from './ContractManagement/ContractDetailModal';
+import ContractViewModal from './ContractManagement/ContractViewModal';
 import { getServiceContracts, getServiceContractDetail, sendContractToInstallation } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -164,14 +164,13 @@ const SignedContractsPage = () => {
                 />
             </Spin>
 
-            {/* --- Modal chi tiết --- */}
+            {/* --- Modal chi tiết (đọc-only) --- */}
             {isModalVisible && selectedContract && (
-                <ContractDetailModal
+                <ContractViewModal
                     open={isModalVisible}
                     onCancel={handleCancelModal}
                     loading={modalLoading}
                     initialData={selectedContract}
-                    readOnly={true}
                 />
             )}
         </div>

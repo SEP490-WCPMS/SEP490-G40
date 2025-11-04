@@ -229,7 +229,9 @@ export const getTransferRequests = (params) => {
     const queryParams = {
         page: params.page || 0,
         size: params.size || 10,
-        requestType: 'transfer' // Lọc loại yêu cầu = transfer
+        requestType: 'TRANSFER', // Lọc loại yêu cầu = transfer (đưa về UPPERCASE để tránh lệch enum)
+        // Thêm alias 'type' để tương thích BE nếu tham số là 'type'
+        type: 'TRANSFER'
     };
     return apiClient.get(`/service/requests`, { params: queryParams });
 };
@@ -238,7 +240,9 @@ export const getAnnulRequests = (params) => {
     const queryParams = {
         page: params.page || 0,
         size: params.size || 10,
-        requestType: 'annul' // Lọc loại yêu cầu = annul
+        requestType: 'ANNUL', // Lọc loại yêu cầu = annul (đưa về UPPERCASE để tránh lệch enum)
+        // Alias 'type' đề phòng BE dùng tên tham số khác
+        type: 'ANNUL'
     };
     return apiClient.get(`/service/requests`, { params: queryParams });
 };
@@ -263,6 +267,11 @@ export const rejectAnnulRequest = (requestId, reason) => {
         reason: reason,
         approvalNote: reason
     });
+};
+
+/** Lấy chi tiết một yêu cầu hủy/chuyển nhượng cho Service */
+export const getServiceRequestDetail = (requestId) => {
+    return apiClient.get(`/service/requests/${requestId}`);
 };
 
 // === API CHO SERVICE STAFF ===

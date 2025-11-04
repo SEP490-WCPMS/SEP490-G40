@@ -128,6 +128,9 @@ function App() {
             <Route path="approved-contracts" element={<ApprovedContractsPage />} />
             <Route path="signed-contracts" element={<SignedContractsPage />} />
             <Route path="active-contracts" element={<ActiveContractsPage />} />
+            {/* Quản lý yêu cầu chuyển nhượng/hủy hợp đồng */}
+            <Route path="contract-transfers" element={<ContractTransferList />} />
+            <Route path="contract-annuls" element={<ContractAnnulList />} />
             <Route path="support-tickets" element={<SupportTicketList />} />
             <Route path="create-ticket" element={<ServiceCreateTicketForm />} />
           </Route>
