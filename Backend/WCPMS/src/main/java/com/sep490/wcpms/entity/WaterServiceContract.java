@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,16 +57,11 @@ public class WaterServiceContract {
     @Column(name = "contract_status", length = 30)
     private WaterServiceContractStatus contractStatus = WaterServiceContractStatus.ACTIVE;
 
-    // --- THÊM TRƯỜNG BỊ THIẾU VÀO ĐÂY ---
-    /**
-     * Liên kết Hợp đồng Dịch vụ này với Hợp đồng Lắp đặt (Bảng 8)
-     * đã tạo ra nó.
-     */
+    // --- Liên kết đến Hợp đồng Lắp đặt đã tạo ra HĐ Dịch vụ này ---
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_contract_id", // Tên cột trong Bảng 9
-            foreignKey = @ForeignKey(name = "fk_water_service_contracts_contracts")) // Tên khóa ngoại
+    @JoinColumn(name = "source_contract_id",
+            foreignKey = @ForeignKey(name = "fk_water_service_contracts_contracts"))
     private Contract sourceContract;
-    // --- HẾT PHẦN THÊM ---
 
     // ... (các trường payment_deadline, fees, termination...)
 
@@ -79,20 +73,23 @@ public class WaterServiceContract {
     @JoinColumn(name = "approved_by")
     private Account approvedBy;
 
-    // ... (createdAt, updatedAt) ...
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
-    // --- Mối quan hệ ngược (Tùy chọn nhưng nên có) ---
-    // (Bạn cần thêm các import cho List, MeterInstallation)
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-    // 1 HĐ Dịch vụ liên kết với 1 HĐ Lắp đặt
+    // --- Mối quan hệ ngược ---
+
+    // 1 HĐ Dịch vụ liên kết với 1 HĐ Lắp đặt (primaryWaterContract ở Contract)
     @OneToOne(mappedBy = "primaryWaterContract")
     private Contract installationContract;
 
     // 1 HĐ Dịch vụ liên kết với nhiều (hoặc 1) bản ghi Lắp đặt
     @OneToMany(mappedBy = "waterServiceContract")
     private List<MeterInstallation> meterInstallations;
-
-    // ...existing code...
 
     public enum WaterServiceContractStatus {
         ACTIVE,         // Đang hoạt động
@@ -101,4 +98,3 @@ public class WaterServiceContract {
         EXPIRED         // Hết hạn
     }
 }
-

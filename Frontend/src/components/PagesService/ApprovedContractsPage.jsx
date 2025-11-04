@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table } from 'antd';
+import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, InputNumber, DatePicker } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import { getServiceContracts, getServiceContractDetail, updateServiceContract } from '../Services/apiService';
+import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../Services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -14,6 +15,9 @@ const ApprovedContractsPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
+    const [generateModalOpen, setGenerateModalOpen] = useState(false);
+    const [generateForm] = Form.useForm();
+    const navigate = useNavigate();
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -72,7 +76,25 @@ const ApprovedContractsPage = () => {
     };
 
     // Mở Modal
-    const handleViewDetails = async (contract) => {
+    const handleViewDetails = async (contract, actionType) => {
+        // Hành động không cần modal chi tiết
+        if (actionType === 'sendToSign') {
+            try {
+                await sendContractToSign(contract.id);
+                message.success('Đã gửi hợp đồng cho khách hàng ký.');
+                fetchContracts(pagination.current, pagination.pageSize);
+            } catch (err) {
+                message.error('Gửi ký thất bại.');
+                console.error(err);
+            }
+            return;
+        }
+        if (actionType === 'generateWater') {
+            // Điều hướng sang trang tạo hợp đồng (trang riêng)
+            // Truyền theo sourceContractId để trang tạo biết lấy thông tin gốc nếu cần
+            navigate('/service/contract-create', { state: { sourceContractId: contract.id } });
+            return;
+        }
         setModalLoading(true);
         setIsModalVisible(true);
         try {
@@ -162,6 +184,8 @@ const ApprovedContractsPage = () => {
                     initialData={selectedContract}
                 />
             )}
+
+            {/* Modal tạo HĐ chính thức đã bỏ – điều hướng sang trang riêng */}
         </div>
     );
 };
