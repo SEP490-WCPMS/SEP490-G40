@@ -97,4 +97,14 @@ public interface ServiceStaffContractService {
     SupportTicketDTO submitFeedbackReply(Integer ticketId, FeedbackReplyDTO dto, Integer staffId);
     // --- HẾT PHẦN THÊM ---
 
+    /**
+     * Từ chối báo cáo khảo sát: chuyển từ PENDING_SURVEY_REVIEW về PENDING, lưu lý do.
+     */
+    ServiceStaffContractDTO rejectSurveyReport(Integer contractId, String reason);
+
+    /** Tạo Hợp đồng Dịch vụ (WaterServiceContract) từ HĐ lắp đặt đã APPROVED */
+    ServiceStaffContractDTO generateWaterServiceContract(Integer contractId, Integer priceTypeId, java.time.LocalDate serviceStartDate);
+
+    /** Gửi khách hàng ký: chuyển trạng thái HĐ lắp đặt sang PENDING_SIGN */
+    ServiceStaffContractDTO sendContractToCustomerForSign(Integer contractId);
 }

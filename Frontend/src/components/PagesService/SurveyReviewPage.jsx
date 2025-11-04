@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Tabs } from 'antd';
+import { Input, Row, Col, Typography, message, Spin, Button, Tabs, Modal, Form } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import ContractViewModal from './ContractManagement/ContractViewModal';
-import { getServiceContracts, getServiceContractDetail, submitContractForSurvey } from '../Services/apiService';
+import { getServiceContracts, getServiceContractDetail, submitContractForSurvey, approveServiceContract, rejectSurveyReport } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -20,6 +20,9 @@ const SurveyReviewPage = () => {
         pendingTechnicalCount: 0,
         pendingSurveyReviewCount: 0
     });
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectingContract, setRejectingContract] = useState(null);
+    const [rejectForm] = Form.useForm();
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -128,13 +131,33 @@ const SurveyReviewPage = () => {
 
     // Mở Modal
     const handleViewDetails = async (contract, actionType) => {
+        // Các action không cần mở modal
+        if (actionType === 'approveSurvey') {
+            try {
+                await approveServiceContract(contract.id);
+                message.success('Đã duyệt báo cáo khảo sát.');
+                fetchContracts(pagination.current, pagination.pageSize, activeTab);
+            } catch (err) {
+                message.error('Duyệt báo cáo thất bại.');
+                console.error(err);
+            }
+            return;
+        }
+        if (actionType === 'rejectSurvey') {
+            setRejectingContract(contract);
+            rejectForm.resetFields();
+            setRejectModalOpen(true);
+            return;
+        }
+
+        // Mặc định mở modal xem/submit
         setModalLoading(true);
         setIsModalVisible(true);
         try {
             const response = await getServiceContractDetail(contract.id);
             setSelectedContract({
                 ...response.data,
-                actionType: actionType || 'view' // Lưu action type để modal biết nên làm gì
+                actionType: actionType || 'view'
             });
         } catch (error) {
             message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
@@ -163,9 +186,8 @@ const SurveyReviewPage = () => {
                     notes: formData.notes
                 });
             } else {
-                // Nếu PENDING_SURVEY_REVIEW, gọi update thường
-                // TODO: Thêm API approve survey report
-                message.info('Chức năng duyệt báo cáo khảo sát sẽ được cập nhật');
+                // Không dùng modal để duyệt trong tab review
+                await approveServiceContract(selectedContract.id);
             }
             
             message.success('Cập nhật thành công!');
@@ -217,7 +239,7 @@ const SurveyReviewPage = () => {
                 items={[
                     {
                         key: 'pending',
-                        label: `Hợp đồng chờ khảo sát (${stats?.pendingTechnicalCount || 0})`,
+                        label: `Hợp đồng đang chờ khảo sát (${stats?.pendingTechnicalCount || 0})`,
                         children: (
                             <Spin spinning={loading}>
                                 <ContractTable
@@ -267,6 +289,45 @@ const SurveyReviewPage = () => {
                     />
                 )
             )}
+
+            {/* --- Modal từ chối báo cáo khảo sát --- */}
+            <Modal
+                title={`Từ chối báo cáo khảo sát #${rejectingContract?.contractNumber || ''}`}
+                open={rejectModalOpen}
+                onCancel={() => setRejectModalOpen(false)}
+                okText="Từ chối"
+                cancelText="Hủy"
+                onOk={async () => {
+                    try {
+                        const values = await rejectForm.validateFields();
+                        await rejectSurveyReport(rejectingContract.id, values.reason);
+                        message.success('Đã từ chối báo cáo khảo sát.');
+                        setRejectModalOpen(false);
+                        setRejectingContract(null);
+                        fetchContracts(pagination.current, pagination.pageSize, activeTab);
+                    } catch (err) {
+                        if (err?.errorFields) return; // validation error -> keep modal open
+                        message.error('Từ chối báo cáo thất bại.');
+                        console.error(err);
+                    }
+                }}
+            >
+                <Form form={rejectForm} layout="vertical">
+                    <Form.Item
+                        label="Lý do từ chối"
+                        name="reason"
+                        rules={[
+                            { required: true, message: 'Vui lòng nhập lý do từ chối' },
+                            { min: 5, message: 'Lý do tối thiểu 5 ký tự' }
+                        ]}
+                    >
+                        <Input.TextArea rows={4} placeholder="Nhập lý do (ví dụ: bổ sung bản vẽ, thiếu thông tin đo đạc, ...)" />
+                    </Form.Item>
+                    <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
+                        Lưu ý: Backend sẽ lưu lý do này vào ghi chú của hợp đồng để trace.
+                    </Typography.Paragraph>
+                </Form>
+            </Modal>
         </div>
     );
 };

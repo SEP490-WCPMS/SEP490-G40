@@ -16,6 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.sep490.wcpms.security.services.UserDetailsImpl;
 
 /**
  * Service Staff API để quản lý yêu cầu hủy hợp đồng và chuyển nhượng
@@ -32,7 +35,15 @@ import java.time.LocalDate;
 public class ServiceStaffRequestController {
 
     private final ContractAnnulTransferRequestService service;
-    private static final Integer CURRENT_STAFF_ID = 5; // Hardcode cho test - TODO: Lấy từ Authentication
+
+    // Helper: Lấy ID NV Dịch vụ từ SecurityContext
+    private Integer getAuthenticatedStaffId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) authentication.getPrincipal()).getId();
+        }
+        throw new RuntimeException("User not authenticated");
+    }
 
     /**
      * Lấy danh sách yêu cầu hủy/chuyển nhượng theo bộ lọc
@@ -121,9 +132,10 @@ public class ServiceStaffRequestController {
             @Valid @RequestBody ContractAnnulTransferRequestUpdateDTO dto) {
 
         try {
+            Integer staffId = getAuthenticatedStaffId();
             // Set enum ApprovalStatus
             dto.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.APPROVED);
-            dto.setApprovedById(CURRENT_STAFF_ID);
+            dto.setApprovedById(staffId);
             dto.setApprovalDate(LocalDate.now());
             ContractAnnulTransferRequestDTO result = service.updateApproval(id, dto);
 
@@ -158,9 +170,10 @@ public class ServiceStaffRequestController {
             @Valid @RequestBody ContractAnnulTransferRequestUpdateDTO dto) {
 
         try {
+            Integer staffId = getAuthenticatedStaffId();
             // Set enum ApprovalStatus
             dto.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED);
-            dto.setApprovedById(CURRENT_STAFF_ID);
+            dto.setApprovedById(staffId);
             dto.setApprovalDate(LocalDate.now());
             ContractAnnulTransferRequestDTO result = service.updateApproval(id, dto);
 
@@ -296,4 +309,3 @@ public class ServiceStaffRequestController {
         return Sort.by(dir, field);
     }
 }
-

@@ -35,8 +35,8 @@ const columns = (onViewDetails) => [
     key: 'contractStatus',
     filters: [
       { text: 'Bản nháp', value: 'DRAFT' },
-      { text: 'Đang chờ xử lý', value: 'PENDING' },
-      { text: 'Đang chờ báo cáo khảo sát', value: 'PENDING_SURVEY_REVIEW' },
+      { text: 'Đang chờ khảo sát', value: 'PENDING' },
+      { text: 'Đã khảo sát', value: 'PENDING_SURVEY_REVIEW' },
       { text: 'Đã duyệt', value: 'APPROVED' },
       { text: 'Đang chờ khách ký', value: 'PENDING_SIGN' },
       { text: 'Khách đã ký, chờ lắp đặt', value: 'SIGNED' },
@@ -57,11 +57,11 @@ const columns = (onViewDetails) => [
           break;
         case 'PENDING':
           color = 'gold';
-          displayText = 'Đang chờ xử lý';
+          displayText = 'Đang chờ khảo sát';
           break;
         case 'PENDING_SURVEY_REVIEW':
           color = 'orange';
-          displayText = 'Đang chờ báo cáo khảo sát';
+          displayText = 'Đã khảo sát';
           break;
         case 'APPROVED':
           color = 'cyan';
@@ -140,6 +140,9 @@ const columns = (onViewDetails) => [
 
           {status === 'APPROVED' && (
             <>
+              <Button onClick={() => onViewDetails(record, 'generateWater')}>
+                Tạo HĐ chính thức
+              </Button>
               <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
                 Gửi ký
               </Button>

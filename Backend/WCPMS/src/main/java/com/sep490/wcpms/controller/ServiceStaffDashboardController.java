@@ -3,10 +3,13 @@ package com.sep490.wcpms.controller;
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.dashboard.ChartDataDTO;
 import com.sep490.wcpms.dto.dashboard.ServiceStaffStatsDTO;
+import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.ServiceStaffDashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,13 +25,13 @@ public class ServiceStaffDashboardController {
 
     // Hàm lấy ID staff hiện tại (hardcode cho test)
     private Integer getAuthenticatedStaffId() {
-        // TODO: Thay bằng lấy ID từ Authentication khi security được setup
-        // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        // if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
-        //     return ((UserDetailsImpl) authentication.getPrincipal()).getId();
-        // }
-        // throw new RuntimeException("User not authenticated");
-        return 5; // HARDCODE cho test - Service Staff (đich vụ)
+         //TODO: Thay bằng lấy ID từ Authentication khi security được setup
+         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
+             return ((UserDetailsImpl) authentication.getPrincipal()).getId();
+         }
+         throw new RuntimeException("User not authenticated");
+        //return 5; // HARDCODE cho test - Service Staff (đich vụ)
     }
 
     /** API lấy số liệu thống kê cho các thẻ dashboard */

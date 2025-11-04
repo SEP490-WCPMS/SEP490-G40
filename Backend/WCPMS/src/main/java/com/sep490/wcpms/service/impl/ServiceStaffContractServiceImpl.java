@@ -23,9 +23,16 @@ import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY
 import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+// NEW imports for water service contract generation
+import com.sep490.wcpms.entity.WaterServiceContract;
+import com.sep490.wcpms.entity.WaterPriceType;
+import com.sep490.wcpms.repository.WaterServiceContractRepository;
+import com.sep490.wcpms.repository.WaterPriceTypeRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +43,8 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final CustomerFeedbackRepository customerFeedbackRepository;
     private final SupportTicketMapper supportTicketMapper;
     private final CustomerRepository customerRepository;
+    private final WaterServiceContractRepository waterServiceContractRepository;
+    private final WaterPriceTypeRepository waterPriceTypeRepository;
     // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
     // private final ContractMapper contractMapper;
 
@@ -380,4 +389,78 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     }
     // --- HẾT PHẦN THÊM ---
 
+    @Override
+    @Transactional
+    public ServiceStaffContractDTO generateWaterServiceContract(Integer contractId, Integer priceTypeId, LocalDate serviceStartDate) {
+        Contract installContract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (installContract.getContractStatus() != ContractStatus.APPROVED) {
+            throw new IllegalStateException("Only APPROVED contracts can generate Water Service Contract.");
+        }
+        if (installContract.getCustomer() == null) {
+            throw new IllegalStateException("Contract missing customer");
+        }
+        if (priceTypeId == null) {
+            throw new IllegalArgumentException("priceTypeId is required");
+        }
+        WaterPriceType priceType = waterPriceTypeRepository.findById(priceTypeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Water price type not found: " + priceTypeId));
+
+        // Tạo số hợp đồng dịch vụ đơn giản: "WS-" + số lắp đặt
+        String wsNumber = "WS-" + installContract.getContractNumber();
+
+        WaterServiceContract wsc = new WaterServiceContract();
+        wsc.setContractNumber(wsNumber);
+        wsc.setCustomer(installContract.getCustomer());
+        wsc.setPriceType(priceType);
+        wsc.setServiceStartDate(serviceStartDate != null ? serviceStartDate : (installContract.getStartDate() != null ? installContract.getStartDate() : LocalDate.now()));
+        wsc.setContractSignedDate(null); // sẽ cập nhật khi khách ký
+        wsc.setContractStatus(WaterServiceContract.WaterServiceContractStatus.ACTIVE); // có thể để ACTIVE sau ký, nhưng theo yêu cầu ta tạo record trước
+        wsc.setSourceContract(installContract);
+
+        WaterServiceContract saved = waterServiceContractRepository.save(wsc);
+
+        // Gắn vào hợp đồng lắp đặt làm primary_water_contract_id
+        installContract.setPrimaryWaterContract(saved);
+        contractRepository.save(installContract);
+
+        return convertToDTO(installContract);
+    }
+
+    @Override
+    @Transactional
+    public ServiceStaffContractDTO sendContractToCustomerForSign(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+        if (contract.getContractStatus() != ContractStatus.APPROVED) {
+            throw new IllegalStateException("Only APPROVED contracts can be sent to customer for signing.");
+        }
+        contract.setContractStatus(ContractStatus.PENDING_SIGN);
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    @Transactional
+    public ServiceStaffContractDTO rejectSurveyReport(Integer contractId, String reason) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (contract.getContractStatus() != ContractStatus.PENDING_SURVEY_REVIEW) {
+            throw new IllegalStateException("Only contracts in PENDING_SURVEY_REVIEW can be rejected.");
+        }
+
+        // Quay lại trạng thái PENDING để Technical sửa/khảo sát lại
+        contract.setContractStatus(ContractStatus.PENDING);
+        if (reason != null && !reason.isBlank()) {
+            String existing = contract.getNotes();
+            String merged = (existing == null || existing.isBlank())
+                    ? ("Reject reason: " + reason)
+                    : (existing + "\nReject reason: " + reason);
+            contract.setNotes(merged);
+        }
+        Contract saved = contractRepository.save(contract);
+        return convertToDTO(saved);
+    }
 }

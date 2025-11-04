@@ -347,6 +347,27 @@ export const submitContractForSurvey = (id, submitData) => {
     return apiClient.put(`/service/contracts/${id}/submit`, submitData);
 };
 
+/** Duyệt báo cáo khảo sát (PENDING_SURVEY_REVIEW → APPROVED) */
+export const approveServiceContract = (id) => {
+    return apiClient.put(`/service/contracts/${id}/approve`);
+};
+
+/** Từ chối báo cáo khảo sát (PENDING_SURVEY_REVIEW → PENDING) */
+export const rejectSurveyReport = (id, reason) => {
+    return apiClient.put(`/service/contracts/${id}/reject-survey`, { reason });
+};
+
+/** Gửi hợp đồng cho khách hàng ký (APPROVED → PENDING_SIGN) */
+export const sendContractToSign = (id) => {
+    return apiClient.put(`/service/contracts/${id}/send-to-sign`);
+};
+
+/** Tạo hợp đồng dịch vụ cấp nước chính thức từ hợp đồng đã duyệt */
+export const generateWaterServiceContract = (id, payload) => {
+    // payload: { priceTypeId: number, serviceStartDate?: 'YYYY-MM-DD' }
+    return apiClient.post(`/service/contracts/${id}/generate-water-service-contract`, payload);
+};
+
 /** Lấy số liệu thống kê cho dashboard */
 export const getDashboardStats = () => {
     return axios.get(`${SERVICE_API_BASE_URL}/dashboard/stats`);
