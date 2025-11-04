@@ -174,7 +174,7 @@ const Header = ({ isAuthenticated, user }) => {
                     <User size={16} />
                     <span>Hồ sơ</span>
                   </button>
-                  {user?.roleName === 'CUSTOMER' && (
+                  {user?.roleName === 'CUSTOMER' ? (
                     <button
                       className="dropdown-item"
                       onClick={() => {
@@ -183,6 +183,18 @@ const Header = ({ isAuthenticated, user }) => {
                       }}
                     >
                       <LogOut size={16} /> {/* Thay bằng icon chìa khóa nếu có */}
+                      <span>Đổi mật khẩu</span>
+                    </button>
+                  ) : (
+                    // For staff/admin show staff change-password route
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        navigate('/staff/change-password');
+                        setIsAvatarDropdownOpen(false);
+                      }}
+                    >
+                      <LogOut size={16} />
                       <span>Đổi mật khẩu</span>
                     </button>
                   )}
