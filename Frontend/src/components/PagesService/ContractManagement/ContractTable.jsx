@@ -1,6 +1,5 @@
 import React from 'react';
-import { Table, Tag, Button, Space } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Table } from 'antd';
 
 // Định nghĩa các cột cho bảng
 const columns = (onViewDetails, showStatusFilter = false) => [
@@ -47,55 +46,25 @@ const columns = (onViewDetails, showStatusFilter = false) => [
     ] : undefined,
     onFilter: showStatusFilter ? ((value, record) => record.contractStatus === value) : undefined,
     render: (status) => {
-      let color;
-      let displayText;
-      
-      switch (status?.toUpperCase()) {
-        case 'DRAFT':
-          color = 'blue';
-          displayText = 'Yêu cầu tạo đơn';
-          break;
-        case 'PENDING':
-          color = 'gold';
-          displayText = 'Đang chờ khảo sát';
-          break;
-        case 'PENDING_SURVEY_REVIEW':
-          color = 'orange';
-          displayText = 'Đã khảo sát';
-          break;
-        case 'APPROVED':
-          color = 'cyan';
-          displayText = 'Đã duyệt';
-          break;
-        case 'PENDING_SIGN':
-          color = 'geekblue';
-          displayText = 'Khách đã ký';
-          break;
-        case 'SIGNED':
-          color = 'purple';
-          displayText = 'Chờ lắp đặt';
-          break;
-        case 'ACTIVE':
-          color = 'green';
-          displayText = 'Đang hoạt động';
-          break;
-        case 'EXPIRED':
-          color = 'volcano';
-          displayText = 'Hết hạn';
-          break;
-        case 'TERMINATED':
-          color = 'red';
-          displayText = 'Đã chấm dứt';
-          break;
-        case 'SUSPENDED':
-          color = 'magenta';
-          displayText = 'Bị tạm ngưng';
-          break;
-        default:
-          color = 'default';
-          displayText = status || 'N/A';
-      }
-      return <Tag color={color}>{displayText}</Tag>;
+      const s = status?.toUpperCase();
+      const map = {
+        DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
+        PENDING: { text: 'Đang chờ khảo sát', cls: 'bg-yellow-100 text-yellow-800' },
+        PENDING_SURVEY_REVIEW: { text: 'Đã khảo sát', cls: 'bg-orange-100 text-orange-800' },
+        APPROVED: { text: 'Đã duyệt', cls: 'bg-cyan-100 text-cyan-800' },
+        PENDING_SIGN: { text: 'Khách đã ký', cls: 'bg-indigo-100 text-indigo-800' },
+        SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
+        ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
+        EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
+        TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
+        SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
+      };
+      const cfg = map[s] || { text: (status || 'N/A'), cls: 'bg-gray-100 text-gray-800' };
+      return (
+        <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
+          {cfg.text}
+        </span>
+      );
     },
   },
   {
@@ -105,69 +74,109 @@ const columns = (onViewDetails, showStatusFilter = false) => [
     width: 200,
     render: (_, record) => {
       const status = record.contractStatus?.toUpperCase();
-      return (
-        <Space size="small" wrap>
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={() => onViewDetails(record)}
+
+      // Xây danh sách nút hành động theo trạng thái
+      const actions = [];
+      actions.push(
+        <button
+          key="detail"
+          onClick={() => onViewDetails(record)}
+          className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+        >
+          Chi tiết
+        </button>
+      );
+
+      if (status === 'DRAFT') {
+        actions.push(
+          <button
+            key="submit"
+            className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'submit')}
           >
-            Chi tiết
-          </Button>
-          
-          {/* Hiển thị các nút hành động dựa trên trạng thái */}
-          {status === 'DRAFT' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'submit')}>
-              Gửi khảo sát
-            </Button>
-          )}
-          
-          {status === 'PENDING' && (
-            // Không hiển thị nút gì thêm, chỉ dùng "Chi tiết"
-            null
-          )}
+            Gửi khảo sát
+          </button>
+        );
+      }
 
-          {status === 'PENDING_SURVEY_REVIEW' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'generateWater')}>
-              Tạo HĐ chính thức
-            </Button>
-          )}
+      if (status === 'PENDING_SURVEY_REVIEW') {
+        actions.push(
+          <button
+            key="generate"
+            className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'generateWater')}
+          >
+            Tạo HĐ chính thức
+          </button>
+        );
+      }
 
-          {status === 'APPROVED' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'sendToSign')}>
-              Gửi ký
-            </Button>
-          )}
+      if (status === 'APPROVED') {
+        actions.push(
+          <button
+            key="sendToSign"
+            className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'sendToSign')}
+          >
+            Gửi ký
+          </button>
+        );
+      }
 
-          {status === 'PENDING_SIGN' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'sendToInstallation')}>
-              Gửi lắp đặt
-            </Button>
-          )}
+      if (status === 'PENDING_SIGN') {
+        actions.push(
+          <button
+            key="sendToInstall"
+            className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'sendToInstallation')}
+          >
+            Gửi lắp đặt
+          </button>
+        );
+      }
 
-          {status === 'SIGNED' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'sendToInstall')}>
-              Lắp đặt
-            </Button>
-          )}
+      if (status === 'ACTIVE') {
+        actions.push(
+          <button
+            key="suspend"
+            className="font-semibold text-gray-700 hover:text-gray-900 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'suspend')}
+          >
+            Tạm ngưng
+          </button>
+        );
+        actions.push(
+          <button
+            key="terminate"
+            className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'terminate')}
+          >
+            Chấm dứt
+          </button>
+        );
+      }
 
-          {status === 'ACTIVE' && (
-            <>
-              <Button type="default" onClick={() => onViewDetails(record, 'suspend')}>
-                Tạm ngưng
-              </Button>
-              <Button danger onClick={() => onViewDetails(record, 'terminate')}>
-                Chấm dứt
-              </Button>
-            </>
-          )}
+      if (status === 'SUSPENDED') {
+        actions.push(
+          <button
+            key="reactivate"
+            className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out"
+            onClick={() => onViewDetails(record, 'reactivate')}
+          >
+            Kích hoạt lại
+          </button>
+        );
+      }
 
-          {status === 'SUSPENDED' && (
-            <Button type="primary" onClick={() => onViewDetails(record, 'reactivate')}>
-              Kích hoạt lại
-            </Button>
-          )}
-        </Space>
+      return (
+        <div className="flex flex-wrap items-center gap-3">
+          {actions.map((el, idx) => (
+            <React.Fragment key={idx}>
+              {idx > 0 && <span className="text-gray-300">|</span>}
+              {el}
+            </React.Fragment>
+          ))}
+        </div>
       );
     },
   },
@@ -182,8 +191,10 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
       pagination={pagination}
       onChange={onPageChange}
       rowKey="id"
+      className="bg-white rounded-lg shadow"
+      size="middle"
+      bordered={false}
       style={{ marginTop: '20px' }}
-      bordered
     />
   );
 };

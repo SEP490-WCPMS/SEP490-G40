@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table, Space, Modal, Form, Input as FormInput, DatePicker } from 'antd';
-import { ReloadOutlined, UndoOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, Input as FormInput, DatePicker, Descriptions } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { getActiveContracts, getServiceContractDetail, renewContract, terminateContract } from '../Services/apiService';
 import moment from 'moment';
 
@@ -176,55 +176,85 @@ const ActiveContractsPage = () => {
         {
             title: 'Hành động',
             key: 'action',
-            render: (_, record) => (
-                <Space size="small" wrap>
-                    <Button
-                        type="primary"
-                        size="small"
+            render: (_, record) => {
+                const actions = [];
+                actions.push(
+                    <button
+                        key="detail"
                         onClick={() => handleOpenModal(record, 'view')}
+                        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
                     >
                         Chi tiết
-                    </Button>
-                    <Button
-                        size="small"
-                        icon={<UndoOutlined />}
+                    </button>
+                );
+                actions.push(
+                    <button
+                        key="renew"
                         onClick={() => handleOpenModal(record, 'renew')}
+                        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
                     >
                         Gia hạn
-                    </Button>
-                    <Button
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
+                    </button>
+                );
+                actions.push(
+                    <button
+                        key="terminate"
                         onClick={() => handleOpenModal(record, 'terminate')}
+                        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
                     >
-                        Hủy
-                    </Button>
-                </Space>
-            ),
+                        Chấm dứt
+                    </button>
+                );
+                return (
+                    <div className="flex flex-wrap items-center gap-3">
+                        {actions.map((el, idx) => (
+                            <React.Fragment key={idx}>
+                                {idx > 0 && <span className="text-gray-300">|</span>}
+                                {el}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                );
+            },
         },
     ];
 
+    const statusBadge = (status) => {
+        const s = (status || '').toUpperCase();
+        const map = {
+            ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
+            EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
+            TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
+            SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
+            SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
+        };
+        const cfg = map[s] || { text: status || '—', cls: 'bg-gray-100 text-gray-800' };
+        return (
+            <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
+                {cfg.text}
+            </span>
+        );
+    };
+
     const renderModalContent = () => {
         if (modalType === 'view') {
+            const c = selectedContract || {};
+            const fmtDate = (d) => (d ? moment(d).format('DD/MM/YYYY') : '—');
+            const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
             return (
-                <Form form={form} layout="vertical" disabled>
-                    <Form.Item name="contractNumber" label="Số Hợp đồng">
-                        <FormInput />
-                    </Form.Item>
-                    <Form.Item name="customerName" label="Khách hàng">
-                        <FormInput />
-                    </Form.Item>
-                    <Form.Item name="contractValue" label="Giá trị">
-                        <FormInput />
-                    </Form.Item>
-                    <Form.Item name="endDate" label="Ngày kết thúc">
-                        <DatePicker style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name="notes" label="Ghi chú">
-                        <TextArea rows={3} />
-                    </Form.Item>
-                </Form>
+                <Descriptions bordered size="small" column={1}>
+                    <Descriptions.Item label="Số Hợp đồng">{c.contractNumber || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái">{statusBadge(c.contractStatus)}</Descriptions.Item>
+                    <Descriptions.Item label="Khách hàng">{c.customerName || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Mã Khách hàng">{c.customerCode || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Ngày bắt đầu">{fmtDate(c.startDate)}</Descriptions.Item>
+                    <Descriptions.Item label="Ngày kết thúc">{fmtDate(c.endDate)}</Descriptions.Item>
+                    <Descriptions.Item label="Giá trị">{fmtMoney(c.contractValue)}</Descriptions.Item>
+                    <Descriptions.Item label="Phương thức thanh toán">{c.paymentMethod || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Ghi chú" span={2}>
+                        <div className="whitespace-pre-wrap">{c.notes || '—'}</div>
+                    </Descriptions.Item>
+                </Descriptions>
             );
         } else if (modalType === 'renew') {
             return (
@@ -324,6 +354,8 @@ const ActiveContractsPage = () => {
                 confirmLoading={modalLoading}
                 okText={modalType === 'view' ? 'Đóng' : 'Xác nhận'}
                 cancelText={modalType === 'view' ? undefined : 'Hủy'}
+                cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined}
+                destroyOnClose
                 width={700}
             >
                 {renderModalContent()}
