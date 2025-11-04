@@ -272,8 +272,8 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             dto.setTechnicalStaffId(c.getTechnicalStaff().getId());
             dto.setTechnicalStaffName(c.getTechnicalStaff().getFullName());
         }
-        // dto.setSurveyDate(c.getSurveyDate());
-        // dto.setTechnicalDesign(c.getTechnicalDesign());
+        dto.setSurveyDate(c.getSurveyDate());
+        dto.setTechnicalDesign(c.getTechnicalDesign());
 
         // Lấy priceTypeName từ ContractUsageDetail
         if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
