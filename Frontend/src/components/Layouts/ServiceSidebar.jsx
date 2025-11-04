@@ -41,6 +41,11 @@ const mainMenuItems = [
     icon: CheckCircle,
   },
   {
+    title: 'Hợp đồng đã ký',
+    url: '/service/signed-contracts',
+    icon: FileCheckIcon,
+  },
+  {
     title: 'Hợp đồng đang hoạt động',
     url: '/service/active-contracts',
     icon: Zap,

@@ -15,9 +15,9 @@ public class StaffProfileServiceImpl implements StaffProfileService {
     private AccountRepository accountRepository;
 
     @Override
-    public StaffProfileDTO getStaffProfile(Integer accountId) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + accountId));
+    public StaffProfileDTO getStaffProfile(Integer id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản với ID: " + id));
 
         // Sử dụng hàm tiện ích trong DTO để chuyển đổi
         return StaffProfileDTO.fromEntity(account);

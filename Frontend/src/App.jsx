@@ -22,6 +22,7 @@ import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage
 import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
 import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
 import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
+import SignedContractsPage from './components/PagesService/SignedContractsPage';
 import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
 import ContractTransferList from './components/PagesService/ContractManagement/Requests/ContractTransferList';
 import ContractAnnulList from './components/PagesService/ContractManagement/Requests/ContractAnnulList';
@@ -43,6 +44,7 @@ import MySupportTicketList from './components/Customer/Feedback/MySupportTicketL
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
+import StaffChangePassword from './components/Staff/StaffChangePassword';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -87,8 +89,9 @@ function App() {
 
 
         {/* === STAFF COMMON ROUTES (Cần đăng nhập, nhiều vai trò) === */}
-        <Route element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
-          <Route path="/staff/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+        <Route path="/staff" element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
+          <Route path="profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+          <Route path="change-password" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffChangePassword /></PublicLayout>} />
         </Route>
 
 
@@ -125,6 +128,7 @@ function App() {
             <Route path="contract-create" element={<ContractCreatePage />} />
             <Route path="survey-reviews" element={<SurveyReviewPage />} />
             <Route path="approved-contracts" element={<ApprovedContractsPage />} />
+            <Route path="signed-contracts" element={<SignedContractsPage />} />
             <Route path="active-contracts" element={<ActiveContractsPage />} />
             <Route path="support-tickets" element={<SupportTicketList />} />
             <Route path="create-ticket" element={<ServiceCreateTicketForm />} />

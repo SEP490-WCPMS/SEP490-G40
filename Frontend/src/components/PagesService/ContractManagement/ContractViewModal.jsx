@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, Row, Col, Divider, Spin, message } from 'antd';
 import { FileTextOutlined, UserOutlined, ScheduleOutlined, DollarOutlined } from '@ant-design/icons';
 import moment from 'moment';
+import './ContractModal.css';
 
 const { TextArea } = Input;
 
 // Các trạng thái hợp lệ và tên hiển thị
 const CONTRACT_STATUS_MAP = {
-    DRAFT: { text: 'Bản nháp', color: 'blue' },
+    DRAFT: { text: 'Yêu cầu tạo đơn', color: 'blue' },
     PENDING: { text: 'Đang chờ xử lý', color: 'gold' },
     PENDING_SURVEY_REVIEW: { text: 'Đang chờ báo cáo khảo sát', color: 'orange' },
     APPROVED: { text: 'Đã duyệt', color: 'cyan' },
-    PENDING_SIGN: { text: 'Đang chờ khách ký', color: 'geekblue' },
+    PENDING_SIGN: { text: 'Khách đã ký', color: 'geekblue' },
     SIGNED: { text: 'Khách đã ký, chờ lắp đặt', color: 'purple' },
     ACTIVE: { text: 'Đang hoạt động', color: 'green' },
     EXPIRED: { text: 'Hết hạn', color: 'volcano' },
@@ -53,17 +54,43 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
             onOk={onCancel}
             okText="Đóng"
             cancelButtonProps={{ style: { display: 'none' } }}
-            width={700}
+            width={720}
             destroyOnClose
         >
             <Spin spinning={loading}>
+                <div className="contract-modal">
                 <Form
                     form={form}
                     layout="vertical"
+                    className="contract-modal__form"
                     disabled={true} // Tất cả fields disabled (read-only)
                 >
                     {/* --- Thông tin cơ bản --- */}
-                    <Divider>Thông tin hợp đồng</Divider>
+                    <div className="contract-modal__summary">
+                        <div className="summary-item">
+                            <span className="summary-icon"><FileTextOutlined /></span>
+                            <div>
+                                <div className="summary-label">Số hợp đồng</div>
+                                <div className="summary-value">{initialData?.contractNumber || 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div className="summary-item">
+                            <span className="summary-icon"><UserOutlined /></span>
+                            <div>
+                                <div className="summary-label">Khách hàng</div>
+                                <div className="summary-value">{initialData?.customerName || 'N/A'}</div>
+                            </div>
+                        </div>
+                        <div className="summary-item">
+                            <span className="summary-icon"><DollarOutlined /></span>
+                            <div>
+                                <div className="summary-label">Giá trị dự kiến</div>
+                                <div className="summary-value">{initialData?.estimatedCost != null ? new Intl.NumberFormat('vi-VN').format(initialData.estimatedCost) : 'N/A'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <Divider className="contract-modal__divider">Thông tin hợp đồng</Divider>
 
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
@@ -71,7 +98,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 name="contractNumber"
                                 label={<><FileTextOutlined /> Số Hợp đồng</>}
                             >
-                                <Input placeholder="N/A" style={{ color: '#000' }} />
+                                <Input placeholder="N/A" className="readonly" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
@@ -79,7 +106,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 name="contractStatus"
                                 label="Trạng thái"
                             >
-                                <Input placeholder="N/A" style={{ color: '#000' }} />
+                                <Input placeholder="N/A" className="readonly" />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -88,15 +115,15 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         name="customerName"
                         label={<><UserOutlined /> Tên Khách hàng</>}
                     >
-                        <Input placeholder="N/A" style={{ color: '#000' }} />
+                        <Input placeholder="N/A" className="readonly" />
                     </Form.Item>
 
                     {/* --- Thông tin chi tiết (chỉ hiển thị nếu có dữ liệu) --- */}
-                    {(initialData?.priceTypeName || initialData?.occupants || initialData?.estimatedCost) && (
+                    {(initialData?.priceTypeName || initialData?.occupants || initialData?.estimatedCost != null || initialData?.contractValue != null || initialData?.paymentMethod) && (
                         <>
                             <Divider>Thông tin chi tiết</Divider>
                             
-                            {(initialData?.priceTypeName || initialData?.occupants) && (
+                            {(initialData?.priceTypeName || initialData?.occupants || initialData?.contractValue != null || initialData?.paymentMethod) && (
                                 <Row gutter={16}>
                                     {initialData?.priceTypeName && (
                                         <Col xs={24} sm={12}>
@@ -104,7 +131,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                                 name="contractType"
                                                 label="Loại hợp đồng"
                                             >
-                                                <Input placeholder="N/A" style={{ color: '#000' }} />
+                                                <Input placeholder="N/A" className="readonly" />
                                             </Form.Item>
                                         </Col>
                                     )}
@@ -114,7 +141,21 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                                 name="occupants"
                                                 label="Số người sử dụng"
                                             >
-                                                <Input placeholder="N/A" style={{ color: '#000' }} />
+                                                <Input placeholder="N/A" className="readonly" />
+                                            </Form.Item>
+                                        </Col>
+                                    )}
+                                    {initialData?.contractValue != null && (
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="Giá trị hợp đồng">
+                                                <Input value={new Intl.NumberFormat('vi-VN').format(initialData.contractValue)} className="readonly" />
+                                            </Form.Item>
+                                        </Col>
+                                    )}
+                                    {initialData?.paymentMethod && (
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="Phương thức thanh toán">
+                                                <Input value={initialData.paymentMethod} className="readonly" />
                                             </Form.Item>
                                         </Col>
                                     )}
@@ -126,9 +167,31 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     name="estimatedCost"
                                     label={<><DollarOutlined /> Giá trị dự kiến</>}
                                 >
-                                    <Input placeholder="N/A" style={{ color: '#000' }} />
+                                    <Input placeholder="N/A" className="readonly" value={new Intl.NumberFormat('vi-VN').format(initialData.estimatedCost)} />
                                 </Form.Item>
                             )}
+                        </>
+                    )}
+
+                    {(initialData?.startDate || initialData?.endDate) && (
+                        <>
+                            <Divider>Thời gian hiệu lực</Divider>
+                            <Row gutter={16}>
+                                {initialData?.startDate && (
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item label="Ngày bắt đầu">
+                                            <Input value={moment(initialData.startDate).format('DD/MM/YYYY')} className="readonly" />
+                                        </Form.Item>
+                                    </Col>
+                                )}
+                                {initialData?.endDate && (
+                                    <Col xs={24} sm={12}>
+                                        <Form.Item label="Ngày kết thúc">
+                                            <Input value={moment(initialData.endDate).format('DD/MM/YYYY')} className="readonly" />
+                                        </Form.Item>
+                                    </Col>
+                                )}
+                            </Row>
                         </>
                     )}
 
@@ -136,9 +199,10 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                     <Divider>Ghi chú khách hàng</Divider>
 
                     <Form.Item name="customerNotes" label="Ghi chú">
-                        <TextArea rows={4} placeholder="Không có ghi chú" style={{ color: '#000' }} />
+                        <TextArea rows={4} placeholder="Không có ghi chú" className="readonly" />
                     </Form.Item>
                 </Form>
+                </div>
             </Spin>
         </Modal>
     );

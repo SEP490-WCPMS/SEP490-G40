@@ -107,4 +107,10 @@ public interface ServiceStaffContractService {
 
     /** Gửi khách hàng ký: chuyển trạng thái HĐ lắp đặt sang PENDING_SIGN */
     ServiceStaffContractDTO sendContractToCustomerForSign(Integer contractId);
+
+    /** Gửi hợp đồng cho Tech lắp đặt: chuyển trạng thái HĐ lắp đặt sang SIGNED */
+    ServiceStaffContractDTO sendContractToInstallation(Integer contractId);
+
+    /** Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech) */
+    Page<ServiceStaffContractDTO> getPendingSignContracts(String keyword, Pageable pageable);
 }
