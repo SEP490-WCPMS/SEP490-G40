@@ -63,6 +63,38 @@ public class ContractCustomerService {
                 .collect(Collectors.toList());
     }
 
+    public List<ContractDTO> getContractByCustomerIdAndStatus(Integer accountId, Contract.ContractStatus status) {
+        // Kiểm tra customer có tồn tại không
+        if (!accountRepository.existsById(accountId)) {
+            throw new ResourceNotFoundException("Account not found with id: " + accountId);
+        }
+
+        Optional<Customer> customer = customerRepository.findByAccount_Id(accountId);
+        if (!customer.isPresent()) {
+            throw new ResourceNotFoundException("Customer not found with id: " + accountId);
+        }
+
+        Integer customerId = customer.get().getId();
+
+        List<Contract> contracts = contractRepository.findByCustomerIdAndContractStatus(customerId, status);
+        return contracts.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public ContractDTO confirmCustomerSign(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_CUSTOMER_SIGN) {
+            throw new IllegalStateException("Only PENDING_CUSTOMER_SIGN contracts can be confirmed.");
+        }
+
+        contract.setContractStatus(Contract.ContractStatus.PENDING_SIGN);
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
     @Transactional
     public ContractDTO createContract(ContractCreateDTO createDTO) {
         // Check if contract number already exists

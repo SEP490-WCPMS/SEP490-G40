@@ -212,6 +212,24 @@ export const getContractsByCustomerId = (customerId) => {
     return apiClient.get(`/v1/contracts/customer/${customerId}`);
 };
 
+/**
+ * Lấy danh sách hợp đồng của một khách hàng với status pending customer sign
+ * @param customerId
+ * @returns {Promise<axios.AxiosResponse<any>>}
+ */
+export const getCustomerPendingSignContracts = (customerId) => {
+    return apiClient.get(`/v1/contracts/customer/${customerId}/pending-customer-sign`);
+}
+
+/**
+ * Xác nhận khách hàng đã ký hợp đồng (PENDING_CUSTOMER_SIGN → PENDING_SIGN)
+ * @param {number} contractId ID của hợp đồng
+ * @returns {Promise}
+ */
+export const confirmCustomerSign = (contractId) => {
+    return apiClient.post(`/v1/contracts/${contractId}/customer-confirm-sign`);
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
