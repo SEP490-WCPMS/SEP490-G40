@@ -3,6 +3,7 @@ package com.sep490.wcpms.controller;
 import com.sep490.wcpms.dto.ApiResponse;
 import com.sep490.wcpms.dto.ContractCreateDTO;
 import com.sep490.wcpms.dto.ContractDTO;
+import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.service.ContractCustomerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,18 @@ public class ContractController {
     public ApiResponse<List<ContractDTO>> getContractsByCustomerId(@PathVariable Integer customerId) {
         List<ContractDTO> contracts = contractCustomerService.getContractsByCustomerId(customerId);
         return ApiResponse.success(contracts, "Contracts retrieved successfully for customer");
+    }
+
+    @GetMapping("/customer/{customerId}/pending-customer-sign")
+    public ApiResponse<List<ContractDTO>> getPendingSignContracts(@PathVariable Integer customerId) {
+        List<ContractDTO> contracts = contractCustomerService.getContractByCustomerIdAndStatus(customerId, Contract.ContractStatus.PENDING_CUSTOMER_SIGN);
+        return ApiResponse.success(contracts, "Pending sign contracts retrieved successfully for customer");
+    }
+
+    @PostMapping("/{id}/customer-confirm-sign")
+    public ApiResponse<ContractDTO> confirmCustomerSign(@PathVariable Integer id) {
+        ContractDTO contract = contractCustomerService.confirmCustomerSign(id);
+        return ApiResponse.success(contract, "Contract confirmed successfully");
     }
 
     @PostMapping
