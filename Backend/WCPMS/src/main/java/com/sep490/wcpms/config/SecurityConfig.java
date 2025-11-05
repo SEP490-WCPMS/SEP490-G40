@@ -118,6 +118,8 @@ public class SecurityConfig {
                                 .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER") // Cho phép Customer tạo
                                 .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF") // Cho phép Service Staff tạo
                                 // --- HẾT PHẦN THÊM ---
+                                // --- THÊM MỚI: BẢO VỆ API ADMIN ---
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()
                                 .requestMatchers("/staff/profile").hasAnyAuthority("TECHNICAL_STAFF", "CASHIER_STAFF", "SERVICE_STAFF")

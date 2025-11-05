@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.List;
 
@@ -35,4 +36,9 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
     // Phương thức tìm customerCode lớn nhất (ví dụ: KH999)
     @Query("SELECT a.customerCode FROM Account a WHERE a.customerCode IS NOT NULL AND a.customerCode LIKE 'KH%' ORDER BY a.customerCode DESC LIMIT 1")
     Optional<String> findMaxCustomerCode();
+
+    /**
+     * Tìm tất cả các tài khoản KHÔNG PHẢI là CUSTOMER hoặc GUEST
+     */
+    List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
 }
