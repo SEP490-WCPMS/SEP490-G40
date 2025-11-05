@@ -63,6 +63,25 @@ public class ContractCustomerService {
                 .collect(Collectors.toList());
     }
 
+    public List<ContractDTO> getContractByCustomerIdAndStatus(Integer accountId, Contract.ContractStatus status) {
+        // Kiểm tra customer có tồn tại không
+        if (!accountRepository.existsById(accountId)) {
+            throw new ResourceNotFoundException("Account not found with id: " + accountId);
+        }
+
+        Optional<Customer> customer = customerRepository.findByAccount_Id(accountId);
+        if (!customer.isPresent()) {
+            throw new ResourceNotFoundException("Customer not found with id: " + accountId);
+        }
+
+        Integer customerId = customer.get().getId();
+
+        List<Contract> contracts = contractRepository.findByCustomerIdAndContractStatus(customerId, status);
+        return contracts.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public ContractDTO createContract(ContractCreateDTO createDTO) {
         // Check if contract number already exists

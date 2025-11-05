@@ -212,6 +212,15 @@ export const getContractsByCustomerId = (customerId) => {
     return apiClient.get(`/v1/contracts/customer/${customerId}`);
 };
 
+/**
+ * Lấy danh sách hợp đồng của một khách hàng với status cụ thể
+ * @param customerId
+ * @returns {Promise<axios.AxiosResponse<any>>}
+ */
+export const getCustomerPendingSignContracts = (customerId) => {
+    return apiClient.get(`/v1/contracts/customer/${customerId}/pending-sign`);
+}
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {

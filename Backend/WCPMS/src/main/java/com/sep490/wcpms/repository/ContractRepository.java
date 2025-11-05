@@ -119,4 +119,6 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     );
 
     List<Contract> findByCustomer_IdOrderByIdDesc(Integer customerId);
+
+    List<Contract> findByCustomerIdAndContractStatus(Integer customerId, Contract.ContractStatus contractStatus);
 }
