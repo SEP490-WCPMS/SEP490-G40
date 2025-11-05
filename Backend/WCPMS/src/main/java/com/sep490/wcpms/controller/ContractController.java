@@ -35,10 +35,16 @@ public class ContractController {
         return ApiResponse.success(contracts, "Contracts retrieved successfully for customer");
     }
 
-    @GetMapping("/customer/{customerId}/pending-sign")
+    @GetMapping("/customer/{customerId}/pending-customer-sign")
     public ApiResponse<List<ContractDTO>> getPendingSignContracts(@PathVariable Integer customerId) {
-        List<ContractDTO> contracts = contractCustomerService.getContractByCustomerIdAndStatus(customerId, Contract.ContractStatus.PENDING_SIGN);
+        List<ContractDTO> contracts = contractCustomerService.getContractByCustomerIdAndStatus(customerId, Contract.ContractStatus.PENDING_CUSTOMER_SIGN);
         return ApiResponse.success(contracts, "Pending sign contracts retrieved successfully for customer");
+    }
+
+    @PostMapping("/{id}/customer-confirm-sign")
+    public ApiResponse<ContractDTO> confirmCustomerSign(@PathVariable Integer id) {
+        ContractDTO contract = contractCustomerService.confirmCustomerSign(id);
+        return ApiResponse.success(contract, "Contract confirmed successfully");
     }
 
     @PostMapping

@@ -82,6 +82,19 @@ public class ContractCustomerService {
                 .collect(Collectors.toList());
     }
 
+    public ContractDTO confirmCustomerSign(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_CUSTOMER_SIGN) {
+            throw new IllegalStateException("Only PENDING_CUSTOMER_SIGN contracts can be confirmed.");
+        }
+
+        contract.setContractStatus(Contract.ContractStatus.PENDING_SIGN);
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
     @Transactional
     public ContractDTO createContract(ContractCreateDTO createDTO) {
         // Check if contract number already exists

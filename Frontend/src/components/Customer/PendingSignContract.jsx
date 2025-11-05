@@ -1,19 +1,24 @@
+
 import React, { useState, useEffect } from 'react';
-import { Table, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
-import { EyeOutlined, ReloadOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Table, Typography, message, Spin, Button, Row, Col, Tag, Modal } from 'antd';
+import { EyeOutlined, ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getCustomerPendingSignContracts } from '../Services/apiService';
+import { getCustomerPendingSignContracts, confirmCustomerSign } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 
 const PendingSignContract = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [signingContractId, setSigningContractId] = useState(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [selectedContract, setSelectedContract] = useState(null);
     const navigate = useNavigate();
 
     // Lấy customerId từ localStorage
     const getCustomerId = () => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('Current user:', user);
         return user?.customerId || user?.id;
     };
 
@@ -25,6 +30,8 @@ const PendingSignContract = () => {
             message.error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
             return;
         }
+
+        console.log('Fetching contracts for customerId:', customerId);
 
         setLoading(true);
         try {
@@ -56,10 +63,56 @@ const PendingSignContract = () => {
         navigate(`/contract-detail?id=${contractId}`);
     };
 
+    // Mở modal xác nhận
+    const showConfirmModal = (record) => {
+        console.log('showConfirmModal called with record:', record);
+        setSelectedContract(record);
+        setIsModalVisible(true);
+    };
+
+    // Đóng modal
+    const handleCancel = () => {
+        console.log('Modal cancelled');
+        setIsModalVisible(false);
+        setSelectedContract(null);
+    };
+
     // Xử lý xác nhận ký
-    const handleConfirmSign = (record) => {
-        console.log('Đã ký thành công hợp đồng:', record);
-        message.success(`Đã ký thành công hợp đồng ${record.contractNumber}`);
+    const handleConfirmSign = async () => {
+        if (!selectedContract) {
+            console.error('No selected contract');
+            return;
+        }
+
+        console.log('Confirming sign for contract:', selectedContract.id);
+        setSigningContractId(selectedContract.id);
+
+        try {
+            const response = await confirmCustomerSign(selectedContract.id);
+            console.log('Confirm sign response:', response);
+            console.log('Đã ký thành công hợp đồng:', selectedContract.contractNumber);
+
+            message.success(`Đã xác nhận ký thành công hợp đồng ${selectedContract.contractNumber}`);
+
+            // Đóng modal
+            setIsModalVisible(false);
+            setSelectedContract(null);
+
+            // Xóa hợp đồng khỏi danh sách hiện tại
+            setContracts(prev => prev.filter(c => c.id !== selectedContract.id));
+
+            // Reload lại danh sách sau 1 giây
+            setTimeout(() => {
+                fetchPendingSignContracts();
+            }, 1000);
+        } catch (error) {
+            console.error('Confirm sign error:', error);
+            console.error('Error response:', error.response);
+            const errorMessage = error.response?.data?.message || 'Xác nhận ký hợp đồng thất bại!';
+            message.error(errorMessage);
+        } finally {
+            setSigningContractId(null);
+        }
     };
 
     // Hiển thị trạng thái với màu sắc
@@ -84,9 +137,13 @@ const PendingSignContract = () => {
                 color = 'cyan';
                 displayText = 'Đã duyệt';
                 break;
-            case 'PENDING_SIGN':
+            case 'PENDING_CUSTOMER_SIGN':
                 color = 'geekblue';
-                displayText = 'Đang chờ khách ký';
+                displayText = 'Chờ khách hàng ký';
+                break;
+            case 'PENDING_SIGN':
+                color = 'purple';
+                displayText = 'Đang chờ xử lý ký';
                 break;
             case 'SIGNED':
                 color = 'purple';
@@ -161,7 +218,9 @@ const PendingSignContract = () => {
                     <Button
                         type="primary"
                         icon={<CheckCircleOutlined />}
-                        onClick={() => handleConfirmSign(record)}
+                        onClick={() => showConfirmModal(record)}
+                        loading={signingContractId === record.id}
+                        disabled={signingContractId !== null}
                         style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                     >
                         Xác nhận ký
@@ -202,8 +261,38 @@ const PendingSignContract = () => {
                         showSizeChanger: true,
                         showTotal: (total) => `Tổng ${total} hợp đồng`,
                     }}
+                    locale={{
+                        emptyText: 'Không có hợp đồng nào chờ ký'
+                    }}
                 />
             </Spin>
+
+            {/* Modal xác nhận */}
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: '22px' }} />
+                        <span>Xác nhận ký hợp đồng</span>
+                    </div>
+                }
+                open={isModalVisible}
+                onOk={handleConfirmSign}
+                onCancel={handleCancel}
+                okText="Xác nhận"
+                cancelText="Hủy"
+                okButtonProps={{
+                    loading: signingContractId !== null,
+                    danger: false,
+                    type: 'primary'
+                }}
+                centered
+            >
+                <p>
+                    Bạn có chắc chắn muốn xác nhận ký hợp đồng{' '}
+                    <strong>{selectedContract?.contractNumber}</strong>?
+                </p>
+                <p>Sau khi xác nhận, hợp đồng sẽ được chuyển sang trạng thái chờ xử lý tiếp theo.</p>
+            </Modal>
         </div>
     );
 };
