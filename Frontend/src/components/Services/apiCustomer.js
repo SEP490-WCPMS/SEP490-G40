@@ -15,6 +15,16 @@ export const submitSupportTicket = (description, feedbackType) => {
     return apiClient.post('/feedback/customer', dto);
 };
 
+// --- THÊM HÀM MỚI ---
+/**
+ * Lấy danh sách đồng hồ đang HOẠT ĐỘNG của khách hàng
+ * (để báo hỏng).
+ */
+export const getCustomerActiveMeters = () => {
+    return apiClient.get('/feedback/customer/my-active-meters');
+};
+// --- HẾT PHẦN THÊM ---
+
 // --- THÊM 2 HÀM MỚI ---
 
 /**

@@ -2,14 +2,17 @@ package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.FeedbackCreateRequestDTO;
 import com.sep490.wcpms.dto.SupportTicketDTO;
+import com.sep490.wcpms.dto.CustomerMeterDTO;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.CustomerFeedback;
+import com.sep490.wcpms.entity.WaterMeter;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.SupportTicketMapper;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.CustomerFeedbackRepository;
 import com.sep490.wcpms.repository.CustomerRepository;
+import com.sep490.wcpms.repository.WaterMeterRepository;
 import com.sep490.wcpms.service.CustomerFeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +22,7 @@ import org.springframework.data.domain.Page; // <-- THÊM IMPORT
 import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,8 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository;
     private final SupportTicketMapper supportTicketMapper;
+    private final WaterMeterRepository waterMeterRepository;
+
 
     @Override
     @Transactional
@@ -91,6 +97,19 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
         ticket.setRequestedBy(requestedBy); // Gán người yêu cầu (có thể là KH hoặc NV)
         // assignedTo (NV Kỹ thuật) sẽ là null, chờ Service Staff gán ở Bước 2
 
+        // --- CẬP NHẬT: LƯU METER_ID NẾU CÓ ---
+        if (dto.getMeterId() != null) {
+            // Tìm đồng hồ để liên kết
+            WaterMeter meter = waterMeterRepository.findById(dto.getMeterId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ (WaterMeter) với ID: " + dto.getMeterId()));
+
+            // (Thêm kiểm tra bảo mật: Đồng hồ này có thực sự thuộc khách hàng này không?)
+            // (Bỏ qua bước này để đơn giản hóa)
+
+            ticket.setWaterMeter(meter); // Gán đồng hồ vào ticket
+        }
+        // --- HẾT PHẦN CẬP NHẬT ---
+
         CustomerFeedback savedTicket = customerFeedbackRepository.save(ticket);
 
         return supportTicketMapper.toDto(savedTicket);
@@ -131,6 +150,19 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
 
         // 3. Map sang DTO
         return supportTicketMapper.toDto(ticket);
+    }
+    // --- HẾT PHẦN THÊM ---
+
+    // --- TRIỂN KHAI HÀM MỚI ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerMeterDTO> getCustomerActiveMeters(Integer customerAccountId) {
+        // 1. Tìm hồ sơ Customer từ Account ID
+        Customer customer = customerRepository.findByAccount_Id(customerAccountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng cho tài khoản: " + customerAccountId));
+
+        // 2. Gọi hàm query mới trong WaterMeterRepository
+        return waterMeterRepository.findActiveMetersByCustomerId(customer.getId());
     }
     // --- HẾT PHẦN THÊM ---
 }

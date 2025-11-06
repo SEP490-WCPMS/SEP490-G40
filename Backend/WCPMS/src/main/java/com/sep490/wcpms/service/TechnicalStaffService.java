@@ -9,6 +9,7 @@ import com.sep490.wcpms.dto.OnSiteCalibrationDTO; // Import DTO mới
 import com.sep490.wcpms.dto.*; // Import tất cả DTO
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.sep490.wcpms.dto.SupportTicketDetailDTO; // <-- THÊM IMPORT
 
 import java.util.List;
 
@@ -54,4 +55,12 @@ public interface TechnicalStaffService {
      * đã được gán cho NV Kỹ thuật này (status = IN_PROGRESS).
      */
     Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, Pageable pageable);
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Lấy CHI TIẾT 1 Yêu cầu Bảo trì (ticket)
+     * đã được gán cho NV Kỹ thuật này.
+     */
+    SupportTicketDetailDTO getMyMaintenanceRequestDetail(Integer staffId, Integer ticketId);
+    // --- HẾT PHẦN THÊM ---
 }

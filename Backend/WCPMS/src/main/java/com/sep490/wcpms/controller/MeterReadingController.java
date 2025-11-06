@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication; // <-- Import
 import org.springframework.security.core.context.SecurityContextHolder; // <-- Import
 import com.sep490.wcpms.exception.AccessDeniedException; // <-- Import
-//import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Import (Giả định)
+import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Import (Giả định)
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -44,15 +44,14 @@ public class MeterReadingController {
      * Hàm lấy ID nhân viên đã đăng nhập (Giống hệt bên TechnicalStaffController)
      */
     private Integer getAuthenticatedStaffId() {
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-//            throw new AccessDeniedException("User is not authenticated. Please log in.");
-//        }
-//        Object principal = authentication.getPrincipal();
-//        if (principal instanceof UserDetailsImpl) {
-//            return ((UserDetailsImpl) principal).getId();
-//        }
-//        throw new IllegalStateException("Cannot determine user ID from Principal.");
-        return 1; // <<<<< HARDCODE ĐỂ TEST - CẦN THAY THẾ
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AccessDeniedException("User is not authenticated. Please log in.");
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) principal).getId();
+        }
+        throw new IllegalStateException("Cannot determine user ID from Principal.");
     }
 }
