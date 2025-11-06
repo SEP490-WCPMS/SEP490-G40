@@ -14,6 +14,7 @@ public class ServiceStaffContractDTO {
     private LocalDate endDate;
     private BigDecimal estimatedCost;
     private BigDecimal contractValue;
+    private String paymentMethod; // Thêm: Phương thức thanh toán (CASH/BANK_TRANSFER/INSTALLMENT)
     private String notes;
 
     private Integer customerId;
