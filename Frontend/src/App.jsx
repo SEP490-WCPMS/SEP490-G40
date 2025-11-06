@@ -43,6 +43,7 @@ import MySupportTicketList from './components/Customer/Feedback/MySupportTicketL
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
+import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -105,6 +106,7 @@ function App() {
             <Route path="replace-meter" element={<MeterReplacementForm />} />
             <Route path="calibrate-on-site" element={<OnSiteCalibrationForm />} />
             <Route path="maintenance-requests" element={<MaintenanceRequestList />} />
+            <Route path="maintenance-requests/:ticketId" element={<MaintenanceRequestDetail />} />
           </Route>
         </Route>
 

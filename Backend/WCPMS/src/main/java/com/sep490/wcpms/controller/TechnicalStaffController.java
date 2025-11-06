@@ -16,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import com.sep490.wcpms.exception.AccessDeniedException;
 // --- THAY DÒNG IMPORT NÀY BẰNG ĐƯỜNG DẪN VÀ TÊN LỚP UserDetails ĐÚNG ---
 import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Sửa ở đây nếu cần
+import com.sep490.wcpms.dto.SupportTicketDetailDTO; // <-- THÊM IMPORT
 
 import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
 import com.sep490.wcpms.dto.MeterInfoDTO;
@@ -161,4 +162,19 @@ public class TechnicalStaffController {
         Page<SupportTicketDTO> tickets = technicalStaffService.getMyMaintenanceRequests(staffId, pageable);
         return ResponseEntity.ok(tickets);
     }
+
+    // === API MỚI CHO BƯỚC 3 (CHI TIẾT) ===
+    /**
+     * API Lấy CHI TIẾT 1 Yêu cầu Bảo trì
+     * Path: GET /api/technical/maintenance-requests/{ticketId}
+     */
+    @GetMapping("/maintenance-requests/{ticketId}")
+    public ResponseEntity<SupportTicketDetailDTO> getMyMaintenanceRequestDetail(
+            @PathVariable Integer ticketId
+    ) {
+        Integer staffId = getAuthenticatedStaffId();
+        SupportTicketDetailDTO ticketDetail = technicalStaffService.getMyMaintenanceRequestDetail(staffId, ticketId);
+        return ResponseEntity.ok(ticketDetail);
+    }
+    // --- HẾT PHẦN THÊM ---
 }

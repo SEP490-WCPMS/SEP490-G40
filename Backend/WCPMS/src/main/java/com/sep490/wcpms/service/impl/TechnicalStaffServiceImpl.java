@@ -29,6 +29,9 @@ import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
 import com.sep490.wcpms.entity.MeterCalibration;
 import com.sep490.wcpms.repository.MeterCalibrationRepository;
 import com.sep490.wcpms.repository.MeterReadingRepository;
+import com.sep490.wcpms.dto.SupportTicketDetailDTO; // <-- THÊM IMPORT
+import com.sep490.wcpms.entity.WaterServiceContract; // <-- THÊM IMPORT
+import com.sep490.wcpms.entity.MeterInstallation; // <-- THÊM IMPORT
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -36,6 +39,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.sep490.wcpms.dto.OnSiteCalibrationDTO;
+import java.time.LocalDateTime; // Thêm import
 
 import java.time.LocalDate;
 import java.util.List;
@@ -64,6 +68,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private CustomerFeedbackRepository customerFeedbackRepository;
     @Autowired
     private SupportTicketMapper supportTicketMapper;
+    @Autowired
+    private CustomerRepository customerRepository;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -227,6 +233,13 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         WaterMeter oldMeter = waterMeterRepository.findByMeterCode(meterCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ với mã: " + meterCode));
 
+        // --- THÊM KIỂM TRA STATUS ---
+        // Chỉ cho phép thao tác nếu đồng hồ đang được lắp đặt
+        if (oldMeter.getMeterStatus() != WaterMeter.MeterStatus.INSTALLED) {
+            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + oldMeter.getMeterStatus());
+        }
+        // --- HẾT PHẦN THÊM ---
+
         // 2. Tìm bản ghi lắp đặt MỚI NHẤT của đồng hồ đó
         MeterInstallation oldInstallation = meterInstallationRepository.findTopByWaterMeterOrderByInstallationDateDesc(oldMeter)
                 .orElseThrow(() -> new ResourceNotFoundException("Đồng hồ này chưa được ghi nhận lắp đặt: " + meterCode));
@@ -269,6 +282,13 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // 1. Lấy Đồng hồ CŨ
         WaterMeter oldMeter = waterMeterRepository.findByMeterCode(dto.getOldMeterCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Đồng hồ CŨ mã " + dto.getOldMeterCode() + " không tìm thấy."));
+
+        // --- THÊM KIỂM TRA STATUS ---
+        // Đảm bảo đồng hồ CŨ đang ở trạng thái INSTALLED trước khi thay
+        if (oldMeter.getMeterStatus() != WaterMeter.MeterStatus.INSTALLED) {
+            throw new IllegalStateException("Không thể thay thế đồng hồ này. Đồng hồ không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + oldMeter.getMeterStatus());
+        }
+        // --- HẾT PHẦN THÊM ---
 
         // 2. Lấy Bản ghi Lắp đặt CŨ
         MeterInstallation oldInstallation = meterInstallationRepository.findTopByWaterMeterOrderByInstallationDateDesc(oldMeter)
@@ -322,6 +342,14 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         newInstallation.setNotes(dto.getNotes());
         meterInstallationRepository.save(newInstallation);
 
+        // --- BƯỚC 6.5 (MỚI): CẬP NHẬT BẢNG CUSTOMERS (BẢNG 7) ---
+        // (Customer đã được lấy ở Bước 3)
+        customer.setMeterCode(newMeter.getMeterCode()); // Cập nhật mã đồng hồ mới
+        customer.setMeterSerialNumber(newMeter.getSerialNumber()); // Cập nhật serial mới
+        customer.setMeterStatus(Customer.MeterStatus.WORKING); // Giả định trạng thái WORKING
+        customerRepository.save(customer); // Lưu lại Bảng 7
+        // --- HẾT PHẦN THÊM ---
+
         // 7. XỬ LÝ LÝ DO & CẬP NHẬT TRẠNG THÁI ĐỒNG HỒ (Bảng 10)
         if ("CALIBRATION".equalsIgnoreCase(dto.getReplacementReason())) {
             oldMeter.setMeterStatus(WaterMeter.MeterStatus.UNDER_MAINTENANCE); // Gửi đi kiểm định
@@ -344,12 +372,66 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         waterMeterRepository.save(oldMeter);
 
         waterMeterRepository.save(newMeter);
+
+        // --- BƯỚC 8 (CẬP NHẬT MỚI): TÌM VÀ ĐÓNG TICKET (Nội dung chi tiết hơn) ---
+
+        // Tìm kiếm ticket (Giữ nguyên)
+        List<CustomerFeedback> relatedTickets =
+                customerFeedbackRepository.findByStaffStatusAndMeter(
+                        staff,
+                        CustomerFeedback.Status.IN_PROGRESS,
+                        dto.getOldMeterCode()
+                );
+
+        if (!relatedTickets.isEmpty()) {
+            CustomerFeedback ticketToClose = relatedTickets.get(0);
+
+            // --- SỬA LẠI NỘI DUNG PHẢN HỒI ---
+            // Tạo nội dung phản hồi chi tiết (bao gồm cả Notes và Ảnh)
+            // Chúng ta sẽ dùng một định dạng đơn giản (ví dụ: JSON hoặc text phân cách)
+            // để FE có thể tách ra và hiển thị.
+
+            String replacementNotes = (dto.getNotes() != null && !dto.getNotes().isBlank())
+                    ? dto.getNotes()
+                    : "(Không có ghi chú)";
+
+            String response = String.format(
+                    "Đã hoàn thành thay thế đồng hồ ngày %s.\n\n" +
+                            "CHI TIẾT KỸ THUẬT:\n" +
+                            "- Đồng hồ cũ (Mã: %s) chốt chỉ số: %s m³.\n" +
+                            "- Đồng hồ mới (Mã: %s) lắp đặt với chỉ số đầu: %s m³.\n" +
+                            "- Lý do: %s.\n\n" +
+                            "GHI CHÚ CỦA KỸ THUẬT:\n%s\n\n" +
+                            "---IMAGE_SEPARATOR---%s", // Dùng một chuỗi phân cách đặc biệt
+
+                    LocalDate.now().toString(),
+                    dto.getOldMeterCode(),
+                    dto.getOldMeterFinalReading().toString(),
+                    dto.getNewMeterCode(),
+                    dto.getNewMeterInitialReading().toString(),
+                    "CALIBRATION".equalsIgnoreCase(dto.getReplacementReason()) ? "Kiểm định 5 năm" : "Đồng hồ hỏng",
+                    replacementNotes, // Thêm ghi chú
+                    dto.getInstallationImageBase64() // Thêm chuỗi Base64 của ảnh
+            );
+            // --- HẾT PHẦN SỬA NỘI DUNG ---
+
+            ticketToClose.setStatus(CustomerFeedback.Status.RESOLVED); // Đóng ticket
+            ticketToClose.setResponse(response); // Ghi lại phản hồi (đã bao gồm ảnh + notes)
+            ticketToClose.setResolvedDate(LocalDateTime.now());
+
+            customerFeedbackRepository.save(ticketToClose);
+        } else {
+            System.err.println("Cảnh báo: Hoàn thành thay thế đồng hồ " + dto.getOldMeterCode() + " nhưng không tìm thấy ticket IN_PROGRESS nào khớp để đóng.");
+        }
+        // --- HẾT BƯỚC 8 ---
+
     }
 
     // --- HÀM MỚI CHO KIỂM ĐỊNH TẠI CHỖ ---
     @Override
     @Transactional
     public void processOnSiteCalibration(OnSiteCalibrationDTO dto, Integer staffId) {
+        Account staff = getStaffAccountById(staffId); // Lấy staff
         // 1. Lấy Đồng hồ (Bảng 10)
         WaterMeter meter = waterMeterRepository.findByMeterCode(dto.getMeterCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ với mã: " + dto.getMeterCode()));
@@ -378,6 +460,54 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         }
 
         waterMeterRepository.save(meter);
+
+        // --- BƯỚC 4 (CẬP NHẬT MỚI): TÌM VÀ ĐÓNG TICKET ---
+
+        // Tìm kiếm ticket (Giữ nguyên)
+        List<CustomerFeedback> relatedTickets =
+                customerFeedbackRepository.findByStaffStatusAndMeter(
+                        staff,
+                        CustomerFeedback.Status.IN_PROGRESS,
+                        dto.getMeterCode()
+                );
+
+        if (!relatedTickets.isEmpty()) {
+            CustomerFeedback ticketToClose = relatedTickets.get(0);
+
+            // --- SỬA LẠI NỘI DUNG PHẢN HỒI ---
+            String calibrationNotes = (dto.getNotes() != null && !dto.getNotes().isBlank())
+                    ? dto.getNotes()
+                    : "(Không có ghi chú)";
+
+            String response = String.format(
+                    "Đã hoàn thành kiểm định tại chỗ ngày %s.\n\n" +
+                            "CHI TIẾT KỸ THUẬT:\n" +
+                            "- Mã đồng hồ: %s\n" +
+                            "- Kết quả: %s\n" +
+                            "- Chi phí: %s VNĐ\n" +
+                            "- Ngày kiểm định tiếp theo: %s\n\n" +
+                            "GHI CHÚ CỦA KỸ THUẬT:\n%s",
+                    // (Luồng này không có ảnh mới để đính kèm)
+
+                    dto.getCalibrationDate().toString(),
+                    dto.getMeterCode(),
+                    dto.getCalibrationStatus().toString(),
+                    dto.getCalibrationCost().toString(),
+                    dto.getNextCalibrationDate().toString(),
+                    calibrationNotes // Thêm ghi chú
+            );
+            // --- HẾT PHẦN SỬA NỘI DUNG ---
+
+            ticketToClose.setStatus(CustomerFeedback.Status.RESOLVED);
+            ticketToClose.setResponse(response); // Ghi phản hồi
+            ticketToClose.setResolvedDate(LocalDateTime.now());
+
+            customerFeedbackRepository.save(ticketToClose);
+        } else {
+            System.err.println("Cảnh báo: Hoàn thành kiểm định tại chỗ " + dto.getMeterCode() + " nhưng không tìm thấy ticket IN_PROGRESS nào khớp để đóng.");
+        }
+        // --- HẾT BƯỚC 4 ---
+
     }
 
     // === BƯỚC 3 (LUỒNG TICKET): LẤY VIỆC ĐƯỢC GIAO ===
@@ -394,5 +524,88 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
                 pageable
         );
         return tickets.map(supportTicketMapper::toDto);
+    }
+
+    // === CHI TIẾT TICKET (ĐÃ SỬA LỖI LOGIC) ===
+    @Override
+    @Transactional(readOnly = true)
+    public SupportTicketDetailDTO getMyMaintenanceRequestDetail(Integer staffId, Integer ticketId) {
+        Account staff = getStaffAccountById(staffId);
+
+        // 1. Tìm Ticket
+        CustomerFeedback ticket = customerFeedbackRepository.findById(ticketId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Yêu cầu Hỗ trợ (Ticket) với ID: " + ticketId));
+
+        // 2. Xác thực quyền
+        if (ticket.getAssignedTo() == null || !ticket.getAssignedTo().getId().equals(staffId)) {
+            throw new AccessDeniedException("Bạn không được gán cho Yêu cầu Hỗ trợ này.");
+        }
+
+        Customer customer = ticket.getCustomer();
+
+        // 3. Tìm HĐ Dịch vụ (Bảng 9) ACTIVE của Khách hàng
+        WaterServiceContract activeServiceContract = customer.getWaterServiceContracts().stream()
+                .filter(wsc -> wsc.getContractStatus() == WaterServiceContract.WaterServiceContractStatus.ACTIVE)
+                .findFirst()
+                .orElse(null);
+
+        // --- SỬA LỖI LOGIC HIỂN THỊ N/A ---
+
+        MeterInstallation installationToDisplay = null; // Bản ghi lắp đặt sẽ hiển thị
+
+        if (activeServiceContract != null) {
+            // Tìm bản ghi lắp đặt MỚI NHẤT thuộc HĐ Dịch vụ này với đồng hồ đang được lắp đặt
+            Optional<MeterInstallation> latestInstallationOpt = meterInstallationRepository
+                    .findTopByWaterServiceContractAndWaterMeter_MeterStatusOrderByInstallationDateDesc(
+                            activeServiceContract,
+                            WaterMeter.MeterStatus.INSTALLED
+                    );
+
+            if (latestInstallationOpt.isPresent()) {
+                MeterInstallation latestInstallation = latestInstallationOpt.get();
+
+                // KIỂM TRA: Nếu ticket này là ticket KIỂM ĐỊNH 5 NĂM (auto-gen)
+                // HOẶC ticket BÁO HỎNG (thủ công)
+                // VÀ đồng hồ của bản ghi lắp đặt mới nhất đang là INSTALLED
+                // (Tức là đồng hồ M003 đang chạy tốt, nhưng ticket là về M001)
+
+                // Logic MỚI:
+                // 1. Ưu tiên tìm đồng hồ đang INSTALLED
+                if (latestInstallation.getWaterMeter() != null &&
+                        latestInstallation.getWaterMeter().getMeterStatus() == WaterMeter.MeterStatus.INSTALLED)
+                {
+                    // Nếu ticket này là về đồng hồ ĐANG CHẠY (INSTALLED)
+                    // (Ví dụ: Khách hàng báo hỏng M003)
+                    String meterCode = latestInstallation.getWaterMeter().getMeterCode();
+                    if (ticket.getDescription().contains("[" + meterCode + "]")) {
+                        installationToDisplay = latestInstallation;
+                    } else {
+                        // Ticket này là về một đồng hồ cũ (ví dụ M001)
+                        // nhưng KH đang dùng đồng hồ M003.
+                        // Chúng ta vẫn cần hiển thị M003 để NV Kỹ thuật biết.
+                        installationToDisplay = latestInstallation;
+                    }
+                }
+                // 2. Nếu đồng hồ mới nhất KHÔNG PHẢI INSTALLED (ví dụ: BROKEN)
+                else {
+                    // (Ví dụ: M003 đã bị báo hỏng, và ticket này là về M003)
+                    installationToDisplay = latestInstallation;
+                }
+            }
+        }
+
+        // Nếu không tìm thấy HĐ Dịch vụ (ví dụ HĐ đã TERMINATED),
+        // thử tìm bản ghi lắp đặt cuối cùng của khách hàng này
+        if (installationToDisplay == null) {
+            Optional<MeterInstallation> lastAnyInstallation = meterInstallationRepository
+                    .findTopByCustomerOrderByInstallationDateDesc(customer);
+            if(lastAnyInstallation.isPresent()) {
+                installationToDisplay = lastAnyInstallation.get();
+            }
+        }
+        // --- HẾT PHẦN SỬA ---
+
+        // 7. Map sang DTO chi tiết
+        return supportTicketMapper.toDetailDto(ticket, activeServiceContract, installationToDisplay);
     }
 }

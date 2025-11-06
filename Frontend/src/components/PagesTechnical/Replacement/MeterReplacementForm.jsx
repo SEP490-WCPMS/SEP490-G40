@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getMeterInfoByCode, submitMeterReplacement } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
-import { ArrowLeft, Search, UploadCloud } from 'lucide-react'; // Import icons
+import React, { useState, useEffect } from 'react'; // <-- Thêm useEffect
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- Thêm useLocation
+import { getMeterInfoByCode, submitMeterReplacement } from '../../Services/apiTechnicalStaff';
+import { ArrowLeft, Search, UploadCloud } from 'lucide-react';
 import moment from 'moment'; // Import moment
 
 function MeterReplacementForm() {
     const navigate = useNavigate();
+    const location = useLocation(); // <-- Lấy location để nhận state
 
     // State cho bước 1: Tìm kiếm
     const [oldMeterCode, setOldMeterCode] = useState('');
@@ -52,6 +53,39 @@ function MeterReplacementForm() {
             setLoadingFetch(false);
         }
     };
+
+
+    // --- THÊM HOOK MỚI: Tự động điền và tìm kiếm ---
+    useEffect(() => {
+        // Kiểm tra xem có state "prefillMeterCode" được gửi từ trang trước không
+        if (location.state && location.state.prefillMeterCode) {
+            const meterCodeFromState = location.state.prefillMeterCode;
+            
+            // 1. Tự động điền mã vào ô input
+            setOldMeterCode(meterCodeFromState);
+            
+            // 2. Tự động chạy hàm tìm kiếm
+            // (Chúng ta cần đảm bảo hàm handleSearchMeter có thể chạy với mã mới nhất)
+            // (Giải pháp đơn giản là gọi trực tiếp API)
+            
+            setLoadingFetch(true);
+            setError(null);
+            setFoundMeterInfo(null);
+            getMeterInfoByCode(meterCodeFromState)
+                .then(response => {
+                    setFoundMeterInfo(response.data);
+                    setFormData(prev => ({ ...prev, oldMeterFinalReading: response.data.lastReading || '' }));
+                })
+                .catch(err => {
+                    setError(err.response?.data?.message || "Không tìm thấy đồng hồ.");
+                })
+                .finally(() => {
+                    setLoadingFetch(false);
+                });
+        }
+    }, [location.state]); // Chạy lại khi location.state thay đổi
+    // --- HẾT PHẦN THÊM ---
+    
 
     // --- HÀM XỬ LÝ BƯỚC 3: NHẬP LIỆU FORM ---
     const handleChange = (e) => {

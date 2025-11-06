@@ -31,7 +31,7 @@ public class CustomerFeedback {
     @Column(name = "feedback_type")
     private FeedbackType feedbackType = FeedbackType.FEEDBACK;
 
-    @Lob
+
     @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     private String description;
 
@@ -67,6 +67,13 @@ public class CustomerFeedback {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // --- THÊM TRƯỜNG MỚI ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "meter_id", // Khớp với tên cột SQL
+            foreignKey = @ForeignKey(name = "fk_feedback_water_meters"))
+    private WaterMeter waterMeter; // Đồng hồ (Bảng 12) liên quan
+    // --- HẾT PHẦN THÊM ---
 
     public enum FeedbackType {
         FEEDBACK,

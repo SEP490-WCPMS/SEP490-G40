@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { submitOnSiteCalibration } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
-import { ArrowLeft } from 'lucide-react'; // Import icons
+import React, { useState, useEffect } from 'react'; // <-- Thêm useEffect
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- Thêm useLocation
+import { submitOnSiteCalibration } from '../../Services/apiTechnicalStaff';
+import { ArrowLeft, Check, X } from 'lucide-react';
 import moment from 'moment'; // Cần import moment
 
 function OnSiteCalibrationForm() {
     const navigate = useNavigate();
+    const location = useLocation(); // <-- Lấy location
 
     // State cho form
     const [formData, setFormData] = useState({
@@ -22,6 +23,23 @@ function OnSiteCalibrationForm() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+
+
+    // --- THÊM HOOK MỚI: Tự động điền ---
+    useEffect(() => {
+        // Kiểm tra xem có state "prefillMeterCode" được gửi từ trang trước không
+        if (location.state && location.state.prefillMeterCode) {
+            const meterCodeFromState = location.state.prefillMeterCode;
+            
+            // 1. Tự động điền mã vào ô input
+            setFormData(prev => ({
+                ...prev,
+                meterCode: meterCodeFromState
+            }));
+        }
+    }, [location.state]); // Chạy lại khi location.state thay đổi
+    // --- HẾT PHẦN THÊM ---
+    
 
     // --- HÀM XỬ LÝ NHẬP LIỆU ---
     const handleChange = (e) => {

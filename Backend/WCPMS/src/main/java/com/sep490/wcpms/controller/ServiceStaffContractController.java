@@ -251,4 +251,36 @@ public class ServiceStaffContractController {
         return ResponseEntity.ok(customers);
     }
 
+    // --- THÊM API MỚI ---
+    /**
+     * API Lấy danh sách đồng hồ ACTIVE của một Khách hàng CỤ THỂ
+     * (Dùng cho form "Tạo Ticket Hộ Khách Hàng").
+     * Path: GET /api/service/customers/{customerId}/active-meters
+     */
+    @GetMapping("/customers/active-meters/{customerId}")
+    public ResponseEntity<List<CustomerMeterDTO>> getCustomerActiveMeters(
+            @PathVariable Integer customerId
+    ) {
+        // Chúng ta cần thêm hàm này vào CustomerFeedbackService (hoặc ServiceStaffContractService)
+        // Giả sử chúng ta thêm nó vào CustomerFeedbackService (vì nó liên quan đến Customer)
+
+        // Tìm Account ID của khách hàng (Cách 1: nếu Customer entity có accountId)
+        // Customer customer = customerRepository.findById(customerId)...
+        // Integer customerAccountId = customer.getAccount().getId();
+        // (Cách 2: Giả sử CustomerFeedbackService đã có hàm lấy theo customerId)
+
+        // TẠM THỜI, chúng ta cần một hàm mới trong CustomerFeedbackService
+        // Hãy tạo hàm getCustomerActiveMetersByCustomerId(Integer customerId)
+
+        // (Giả sử CustomerFeedbackService đã có hàm getCustomerActiveMeters(Integer customerAccountId)
+        // và chúng ta cần tìm accountId từ customerId)
+        // Tạm thời gọi hàm cũ (nhưng hàm này lấy theo AccountID, không phải CustomerID)
+
+        // SỬA LẠI: Chúng ta cần một hàm mới trong Service/Repo
+        // Giả sử ServiceStaffContractService có hàm này:
+        List<CustomerMeterDTO> meters = service.getCustomerActiveMetersByCustomerId(customerId);
+        return ResponseEntity.ok(meters);
+    }
+    // --- HẾT PHẦN THÊM ---
+
 }
