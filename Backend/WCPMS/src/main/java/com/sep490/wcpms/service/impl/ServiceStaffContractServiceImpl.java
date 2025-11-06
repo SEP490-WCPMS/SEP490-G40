@@ -400,7 +400,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     }
     // --- HẾT PHẦN THÊM ---
 
-}
+
     @Override
     @Transactional
     public ServiceStaffContractDTO generateWaterServiceContract(Integer contractId, Integer priceTypeId, LocalDate serviceStartDate) {
