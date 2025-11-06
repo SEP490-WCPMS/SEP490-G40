@@ -100,7 +100,6 @@ public class SecurityConfig {
 // ... (permitAll cho OPTIONS, /api/auth, /api/meter-scan, /, /about) ...
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers("/api/meter-scan/**").permitAll()
                                 .requestMatchers("/", "/about").permitAll()
                                 .requestMatchers("/api/water-price-types/**").permitAll()
                                 .requestMatchers("/api/water-prices/**").permitAll()
@@ -112,11 +111,13 @@ public class SecurityConfig {
 //// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
                                 .requestMatchers("/api/readings/**").hasAuthority("CASHIER_STAFF")
+                                .requestMatchers("/api/meter-scan/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/service/**").hasAuthority("SERVICE_STAFF")
 
                                 // --- THÊM 2 DÒNG NÀY ---
                                 .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER") // Cho phép Customer tạo
                                 .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF") // Cho phép Service Staff tạo
+                                .requestMatchers("/api/feedback/customer/my-active-meters/**").hasAuthority("SERVICE_STAFF")
                                 // --- HẾT PHẦN THÊM ---
 
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()

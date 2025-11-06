@@ -22,4 +22,12 @@ public class FeedbackCreateRequestDTO {
     @NotEmpty(message = "Loại yêu cầu không được để trống")
     private String feedbackType;
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM TRƯỜNG MỚI ---
+    /**
+     * ID của đồng hồ (Bảng 12) liên quan đến sự cố.
+     * (Không bắt buộc)
+     */
+    private Integer meterId;
+    // --- HẾT PHẦN THÊM ---
 }

@@ -16,12 +16,14 @@ import com.sep490.wcpms.entity.AiScanLog; // <-- IMPORT MỚI
 import com.sep490.wcpms.repository.AiScanLogRepository; // <-- IMPORT MỚI
 import com.sep490.wcpms.repository.WaterMeterRepository;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.RequiredArgsConstructor; // <-- Đổi sang @RequiredArgsConstructor
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class MeterReadingServiceImpl implements MeterReadingService {
 
     @Autowired private ContractRepository contractRepository;
@@ -38,9 +40,18 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         WaterMeter meter = waterMeterRepository.findByMeterCode(meterCode)
                 .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found: " + meterCode));
 
-        // 2. Lấy thông tin Lắp đặt (Bảng 11)
-        MeterInstallation installation = meterInstallationRepository.findByWaterMeter(meter)
-                .orElseThrow(() -> new ResourceNotFoundException("MeterInstallation not found for meter: " + meterCode));
+        // --- THÊM BƯỚC KIỂM TRA STATUS ---
+        // Chỉ cho phép Thu ngân đọc số của đồng hồ đang được lắp đặt
+        if (meter.getMeterStatus() != WaterMeter.MeterStatus.INSTALLED) {
+            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + meter.getMeterStatus());
+        }
+        // --- HẾT PHẦN THÊM ---
+
+        // 2. --- SỬA LỖI Ở ĐÂY ---
+        // Lấy thông tin Lắp đặt (Bảng 11) MỚI NHẤT từ Đồng hồ
+        MeterInstallation installation = meterInstallationRepository.findTopByWaterMeterOrderByInstallationDateDesc(meter)
+                .orElseThrow(() -> new ResourceNotFoundException("MeterInstallation (bản ghi lắp đặt mới nhất) not found for meter: " + meterCode));
+        // --- HẾT PHẦN SỬA ---
 
         // 3. LẤY HỢP ĐỒNG DỊCH VỤ (BẢNG 9) TỪ LẮP ĐẶT
         WaterServiceContract serviceContract = installation.getWaterServiceContract();
