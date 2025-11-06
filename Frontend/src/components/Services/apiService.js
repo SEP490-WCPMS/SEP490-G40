@@ -212,6 +212,24 @@ export const getContractsByCustomerId = (customerId) => {
     return apiClient.get(`/v1/contracts/customer/${customerId}`);
 };
 
+/**
+ * Lấy danh sách hợp đồng của một khách hàng với status pending customer sign
+ * @param customerId
+ * @returns {Promise<axios.AxiosResponse<any>>}
+ */
+export const getCustomerPendingSignContracts = (customerId) => {
+    return apiClient.get(`/v1/contracts/customer/${customerId}/pending-customer-sign`);
+}
+
+/**
+ * Xác nhận khách hàng đã ký hợp đồng (PENDING_CUSTOMER_SIGN → PENDING_SIGN)
+ * @param {number} contractId ID của hợp đồng
+ * @returns {Promise}
+ */
+export const confirmCustomerSign = (contractId) => {
+    return apiClient.post(`/v1/contracts/${contractId}/customer-confirm-sign`);
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
@@ -229,7 +247,9 @@ export const getTransferRequests = (params) => {
     const queryParams = {
         page: params.page || 0,
         size: params.size || 10,
-        requestType: 'transfer' // Lọc loại yêu cầu = transfer
+        requestType: 'TRANSFER', // Lọc loại yêu cầu = transfer (đưa về UPPERCASE để tránh lệch enum)
+        // Thêm alias 'type' để tương thích BE nếu tham số là 'type'
+        type: 'TRANSFER'
     };
     return apiClient.get(`/service/requests`, { params: queryParams });
 };
@@ -238,7 +258,9 @@ export const getAnnulRequests = (params) => {
     const queryParams = {
         page: params.page || 0,
         size: params.size || 10,
-        requestType: 'annul' // Lọc loại yêu cầu = annul
+        requestType: 'ANNUL', // Lọc loại yêu cầu = annul (đưa về UPPERCASE để tránh lệch enum)
+        // Alias 'type' đề phòng BE dùng tên tham số khác
+        type: 'ANNUL'
     };
     return apiClient.get(`/service/requests`, { params: queryParams });
 };
@@ -263,6 +285,11 @@ export const rejectAnnulRequest = (requestId, reason) => {
         reason: reason,
         approvalNote: reason
     });
+};
+
+/** Lấy chi tiết một yêu cầu hủy/chuyển nhượng cho Service */
+export const getServiceRequestDetail = (requestId) => {
+    return apiClient.get(`/service/requests/${requestId}`);
 };
 
 // === API CHO SERVICE STAFF ===
@@ -345,6 +372,44 @@ export const updateServiceContract = (id, updateData) => {
 /** Gửi hợp đồng cho Technical khảo sát (DRAFT → PENDING) */
 export const submitContractForSurvey = (id, submitData) => {
     return apiClient.put(`/service/contracts/${id}/submit`, submitData);
+};
+
+/** Duyệt báo cáo khảo sát (PENDING_SURVEY_REVIEW → APPROVED) */
+export const approveServiceContract = (id) => {
+    return apiClient.put(`/service/contracts/${id}/approve`);
+};
+
+/** Từ chối báo cáo khảo sát (PENDING_SURVEY_REVIEW → PENDING) */
+export const rejectSurveyReport = (id, reason) => {
+    return apiClient.put(`/service/contracts/${id}/reject-survey`, { reason });
+};
+
+/** Gửi hợp đồng cho khách hàng ký (APPROVED → PENDING_SIGN) */
+export const sendContractToSign = (id) => {
+    return apiClient.put(`/service/contracts/${id}/send-to-sign`);
+};
+
+/** Tạo hợp đồng dịch vụ cấp nước chính thức từ hợp đồng đã duyệt */
+export const generateWaterServiceContract = (id, payload) => {
+    // payload: { priceTypeId: number, serviceStartDate?: 'YYYY-MM-DD' }
+    return apiClient.post(`/service/contracts/${id}/generate-water-service-contract`, payload);
+};
+
+/** Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech) */
+export const getPendingSignContracts = (params) => {
+    // params: { page?: number, size?: number, keyword?: string }
+    const queryParams = {
+        page: params.page || 0,
+        size: params.size || 10,
+        keyword: params.keyword
+    };
+    Object.keys(queryParams).forEach(key => (queryParams[key] == null || queryParams[key] === '') && delete queryParams[key]);
+    return apiClient.get(`/service/contracts/pending-sign`, { params: queryParams });
+};
+
+/** Gửi hợp đồng cho Tech lắp đặt (PENDING_SIGN → SIGNED) */
+export const sendContractToInstallation = (id) => {
+    return apiClient.put(`/service/contracts/${id}/send-to-installation`);
 };
 
 /** Lấy số liệu thống kê cho dashboard */
@@ -442,15 +507,8 @@ const SERVICE_STAFF_DASHBOARD_API_URL = `${API_BASE_URL}/service/dashboard`;
  * }>}
  */
 export const getServiceStaffDashboardStats = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const staffId = user?.id;
-    
-    const params = {};
-    if (staffId) {
-        params.staffId = staffId;
-    }
-    
-    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`, { params });
+    // Lấy thống kê ở phạm vi toàn bộ dịch vụ (không lọc theo staff) để đồng bộ với các trang danh sách
+    return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/stats`);
 };
 
 /**
@@ -468,15 +526,8 @@ export const getServiceStaffChartData = (startDate, endDate) => {
     const start = startDate instanceof Date ? startDate.toISOString().split('T')[0] : startDate;
     const end = endDate instanceof Date ? endDate.toISOString().split('T')[0] : endDate;
     
-    // Lấy staffId từ localStorage (nếu có)
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const staffId = user?.id;
-    
+    // Trả về dữ liệu biểu đồ phạm vi toàn dịch vụ (không lọc theo staff)
     const params = { startDate: start, endDate: end };
-    if (staffId) {
-        params.staffId = staffId;
-    }
-    
     return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/chart`, { params });
 };
 
@@ -487,16 +538,11 @@ export const getServiceStaffChartData = (startDate, endDate) => {
  * @returns {Promise<ContractDetailsDTO[]>}
  */
 export const getRecentServiceStaffTasks = (status, limit = 5) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const staffId = user?.id;
-    
     const params = { limit };
-    if (staffId) {
-        params.staffId = staffId;
-    }
     if (status && status !== 'all') {
         params.status = status;
     }
+    // Lấy danh sách công việc gần đây ở phạm vi toàn dịch vụ
     return apiClient.get(`${SERVICE_STAFF_DASHBOARD_API_URL}/recent-tasks`, { params });
 };
 

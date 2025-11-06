@@ -101,4 +101,20 @@ public interface ServiceStaffContractService {
     List<CustomerMeterDTO> getCustomerActiveMetersByCustomerId(Integer customerId);
     // --- HẾT PHẦN THÊM ---
 
+    /**
+     * Từ chối báo cáo khảo sát: chuyển từ PENDING_SURVEY_REVIEW về PENDING, lưu lý do.
+     */
+    ServiceStaffContractDTO rejectSurveyReport(Integer contractId, String reason);
+
+    /** Tạo Hợp đồng Dịch vụ (WaterServiceContract) từ HĐ lắp đặt đã APPROVED */
+    ServiceStaffContractDTO generateWaterServiceContract(Integer contractId, Integer priceTypeId, java.time.LocalDate serviceStartDate);
+
+    /** Gửi khách hàng ký: chuyển trạng thái HĐ lắp đặt sang PENDING_SIGN */
+    ServiceStaffContractDTO sendContractToCustomerForSign(Integer contractId);
+
+    /** Gửi hợp đồng cho Tech lắp đặt: chuyển trạng thái HĐ lắp đặt sang SIGNED */
+    ServiceStaffContractDTO sendContractToInstallation(Integer contractId);
+
+    /** Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech) */
+    Page<ServiceStaffContractDTO> getPendingSignContracts(String keyword, Pageable pageable);
 }

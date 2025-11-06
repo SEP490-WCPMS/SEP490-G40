@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import { getAllCustomers, getTechnicalStaffList, createContract } from '../../Services/apiService';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract } from '../../Services/apiService';
 import moment from 'moment';
 import './ContractCreatePage.css';
 
@@ -14,27 +14,44 @@ const { Option } = Select;
 const ContractCreate = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
+    const location = useLocation();
 
-    const [customers, setCustomers] = useState([]);
     const [technicalStaff, setTechnicalStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [sourceContract, setSourceContract] = useState(null);
 
-    // Lấy danh sách khách hàng và nhân viên kỹ thuật
+    // Lấy sourceContractId từ navigation state
+    const sourceContractId = location.state?.sourceContractId;
+
+    // Lấy dữ liệu từ service contract gốc và nhân viên kỹ thuật
     useEffect(() => {
         fetchInitialData();
-    }, []);
+    }, [sourceContractId]);
 
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            // Lấy danh sách khách hàng
-            const customersResponse = await getAllCustomers();
-            console.log("customersResponse:", customersResponse);
-            console.log(customersResponse.data);
-            console.log(customersResponse.data.data);
-            if (customersResponse.data && Array.isArray(customersResponse.data)) {
-                setCustomers(customersResponse.data);
+            // Nếu có sourceContractId, lấy thông tin service contract gốc
+            if (sourceContractId) {
+                const contractResponse = await getServiceContractDetail(sourceContractId);
+                console.log("Source contract response:", contractResponse);
+
+                if (contractResponse.data) {
+                    const contractData = contractResponse.data;
+                    setSourceContract(contractData);
+
+                    // Set các giá trị vào form
+                    form.setFieldsValue({
+                        customerId: contractData.customerId,
+                        customerName: contractData.customerName,
+                        applicationDate: moment(), // Ngày hiện tại, không thể sửa
+                        surveyDate: contractData.surveyDate ? moment(contractData.surveyDate) : null,
+                        technicalStaffId: contractData.technicalStaffId,
+                        technicalDesign: contractData.technicalDesign,
+                        estimatedCost: contractData.estimatedCost,
+                    });
+                }
             }
 
             // Lấy danh sách nhân viên kỹ thuật
@@ -57,49 +74,27 @@ const ContractCreate = () => {
     };
 
     // Xử lý submit form
-    const handleSubmit = async (values) => {
+    const handleSubmit = async () => {
+        if (!sourceContractId) {
+            message.error('Thiếu sourceContractId. Không xác định được hợp đồng cần cập nhật!');
+            return;
+        }
+
+        // (Guard) chỉ cho approve nếu đang ở PENDING_SURVEY_REVIEW
+        const currentStatus = sourceContract?.contractStatus || sourceContract?.status;
+        if (currentStatus && currentStatus !== 'PENDING_SURVEY_REVIEW') {
+            message.warning('Chỉ có thể phê duyệt hợp đồng ở trạng thái PENDING_SURVEY_REVIEW.');
+            return;
+        }
+
         setSubmitting(true);
         try {
-            // Lấy thông tin user đang đăng nhập từ localStorage
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            const currentUserId = user?.id;
-            // Chuẩn bị dữ liệu gửi lên backend
-            const contractData = {
-                customerId: values.customerId,
-                applicationDate: values.applicationDate ? values.applicationDate.format('YYYY-MM-DD') : null,
-                surveyDate: values.surveyDate ? values.surveyDate.format('YYYY-MM-DD') : null,
-                technicalDesign: values.technicalDesign,
-                estimatedCost: values.estimatedCost,
-                installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
-                startDate: values.startDate.format('YYYY-MM-DD'),
-                endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
-                contractValue: values.contractValue,
-                paymentMethod: values.paymentMethod,
-                serviceStaffId: currentUserId,
-                technicalStaffId: values.technicalStaffId,
-                notes: values.notes,
-            };
-
-            console.log('Sending contract data:', contractData);
-
-            const response = await createContract(contractData);
-
-            if (response.data && response.data.success) {
-                message.success('Tạo hợp đồng thành công!');
-
-                // Hiển thị contract_number nếu có
-                if (response.data.data && response.data.data.contractNumber) {
-                    message.info(`Số hợp đồng: ${response.data.data.contractNumber}`);
-                }
-
-                // Chuyển về trang danh sách hợp đồng sau 1.5s
-                setTimeout(() => {
-                    navigate('/contract-list');
-                }, 1500);
-            }
+            await approveServiceContract(sourceContractId);
+            message.success('Phê duyệt hợp đồng thành công!');
+            navigate('/service/approved-contracts');
         } catch (error) {
-            console.error('Create contract error:', error);
-            const errorMessage = error.response?.data?.message || 'Tạo hợp đồng thất bại!';
+            console.error('Approve contract error:', error);
+            const errorMessage = error?.response?.data?.message || 'Không thể phê duyệt hợp đồng!';
             message.error(errorMessage);
         } finally {
             setSubmitting(false);
@@ -125,7 +120,7 @@ const ContractCreate = () => {
                 >
                     Quay lại
                 </Button>
-                <Title level={3} className="!mb-0">Tạo Hợp đồng Mới</Title>
+                <Title level={3} className="!mb-0">Tạo Hợp đồng Chính thức</Title>
             </div>
 
             <Card className="contract-create-card">
@@ -145,23 +140,21 @@ const ContractCreate = () => {
                             <Col xs={24} md={12}>
                                 <Form.Item
                                     label="Khách hàng"
-                                    name="customerId"
-                                    rules={[{ required: true, message: 'Vui lòng chọn khách hàng!' }]}
+                                    name="customerName"
                                 >
-                                    <Select
-                                        showSearch
-                                        placeholder="Chọn khách hàng"
-                                        optionFilterProp="children"
-                                        filterOption={(input, option) =>
-                                            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                                        }
-                                    >
-                                        {customers.map(customer => (
-                                            <Option key={customer.id} value={customer.id}>
-                                                {customer.customerName} ({customer.customerCode})
-                                            </Option>
-                                        ))}
-                                    </Select>
+                                    <Input
+                                        disabled
+                                        placeholder="Tên khách hàng"
+                                        style={{ backgroundColor: '#f5f5f5', color: '#000' }}
+                                    />
+                                </Form.Item>
+                                {/* Hidden field để lưu customerId */}
+                                <Form.Item
+                                    name="customerId"
+                                    hidden
+                                    rules={[{ required: true, message: 'Thiếu thông tin khách hàng!' }]}
+                                >
+                                    <Input />
                                 </Form.Item>
                             </Col>
 
@@ -172,9 +165,10 @@ const ContractCreate = () => {
                                     rules={[{ required: true, message: 'Vui lòng chọn ngày đăng ký!' }]}
                                 >
                                     <DatePicker
-                                        style={{ width: '100%' }}
+                                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
                                         format="DD/MM/YYYY"
-                                        placeholder="Chọn ngày đăng ký"
+                                        placeholder="Ngày hiện tại"
+                                        disabled
                                     />
                                 </Form.Item>
                             </Col>
@@ -191,9 +185,10 @@ const ContractCreate = () => {
                                     name="surveyDate"
                                 >
                                     <DatePicker
-                                        style={{ width: '100%' }}
+                                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
                                         format="DD/MM/YYYY"
-                                        placeholder="Chọn ngày khảo sát"
+                                        placeholder="Ngày khảo sát"
+                                        disabled
                                     />
                                 </Form.Item>
                             </Col>
@@ -205,8 +200,10 @@ const ContractCreate = () => {
                                 >
                                     <Select
                                         showSearch
-                                        placeholder="Chọn nhân viên kỹ thuật"
+                                        placeholder="Nhân viên kỹ thuật"
                                         optionFilterProp="children"
+                                        disabled
+                                        style={{ backgroundColor: '#f5f5f5' }}
                                         filterOption={(input, option) =>
                                             option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                                         }
@@ -227,7 +224,9 @@ const ContractCreate = () => {
                                 >
                                     <TextArea
                                         rows={3}
-                                        placeholder="Nhập thiết kế kỹ thuật (nếu có)"
+                                        placeholder="Thiết kế kỹ thuật"
+                                        disabled
+                                        style={{ backgroundColor: '#f5f5f5', color: '#000' }}
                                     />
                                 </Form.Item>
                             </Col>
@@ -238,11 +237,12 @@ const ContractCreate = () => {
                                     name="estimatedCost"
                                 >
                                     <InputNumber
-                                        style={{ width: '100%' }}
+                                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
                                         min={0}
                                         formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                         parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                                        placeholder="Nhập chi phí ước tính"
+                                        placeholder="Chi phí ước tính"
+                                        disabled
                                     />
                                 </Form.Item>
                             </Col>
@@ -256,6 +256,7 @@ const ContractCreate = () => {
                                         style={{ width: '100%' }}
                                         format="DD/MM/YYYY"
                                         placeholder="Chọn ngày lắp đặt"
+                                        disabledDate={disabledDate}
                                     />
                                 </Form.Item>
                             </Col>
@@ -276,6 +277,7 @@ const ContractCreate = () => {
                                         style={{ width: '100%' }}
                                         format="DD/MM/YYYY"
                                         placeholder="Chọn ngày bắt đầu"
+                                        disabledDate={disabledDate}
                                     />
                                 </Form.Item>
                             </Col>
@@ -289,6 +291,7 @@ const ContractCreate = () => {
                                         style={{ width: '100%' }}
                                         format="DD/MM/YYYY"
                                         placeholder="Chọn ngày kết thúc"
+                                        disabledDate={disabledDate}
                                     />
                                 </Form.Item>
                             </Col>

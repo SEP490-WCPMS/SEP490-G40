@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Typography, message, Spin, Card, Select, Button, Tooltip } from 'antd';
+import { Row, Col, Typography, message, Spin, Card, Select, Button, Tooltip, Modal, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { 
     FileAddOutlined, 
@@ -31,7 +31,10 @@ import {
     getRecentServiceStaffTasks,
     getServiceContracts,
     getServiceContractDetail,
-    submitContractForSurvey
+    submitContractForSurvey,
+    sendContractToSign,
+    sendContractToInstallation,
+    terminateContract
 } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -86,6 +89,7 @@ const ServiceDashboardPage = () => {
     // State cho bảng yêu cầu gần đây
     const [recentContracts, setRecentContracts] = useState([]);
     const [loadingRecent, setLoadingRecent] = useState(false);
+    const [recentPagination, setRecentPagination] = useState({ current: 1, pageSize: 10, total: 0 });
     
     // State cho modal chi tiết
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -98,14 +102,14 @@ const ServiceDashboardPage = () => {
         labels: [],
         datasets: [
             {
-                label: 'Yêu cầu mới',
+                label: 'Gửi khảo sát',
                 data: [],
                 borderColor: '#1890ff',
                 backgroundColor: '#1890ff',
                 tension: 0.1,
             },
             {
-                label: 'Hoàn thành',
+                label: 'Đã duyệt',
                 data: [],
                 borderColor: '#52c41a',
                 backgroundColor: '#52c41a',
@@ -113,18 +117,20 @@ const ServiceDashboardPage = () => {
             },
         ],
     });
+    const [chartMeta, setChartMeta] = useState({ source: 'unknown', sumSurvey: 0, sumInstall: 0 });
     const [filterStatus, setFilterStatus] = useState('all');
     const [dateRange, setDateRange] = useState([moment().subtract(6, 'days'), moment()]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Lấy số liệu thống kê từ API
+    // Lấy số liệu thống kê từ API (ưu tiên BE, fallback FE khi cần)
     const fetchStats = async () => {
         try {
             setLoading(true);
             setError(null);
-            
-            // Luôn dùng fallback: fetch counts từ contracts API
+
+            // Lấy số liệu thống kê phạm vi toàn dịch vụ để đồng nhất với các trang danh sách
+            // Ưu tiên tự tính từ danh sách (đáng tin cậy và đồng nhất)
             await fetchStatsFallback();
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -166,7 +172,31 @@ const ServiceDashboardPage = () => {
         }
     };
 
-    // Lấy dữ liệu biểu đồ từ API
+    // Helper: tạo mảng nhãn ngày [YYYY-MM-DD]
+    const buildLabels = (startDate, endDate) => {
+        const labels = [];
+        const cur = moment(startDate).startOf('day');
+        const last = moment(endDate).startOf('day');
+        while (cur.isSameOrBefore(last)) {
+            labels.push(cur.format('YYYY-MM-DD'));
+            cur.add(1, 'day');
+        }
+        return labels;
+    };
+
+    // Helper: gom nhóm theo ngày từ trường ngày (nếu thiếu sẽ bỏ qua)
+    const groupCountByDate = (items, dateField) => {
+        const map = new Map();
+        (items || []).forEach((it) => {
+            const raw = it?.[dateField];
+            if (!raw) return;
+            const d = moment(raw).format('YYYY-MM-DD');
+            map.set(d, (map.get(d) || 0) + 1);
+        });
+        return map;
+    };
+
+    // Lấy dữ liệu biểu đồ từ API (có fallback tự tính từ danh sách)
     const fetchChartData = async (start, end) => {
         try {
             setLoading(true);
@@ -185,113 +215,92 @@ const ServiceDashboardPage = () => {
                 endDate = new Date(end);
             }
             
+            // Gọi BE: giờ BE đã trả theo hướng C (actions) trong các field hiện có
             const response = await getServiceStaffChartData(startDate, endDate);
-            if (response.data && response.data.labels) {
+            const beLabels = response?.data?.labels;
+            const beSent = response?.data?.surveyCompletedCounts; // mapped: sent
+            const beApproved = response?.data?.installationCompletedCounts; // mapped: approved
+
+            const labels = beLabels?.length ? beLabels : buildLabels(startDate, endDate);
+
+            const beValid = Array.isArray(beSent) && Array.isArray(beApproved) &&
+                (beSent.some(x => x > 0) || beApproved.some(x => x > 0));
+
+            if (beValid) {
                 setChartData({
-                    labels: response.data.labels || [],
+                    labels,
                     datasets: [
-                        {
-                            label: 'Gửi khảo sát',
-                            data: response.data.surveyCompletedCounts || [],
-                            borderColor: '#1890ff',
-                            backgroundColor: '#1890ff',
-                            tension: 0.1,
-                        },
-                        {
-                            label: 'Hoàn thành',
-                            data: response.data.installationCompletedCounts || [],
-                            borderColor: '#52c41a',
-                            backgroundColor: '#52c41a',
-                            tension: 0.1,
-                        },
+                        { label: 'Gửi khảo sát', data: beSent, borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
+                        { label: 'Đã duyệt', data: beApproved, borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
                     ],
                 });
+                setChartMeta({ source: 'backend-actions', sumSurvey: (beSent || []).reduce((a,b)=>a+b,0), sumInstall: (beApproved || []).reduce((a,b)=>a+b,0) });
             } else {
-                // Fallback: khởi tạo biểu đồ với dữ liệu trống nhưng có labels theo date range
-                const labels = [];
-                const current = moment(startDate);
-                while (current.isBefore(endDate)) {
-                    labels.push(current.format('YYYY-MM-DD'));
-                    current.add(1, 'day');
-                }
+                // Fallback FE theo hướng C: hành động của Service Staff
+                // - "Gửi khảo sát": status PENDING, nhóm theo createdAt
+                // - "Đã duyệt": status APPROVED, nhóm theo updatedAt
+                const [pendingRes, approvedRes] = await Promise.all([
+                    getServiceContracts({ page: 0, size: 1000, status: 'PENDING' }),
+                    getServiceContracts({ page: 0, size: 1000, status: 'APPROVED' }),
+                ]);
+                const pendingItems = pendingRes?.data?.content || [];
+                const approvedItems = approvedRes?.data?.content || [];
+
+                const sentByDate = groupCountByDate(pendingItems, 'createdAt');
+                const approvedByDate = groupCountByDate(approvedItems, 'updatedAt');
+
+                const sentCounts = labels.map(d => sentByDate.get(d) || 0);
+                const approvedCounts = labels.map(d => approvedByDate.get(d) || 0);
+
                 setChartData({
-                    labels: labels,
+                    labels,
                     datasets: [
-                        {
-                            label: 'Gửi khảo sát',
-                            data: labels.map(() => 0),
-                            borderColor: '#1890ff',
-                            backgroundColor: '#1890ff',
-                            tension: 0.1,
-                        },
-                        {
-                            label: 'Hoàn thành',
-                            data: labels.map(() => 0),
-                            borderColor: '#52c41a',
-                            backgroundColor: '#52c41a',
-                            tension: 0.1,
-                        },
+                        { label: 'Gửi khảo sát', data: sentCounts, borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
+                        { label: 'Đã duyệt', data: approvedCounts, borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
                     ],
                 });
+                setChartMeta({ source: 'fallback-actions', sumSurvey: sentCounts.reduce((a,b)=>a+b,0), sumInstall: approvedCounts.reduce((a,b)=>a+b,0) });
             }
         } catch (error) {
             console.error('Error fetching chart data:', error);
             setError('Lỗi tải dữ liệu biểu đồ');
             // Vẫn hiển thị biểu đồ trống thay vì lỗi
+            const labels = buildLabels(start, end);
+            setChartData({
+                labels,
+                datasets: [
+                    { label: 'Khảo sát hoàn thành', data: labels.map(() => 0), borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
+                    { label: 'Lắp đặt hoàn thành', data: labels.map(() => 0), borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
+                ],
+            });
+            setChartMeta({ source: 'error', sumSurvey: 0, sumInstall: 0 });
         } finally {
             setLoading(false);
         }
     };
 
     // Lấy danh sách công việc gần đây
-    const fetchRecentContracts = async () => {
+    const fetchRecentContracts = async (page = recentPagination.current, pageSize = recentPagination.pageSize) => {
         try {
             setLoadingRecent(true);
-            
-            // Thử gọi endpoint stats trước
-            const response = await getRecentServiceStaffTasks(
-                filterStatus !== 'all' ? filterStatus : null,
-                5
-            );
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                setRecentContracts(response.data);
-            } else {
-                // Fallback: lấy từ contracts API
-                const fallbackResponse = await getServiceContracts({
-                    page: 0,
-                    size: 5,
-                    status: filterStatus !== 'all' ? filterStatus : undefined
-                });
-                
-                if (fallbackResponse.data?.content) {
-                    console.log('Recent contracts from fallback:', fallbackResponse.data.content);
-                    setRecentContracts(fallbackResponse.data.content);
-                } else {
-                    setRecentContracts([]);
-                }
-            }
+            // Lấy từ contracts API để chủ động phân trang và hiển thị đầy đủ
+            const response = await getServiceContracts({
+                page: page - 1, // 0-based cho API
+                size: pageSize,
+                status: filterStatus !== 'all' ? filterStatus : undefined,
+            });
+
+            let data = response?.data?.content || [];
+            // Theo phân quyền: loại bỏ các hợp đồng ở trạng thái SIGNED khỏi bảng của Service
+            data = data.filter(it => (it?.contractStatus || '').toUpperCase() !== 'SIGNED');
+            const totalFromApi = response?.data?.totalElements || 0;
+            const total = Math.max(0, totalFromApi - (response?.data?.content || []).filter(it => (it?.contractStatus || '').toUpperCase() === 'SIGNED').length);
+            setRecentContracts(data);
+            setRecentPagination({ current: page, pageSize, total });
         } catch (error) {
             console.error('Error fetching tasks:', error);
-            
-            // Double fallback: lấy từ contracts API khi endpoint stats lỗi
-            try {
-                const fallbackResponse = await getServiceContracts({
-                    page: 0,
-                    size: 5,
-                    status: filterStatus !== 'all' ? filterStatus : undefined
-                });
-                
-                if (fallbackResponse.data?.content) {
-                    setRecentContracts(fallbackResponse.data.content);
-                } else {
-                    setRecentContracts([]);
-                }
-            } catch (fallbackError) {
-                console.error('Error fetching tasks fallback:', fallbackError);
-                message.error('Không thể lấy danh sách công việc');
-                setRecentContracts([]);
-            }
+            message.error('Không thể lấy danh sách công việc');
+            setRecentContracts([]);
         } finally {
             setLoadingRecent(false);
         }
@@ -301,14 +310,75 @@ const ServiceDashboardPage = () => {
     const handleViewDetails = async (record, action = 'view') => {
         setModalLoading(true);
         try {
+            // Điều hướng/thực thi theo action, để các nút trong bảng Dashboard hoạt động đúng
+            if (action === 'sendToSign') {
+                await sendContractToSign(record.id);
+                message.success('Đã gửi hợp đồng cho khách hàng ký.');
+                // làm tươi bảng và thống kê
+                fetchRecentContracts();
+                fetchStatsFallback();
+                return;
+            }
+            if (action === 'sendToInstallation') {
+                await sendContractToInstallation(record.id);
+                message.success('Đã gửi hợp đồng cho kỹ thuật lắp đặt.');
+                fetchRecentContracts();
+                fetchStatsFallback();
+                return;
+            }
+            if (action === 'generateWater') {
+                // Chuyển sang trang tạo HĐ chính thức, truyền id nguồn
+                navigate('/service/contract-create', { state: { sourceContractId: record.id } });
+                return;
+            }
+            if (action === 'sendToInstall' || action === 'suspend' || action === 'reactivate') {
+                // Các hành động quản trị chuyên sâu -> điều hướng sang trang phù hợp
+                if (action === 'sendToInstall') {
+                    message.info('Đi tới danh sách Hợp đồng đã ký để thao tác lắp đặt.');
+                    navigate('/service/signed-contracts');
+                } else {
+                    message.info('Đi tới danh sách Hợp đồng đang hoạt động để thao tác.');
+                    navigate('/service/active-contracts');
+                }
+                return;
+            }
+
+            if (action === 'terminate') {
+                let reason = '';
+                Modal.confirm({
+                    title: `Chấm dứt hợp đồng #${record.contractNumber || record.id}`,
+                    content: (
+                        <div className="space-y-2">
+                            <p>Vui lòng nhập lý do chấm dứt:</p>
+                            <Input.TextArea rows={4} onChange={(e) => { reason = e.target.value; }} placeholder="Nhập lý do..." />
+                        </div>
+                    ),
+                    okText: 'Chấm dứt',
+                    cancelText: 'Hủy',
+                    async onOk() {
+                        if (!reason || !reason.trim()) {
+                            message.error('Vui lòng nhập lý do chấm dứt.');
+                            // Throw to keep modal open
+                            throw new Error('Reason required');
+                        }
+                        await terminateContract(record.id, reason.trim());
+                        message.success('Đã chấm dứt hợp đồng.');
+                        fetchRecentContracts();
+                        fetchStatsFallback();
+                    },
+                });
+                return;
+            }
+
+            // Mặc định: mở modal xem/hoặc gửi khảo sát (edit)
             const response = await getServiceContractDetail(record.id);
             const contractData = response.data || record;
             setSelectedContract(contractData);
             setModalMode(action === 'submit' ? 'edit' : 'view');
             setIsModalVisible(true);
         } catch (error) {
-            console.error('Error fetching contract detail from dashboard:', error);
-            message.error(`Không thể tải chi tiết hợp đồng #${record.contractNumber || record.id}`);
+            console.error('Error handling action from dashboard:', error);
+            message.error(`Không thể xử lý hành động cho hợp đồng #${record.contractNumber || record.id}`);
         } finally {
             setModalLoading(false);
         }
@@ -372,8 +442,15 @@ const ServiceDashboardPage = () => {
 
     // Xử lý khi thay đổi filter status
     useEffect(() => {
-        fetchRecentContracts();
+        // Reset về trang đầu khi đổi filter
+        setRecentPagination(prev => ({ ...prev, current: 1 }));
+        fetchRecentContracts(1, recentPagination.pageSize);
     }, [filterStatus]);
+
+    const handleRecentTableChange = (pagination) => {
+        setRecentPagination(pagination);
+        fetchRecentContracts(pagination.current, pagination.pageSize);
+    };
 
     // Xử lý khi thay đổi date range
     const handleDateRangeChange = (dates) => {
@@ -386,11 +463,11 @@ const ServiceDashboardPage = () => {
         <div className="space-y-6">
             {/* Statistics Cards - Bắt đầu từ đây */}
             <Row gutter={[16, 16]}>
-                {/* Bản nháp (DRAFT) - Chưa gửi khảo sát */}
+                {/* Yêu cầu tạo đơn (DRAFT) - Chưa gửi khảo sát */}
                 <Col xs={24} sm={12} lg={6} onClick={() => navigate('/service/requests')} style={{ cursor: 'pointer' }}>
                     <Tooltip title="Danh sách đơn yêu cầu từ khách hàng chưa gửi khảo sát">
                         <StatisticCard
-                            title="Bản nháp"
+                            title="Yêu cầu tạo đơn"
                             value={stats.draftCount}
                             icon={<FileAddOutlined />}
                             color="#1890ff"
@@ -438,10 +515,18 @@ const ServiceDashboardPage = () => {
                 </Col>
             </Row>
 
+
             {/* Chart Section */}
             <Card className="shadow-sm">
                 <div className="flex justify-between items-center mb-4">
-                    <Typography.Title level={4} className="!mb-0">Thống kê hoàn thành</Typography.Title>
+                    <div className="flex items-center gap-2">
+                        <Typography.Title level={4} className="!mb-0">Thống kê hoàn thành</Typography.Title>
+                        <Tooltip
+                            title={`Nguồn: ${chartMeta.source === 'backend' ? 'Backend' : chartMeta.source === 'fallback' ? 'Fallback (tự tính)' : 'N/A'} | Tổng khảo sát: ${chartMeta.sumSurvey} | Tổng lắp đặt: ${chartMeta.sumInstall}`}
+                        >
+                            <span className="text-gray-400 cursor-default">ℹ️</span>
+                        </Tooltip>
+                    </div>
                     <div className="flex gap-3 items-center">
                         <div className="flex items-center gap-2">
                             <input
@@ -491,12 +576,12 @@ const ServiceDashboardPage = () => {
                             suffixIcon={<FilterOutlined />}
                         >
                             <Select.Option value="all">Tất cả</Select.Option>
-                            <Select.Option value="DRAFT">Bản nháp</Select.Option>
+                            <Select.Option value="DRAFT">Yêu cầu tạo đơn</Select.Option>
                             <Select.Option value="PENDING">Dạng chờ xử lý</Select.Option>
                             <Select.Option value="PENDING_SURVEY_REVIEW">Dạng chờ báo cáo khảo sát</Select.Option>
                             <Select.Option value="APPROVED">Đã duyệt</Select.Option>
                             <Select.Option value="PENDING_SIGN">Dạng chờ khách ký</Select.Option>
-                            <Select.Option value="SIGNED">Khách đã ký, chờ lắp đặt</Select.Option>
+                            {/* Không cho lọc SIGNED tại khu vực Service */}
                         </Select>
                     </div>
                 </div>
@@ -504,8 +589,10 @@ const ServiceDashboardPage = () => {
                     <ContractTable
                         data={recentContracts}
                         loading={loadingRecent}
-                        pagination={false}
+                        pagination={recentPagination}
+                        onPageChange={handleRecentTableChange}
                         onViewDetails={handleViewDetails}
+                        showStatusFilter={true}
                     />
                 </Spin>
             </Card>

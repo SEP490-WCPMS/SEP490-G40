@@ -20,6 +20,8 @@ import org.springframework.security.core.Authentication;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate; // for request param/body
+import java.util.HashMap;
 // --- HẾT PHẦN IMPORT ---
 
 @RestController
@@ -283,4 +285,74 @@ public class ServiceStaffContractController {
     }
     // --- HẾT PHẦN THÊM ---
 
+    /**
+     * Tạo Hợp đồng Dịch vụ (WaterServiceContract) từ HĐ lắp đặt đã APPROVED
+     * POST /api/service/contracts/{id}/generate-water-service-contract
+     * Body: { "priceTypeId": 1, "serviceStartDate": "2025-01-01" }
+     */
+    @PostMapping("/{id}/generate-water-service-contract")
+    public ResponseEntity<ServiceStaffContractDTO> generateWaterServiceContract(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> body
+    ) {
+        Integer priceTypeId = body.get("priceTypeId") instanceof Number ? ((Number) body.get("priceTypeId")).intValue() : null;
+        LocalDate serviceStartDate = null;
+        Object ssd = body.get("serviceStartDate");
+        if (ssd instanceof String str && !str.isBlank()) {
+            serviceStartDate = LocalDate.parse(str);
+        }
+        if (priceTypeId == null) {
+            throw new IllegalArgumentException("priceTypeId is required");
+        }
+        ServiceStaffContractDTO dto = service.generateWaterServiceContract(id, priceTypeId, serviceStartDate);
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * Gửi khách hàng ký: chuyển HĐ lắp đặt sang PENDING_SIGN
+     * PUT /api/service/contracts/{id}/send-to-sign
+     */
+    @PutMapping("/{id}/send-to-sign")
+    public ResponseEntity<ServiceStaffContractDTO> sendToCustomerSign(@PathVariable Integer id) {
+        ServiceStaffContractDTO dto = service.sendContractToCustomerForSign(id);
+        return ResponseEntity.ok(dto);
+    }
+
+    /**
+     * Từ chối báo cáo khảo sát: chuyển PENDING_SURVEY_REVIEW -> PENDING, lưu lý do.
+     * PUT /api/service/contracts/{id}/reject-survey
+     * Body: { "reason": "Bổ sung bản vẽ..." }
+     */
+    @PutMapping("/{id}/reject-survey")
+    public ResponseEntity<ServiceStaffContractDTO> rejectSurveyReport(
+            @PathVariable Integer id,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String reason = body != null ? body.getOrDefault("reason", null) : null;
+        ServiceStaffContractDTO dto = service.rejectSurveyReport(id, reason);
+        return ResponseEntity.ok(dto);
+    }
+
+    /**
+     * Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech lắp đặt)
+     * GET /api/service/contracts/pending-sign?keyword=...&page=0&size=10
+     */
+    @GetMapping("/pending-sign")
+    public Page<ServiceStaffContractDTO> getPendingSignContracts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return service.getPendingSignContracts(keyword, PageRequest.of(page, size));
+    }
+
+    /**
+     * Gửi hợp đồng cho Tech lắp đặt (PENDING_SIGN → SIGNED)
+     * PUT /api/service/contracts/{id}/send-to-installation
+     */
+    @PutMapping("/{id}/send-to-installation")
+    public ResponseEntity<ServiceStaffContractDTO> sendToInstallation(@PathVariable Integer id) {
+        ServiceStaffContractDTO dto = service.sendContractToInstallation(id);
+        return ResponseEntity.ok(dto);
+    }
 }

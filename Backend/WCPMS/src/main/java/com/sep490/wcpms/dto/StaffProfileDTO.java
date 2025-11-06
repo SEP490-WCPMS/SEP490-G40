@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class StaffProfileDTO {
 
-    private Integer accountId;
+    private Integer id;
     private String fullName;
     private String username;
     private String email;

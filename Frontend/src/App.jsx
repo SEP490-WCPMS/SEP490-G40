@@ -22,6 +22,7 @@ import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage
 import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
 import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
 import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
+import SignedContractsPage from './components/PagesService/SignedContractsPage';
 import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
 import ContractTransferList from './components/PagesService/ContractManagement/Requests/ContractTransferList';
 import ContractAnnulList from './components/PagesService/ContractManagement/Requests/ContractAnnulList';
@@ -30,6 +31,7 @@ import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import ContractList from './components/Customer/ContractList';
 import ContractDetail from './components/Customer/ContractDetail';
+import PendingSignContract from './components/Customer/PendingSignContract';
 import StaffProfileView from './components/Staff/StaffProfileView';
 import Register from './components/Authentication/Register';
 import PrivateRoute from './PrivateRoute';
@@ -44,6 +46,7 @@ import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDet
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
 import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
+import StaffChangePassword from './components/Staff/StaffChangePassword';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -76,6 +79,7 @@ function App() {
           <Route path="/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerProfileUpdate /></PublicLayout>} />
           <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
           <Route path="/contract-request-change" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestChange /></PublicLayout>} />
+          <Route path="/pending-sign-contract" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><PendingSignContract /></PublicLayout>} />
           <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />
           <Route path="/contract-list" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractList /></PublicLayout>} />
           <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
@@ -88,8 +92,9 @@ function App() {
 
 
         {/* === STAFF COMMON ROUTES (Cần đăng nhập, nhiều vai trò) === */}
-        <Route element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
-          <Route path="/staff/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+        <Route path="/staff" element={<PrivateRoute allowedRoles={['TECHNICAL_STAFF', 'CASHIER_STAFF', 'SERVICE_STAFF', 'ADMIN']} />}>
+          <Route path="profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffProfileView /></PublicLayout>} />
+          <Route path="change-password" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><StaffChangePassword /></PublicLayout>} />
         </Route>
 
 
@@ -127,7 +132,11 @@ function App() {
             <Route path="contract-create" element={<ContractCreatePage />} />
             <Route path="survey-reviews" element={<SurveyReviewPage />} />
             <Route path="approved-contracts" element={<ApprovedContractsPage />} />
+            <Route path="signed-contracts" element={<SignedContractsPage />} />
             <Route path="active-contracts" element={<ActiveContractsPage />} />
+            {/* Quản lý yêu cầu chuyển nhượng/hủy hợp đồng */}
+            <Route path="contract-transfers" element={<ContractTransferList />} />
+            <Route path="contract-annuls" element={<ContractAnnulList />} />
             <Route path="support-tickets" element={<SupportTicketList />} />
             <Route path="create-ticket" element={<ServiceCreateTicketForm />} />
           </Route>

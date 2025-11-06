@@ -41,16 +41,29 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         Account staff = getStaffAccount(staffId);
         ServiceStaffStatsDTO stats = new ServiceStaffStatsDTO();
 
-        // Đếm số hợp đồng theo từng trạng thái (sẽ implement trong repository)
+        // Đếm số hợp đồng theo từng trạng thái
+        // Logic: serviceStaff = staff hiện tại + từng trạng thái (giống điều kiện list)
         try {
-            stats.setDraftCount(contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.DRAFT));
-            stats.setPendingTechnicalCount(contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING));
-            stats.setPendingSurveyReviewCount(contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING_SURVEY_REVIEW));
-            stats.setApprovedCount(contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.APPROVED));
-            stats.setPendingSignCount(contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING_SIGN));
-            stats.setSignedCount(contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.SIGNED));
+            long draftCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.DRAFT);
+            long pendingCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING);
+            long pendingSurveyCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING_SURVEY_REVIEW);
+            long approvedCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.APPROVED);
+            long pendingSignCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING_SIGN);
+            long signedCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.SIGNED);
+
+            // Debug: in log để kiểm tra
+            System.out.println("Staff ID: " + staff.getId() + ", Staff Name: " + staff.getFullName());
+            System.out.println("Counts - DRAFT: " + draftCount + ", PENDING: " + pendingCount + ", PENDING_SURVEY: " + pendingSurveyCount + ", APPROVED: " + approvedCount + ", PENDING_SIGN: " + pendingSignCount + ", SIGNED: " + signedCount);
+
+            stats.setDraftCount(draftCount);
+            stats.setPendingTechnicalCount(pendingCount);
+            stats.setPendingSurveyReviewCount(pendingSurveyCount);
+            stats.setApprovedCount(approvedCount);
+            stats.setPendingSignCount(pendingSignCount);
+            stats.setSignedCount(signedCount);
         } catch (Exception e) {
-            // Fallback nếu repository chưa implement
+            System.err.println("Error fetching stats for staff " + staffId + ": " + e.getMessage());
+            // Fallback: trả 0 nếu error
             stats.setDraftCount(0L);
             stats.setPendingTechnicalCount(0L);
             stats.setPendingSurveyReviewCount(0L);
@@ -68,17 +81,18 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         Account staff = getStaffAccount(staffId);
         ChartDataDTO chartData = new ChartDataDTO();
         List<String> labels = new ArrayList<>();
-        List<Long> sentToTechnicalCounts = new ArrayList<>();
-        List<Long> approvalCounts = new ArrayList<>();
+        List<Long> sentCounts = new ArrayList<>();
+        List<Long> approvedCounts = new ArrayList<>();
 
         try {
             // Lặp qua từng ngày từ startDate đến endDate
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
                 labels.add(date.toString());
-                // Đếm số hợp đồng gửi khảo sát (PENDING) trong ngày
-                sentToTechnicalCounts.add(contractRepository.countSentToTechnicalByDate(staff, date));
-                // Đếm số hợp đồng được duyệt (APPROVED) trong ngày
-                approvalCounts.add(contractRepository.countApprovedByDate(staff, date));
+                // Hướng C: hành động của Service Staff
+                // - Gửi khảo sát: status PENDING theo createdAt
+                sentCounts.add(contractRepository.countSentToTechnicalByDate(staff, date));
+                // - Đã duyệt: status APPROVED theo updatedAt
+                approvedCounts.add(contractRepository.countApprovedByDate(staff, date));
             }
         } catch (Exception e) {
             // Fallback: trả về list rỗng
@@ -86,9 +100,9 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         }
 
         chartData.setLabels(labels);
-        chartData.setSurveyCompletedCounts(sentToTechnicalCounts);
-        chartData.setInstallationCompletedCounts(approvalCounts);
-
+        // Map vào các field hiện có của DTO để FE dùng chung cấu trúc
+        chartData.setSurveyCompletedCounts(sentCounts);
+        chartData.setInstallationCompletedCounts(approvedCounts);
         return chartData;
     }
 
@@ -130,4 +144,3 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         }
     }
 }
-

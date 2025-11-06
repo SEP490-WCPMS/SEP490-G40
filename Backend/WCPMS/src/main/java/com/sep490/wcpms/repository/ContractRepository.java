@@ -30,16 +30,16 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     /** Đếm số hợp đồng được gán cho nhân viên với trạng thái cụ thể */
     long countByTechnicalStaffAndContractStatus(Account technicalStaff, Contract.ContractStatus contractStatus);
 
-    // --- CÁC PHƯƠNG THỨC CHO BIỂU ĐỒ DASHBOARD ---
+    // --- CÁC PHƯƠNG THỨC CHO BIỂU ĐỒ DASHBOARD (Technical) ---
 
-    /** Đếm số khảo sát hoàn thành vào một ngày cụ thể */
+    /** Đếm số khảo sát hoàn thành vào một ngày cụ thể (Technical view) */
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.technicalStaff = :staff AND c.contractStatus = 'PENDING_SURVEY_REVIEW' AND c.surveyDate = :date")
     long countCompletedSurveysByDate(
             @Param("staff") Account staff,
             @Param("date") LocalDate date
     );
 
-    /** Đếm số lắp đặt hoàn thành vào một ngày cụ thể */
+    /** Đếm số lắp đặt hoàn thành vào một ngày cụ thể (Technical view) */
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.technicalStaff = :staff AND c.contractStatus = 'ACTIVE' AND c.installationDate = :date")
     long countCompletedInstallationsByDate(
             @Param("staff") Account staff,
@@ -88,19 +88,37 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             Pageable pageable
     );
 
-    /** Đếm số hợp đồng gửi khảo sát (PENDING) vào một ngày cụ thể */
+    /** Đếm số hợp đồng gửi khảo sát (PENDING) vào một ngày cụ thể (Service view - gửi đi) */
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'PENDING' AND CAST(c.createdAt AS date) = :date")
     long countSentToTechnicalByDate(
             @Param("staff") Account staff,
             @Param("date") LocalDate date
     );
 
-    /** Đếm số hợp đồng được duyệt (APPROVED) vào một ngày cụ thể */
+    /** Đếm số hợp đồng được duyệt (APPROVED) vào một ngày cụ thể (Service view - duyệt) */
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'APPROVED' AND CAST(c.updatedAt AS date) = :date")
     long countApprovedByDate(
             @Param("staff") Account staff,
             @Param("date") LocalDate date
     );
 
+    // --- BỔ SUNG: CÁC HÀM CHUẨN CHO BIỂU ĐỒ SERVICE STAFF ---
+
+    /** Đếm số KHẢO SÁT HOÀN THÀNH (PENDING_SURVEY_REVIEW) theo ngày (Service view) */
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'PENDING_SURVEY_REVIEW' AND c.surveyDate = :date")
+    long countSurveyCompletedByDate(
+            @Param("staff") Account staff,
+            @Param("date") LocalDate date
+    );
+
+    /** Đếm số LẮP ĐẶT HOÀN THÀNH (ACTIVE) theo ngày (Service view) */
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'ACTIVE' AND c.installationDate = :date")
+    long countInstallationCompletedByDate(
+            @Param("staff") Account staff,
+            @Param("date") LocalDate date
+    );
+
     List<Contract> findByCustomer_IdOrderByIdDesc(Integer customerId);
+
+    List<Contract> findByCustomerIdAndContractStatus(Integer customerId, Contract.ContractStatus contractStatus);
 }

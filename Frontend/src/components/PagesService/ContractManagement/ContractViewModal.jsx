@@ -1,17 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Row, Col, Divider, Spin, message } from 'antd';
-import { FileTextOutlined, UserOutlined, ScheduleOutlined, DollarOutlined } from '@ant-design/icons';
+import React, { useEffect } from 'react';
+import { Modal, Spin, Descriptions } from 'antd';
 import moment from 'moment';
-
-const { TextArea } = Input;
 
 // Các trạng thái hợp lệ và tên hiển thị
 const CONTRACT_STATUS_MAP = {
-    DRAFT: { text: 'Bản nháp', color: 'blue' },
+    DRAFT: { text: 'Yêu cầu tạo đơn', color: 'blue' },
     PENDING: { text: 'Đang chờ xử lý', color: 'gold' },
     PENDING_SURVEY_REVIEW: { text: 'Đang chờ báo cáo khảo sát', color: 'orange' },
     APPROVED: { text: 'Đã duyệt', color: 'cyan' },
-    PENDING_SIGN: { text: 'Đang chờ khách ký', color: 'geekblue' },
+    PENDING_SIGN: { text: 'Khách đã ký', color: 'geekblue' },
     SIGNED: { text: 'Khách đã ký, chờ lắp đặt', color: 'purple' },
     ACTIVE: { text: 'Đang hoạt động', color: 'green' },
     EXPIRED: { text: 'Hết hạn', color: 'volcano' },
@@ -24,26 +21,36 @@ const CONTRACT_STATUS_MAP = {
  * Dùng khi click "Chi tiết" ở dashboard
  */
 const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) => {
-    const [form] = Form.useForm();
     const isOpen = Boolean(typeof visible === 'undefined' ? open : visible);
 
-    // Load dữ liệu vào form khi modal mở
     useEffect(() => {
-        if (initialData && isOpen) {
-            console.log('ContractViewModal - initialData:', initialData);
-            form.setFieldsValue({
-                contractNumber: initialData.contractNumber,
-                customerName: initialData.customerName,
-                contractType: initialData.priceTypeName || 'N/A',
-                occupants: initialData.occupants || 'N/A',
-                contractStatus: CONTRACT_STATUS_MAP[initialData.contractStatus]?.text || initialData.contractStatus,
-                estimatedCost: initialData.estimatedCost || 'N/A',
-                customerNotes: initialData.notes || initialData.customerNotes || 'Không có', // Ưu tiên initialData.notes
-            });
-        } else if (!isOpen) {
-            form.resetFields();
-        }
-    }, [initialData, isOpen, form]);
+        // no-op: kept to mirror previous lifecycle; Descriptions is read-only
+    }, [initialData, isOpen]);
+
+    const statusBadge = (status) => {
+        const s = (status || '').toUpperCase();
+        const map = {
+            DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
+            PENDING: { text: 'Đang chờ xử lý', cls: 'bg-yellow-100 text-yellow-800' },
+            PENDING_SURVEY_REVIEW: { text: 'Đang chờ báo cáo khảo sát', cls: 'bg-orange-100 text-orange-800' },
+            APPROVED: { text: 'Đã duyệt', cls: 'bg-cyan-100 text-cyan-800' },
+            PENDING_SIGN: { text: 'Khách đã ký', cls: 'bg-indigo-100 text-indigo-800' },
+            SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
+            ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
+            EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
+            TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
+            SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' }
+        };
+        const cfg = map[s] || { text: status || '—', cls: 'bg-gray-100 text-gray-800' };
+        return (
+            <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
+                {cfg.text}
+            </span>
+        );
+    };
+
+    const fmtDate = (d) => (d ? moment(d).format('DD/MM/YYYY') : '—');
+    const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
 
     return (
         <Modal
@@ -53,92 +60,44 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
             onOk={onCancel}
             okText="Đóng"
             cancelButtonProps={{ style: { display: 'none' } }}
-            width={700}
+            width={720}
             destroyOnClose
         >
             <Spin spinning={loading}>
-                <Form
-                    form={form}
-                    layout="vertical"
-                    disabled={true} // Tất cả fields disabled (read-only)
-                >
-                    {/* --- Thông tin cơ bản --- */}
-                    <Divider>Thông tin hợp đồng</Divider>
-
-                    <Row gutter={16}>
-                        <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="contractNumber"
-                                label={<><FileTextOutlined /> Số Hợp đồng</>}
-                            >
-                                <Input placeholder="N/A" style={{ color: '#000' }} />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                            <Form.Item
-                                name="contractStatus"
-                                label="Trạng thái"
-                            >
-                                <Input placeholder="N/A" style={{ color: '#000' }} />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Form.Item
-                        name="customerName"
-                        label={<><UserOutlined /> Tên Khách hàng</>}
-                    >
-                        <Input placeholder="N/A" style={{ color: '#000' }} />
-                    </Form.Item>
-
-                    {/* --- Thông tin chi tiết (chỉ hiển thị nếu có dữ liệu) --- */}
-                    {(initialData?.priceTypeName || initialData?.occupants || initialData?.estimatedCost) && (
+                <Descriptions bordered size="small" column={1}>
+                    <Descriptions.Item label="Số Hợp đồng">{initialData?.contractNumber || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Trạng thái">{statusBadge(initialData?.contractStatus)}</Descriptions.Item>
+                    <Descriptions.Item label="Khách hàng">{initialData?.customerName || '—'}</Descriptions.Item>
+                    {initialData?.customerCode && (
+                        <Descriptions.Item label="Mã Khách hàng">{initialData.customerCode}</Descriptions.Item>
+                    )}
+                    {(initialData?.startDate || initialData?.endDate) && (
                         <>
-                            <Divider>Thông tin chi tiết</Divider>
-                            
-                            {(initialData?.priceTypeName || initialData?.occupants) && (
-                                <Row gutter={16}>
-                                    {initialData?.priceTypeName && (
-                                        <Col xs={24} sm={12}>
-                                            <Form.Item
-                                                name="contractType"
-                                                label="Loại hợp đồng"
-                                            >
-                                                <Input placeholder="N/A" style={{ color: '#000' }} />
-                                            </Form.Item>
-                                        </Col>
-                                    )}
-                                    {initialData?.occupants && (
-                                        <Col xs={24} sm={12}>
-                                            <Form.Item
-                                                name="occupants"
-                                                label="Số người sử dụng"
-                                            >
-                                                <Input placeholder="N/A" style={{ color: '#000' }} />
-                                            </Form.Item>
-                                        </Col>
-                                    )}
-                                </Row>
+                            {initialData?.startDate && (
+                                <Descriptions.Item label="Ngày bắt đầu">{fmtDate(initialData.startDate)}</Descriptions.Item>
                             )}
-
-                            {initialData?.estimatedCost && (
-                                <Form.Item
-                                    name="estimatedCost"
-                                    label={<><DollarOutlined /> Giá trị dự kiến</>}
-                                >
-                                    <Input placeholder="N/A" style={{ color: '#000' }} />
-                                </Form.Item>
+                            {initialData?.endDate && (
+                                <Descriptions.Item label="Ngày kết thúc">{fmtDate(initialData.endDate)}</Descriptions.Item>
                             )}
                         </>
                     )}
-
-                    {/* --- Ghi chú khách hàng --- */}
-                    <Divider>Ghi chú khách hàng</Divider>
-
-                    <Form.Item name="customerNotes" label="Ghi chú">
-                        <TextArea rows={4} placeholder="Không có ghi chú" style={{ color: '#000' }} />
-                    </Form.Item>
-                </Form>
+                    {(initialData?.contractValue != null || initialData?.estimatedCost != null) && (
+                        <>
+                            {initialData?.contractValue != null && (
+                                <Descriptions.Item label="Giá trị hợp đồng">{fmtMoney(initialData.contractValue)}</Descriptions.Item>
+                            )}
+                            {initialData?.estimatedCost != null && (
+                                <Descriptions.Item label="Giá trị dự kiến">{fmtMoney(initialData.estimatedCost)}</Descriptions.Item>
+                            )}
+                        </>
+                    )}
+                    {initialData?.paymentMethod && (
+                        <Descriptions.Item label="Phương thức thanh toán">{initialData.paymentMethod}</Descriptions.Item>
+                    )}
+                    <Descriptions.Item label="Ghi chú" span={1}>
+                        <div className="whitespace-pre-wrap">{initialData?.notes || initialData?.customerNotes || '—'}</div>
+                    </Descriptions.Item>
+                </Descriptions>
             </Spin>
         </Modal>
     );

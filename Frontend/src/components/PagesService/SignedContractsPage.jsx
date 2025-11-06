@@ -1,24 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, InputNumber, DatePicker } from 'antd';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
+import { ReloadOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
-import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import ContractViewModal from './ContractManagement/ContractViewModal';
-import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../Services/apiService';
-import { useNavigate } from 'react-router-dom';
+import { getServiceContracts, getServiceContractDetail, sendContractToInstallation } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-const ApprovedContractsPage = () => {
+const SignedContractsPage = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
-    const [generateModalOpen, setGenerateModalOpen] = useState(false);
-    const [generateForm] = Form.useForm();
-    const navigate = useNavigate();
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -30,14 +25,14 @@ const ApprovedContractsPage = () => {
         keyword: null,
     });
 
-    // Hàm gọi API lấy danh sách hợp đồng đã duyệt (APPROVED)
+    // Hàm gọi API lấy danh sách hợp đồng đã ký (PENDING_SIGN)
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
         setLoading(true);
         try {
             const response = await getServiceContracts({
                 page: page - 1, // API dùng 0-based indexing
                 size: pageSize,
-                status: 'APPROVED',
+                status: 'PENDING_SIGN',
                 keyword: filters.keyword
             });
             
@@ -51,7 +46,7 @@ const ApprovedContractsPage = () => {
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng đã duyệt!');
+            message.error('Lỗi khi tải danh sách hợp đồng đã ký!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
             setPagination(prev => ({ ...prev, total: 0 }));
@@ -76,33 +71,44 @@ const ApprovedContractsPage = () => {
         setPagination(prev => ({ ...prev, current: 1 }));
     };
 
-    // Mở Modal
+    // Gửi lắp đặt NGAY (không confirm)
+    const handleSendToInstallation = async (contract) => {
+        // Optimistic update: ẩn ngay dòng, nếu fail sẽ rollback
+        const prevContracts = contracts;
+        const prevTotal = pagination.total;
+        setContracts(prev => prev.filter(c => c.id !== contract.id));
+        setPagination(prev => ({ ...prev, total: Math.max(0, (prev.total || 1) - 1) }));
+        setIsModalVisible(false);
+        setSelectedContract(null);
+
+        try {
+            await sendContractToInstallation(contract.id);
+            message.success('Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".');
+            // Đồng bộ lại với server (phòng trường hợp còn bản ghi tràn trang)
+            fetchContracts(pagination.current, pagination.pageSize);
+        } catch (error) {
+            // Rollback nếu thất bại
+            setContracts(prevContracts);
+            setPagination(prev => ({ ...prev, total: prevTotal }));
+            message.error('Gửi lắp đặt thất bại!');
+            console.error(error);
+        }
+    };
+
+    // Mở Modal xem chi tiết
     const handleViewDetails = async (contract, actionType) => {
-        // Hành động không cần modal chi tiết
-        if (actionType === 'sendToSign') {
-            try {
-                await sendContractToSign(contract.id);
-                message.success('Đã gửi hợp đồng cho khách hàng ký.');
-                fetchContracts(pagination.current, pagination.pageSize);
-            } catch (err) {
-                message.error('Gửi ký thất bại.');
-                console.error(err);
-            }
+        if (actionType === 'sendToInstallation') {
+            handleSendToInstallation(contract);
             return;
         }
-        if (actionType === 'generateWater') {
-            // Điều hướng sang trang tạo hợp đồng (trang riêng)
-            // Truyền theo sourceContractId để trang tạo biết lấy thông tin gốc nếu cần
-            navigate('/service/contract-create', { state: { sourceContractId: contract.id } });
-            return;
-        }
+
         setModalLoading(true);
         setIsModalVisible(true);
         try {
             const response = await getServiceContractDetail(contract.id);
             setSelectedContract(response.data);
         } catch (error) {
-            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
+            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}!`);
             console.error("Fetch contract detail error:", error);
             setIsModalVisible(false);
         } finally {
@@ -116,31 +122,13 @@ const ApprovedContractsPage = () => {
         setSelectedContract(null);
     };
 
-    // Lưu thay đổi từ Modal
-    const handleSaveModal = async (formData) => {
-        if (!selectedContract) return;
-        setModalLoading(true);
-        try {
-            await updateServiceContract(selectedContract.id, formData);
-            message.success('Cập nhật hợp đồng thành công!');
-            setIsModalVisible(false);
-            setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
-        } catch (error) {
-            message.error('Cập nhật hợp đồng thất bại!');
-            console.error("Update contract error:", error);
-        } finally {
-            setModalLoading(false);
-        }
-    };
-
     return (
         <div className="space-y-6">
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
-                        <Title level={3} className="!mb-2">Hợp đồng đã duyệt</Title>
-                        <Paragraph className="!mb-0">Danh sách các hợp đồng đã được duyệt, sẵn sàng gửi ký cho khách hàng.</Paragraph>
+                        <Title level={3} className="!mb-2">Hợp đồng đã ký</Title>
+                        <Paragraph className="!mb-0">Danh sách các hợp đồng mà khách hàng đã ký, sẵn sàng gửi kỹ thuật lắp đặt.</Paragraph>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
@@ -176,7 +164,7 @@ const ApprovedContractsPage = () => {
                 />
             </Spin>
 
-            {/* --- Modal xem chi tiết (đọc-only) --- */}
+            {/* --- Modal chi tiết (đọc-only) --- */}
             {isModalVisible && selectedContract && (
                 <ContractViewModal
                     open={isModalVisible}
@@ -185,10 +173,8 @@ const ApprovedContractsPage = () => {
                     initialData={selectedContract}
                 />
             )}
-
-            {/* Modal tạo HĐ chính thức đã bỏ – điều hướng sang trang riêng */}
         </div>
     );
 };
 
-export default ApprovedContractsPage;
+export default SignedContractsPage;
