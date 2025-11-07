@@ -31,6 +31,7 @@ import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import ContractList from './components/Customer/ContractList';
 import ContractDetail from './components/Customer/ContractDetail';
+import PendingSignContract from './components/Customer/PendingSignContract';
 import StaffProfileView from './components/Staff/StaffProfileView';
 import Register from './components/Authentication/Register';
 import PrivateRoute from './PrivateRoute';
@@ -44,6 +45,7 @@ import MySupportTicketList from './components/Customer/Feedback/MySupportTicketL
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
 import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
+import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
 import StaffChangePassword from './components/Staff/StaffChangePassword';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -77,6 +79,7 @@ function App() {
           <Route path="/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerProfileUpdate /></PublicLayout>} />
           <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
           <Route path="/contract-request-change" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestChange /></PublicLayout>} />
+          <Route path="/pending-sign-contract" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><PendingSignContract /></PublicLayout>} />
           <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />
           <Route path="/contract-list" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractList /></PublicLayout>} />
           <Route path="/contract-detail" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractDetail /></PublicLayout>} />
@@ -108,6 +111,7 @@ function App() {
             <Route path="replace-meter" element={<MeterReplacementForm />} />
             <Route path="calibrate-on-site" element={<OnSiteCalibrationForm />} />
             <Route path="maintenance-requests" element={<MaintenanceRequestList />} />
+            <Route path="maintenance-requests/:ticketId" element={<MaintenanceRequestDetail />} />
           </Route>
         </Route>
 

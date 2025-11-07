@@ -21,6 +21,7 @@ import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.entity.CustomerFeedback; // <-- THÊM DÒNG NÀY
 import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY
 import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
+import com.sep490.wcpms.repository.WaterMeterRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +44,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final CustomerFeedbackRepository customerFeedbackRepository;
     private final SupportTicketMapper supportTicketMapper;
     private final CustomerRepository customerRepository;
+    private final WaterMeterRepository waterMeterRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final WaterPriceTypeRepository waterPriceTypeRepository;
     // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
@@ -388,6 +390,16 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         return customerRepository.findSimpleList();
     }
     // --- HẾT PHẦN THÊM ---
+
+    // --- TRIỂN KHAI HÀM MỚI ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<CustomerMeterDTO> getCustomerActiveMetersByCustomerId(Integer customerId) {
+        // Gọi thẳng WaterMeterRepository
+        return waterMeterRepository.findActiveMetersByCustomerId(customerId);
+    }
+    // --- HẾT PHẦN THÊM ---
+
 
     @Override
     @Transactional

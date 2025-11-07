@@ -212,6 +212,24 @@ export const getContractsByCustomerId = (customerId) => {
     return apiClient.get(`/v1/contracts/customer/${customerId}`);
 };
 
+/**
+ * Lấy danh sách hợp đồng của một khách hàng với status pending customer sign
+ * @param customerId
+ * @returns {Promise<axios.AxiosResponse<any>>}
+ */
+export const getCustomerPendingSignContracts = (customerId) => {
+    return apiClient.get(`/v1/contracts/customer/${customerId}/pending-customer-sign`);
+}
+
+/**
+ * Xác nhận khách hàng đã ký hợp đồng (PENDING_CUSTOMER_SIGN → PENDING_SIGN)
+ * @param {number} contractId ID của hợp đồng
+ * @returns {Promise}
+ */
+export const confirmCustomerSign = (contractId) => {
+    return apiClient.post(`/v1/contracts/${contractId}/customer-confirm-sign`);
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
@@ -435,16 +453,31 @@ export const getAllCustomersSimple = () => {
 };
 
 /** (Hàm mới 2 - Cách B) Service Staff tạo ticket hộ khách hàng */
-export const createSupportTicketForCustomer = (customerId, description) => {
+export const createSupportTicketForCustomer = (customerId, description, feedbackType, meterId) => {
     const dto = {
         customerId: customerId,
-        description: description
+        description: description,
+        feedbackType: feedbackType,
+        meterId: meterId || null
     };
     // Gọi API BE đã tạo: /api/feedback/service
     // (Lưu ý: API này nằm trong CustomerFeedbackController, nhưng Service Staff có quyền gọi)
     return apiClient.post('/feedback/service', dto);
 };
 // --- HẾT PHẦN THÊM MỚI ---
+
+// --- HÀM MỚI 3 (HỖ TRỢ CHO FORM TRÊN) ---
+/**
+ * Lấy danh sách đồng hồ đang HOẠT ĐỘNG của một khách hàng cụ thể
+ * (Dùng cho NV Service Staff khi tạo ticket hộ)
+ * @param {number} customerId - ID của khách hàng (Bảng 7)
+ */
+export const getCustomerActiveMeters = (customerId) => {
+    // Chúng ta sẽ dùng API BE của Customer, nhưng gọi bằng quyền Service Staff
+    // (Giả định SecurityConfig cho phép Service Staff gọi API này)
+    return apiClient.get(`/service/contracts/customers/active-meters/${customerId}`); // <-- Cần tạo API BE mới này
+};
+// --- HẾT PHẦN THÊM ---
 
 // --- THÊM HÀM MỚI (Bước 6) ---
 /**

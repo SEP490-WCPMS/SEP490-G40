@@ -75,6 +75,16 @@ function SupportTicketDetail() {
         return <div className="p-8 text-center">Không tìm thấy yêu cầu.</div>;
     }
 
+    // --- LOGIC TÁCH CHUỖI PHẢN HỒI ---
+    let responseText = ticket.response || null;
+    let responseImageBase64 = null;
+    
+    if (responseText && responseText.includes("---IMAGE_SEPARATOR---")) {
+        const parts = responseText.split("---IMAGE_SEPARATOR---");
+        responseText = parts[0]; // Phần chữ
+        responseImageBase64 = parts[1]; // Phần ảnh Base64
+    }
+
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-4xl mx-auto bg-gray-50 min-h-screen">
             {/* Nút Quay lại */}
@@ -106,10 +116,7 @@ function SupportTicketDetail() {
                     </p>
                 </div>
 
-                {/* Phản hồi của nhân viên (Nếu có) */}
-                {/* SỬA LẠI LOGIC:
-                  Chỉ hiển thị mục này nếu ticket KHÔNG còn PENDING
-                */}
+                {/* Phản hồi của nhân viên (ĐÃ SỬA LẠI HOÀN TOÀN) */}
                 {ticket.status !== 'PENDING' && (
                     <div className="py-5 border-t border-gray-200">
                         <h2 className="text-base font-semibold text-gray-700 mb-3">Phản hồi từ Bộ phận Dịch vụ:</h2>
@@ -129,12 +136,10 @@ function SupportTicketDetail() {
                             </div>
                         )}
                         
-                        {/* SỬA LẠI LOGIC HIỂN THỊ PHẢN HỒI:
-                          (Giờ đây ticket.response sẽ có giá trị)
-                        */}
-                        {ticket.response ? (
+                        {/* Nội dung phản hồi (Phần Text) */}
+                        {responseText ? (
                             <p className="text-sm text-gray-800 bg-blue-50 p-4 rounded border border-blue-200 whitespace-pre-wrap">
-                                {ticket.response}
+                                {responseText}
                             </p>
                         ) : (
                             <p className="text-sm text-gray-500 italic">
@@ -143,15 +148,28 @@ function SupportTicketDetail() {
                                     : '(Chưa có phản hồi chính thức)'}
                             </p>
                         )}
+
+                        {/* Ảnh đính kèm (Phần Ảnh) */}
+                        {responseImageBase64 && (
+                            <div className="mt-4">
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">Ảnh đính kèm (lắp đặt mới):</h4>
+                                <img 
+                                    src={`data:image/jpeg;base64,${responseImageBase64}`} 
+                                    alt="Ảnh lắp đặt/thay thế"
+                                    className="max-w-full md:max-w-md rounded border border-gray-300 shadow-sm"
+                                />
+                            </div>
+                        )}
                         
                         {/* Ngày giải quyết */}
                         {ticket.resolvedDate && (
-                             <p className="text-xs text-gray-500 mt-2">
+                             <p className="text-xs text-gray-500 mt-3 pt-3 border-t">
                                  Đã giải quyết vào: {moment(ticket.resolvedDate).format('HH:mm DD/MM/YYYY')}
                              </p>
                         )}
                     </div>
                 )}
+                {/* --- HẾT PHẦN SỬA --- */}
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitSupportTicket } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
+import { submitSupportTicket, getCustomerActiveMeters } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
 
 /**
  * Trang "Cách A": Cho phép Khách hàng tự gửi Yêu cầu Hỗ trợ (Báo hỏng).
@@ -10,10 +10,31 @@ function CustomerSupportForm() {
     const [feedbackType, setFeedbackType] = useState('SUPPORT_REQUEST'); // Mặc định là 'Báo hỏng'
     // ---
     const [description, setDescription] = useState('');
+    // --- CẬP NHẬT STATE CHO ĐỒNG HỒ ---
+    const [meterId, setMeterId] = useState(''); // Lưu ID đồng hồ đã chọn
+    const [meters, setMeters] = useState([]); // Lưu danh sách đồng hồ từ API
+    const [loadingMeters, setLoadingMeters] = useState(false);
+    // ---
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const navigate = useNavigate();
+
+    // --- Lấy danh sách đồng hồ khi trang load ---
+    useEffect(() => {
+        setLoadingMeters(true);
+        getCustomerActiveMeters()
+            .then(res => {
+                setMeters(res.data || []);
+            })
+            .catch(err => {
+                console.error("Không thể tải danh sách đồng hồ:", err);
+                // Không báo lỗi nghiêm trọng, chỉ là không load được dropdown
+            })
+            .finally(() => {
+                setLoadingMeters(false);
+            });
+    }, []); // Chạy 1 lần khi mount
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -28,10 +49,11 @@ function CustomerSupportForm() {
         
         try {
             // Gọi API "Cách A"
-            await submitSupportTicket(description, feedbackType);
+            await submitSupportTicket(description, feedbackType, meterId );
             setSuccess("Gửi yêu cầu hỗ trợ thành công! Nhân viên dịch vụ sẽ sớm liên hệ với bạn.");
             setDescription(''); // Xóa form
             setFeedbackType('SUPPORT_REQUEST'); // Reset lại giá trị mặc định
+            setMeterId('');
             // Tùy chọn: Chuyển hướng sau vài giây
             // setTimeout(() => navigate('/my-requests'), 2000);
         } catch (err) {
@@ -88,6 +110,35 @@ function CustomerSupportForm() {
                         <option value="FEEDBACK">Góp ý / Cải thiện dịch vụ</option>
                     </select>
                 </div>
+                {/* --- HẾT PHẦN THÊM --- */}
+
+                {/* --- THÊM Ô CHỌN ĐỒNG HỒ --- */}
+                {/* Chỉ hiển thị nếu là Yêu cầu Hỗ trợ VÀ đã tải xong danh sách */}
+                {feedbackType === 'SUPPORT_REQUEST' && (
+                    <div>
+                        <label htmlFor="meter" className="block mb-1.5 text-sm font-medium text-gray-700">
+                            Đồng hồ liên quan (Nếu có)
+                        </label>
+                        <select
+                            id="meter"
+                            value={meterId}
+                            onChange={(e) => setMeterId(e.target.value)}
+                            disabled={submitting || loadingMeters}
+                            className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="">
+                                {loadingMeters ? "Đang tải danh sách đồng hồ..." : "-- Không chọn (Báo hỏng chung) --"}
+                            </option>
+                            {/* Lặp qua danh sách đồng hồ (Bảng 12) */}
+                            {meters.map((meter) => (
+                                <option key={meter.meterId} value={meter.meterId}>
+                                    Mã: {meter.meterCode} (Địa chỉ: {meter.address})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Chọn đúng đồng hồ nếu bạn báo hỏng đồng hồ cụ thể.</p>
+                    </div>
+                )}
                 {/* --- HẾT PHẦN THÊM --- */}
 
                 {/* Ô nhập nội dung */}

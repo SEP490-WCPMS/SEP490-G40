@@ -97,6 +97,10 @@ public interface ServiceStaffContractService {
     SupportTicketDTO submitFeedbackReply(Integer ticketId, FeedbackReplyDTO dto, Integer staffId);
     // --- HẾT PHẦN THÊM ---
 
+    // --- THÊM HÀM MỚI ---
+    List<CustomerMeterDTO> getCustomerActiveMetersByCustomerId(Integer customerId);
+    // --- HẾT PHẦN THÊM ---
+
     /**
      * Từ chối báo cáo khảo sát: chuyển từ PENDING_SURVEY_REVIEW về PENDING, lưu lý do.
      */

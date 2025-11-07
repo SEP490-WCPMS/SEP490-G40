@@ -8,6 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional; // <-- THÊM IMPORT
+import java.util.List; // <-- Thêm import
+import org.springframework.data.jpa.repository.Query; // <-- Thêm import
+import org.springframework.data.repository.query.Param; // <-- Thêm import
 
 @Repository
 public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedback, Integer> {
@@ -56,4 +59,15 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
      */
     Page<CustomerFeedback> findByStatus(CustomerFeedback.Status status, Pageable pageable);
     // --- HẾT PHẦN THÊM ---
+
+    @Query("SELECT f FROM CustomerFeedback f " +
+            "WHERE f.assignedTo = :staff " +
+            "AND f.status = :status " +
+            "AND f.waterMeter.meterCode = :meterCode")
+    List<CustomerFeedback> findByStaffStatusAndMeter(
+            @Param("staff") Account staff,
+            @Param("status") CustomerFeedback.Status status,
+            @Param("meterCode") String meterCode
+    );
+
 }
