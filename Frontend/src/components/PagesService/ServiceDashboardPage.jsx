@@ -292,9 +292,16 @@ const ServiceDashboardPage = () => {
 
             let data = response?.data?.content || [];
             // Theo phân quyền: loại bỏ các hợp đồng ở trạng thái SIGNED khỏi bảng của Service
-            data = data.filter(it => (it?.contractStatus || '').toUpperCase() !== 'SIGNED');
+            // Cũng loại bỏ PENDING_CUSTOMER_SIGN (do khách ký xong mới chuyển sang PENDING_SIGN)
+            data = data.filter(it => {
+                const status = (it?.contractStatus || '').toUpperCase();
+                return status !== 'SIGNED' && status !== 'PENDING_CUSTOMER_SIGN';
+            });
             const totalFromApi = response?.data?.totalElements || 0;
-            const total = Math.max(0, totalFromApi - (response?.data?.content || []).filter(it => (it?.contractStatus || '').toUpperCase() === 'SIGNED').length);
+            const total = Math.max(0, totalFromApi - (response?.data?.content || []).filter(it => {
+                const s = (it?.contractStatus || '').toUpperCase();
+                return s === 'SIGNED' || s === 'PENDING_CUSTOMER_SIGN';
+            }).length);
             setRecentContracts(data);
             setRecentPagination({ current: page, pageSize, total });
         } catch (error) {
@@ -580,8 +587,9 @@ const ServiceDashboardPage = () => {
                             <Select.Option value="PENDING">Dạng chờ xử lý</Select.Option>
                             <Select.Option value="PENDING_SURVEY_REVIEW">Dạng chờ báo cáo khảo sát</Select.Option>
                             <Select.Option value="APPROVED">Đã duyệt</Select.Option>
-                            <Select.Option value="PENDING_SIGN">Dạng chờ khách ký</Select.Option>
-                            {/* Không cho lọc SIGNED tại khu vực Service */}
+                            {/* PENDING_CUSTOMER_SIGN (khách ký): ẩn khỏi dashboard Service,
+                                vì ở trạng thái này, hợp đồng đang ở tay khách, Service không thao tác được */}
+                            {/* Không cho lọc SIGNED hoặc PENDING_CUSTOMER_SIGN tại khu vực Service */}
                         </Select>
                     </div>
                 </div>
