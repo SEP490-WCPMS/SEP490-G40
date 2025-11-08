@@ -1,6 +1,5 @@
 package com.sep490.wcpms.dto;
 
-//import com.sep490.wcpms.util.Constant;
 import com.sep490.wcpms.entity.Contract;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

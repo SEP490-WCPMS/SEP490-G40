@@ -141,6 +141,10 @@ export const getAllCustomers = () => {
     return apiClient.get('/accounts/customer');
 };
 
+export const getWaterMeterDetailByContract = (contractId) => {
+    return apiClient.get(`${CONTRACTS_API_URL}/water-meter-detail/${contractId}`);
+}
+
 /**
  * Lấy danh sách nhân viên kỹ thuật
  * @returns {Promise<Array<{id: number, fullName: string}>>}
