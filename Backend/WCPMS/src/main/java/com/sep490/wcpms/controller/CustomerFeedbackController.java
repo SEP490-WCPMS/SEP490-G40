@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page; // <-- THÊM IMPORT
 import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
 import org.springframework.data.web.PageableDefault; // <-- THÊM IMPORT
 import org.springframework.data.domain.Sort; // <-- THÊM IMPORT
+import com.sep490.wcpms.dto.CustomerMeterDTO; // <-- THÊM IMPORT
+import java.util.List; // <-- THÊM IMPORT
 
 @RestController
 @RequestMapping("/api/feedback") // API chung cho Feedback/Ticket
@@ -84,6 +86,20 @@ public class CustomerFeedbackController {
         Integer customerAccountId = getAuthenticatedUserId();
         SupportTicketDTO ticket = customerFeedbackService.getMyTicketDetail(customerAccountId, ticketId);
         return ResponseEntity.ok(ticket);
+    }
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM API MỚI ---
+    /**
+     * API cho "Cách A": Khách hàng (CUSTOMER) lấy danh sách đồng hồ ĐANG HOẠT ĐỘNG
+     * (để điền vào dropdown báo hỏng).
+     * Path: GET /api/feedback/customer/my-active-meters
+     */
+    @GetMapping("/customer/my-active-meters")
+    public ResponseEntity<List<CustomerMeterDTO>> getMyActiveMeters() {
+        Integer customerAccountId = getAuthenticatedUserId();
+        List<CustomerMeterDTO> meters = customerFeedbackService.getCustomerActiveMeters(customerAccountId);
+        return ResponseEntity.ok(meters);
     }
     // --- HẾT PHẦN THÊM ---
 }

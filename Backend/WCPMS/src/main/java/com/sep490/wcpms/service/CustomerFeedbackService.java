@@ -2,8 +2,10 @@ package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.FeedbackCreateRequestDTO;
 import com.sep490.wcpms.dto.SupportTicketDTO;
+import com.sep490.wcpms.dto.CustomerMeterDTO;
 import org.springframework.data.domain.Page; // <-- THÊM IMPORT
 import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
+import java.util.List;
 
 public interface CustomerFeedbackService {
 
@@ -35,5 +37,13 @@ public interface CustomerFeedbackService {
      */
     SupportTicketDTO getMyTicketDetail(Integer customerAccountId, Integer ticketId);
 
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Lấy danh sách đồng hồ đang hoạt động (ACTIVE/INSTALLED)
+     * của Khách hàng đang đăng nhập.
+     */
+    List<CustomerMeterDTO> getCustomerActiveMeters(Integer customerAccountId);
     // --- HẾT PHẦN THÊM ---
 }

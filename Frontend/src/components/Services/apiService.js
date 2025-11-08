@@ -141,6 +141,10 @@ export const getAllCustomers = () => {
     return apiClient.get('/accounts/customer');
 };
 
+export const getWaterMeterDetailByContract = (contractId) => {
+    return apiClient.get(`${CONTRACTS_API_URL}/water-meter-detail/${contractId}`);
+}
+
 /**
  * Lấy danh sách nhân viên kỹ thuật
  * @returns {Promise<Array<{id: number, fullName: string}>>}
@@ -455,16 +459,31 @@ export const getAllCustomersSimple = () => {
 };
 
 /** (Hàm mới 2 - Cách B) Service Staff tạo ticket hộ khách hàng */
-export const createSupportTicketForCustomer = (customerId, description) => {
+export const createSupportTicketForCustomer = (customerId, description, feedbackType, meterId) => {
     const dto = {
         customerId: customerId,
-        description: description
+        description: description,
+        feedbackType: feedbackType,
+        meterId: meterId || null
     };
     // Gọi API BE đã tạo: /api/feedback/service
     // (Lưu ý: API này nằm trong CustomerFeedbackController, nhưng Service Staff có quyền gọi)
     return apiClient.post('/feedback/service', dto);
 };
 // --- HẾT PHẦN THÊM MỚI ---
+
+// --- HÀM MỚI 3 (HỖ TRỢ CHO FORM TRÊN) ---
+/**
+ * Lấy danh sách đồng hồ đang HOẠT ĐỘNG của một khách hàng cụ thể
+ * (Dùng cho NV Service Staff khi tạo ticket hộ)
+ * @param {number} customerId - ID của khách hàng (Bảng 7)
+ */
+export const getCustomerActiveMeters = (customerId) => {
+    // Chúng ta sẽ dùng API BE của Customer, nhưng gọi bằng quyền Service Staff
+    // (Giả định SecurityConfig cho phép Service Staff gọi API này)
+    return apiClient.get(`/service/contracts/customers/active-meters/${customerId}`); // <-- Cần tạo API BE mới này
+};
+// --- HẾT PHẦN THÊM ---
 
 // --- THÊM HÀM MỚI (Bước 6) ---
 /**

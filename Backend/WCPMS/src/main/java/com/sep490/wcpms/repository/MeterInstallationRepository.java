@@ -1,12 +1,14 @@
 package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Contract;
+import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.MeterInstallation;
 import com.sep490.wcpms.entity.WaterMeter;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import com.sep490.wcpms.entity.WaterServiceContract; // <-- THÊM IMPORT
 
 import java.time.LocalDate;
 import java.util.List;
@@ -42,4 +44,27 @@ public interface MeterInstallationRepository extends JpaRepository<MeterInstalla
             ")")
     List<MeterInstallation> findOverdueInstallations(@Param("fiveYearsAgo") LocalDate fiveYearsAgo);
 
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Tìm bản ghi lắp đặt (mới nhất) dựa trên Hợp đồng Dịch vụ (Bảng 9).
+     * Dùng để lấy thông tin đồng hồ đang hoạt động của khách hàng.
+     */
+    Optional<MeterInstallation> findTopByWaterServiceContractOrderByInstallationDateDesc(WaterServiceContract waterServiceContract);
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Tìm bản ghi lắp đặt (mới nhất) dựa trên Khách hàng (Bảng 7).
+     * Dùng làm phương án dự phòng khi không tìm thấy HĐ Dịch vụ ACTIVE.
+     */
+    Optional<MeterInstallation> findTopByCustomerOrderByInstallationDateDesc(Customer customer);
+    // --- HẾT PHẦN THÊM ---
+
+    Optional<MeterInstallation> findTopByWaterServiceContractAndWaterMeter_MeterStatusOrderByInstallationDateDesc(
+            WaterServiceContract contract,
+            WaterMeter.MeterStatus meterStatus
+    );
+
+
+    Optional<MeterInstallation> findTopByContractOrderByInstallationDateDesc(Contract contractId);
 }
