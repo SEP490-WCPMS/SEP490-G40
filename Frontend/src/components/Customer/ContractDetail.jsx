@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getContractByIdGeneral, getProfileById } from '../Services/apiService';
+import {getContractByIdGeneral, getProfileById, getWaterMeterDetailByContract} from '../Services/apiService';
 
 const { Title } = Typography;
 
@@ -11,6 +11,7 @@ const ContractDetail = () => {
     const [customerName, setCustomerName] = useState('Đang tải...');
     const [serviceStaffName, setServiceStaffName] = useState('Đang tải...');
     const [technicalStaffName, setTechnicalStaffName] = useState('Đang tải...');
+    const [waterMeterData, setWaterMeterData] = useState(null);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -110,6 +111,21 @@ const ContractDetail = () => {
         }
     };
 
+    // Lấy thông tin đồng hồ nước
+    const fetchWaterMeterDetail = async () => {
+        if (!contractId) return;
+
+        try {
+            const response = await getWaterMeterDetailByContract(contractId);
+            if (response.data && response.data.data) {
+                setWaterMeterData(response.data.data);
+            }
+        } catch (error) {
+            console.error('Lỗi khi tải thông tin đồng hồ:', error);
+            // Không hiển thị message error để tránh spam nếu chưa có đồng hồ
+        }
+    };
+
     // Lấy chi tiết hợp đồng
     const fetchContractDetail = async () => {
         if (!contractId) {
@@ -132,6 +148,9 @@ const ContractDetail = () => {
 
                 // Lấy tên nhân viên kỹ thuật
                 fetchProfileName(contractData.technicalStaffId, setTechnicalStaffName);
+
+                // Lấy thông tin đồng hồ nước
+                fetchWaterMeterDetail();
             }
         } catch (error) {
             message.error('Lỗi khi tải chi tiết hợp đồng!');
@@ -143,7 +162,7 @@ const ContractDetail = () => {
 
     useEffect(() => {
         fetchContractDetail();
-    }, [contractId]);
+    }, [contractId, fetchContractDetail]);
 
     // Quay lại trang danh sách
     const handleBack = () => {
@@ -224,6 +243,27 @@ const ContractDetail = () => {
 
                             <Descriptions.Item label="Nhân viên Kỹ thuật">
                                 {technicalStaffName}
+                            </Descriptions.Item>
+
+                            <Descriptions.Item label="Mã đồng hồ">
+                                {waterMeterData?.installedMeterCode || 'Chưa lắp đặt'}
+                            </Descriptions.Item>
+
+                            <Descriptions.Item label="Ảnh đồng hồ" span={2}>
+                                {waterMeterData?.installationImageBase64 ? (
+                                    <Image
+                                        src={`data:image/jpeg;base64,${waterMeterData.installationImageBase64}`}
+                                        alt="Ảnh lắp đặt đồng hồ"
+                                        style={{ maxWidth: '400px', maxHeight: '300px' }}
+                                        placeholder={
+                                            <div style={{ width: '400px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                                                Đang tải...
+                                            </div>
+                                        }
+                                    />
+                                ) : (
+                                    <span style={{ color: '#999' }}>Chưa có ảnh lắp đặt</span>
+                                )}
                             </Descriptions.Item>
 
                             <Descriptions.Item label="Ghi chú" span={2}>

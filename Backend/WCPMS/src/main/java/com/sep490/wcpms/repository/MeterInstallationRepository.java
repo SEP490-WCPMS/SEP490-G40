@@ -66,4 +66,5 @@ public interface MeterInstallationRepository extends JpaRepository<MeterInstalla
     );
 
 
+    Optional<MeterInstallation> findTopByContractOrderByInstallationDateDesc(Contract contractId);
 }
