@@ -26,13 +26,17 @@ const SignedContractsPage = () => {
     });
 
     // Hàm gọi API lấy danh sách hợp đồng đã ký (PENDING_SIGN)
+    // Flow: APPROVED → (Service gửi ký) → PENDING_CUSTOMER_SIGN → 
+    //       (Customer ký) → PENDING_SIGN → (Service gửi lắp) → SIGNED
+    // Trang này hiển thị những hợp đồng ở trạng thái PENDING_SIGN
+    // (sau khi khách ký xong, backend chuyển từ PENDING_CUSTOMER_SIGN → PENDING_SIGN)
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
         setLoading(true);
         try {
             const response = await getServiceContracts({
                 page: page - 1, // API dùng 0-based indexing
                 size: pageSize,
-                status: 'PENDING_SIGN',
+                status: 'PENDING_SIGN', // Chỉ lấy những hợp đồng khách đã ký xong
                 keyword: filters.keyword
             });
             

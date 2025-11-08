@@ -141,6 +141,10 @@ export const getAllCustomers = () => {
     return apiClient.get('/accounts/customer');
 };
 
+export const getWaterMeterDetailByContract = (contractId) => {
+    return apiClient.get(`${CONTRACTS_API_URL}/water-meter-detail/${contractId}`);
+}
+
 /**
  * Lấy danh sách nhân viên kỹ thuật
  * @returns {Promise<Array<{id: number, fullName: string}>>}
@@ -384,7 +388,9 @@ export const rejectSurveyReport = (id, reason) => {
     return apiClient.put(`/service/contracts/${id}/reject-survey`, { reason });
 };
 
-/** Gửi hợp đồng cho khách hàng ký (APPROVED → PENDING_SIGN) */
+/** Gửi hợp đồng cho khách hàng ký (APPROVED → PENDING_CUSTOMER_SIGN)
+ * Sau khi khách ký xong, backend sẽ chuyển thành PENDING_SIGN để Service lấy ra gửi lắp đặt
+ */
 export const sendContractToSign = (id) => {
     return apiClient.put(`/service/contracts/${id}/send-to-sign`);
 };
@@ -605,4 +611,13 @@ export const renewContract = (id, renewData) => {
  */
 export const terminateContract = (id, reason) => {
     return apiClient.put(`/service/contracts/${id}/terminate?reason=${encodeURIComponent(reason)}`);
+};
+
+/**
+ * Tạm ngưng hợp đồng ACTIVE
+ * @param {number} id ID của hợp đồng
+ * @param {string} reason Lý do tạm ngưng
+ */
+export const suspendContract = (id, reason) => {
+    return apiClient.put(`/service/contracts/${id}/suspend?reason=${encodeURIComponent(reason)}`);
 };

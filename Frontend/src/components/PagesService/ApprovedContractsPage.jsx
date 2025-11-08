@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, InputNumber, DatePicker } from 'antd';
+import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, InputNumber, DatePicker, Descriptions } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import ContractViewModal from './ContractManagement/ContractViewModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../Services/apiService';
 import { useNavigate } from 'react-router-dom';
+import moment from 'moment';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -178,12 +179,63 @@ const ApprovedContractsPage = () => {
 
             {/* --- Modal xem chi tiết (đọc-only) --- */}
             {isModalVisible && selectedContract && (
-                <ContractViewModal
+                <Modal
+                    title="Chi tiết hợp đồng đã duyệt"
                     open={isModalVisible}
                     onCancel={handleCancelModal}
-                    loading={modalLoading}
-                    initialData={selectedContract}
-                />
+                    onOk={handleCancelModal}
+                    confirmLoading={modalLoading}
+                    okText="Đóng"
+                    cancelButtonProps={{ style: { display: 'none' } }}
+                    destroyOnClose
+                    width={750}
+                >
+                    <Spin spinning={modalLoading}>
+                        <Descriptions bordered size="small" column={1}>
+                            <Descriptions.Item label="Số Hợp đồng">
+                                {selectedContract.contractNumber || '—'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Khách hàng">
+                                {selectedContract.customerName || '—'}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Mã Khách hàng">
+                                {selectedContract.customerCode || '—'}
+                            </Descriptions.Item>
+                            {selectedContract.contractType && (
+                                <Descriptions.Item label="Loại Hợp đồng">
+                                    {selectedContract.contractType}
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.startDate && (
+                                <Descriptions.Item label="Ngày bắt đầu">
+                                    {moment(selectedContract.startDate).format('DD/MM/YYYY')}
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.endDate && (
+                                <Descriptions.Item label="Ngày kết thúc">
+                                    {moment(selectedContract.endDate).format('DD/MM/YYYY')}
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.contractValue || selectedContract.contractValue === 0 ? (
+                                <Descriptions.Item label="Giá trị Hợp đồng">
+                                    {Number(selectedContract.contractValue).toLocaleString('vi-VN')} đ
+                                </Descriptions.Item>
+                            ) : null}
+                            {selectedContract.paymentMethod && (
+                                <Descriptions.Item label="Phương thức thanh toán">
+                                    {selectedContract.paymentMethod}
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.notes && (
+                                <Descriptions.Item label="Ghi chú">
+                                    <div className="whitespace-pre-wrap">
+                                        {selectedContract.notes}
+                                    </div>
+                                </Descriptions.Item>
+                            )}
+                        </Descriptions>
+                    </Spin>
+                </Modal>
             )}
 
             {/* Modal tạo HĐ chính thức đã bỏ – điều hướng sang trang riêng */}
