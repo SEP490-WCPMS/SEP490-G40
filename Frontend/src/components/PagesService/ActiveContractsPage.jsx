@@ -348,6 +348,17 @@ const ActiveContractsPage = () => {
                             <span className="text-gray-900">{c.paymentMethod}</span>
                         </Descriptions.Item>
                     )}
+                    {c.installationImageBase64 && (
+                        <Descriptions.Item label={<span className="text-gray-700">Ảnh lắp đặt đồng hồ</span>} span={1}>
+                            <div className="mt-2">
+                                <img 
+                                    src={`data:image/jpeg;base64,${c.installationImageBase64}`}
+                                    alt="Installation" 
+                                    style={{maxWidth: '100%', maxHeight: '400px', borderRadius: '4px', border: '1px solid #d9d9d9'}}
+                                />
+                            </div>
+                        </Descriptions.Item>
+                    )}
                     {(c.notes || c.customerNotes) && (
                         <Descriptions.Item label={<span className="text-gray-700">Ghi chú</span>} span={1}>
                             <div className="whitespace-pre-wrap text-gray-900">{c.notes || c.customerNotes || '—'}</div>

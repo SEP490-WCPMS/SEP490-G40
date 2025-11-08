@@ -21,6 +21,8 @@ import com.sep490.wcpms.entity.CustomerFeedback; // <-- THÊM DÒNG NÀY
 import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY (sử dụng explicit type để tránh warning)
 import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
 import com.sep490.wcpms.repository.WaterMeterRepository;
+import com.sep490.wcpms.repository.MeterInstallationRepository; // Thêm import
+import com.sep490.wcpms.entity.MeterInstallation; // Thêm import
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -45,6 +47,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final WaterMeterRepository waterMeterRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final WaterPriceTypeRepository waterPriceTypeRepository;
+    private final MeterInstallationRepository meterInstallationRepository; // Thêm repository inject
     // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
     // private final ContractMapper contractMapper;
 
@@ -107,7 +110,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     public ServiceStaffContractDTO getContractDetailById(Integer contractId) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
-        return convertToDTO(contract);
+        return convertToDTOWithImage(contract); // Sử dụng bản có ảnh cho màn chi tiết
     }
 
     @Override
@@ -285,6 +288,14 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             }
         }
 
+        return dto;
+    }
+
+    // Bản mở rộng: thêm ảnh lắp đặt (chỉ dùng cho API chi tiết)
+    private ServiceStaffContractDTO convertToDTOWithImage(Contract c) {
+        ServiceStaffContractDTO dto = convertToDTO(c);
+        meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(c)
+                .ifPresent(mi -> dto.setInstallationImageBase64(mi.getInstallationImageBase64()));
         return dto;
     }
 
