@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
+import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag, Image } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {getContractByIdGeneral, getProfileById, getWaterMeterDetailByContract} from '../Services/apiService';
@@ -162,7 +162,7 @@ const ContractDetail = () => {
 
     useEffect(() => {
         fetchContractDetail();
-    }, [contractId, fetchContractDetail]);
+    }, [contractId]);
 
     // Quay lại trang danh sách
     const handleBack = () => {
