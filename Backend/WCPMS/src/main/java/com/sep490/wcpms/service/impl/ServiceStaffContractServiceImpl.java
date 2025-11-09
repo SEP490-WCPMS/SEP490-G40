@@ -13,23 +13,23 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import com.sep490.wcpms.mapper.ContractMapper; // <-- Cần import
 import com.sep490.wcpms.mapper.SupportTicketMapper;
 import com.sep490.wcpms.repository.CustomerFeedbackRepository;
 import org.springframework.transaction.annotation.Transactional;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.entity.CustomerFeedback; // <-- THÊM DÒNG NÀY
-import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY
+import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY (sử dụng explicit type để tránh warning)
 import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
 import com.sep490.wcpms.repository.WaterMeterRepository;
+import com.sep490.wcpms.repository.MeterInstallationRepository; // Thêm import
+import com.sep490.wcpms.entity.MeterInstallation; // Thêm import
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// NEW imports for water service contract generation
+// Import mới cho việc tạo hợp đồng dịch vụ nước
 import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.entity.WaterPriceType;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
@@ -40,13 +40,14 @@ import com.sep490.wcpms.repository.WaterPriceTypeRepository;
 public class ServiceStaffContractServiceImpl implements ServiceStaffContractService {
 
     private final ServiceStaffContractRepository contractRepository;
-    private final AccountRepository accountRepository; // optional, used if you assign serviceStaff or technicalStaff
+    private final AccountRepository accountRepository; // tuỳ chọn, dùng khi cần gán serviceStaff hoặc technicalStaff
     private final CustomerFeedbackRepository customerFeedbackRepository;
     private final SupportTicketMapper supportTicketMapper;
     private final CustomerRepository customerRepository;
     private final WaterMeterRepository waterMeterRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final WaterPriceTypeRepository waterPriceTypeRepository;
+    private final MeterInstallationRepository meterInstallationRepository; // Thêm repository inject
     // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
     // private final ContractMapper contractMapper;
 
@@ -70,7 +71,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
 
-        // Update only allowed fields (null-safe)
+        // Chỉ cập nhật các trường được phép (an toàn với null)
         if (updateRequest.getStartDate() != null) {
             contract.setStartDate(updateRequest.getStartDate());
         }
@@ -94,7 +95,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 throw new IllegalArgumentException("Invalid payment method: " + updateRequest.getPaymentMethod());
             }
         }
-        // If service staff id provided and exists, set (optional)
+        // Nếu cung cấp serviceStaffId và tồn tại thì gán (tuỳ chọn)
         if (updateRequest.getServiceStaffId() != null) {
             Account staff = accountRepository.findById(updateRequest.getServiceStaffId())
                     .orElseThrow(() -> new RuntimeException("Service staff not found"));
@@ -109,7 +110,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     public ServiceStaffContractDTO getContractDetailById(Integer contractId) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
-        return convertToDTO(contract);
+        return convertToDTOWithImage(contract); // Sử dụng bản có ảnh cho màn chi tiết
     }
 
     @Override
@@ -171,7 +172,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 .map(this::convertToDTO);
     }
 
-    // === ACTIVE Contract Management ===
+    // === Quản lý hợp đồng ACTIVE ===
 
     @Override
     public Page<ServiceStaffContractDTO> getActiveContracts(String keyword, Pageable pageable) {
@@ -260,6 +261,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setEndDate(c.getEndDate());
         dto.setEstimatedCost(c.getEstimatedCost());
         dto.setContractValue(c.getContractValue());
+        dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null); // NEW
         dto.setNotes(c.getNotes());
         if (c.getCustomer() != null) {
             dto.setCustomerId(c.getCustomer().getId());
@@ -280,12 +282,20 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         // Lấy priceTypeName từ ContractUsageDetail
         if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
             // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
-            var firstUsageDetail = c.getContractUsageDetails().get(0);
+            ContractUsageDetail firstUsageDetail = c.getContractUsageDetails().get(0);
             if (firstUsageDetail != null && firstUsageDetail.getPriceType() != null) { // Thêm kiểm tra null
                 dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
             }
         }
 
+        return dto;
+    }
+
+    // Bản mở rộng: thêm ảnh lắp đặt (chỉ dùng cho API chi tiết)
+    private ServiceStaffContractDTO convertToDTOWithImage(Contract c) {
+        ServiceStaffContractDTO dto = convertToDTO(c);
+        meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(c)
+                .ifPresent(mi -> dto.setInstallationImageBase64(mi.getInstallationImageBase64()));
         return dto;
     }
 
@@ -448,7 +458,9 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         if (contract.getContractStatus() != ContractStatus.APPROVED) {
             throw new IllegalStateException("Only APPROVED contracts can be sent to customer for signing.");
         }
-        contract.setContractStatus(ContractStatus.PENDING_SIGN);
+        // Theo luồng mới: APPROVED -> PENDING_CUSTOMER_SIGN (gửi cho khách ký)
+        // Sau khi khách ký, trạng thái sẽ chuyển từ PENDING_CUSTOMER_SIGN -> PENDING_SIGN
+        contract.setContractStatus(ContractStatus.PENDING_CUSTOMER_SIGN);
         Contract updated = contractRepository.save(contract);
         return convertToDTO(updated);
     }

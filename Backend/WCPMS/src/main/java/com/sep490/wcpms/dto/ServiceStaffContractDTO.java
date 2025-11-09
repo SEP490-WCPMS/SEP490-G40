@@ -14,6 +14,7 @@ public class ServiceStaffContractDTO {
     private LocalDate endDate;
     private BigDecimal estimatedCost;
     private BigDecimal contractValue;
+    private String paymentMethod; // Thêm: Phương thức thanh toán (CASH/BANK_TRANSFER/INSTALLMENT)
     private String notes;
 
     private Integer customerId;
@@ -30,4 +31,7 @@ public class ServiceStaffContractDTO {
     private String technicalDesign;
 
     private String priceTypeName;
+
+    // Thêm: Ảnh chụp đồng hồ sau lắp đặt (base64) lấy từ bảng meter_installations
+    private String installationImageBase64;
 }
