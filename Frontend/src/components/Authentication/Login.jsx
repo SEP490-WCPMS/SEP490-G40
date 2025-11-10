@@ -39,7 +39,7 @@ export default function Login() {
         } else if (roleName === 'SERVICE_STAFF') {
           targetPath = '/service';
         } else if (roleName === 'ADMIN') {
-          targetPath = '/admin/dashboard';
+          targetPath = '/admin';
         } else if (roleName === 'ACCOUNTING_STAFF') {
           targetPath = '/accounting';
         }

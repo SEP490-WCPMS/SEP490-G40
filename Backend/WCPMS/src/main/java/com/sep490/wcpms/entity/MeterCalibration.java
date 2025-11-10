@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.sep490.wcpms.entity.Invoice;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -54,6 +55,13 @@ public class MeterCalibration {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // --- THÊM TRƯỜNG MỚI (TỪ ALTER TABLE) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id", // Tên cột trong Bảng 14
+            foreignKey = @ForeignKey(name = "fk_cal_invoice_id"))
+    private Invoice invoice; // Liên kết đến hóa đơn đã thanh toán
+    // --- HẾT PHẦN THÊM ---
 
     public enum CalibrationStatus {
         PASSED, FAILED, PENDING
