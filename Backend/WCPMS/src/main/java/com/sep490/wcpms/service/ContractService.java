@@ -3,6 +3,7 @@ package com.sep490.wcpms.service;
 import com.sep490.wcpms.dto.ContractRequestDTO;
 import com.sep490.wcpms.dto.ContractRequestStatusDTO;
 import com.sep490.wcpms.dto.ContractRequestDetailDTO;
+import com.sep490.wcpms.dto.WaterMeterResponseDTO;
 
 import java.util.List;
 
@@ -31,4 +32,6 @@ public interface ContractService {
      * @return Thông tin chi tiết của yêu cầu hợp đồng
      */
     ContractRequestDetailDTO getContractRequestDetail(Integer contractId, Integer accountId);
+
+    WaterMeterResponseDTO getWaterMeterResponse(Integer contractId);
 }

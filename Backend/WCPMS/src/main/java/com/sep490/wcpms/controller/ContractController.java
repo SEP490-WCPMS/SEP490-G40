@@ -3,8 +3,10 @@ package com.sep490.wcpms.controller;
 import com.sep490.wcpms.dto.ApiResponse;
 import com.sep490.wcpms.dto.ContractCreateDTO;
 import com.sep490.wcpms.dto.ContractDTO;
+import com.sep490.wcpms.dto.WaterMeterResponseDTO;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.service.ContractCustomerService;
+import com.sep490.wcpms.service.ContractService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContractController {
     private final ContractCustomerService contractCustomerService;
+    private final ContractService contractService;
+
     @GetMapping
     public ApiResponse<List<ContractDTO>> getAllContracts() {
         List<ContractDTO> contracts = contractCustomerService.getAllContracts();
@@ -67,5 +71,11 @@ public class ContractController {
     public ApiResponse<Void> deleteContract(@PathVariable Integer id) {
         contractCustomerService.deleteContract(id);
         return ApiResponse.success(null, "Contract deleted successfully");
+    }
+
+    @GetMapping("/water-meter-detail/{contractId}")
+    public ApiResponse<WaterMeterResponseDTO> getWaterMeterDetailByContract(@PathVariable Integer contractId) {
+        WaterMeterResponseDTO res = contractService.getWaterMeterResponse(contractId);
+        return ApiResponse.success(res, "Water meter detail retrieved successfully");
     }
 }

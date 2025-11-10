@@ -3,16 +3,11 @@ package com.sep490.wcpms.service.impl;
 import com.sep490.wcpms.dto.ContractRequestDTO;
 import com.sep490.wcpms.dto.ContractRequestStatusDTO;
 import com.sep490.wcpms.dto.ContractRequestDetailDTO;
-import com.sep490.wcpms.entity.Contract;
+import com.sep490.wcpms.dto.WaterMeterResponseDTO;
+import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.entity.Contract.ContractStatus; // Import Enum
-import com.sep490.wcpms.entity.ContractUsageDetail;
-import com.sep490.wcpms.entity.Customer;
-import com.sep490.wcpms.entity.WaterPriceType;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
-import com.sep490.wcpms.repository.ContractRepository;
-import com.sep490.wcpms.repository.ContractUsageDetailRepository;
-import com.sep490.wcpms.repository.CustomerRepository;
-import com.sep490.wcpms.repository.WaterPriceTypeRepository;
+import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,6 +30,8 @@ public class ContractServiceImpl implements ContractService {
     private WaterPriceTypeRepository waterPriceTypeRepository;
     @Autowired
     private ContractUsageDetailRepository contractUsageDetailRepository;
+    @Autowired
+    private MeterInstallationRepository meterInstallationRepository;
 
     @Override
     @Transactional
@@ -104,5 +101,38 @@ public class ContractServiceImpl implements ContractService {
 
         // Trả về DTO với chi tiết đầy đủ
         return new ContractRequestDetailDTO(contract, usageDetail);
+    }
+
+    @Override
+    @Transactional
+    public WaterMeterResponseDTO getWaterMeterResponse(Integer contractId) {
+        // Tìm hợp đồng trước
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng với ID: " + contractId));
+
+        WaterMeterResponseDTO dto = new WaterMeterResponseDTO();
+        meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(contract)
+                .ifPresent(mi -> {
+                    // 1) Ảnh lắp đặt mới nhất
+                    dto.setInstallationImageBase64(mi.getInstallationImageBase64());
+
+                    // 2) Mã đồng hồ có trạng thái INSTALLED
+                    WaterMeter wm = mi.getWaterMeter();
+                    if (wm != null) {
+                        // Nếu dùng enum cho meterStatus:
+                        try {
+                            if (wm.getMeterStatus() == WaterMeter.MeterStatus.INSTALLED) {
+                                dto.setInstalledMeterCode(wm.getMeterCode());
+                            }
+                        } catch (Exception ignore) {
+                            // fallback nếu meterStatus là String thay vì Enum
+                            if (String.valueOf(wm.getMeterStatus()).equalsIgnoreCase("INSTALLED")) {
+                                dto.setInstalledMeterCode(wm.getMeterCode());
+                            }
+                        }
+                    }
+                });
+
+        return dto;
     }
 }
