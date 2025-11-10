@@ -11,6 +11,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.sep490.wcpms.entity.Customer;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 @Table(name = "meter_installations")
