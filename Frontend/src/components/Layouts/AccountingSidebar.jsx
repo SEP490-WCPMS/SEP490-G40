@@ -9,10 +9,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'; // Đảm bảo đường dẫn đúng
-import { 
-    LayoutDashboard, 
-    DollarSign,
-    ListChecks
+import {
+  LayoutDashboard,
+  DollarSign,
+  ListChecks
 } from 'lucide-react'; // Import icons
 import { Link, useLocation } from 'react-router-dom';
 
@@ -21,7 +21,7 @@ const accountingMenuItems = [
   // (Chúng ta sẽ thêm Dashboard sau nếu cần)
   {
     title: 'Bảng điều khiển',
-    url: '/accounting', 
+    url: '/accounting',
     icon: LayoutDashboard,
   },
   {
@@ -35,6 +35,12 @@ const accountingMenuItems = [
     url: '/accounting/invoices',
     icon: ListChecks,
   },
+  // Quản lý tuyến đọc (Reading Routes)
+  {
+    title: 'Quản lý Tuyến đọc',
+    url: '/accounting/reading-routes',
+    icon: ListChecks,
+  },
   // --- HẾT ---
   // (Thêm các trang khác của Kế toán sau, vd: Quản lý Hóa đơn)
 ];
@@ -46,7 +52,7 @@ export function AccountingSidebar() {
   // Logic kiểm tra active (trang /accounting là trang index)
   const isItemActive = (itemUrl) => {
     if (itemUrl === '/accounting') {
-        return location.pathname === '/accounting';
+      return location.pathname === '/accounting';
     }
     return location.pathname.startsWith(itemUrl);
   };
@@ -63,9 +69,9 @@ export function AccountingSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isItemActive(item.url)}
-                    style={isItemActive(item.url) ? { 
-                        backgroundColor: '#16A34A', // Màu xanh lá
-                        color: 'white' 
+                    style={isItemActive(item.url) ? {
+                      backgroundColor: '#16A34A', // Màu xanh lá
+                      color: 'white'
                     } : {}}
                   >
                     <Link to={item.url}>

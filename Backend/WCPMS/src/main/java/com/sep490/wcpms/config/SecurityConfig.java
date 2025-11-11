@@ -104,6 +104,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/water-price-types/**").permitAll()
                                 .requestMatchers("/api/water-prices/**").permitAll()
                                 .requestMatchers("/api/contract-request/**").permitAll()
+                                .requestMatchers("/api/reading-routes/**").permitAll()
+                                // Allow public GET access to accounting reading-routes (so frontend can call existing path)
+                                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/accounting/reading-routes/**").permitAll()
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
@@ -119,6 +122,8 @@ public class SecurityConfig {
                                 .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF") // Cho phép Service Staff tạo
                                 .requestMatchers("/api/feedback/customer/my-active-meters/**").hasAuthority("SERVICE_STAFF")
                                 // --- HẾT PHẦN THÊM ---
+                                // --- THÊM MỚI: BẢO VỆ API ADMIN ---
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
                                 // --- THÊM DÒNG NÀY ---
                                 .requestMatchers("/api/accounting/**").hasAuthority("ACCOUNTING_STAFF")
