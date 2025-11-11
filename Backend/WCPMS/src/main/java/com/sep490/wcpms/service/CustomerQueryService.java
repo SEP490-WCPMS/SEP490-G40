@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface CustomerQueryService {
     List<CustomerDTO> findCustomers(String customerName, String identityNumber);
+
+    CustomerDTO findById(Integer id);
 }

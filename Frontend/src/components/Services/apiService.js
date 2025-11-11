@@ -134,6 +134,24 @@ export const getProfileById = (accountId) => {
 };
 
 /**
+ * Lấy thông tin (account) theo ID
+ * @param {number} accountId ID của account
+ * @returns {Promise<axios.AxiosResponse<any>>}
+ */
+export const getAccountById = (accountId) => {
+    return apiClient.get(`/accounts/${accountId}`);
+}
+
+/**
+ * Lấy thông tin (customer) theo ID
+ * @param {number} customerId ID của account
+ * @returns {Promise<axios.AxiosResponse<any>>}
+ */
+export const getCustomerById = (customerId) => {
+    return apiClient.get(`/accounts/customer/${customerId}`);
+};
+
+/**
  * Lấy danh sách tất cả khách hàng
  * @returns {Promise<Array<{id: number, customerName: string, customerCode: string}>>}
  */
