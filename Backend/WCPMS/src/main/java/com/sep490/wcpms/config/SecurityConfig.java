@@ -122,6 +122,14 @@ public class SecurityConfig {
                                 // --- THÊM MỚI: BẢO VỆ API ADMIN ---
                                 .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
 
+                                // --- THÊM DÒNG NÀY ---
+                                .requestMatchers("/api/accounting/**").hasAuthority("ACCOUNTING_STAFF")
+                                // --- HẾT PHẦN THÊM ---
+
+                                // --- THÊM DÒNG NÀY ---
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                                // --- HẾT PHẦN THÊM ---
+
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()
                                 .requestMatchers("/staff/profile").hasAnyAuthority("TECHNICAL_STAFF", "CASHIER_STAFF", "SERVICE_STAFF")
 //// --- HẾT PHÂN QUYỀN ĐÚNG ---
