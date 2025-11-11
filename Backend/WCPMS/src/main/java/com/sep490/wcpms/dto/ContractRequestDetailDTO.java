@@ -39,6 +39,11 @@ public class ContractRequestDetailDTO {
     private BigDecimal usagePercentage;
     private BigDecimal estimatedMonthlyConsumption;
 
+    // Reading route info
+    private Integer routeId;
+    private String routeCode;
+    private String routeName;
+
     // Constructor để chuyển đổi từ Contract + ContractUsageDetail
     public ContractRequestDetailDTO(Contract contract, ContractUsageDetail usageDetail) {
         // Thông tin hợp đồng
@@ -56,6 +61,12 @@ public class ContractRequestDetailDTO {
             this.contactPersonName = contract.getCustomer().getContactPersonName();
             this.contactPersonPhone = contract.getCustomer().getContactPersonPhone();
             this.identityNumber = contract.getCustomer().getIdentityNumber();
+            // If routeId stored, try to populate route info if ReadingRoute entity is mapped on Customer
+            try {
+                // If customer stores routeId as integer, we set routeId; routeCode/name will be filled by service if needed
+                this.routeId = contract.getCustomer().getRouteId();
+            } catch (Exception ignore) {
+            }
         }
 
         // Thông tin loại giá nước và sử dụng
@@ -69,4 +80,3 @@ public class ContractRequestDetailDTO {
         }
     }
 }
-

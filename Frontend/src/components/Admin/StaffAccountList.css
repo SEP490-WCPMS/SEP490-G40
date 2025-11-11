@@ -1,0 +1,139 @@
+/* Sử dụng lại các biến màu */
+:root {
+  --water-primary-blue: #0A77E2;
+  --water-primary-blue-dark: #085fb5;
+  --water-light-background: #f4f7fc;
+  --water-text-color: #334155;
+  --water-border-color: #e2e8f0;
+  --status-active-bg: #dcfce7;
+  --status-active-text: #166534;
+  --status-inactive-bg: #fee2e2;
+  --status-inactive-text: #991b1b;
+}
+
+.admin-account-list-container {
+  padding: 20px;
+  background-color: var(--water-light-background);
+  min-height: 90vh;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.list-header h1 {
+  color: var(--water-primary-blue);
+  margin: 0;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-create {
+  background-color: var(--water-primary-blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-create:hover {
+  background-color: var(--water-primary-blue-dark);
+}
+
+.table-responsive-wrapper {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.staff-table th, .staff-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--water-border-color);
+}
+
+.staff-table th {
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.staff-table tbody tr:hover {
+  background-color: var(--water-light-background);
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.status-badge.status-active {
+  background-color: var(--status-active-bg);
+  color: var(--status-active-text);
+}
+.status-badge.status-inactive {
+  background-color: var(--status-inactive-bg);
+  color: var(--status-inactive-text);
+}
+
+.action-cell {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-icon {
+  padding: 6px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-edit {
+  color: var(--water-primary-blue);
+}
+.btn-edit:hover {
+  background-color: #e0f2fe;
+}
+.btn-deactivate {
+  color: #dc2626;
+}
+.btn-deactivate:hover {
+  background-color: #fee2e2;
+}
+.btn-activate {
+  color: #16a34a;
+}
+.btn-activate:hover {
+  background-color: #dcfce7;
+}
+
+.admin-loading, .admin-error {
+  text-align: center;
+  padding: 50px;
+  font-size: 1.2rem;
+  color: var(--water-text-color);
+}
+.admin-error {
+  color: #b91c1c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}

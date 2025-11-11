@@ -48,6 +48,7 @@ import ContractRequestChange from './components/Customer/ContractRequestChange';
 import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
 import StaffChangePassword from './components/Staff/StaffChangePassword';
 import LayoutAccounting from './components/Layouts/LayoutAccounting';
+import ReadingRoutesList from './components/Accounting/ReadingRoutesList';
 import UnbilledFeesList from './components/Pages/PagesAccounting/UnbilledFeesList';
 import InvoiceList from './components/Pages/PagesAccounting/InvoiceList'; // <-- THÊM
 import UnbilledFeeDetail from './components/Pages/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
@@ -155,36 +156,37 @@ function App() {
 
 
         {/* --- LUỒNG CỦA ACCOUNTING STAFF --- */}
-          <Route element={<PrivateRoute allowedRoles={['ACCOUNTING_STAFF']} />}>
-            <Route path="/accounting/*" element={<LayoutAccounting />}>
-              {/* Trang index của /accounting */}
-              <Route index element={<UnbilledFeesList />} />
-              <Route path="unbilled-fees" element={<UnbilledFeesList />} />
-              {/* --- THÊM 2 ROUTE MỚI --- */}
-              {/* (Req 1) Trang Chi tiết Phí */}
-              <Route path="unbilled-fees/:calibrationId" element={<UnbilledFeeDetail />} />
-              {/* Thêm: Trang Tạo Hóa đơn */}
-              <Route path="create-invoice/:calibrationId" element={<CreateServiceInvoice />} />
-              {/* (Req 3) Trang Danh sách Hóa đơn */}
-              <Route path="invoices" element={<InvoiceList />} />
-              {/* (Req 1) Trang Chi tiết Hóa đơn (Read-only) */}
-              <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
-              {/* --- HẾT --- */}
-              {/* (Thêm các trang khác của Kế toán ở đây) */}
-              <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
-            </Route>
+        <Route element={<PrivateRoute allowedRoles={['ACCOUNTING_STAFF']} />}>
+          <Route path="/accounting/*" element={<LayoutAccounting />}>
+            {/* Trang index của /accounting */}
+            <Route index element={<UnbilledFeesList />} />
+            <Route path="unbilled-fees" element={<UnbilledFeesList />} />
+            {/* --- THÊM 2 ROUTE MỚI --- */}
+            {/* (Req 1) Trang Chi tiết Phí */}
+            <Route path="unbilled-fees/:calibrationId" element={<UnbilledFeeDetail />} />
+            {/* Thêm: Trang Tạo Hóa đơn */}
+            <Route path="create-invoice/:calibrationId" element={<CreateServiceInvoice />} />
+            {/* (Req 3) Trang Danh sách Hóa đơn */}
+            <Route path="invoices" element={<InvoiceList />} />
+            {/* (Req 1) Trang Chi tiết Hóa đơn (Read-only) */}
+            <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
+            {/* --- HẾT --- */}
+            {/* (Thêm các trang khác của Kế toán ở đây) */}
+            <Route path="reading-routes" element={<ReadingRoutesList />} />
+            <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
-          {/* --- HẾT --- */}
+        </Route>
+        {/* --- HẾT --- */}
 
         {/* (Thêm luồng ADMIN ở đây nếu cần) */}
         <Route element={<PrivateRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/admin/*" element={<LayoutAdmin />}>
-              
-              {/* (Thêm các trang khác của Admin ở đây) */}
-              <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
-            </Route>
+          <Route path="/admin/*" element={<LayoutAdmin />}>
+
+            {/* (Thêm các trang khác của Admin ở đây) */}
+            <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
-          {/* --- HẾT --- */}
+        </Route>
+        {/* --- HẾT --- */}
 
       </Routes>
     </BrowserRouter>
