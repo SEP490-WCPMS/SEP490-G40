@@ -42,6 +42,12 @@ public class AccountController {
         return accountQueryService.findByRole(Role.RoleName.TECHNICAL_STAFF);
     }
 
+    // GET /api/accounts/cashiers
+    @GetMapping("/cashiers")
+    public List<AccountSummaryDTO> findCashiers() {
+        return accountQueryService.findByRole(Role.RoleName.CASHIER_STAFF);
+    }
+
     // GET /api/accounts/customer?customerName=xxx&identityNumber=yyy
     @GetMapping("/customer")
     public List<CustomerDTO> findCustomer(

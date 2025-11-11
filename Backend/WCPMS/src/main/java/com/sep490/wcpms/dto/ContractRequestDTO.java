@@ -17,4 +17,7 @@ public class ContractRequestDTO {
     private Integer occupants;
 
     private String notes;
+
+    @NotNull(message = "Vui lòng chọn một tuyến đọc")
+    private Integer routeId;
 }
