@@ -120,6 +120,10 @@ public class SecurityConfig {
                                 .requestMatchers("/api/feedback/customer/my-active-meters/**").hasAuthority("SERVICE_STAFF")
                                 // --- HẾT PHẦN THÊM ---
 
+                                // --- THÊM PHÂN QUYỀN NÀY ---
+                                .requestMatchers("/api/customer/**").hasAuthority("CUSTOMER")
+                                // --- HẾT ---
+
                                 // --- THÊM DÒNG NÀY ---
                                 .requestMatchers("/api/accounting/**").hasAuthority("ACCOUNTING_STAFF")
                                 // --- HẾT PHẦN THÊM ---

@@ -9,9 +9,9 @@ function InvoiceQRCode({ invoice }) {
     
     // --- THÔNG TIN CẤU HÌNH CỦA CÔNG TY NƯỚC ---
     // (Cần lấy từ BE hoặc file config)
-    const BANK_ID = "970436"; // Ví dụ: Vietcombank
-    const ACCOUNT_NO = "1234567890"; // Số tài khoản của Công ty Nước
-    const ACCOUNT_NAME = "CONG TY CAP NUOC PHU THO"; // Tên chủ tài khoản
+    const BANK_ID = "970418"; // Ví dụ: Vietcombank
+    const ACCOUNT_NO = "4271015210"; // Số tài khoản của Công ty Nước
+    const ACCOUNT_NAME = "CAO HUY THANG"; // Tên chủ tài khoản
     // ---
 
     if (!invoice || !invoice.totalAmount || !invoice.invoiceNumber) {
