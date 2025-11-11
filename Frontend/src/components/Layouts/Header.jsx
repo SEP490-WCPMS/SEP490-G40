@@ -108,6 +108,21 @@ const Header = ({ isAuthenticated, user }) => {
 
           <div className="nav-item nav-dropdown">
             <span className="nav-dropdown-trigger">
+              Hóa Đơn
+              <ChevronDown size={16} className="nav-dropdown-chevron" />
+            </span>
+            <ul className="dropdown-menu">
+              <li>
+                <Link to="/my-invoices">Hóa đơn của tôi</Link>
+              </li>
+              <li>
+                <Link to="/my-support-tickets">Danh sách đơn của tôi</Link>
+              </li>
+            </ul>
+          </div>
+
+          <div className="nav-item nav-dropdown">
+            <span className="nav-dropdown-trigger">
               Hợp đồng
               <ChevronDown size={16} className="nav-dropdown-chevron" />
             </span>

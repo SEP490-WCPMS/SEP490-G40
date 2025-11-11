@@ -1,0 +1,73 @@
+package com.sep490.wcpms.controller;
+
+import com.sep490.wcpms.dto.InvoiceDTO;
+import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
+import com.sep490.wcpms.service.CustomerService;
+import com.sep490.wcpms.exception.AccessDeniedException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/customer") // API chung cho Khách hàng
+@RequiredArgsConstructor
+@CrossOrigin("*")
+public class CustomerController {
+
+    private final CustomerService customerService;
+
+    // Hàm helper lấy ID user (Giả định đã có)
+    private Integer getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AccessDeniedException("User is not authenticated.");
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetailsImpl) { // SỬA TÊN NÀY
+            return ((UserDetailsImpl) principal).getId(); // SỬA TÊN NÀY
+        }
+        throw new IllegalStateException("Cannot determine user ID from Principal.");
+    }
+
+    // ... (Các API cũ của Customer: /profile, /contract-request, ...)
+
+
+    // === API MỚI CHO HÓA ĐƠN ===
+
+    /**
+     * API Lấy danh sách Hóa đơn của Khách hàng (Lọc theo status)
+     * Path: GET /api/customer/invoices?status=PENDING,OVERDUE
+     * Path: GET /api/customer/invoices?status=PAID
+     */
+    @GetMapping("/invoices")
+    public ResponseEntity<Page<InvoiceDTO>> getMyInvoices(
+            // Cho phép tham số 'status' được bỏ trống (null)
+            @RequestParam(required = false) List<String> status, // Nhận 1 hoặc nhiều status
+            @PageableDefault(size = 10, sort = "invoiceDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Integer customerAccountId = getAuthenticatedUserId();
+        Page<InvoiceDTO> invoices = customerService.getMyInvoicesByStatus(customerAccountId, status, pageable);
+        return ResponseEntity.ok(invoices);
+    }
+
+    /**
+     * API Lấy CHI TIẾT 1 Hóa đơn (Xác thực đúng chủ)
+     * Path: GET /api/customer/invoices/{invoiceId}
+     */
+    @GetMapping("/invoices/{invoiceId}")
+    public ResponseEntity<InvoiceDTO> getMyInvoiceDetail(
+            @PathVariable Integer invoiceId
+    ) {
+        Integer customerAccountId = getAuthenticatedUserId();
+        InvoiceDTO invoice = customerService.getMyInvoiceDetail(customerAccountId, invoiceId);
+        return ResponseEntity.ok(invoice);
+    }
+    // === HẾT PHẦN THÊM ===
+}
