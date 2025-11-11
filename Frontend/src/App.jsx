@@ -54,6 +54,8 @@ import InvoiceList from './components/Pages/PagesAccounting/InvoiceList'; // <--
 import UnbilledFeeDetail from './components/Pages/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
 import CreateServiceInvoice from './components/Pages/PagesAccounting/CreateServiceInvoice'; // <-- THÊM IMPORT MỚI
 import InvoiceDetail from './components/Pages/PagesAccounting/InvoiceDetail';
+import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
+import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -95,6 +97,8 @@ function App() {
           <Route path="/support-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerSupportForm /></PublicLayout>} />
           <Route path="/my-support-tickets" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MySupportTicketList /></PublicLayout>} />
           <Route path="/my-support-tickets/:ticketId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><SupportTicketDetail /></PublicLayout>} />
+          <Route path="/my-invoices" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceListPage /></PublicLayout>} />
+          <Route path="/my-invoices/:invoiceId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceDetail /></PublicLayout>} />
 
         </Route>
 
