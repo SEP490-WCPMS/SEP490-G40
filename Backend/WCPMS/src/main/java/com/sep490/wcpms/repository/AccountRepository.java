@@ -41,4 +41,7 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
      * Tìm tất cả các tài khoản KHÔNG PHẢI là CUSTOMER hoặc GUEST
      */
     List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
+
+    // Tìm 1 tài khoản thu ngân (department = CASHIER) có status = 1 (active)
+    Optional<Account> findFirstByDepartmentAndStatus(Account.Department department, Integer status);
 }

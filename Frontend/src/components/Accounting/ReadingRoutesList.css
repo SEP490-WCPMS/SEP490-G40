@@ -1,0 +1,19 @@
+.reading-routes-container { padding: 12px; }
+.list-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.list-header h2 {
+	color: #111827; /* use black/dark text instead of blue */
+	margin: 0;
+	font-size: 1.5rem;
+	font-weight: 600;
+}
+.reading-table { width:100%; border-collapse:collapse; }
+.reading-table th, .reading-table td { border:1px solid #e5e7eb; padding:8px; text-align:left; }
+.row-inactive { opacity:0.5; background:#f8fafc; }
+.btn-create { background:#16a34a; color:white; padding:8px 12px; border-radius:6px; border:none; cursor:pointer; }
+.modal-backdrop { position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:60; }
+.modal-card { background:white; padding:16px; border-radius:8px; width:520px; max-width:95%; box-shadow:0 8px 30px rgba(0,0,0,0.15); }
+.form-row { margin-bottom:8px; display:flex; flex-direction:column; }
+.form-row label { font-weight:600; margin-bottom:4px; }
+.form-row input, .form-row textarea, .form-row select { padding:8px; border:1px solid #d1d5db; border-radius:4px; }
+.form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.error { color:#b91c1c; margin-bottom:8px; }
