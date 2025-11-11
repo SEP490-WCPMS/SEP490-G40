@@ -12,21 +12,28 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/contract-request")
 @CrossOrigin(origins = "http://localhost:5173")
 public class ContractRequestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ContractRequestController.class);
 
     @Autowired
     private ContractService contractService;
 
     @PostMapping("/request")
     public ResponseEntity<String> submitContractRequest(@Valid @RequestBody ContractRequestDTO requestDTO) {
+        logger.info("submitContractRequest called with: {}", requestDTO);
         try {
             contractService.createContractRequest(requestDTO);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body("Yêu cầu của bạn đã được gửi thành công và đang chờ xử lý.");
         } catch (Exception e) {
+            logger.error("Gửi yêu cầu thất bại", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Gửi yêu cầu thất bại: " + e.getMessage());
         }

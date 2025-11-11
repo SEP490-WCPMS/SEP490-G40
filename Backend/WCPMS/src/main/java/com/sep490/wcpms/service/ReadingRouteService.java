@@ -8,6 +8,8 @@ import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.ReadingRouteRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ReadingRouteService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ReadingRouteService.class);
 
     private final ReadingRouteRepository repository;
     private final AccountRepository accountRepository;
@@ -44,6 +48,7 @@ public class ReadingRouteService {
         }
 
         ReadingRoute saved = repository.save(entity);
+        logger.info("Created ReadingRoute id={}", saved.getId());
         return toResponse(saved);
     }
 
@@ -54,12 +59,22 @@ public class ReadingRouteService {
     }
 
     public List<ReadingRouteResponse> list(boolean includeInactive) {
+        logger.info("ReadingRouteService.list called includeInactive={}", includeInactive);
         List<ReadingRoute> list;
         if (includeInactive) {
             list = repository.findAll();
         } else {
             list = repository.findAllByStatus(ReadingRoute.Status.ACTIVE);
+            // Fallback: some existing DB rows might have null status or unexpected values;
+            // if findAllByStatus returned empty, attempt to load all and treat null status as ACTIVE
+            if (list == null || list.isEmpty()) {
+                List<ReadingRoute> all = repository.findAll();
+                list = all.stream()
+                        .filter(r -> r.getStatus() == null || r.getStatus() == ReadingRoute.Status.ACTIVE)
+                        .collect(Collectors.toList());
+            }
         }
+        logger.info("ReadingRouteService.list found {} routes", list == null ? 0 : list.size());
         return list.stream().map(this::toResponse).collect(Collectors.toList());
     }
 

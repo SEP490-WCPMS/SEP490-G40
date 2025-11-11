@@ -13,6 +13,9 @@ const ContractRequestForm = () => {
     const navigate = useNavigate();
     // --- State MỚI cho bảng giá ---
     const [priceDetails, setPriceDetails] = useState([]);
+    // Reading routes
+    const [readingRoutes, setReadingRoutes] = useState([]);
+    const [selectedRoute, setSelectedRoute] = useState('');
 
     // 1. Lấy danh sách các loại hình sử dụng (loại giá nước)
     useEffect(() => {
@@ -36,8 +39,20 @@ const ContractRequestForm = () => {
                 setError('Không thể tải bảng chi tiết giá.');
             }
         };
+        // fetch reading routes
+        const fetchReadingRoutes = async () => {
+            try {
+                const res = await axios.get('http://localhost:8080/api/accounting/reading-routes');
+                setReadingRoutes(res.data || []);
+            } catch (err) {
+                console.error('Lỗi khi tải danh sách tuyến đọc:', err);
+                // keep UI usable but show message
+                setError('Không thể tải danh sách tuyến đọc. Vui lòng thử lại sau.');
+            }
+        };
         fetchPriceTypes();
         fetchPriceDetails(); // <-- Gọi hàm mới
+        fetchReadingRoutes();
     }, []);
 
     // 2. Xử lý khi nhấn nút Gửi
@@ -65,11 +80,18 @@ const ContractRequestForm = () => {
             return;
         }
 
+        if (!selectedRoute) {
+            setError('Vui lòng chọn một Tuyến đọc (Reading Route).');
+            setLoading(false);
+            return;
+        }
+
         const requestData = {
             accountId: user.id, // Dùng user.id
             priceTypeId: parseInt(selectedPriceType, 10),
             occupants: parseInt(occupants, 10),
-            notes: notes
+            notes: notes,
+            routeId: parseInt(selectedRoute, 10)
         };
 
         try {
@@ -337,6 +359,27 @@ const ContractRequestForm = () => {
                         placeholder="Bạn có yêu cầu gì thêm không? (ví dụ: mong muốn thời gian khảo sát...)"
                     />
                 </div>
+
+                <div style={styles.formGroup}>
+                    <label htmlFor="readingRoute" style={styles.label}>Tuyến đọc (Reading Route) (*)</label>
+                    <select
+                        id="readingRoute"
+                        style={styles.input}
+                        value={selectedRoute}
+                        onChange={(e) => setSelectedRoute(e.target.value)}
+                        required
+                    >
+                        <option value="" disabled>-- Chọn Tuyến đọc --</option>
+                        {readingRoutes.map(route => (
+                            <option key={route.id} value={route.id}>
+                                {route.routeCode ? `${route.routeCode} — ${route.routeName}` : route.routeName}
+                            </option>
+                        ))}
+                    </select>
+                    <div style={styles.small}>🔔 Bắt buộc chọn Tuyến đọc để gửi yêu cầu hợp đồng.</div>
+                </div>
+
+                {/* Customer name and personal fields removed — backend will use registered customer name */}
 
                 <button
                     type="submit"
