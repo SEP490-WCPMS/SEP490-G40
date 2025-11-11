@@ -40,43 +40,8 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional
     public void createContractRequest(ContractRequestDTO requestDTO) {
-        // Tạo 1 bản ghi Customer mới cho mỗi yêu cầu đăng ký hợp đồng
-        // Lấy Account để liên kết
-        Account account = null;
-        if (requestDTO.getAccountId() != null) {
-            account = accountRepository.findById(requestDTO.getAccountId()).orElse(null);
-        }
-
-        Customer customer = new Customer();
-        customer.setAccount(account);
-
-        // Gán tên khách hàng trực tiếp từ Account (registered name). No personal fields from request.
-        String customerName = account != null ? account.getFullName() : "Khách hàng";
-        customer.setCustomerName(customerName);
-        // Set address empty string to satisfy NOT NULL constraint in DB
-        customer.setAddress("");
-        // Do not set identityNumber or meterCode from request (removed)
-
-        // Gán route_id từ request
-        customer.setRouteId(requestDTO.getRouteId());
-
-        // Sinh customerCode mới (ví dụ: KH001)
-        String maxCode = customerRepository.findMaxCustomerCode().orElse(null);
-        String newCode = "KH001";
-        if (maxCode != null && maxCode.startsWith("KH")) {
-            try {
-                String numPart = maxCode.substring(2);
-                int num = Integer.parseInt(numPart);
-                newCode = String.format("KH%03d", num + 1);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        customer.setCustomerCode(newCode);
-
-        // Log customer before saving for debugging
-        // (do not log sensitive data in production)
-        System.out.println("Saving Customer: name=" + customer.getCustomerName() + ", accountId=" + (customer.getAccount() != null ? customer.getAccount().getId() : null) + ", routeId=" + customer.getRouteId());
-        customer = customerRepository.save(customer);
+        Customer customer = customerRepository.findByAccount_Id(requestDTO.getAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng với account ID: " + requestDTO.getAccountId()));
 
         WaterPriceType priceType = waterPriceTypeRepository.findById(requestDTO.getPriceTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy loại giá nước với ID: " + requestDTO.getPriceTypeId()));
