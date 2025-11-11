@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface AccountQueryService {
     List<AccountSummaryDTO> findByRole(Role.RoleName roleName);
+
+    AccountSummaryDTO findById(Integer id);
 }
 

@@ -114,6 +114,7 @@ const ContractCreate = () => {
 
             // Cập nhật các trường chi tiết cho hợp đồng từ form
             await updateServiceContract(sourceContractId, {
+                installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
                 startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
                 endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
                 notes: values.notes,
