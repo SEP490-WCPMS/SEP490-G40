@@ -64,9 +64,9 @@ function AssignTicketModal({ open, ticket, onClose, onSuccess }) {
 
     return (
         // Lớp phủ nền
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/[.35]" onClick={handleClose}>
             {/* Thân Modal */}
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
                 {/* Header Modal */}
                 <div className="flex justify-between items-center p-4 border-b">
                     <h3 className="text-lg font-semibold text-gray-800">Gán Yêu Cầu Hỗ Trợ</h3>
@@ -85,6 +85,10 @@ function AssignTicketModal({ open, ticket, onClose, onSuccess }) {
                     <div className="text-sm">
                         <p><strong>Mã Ticket:</strong> {ticket?.feedbackNumber}</p>
                         <p><strong>Khách hàng:</strong> {ticket?.customerName}</p>
+                        <div className="bg-gray-50 p-3 rounded border border-gray-200 max-h-40 overflow-y-auto">
+                             <p className="font-medium text-gray-600 mb-1">Nội dung góp ý:</p>
+                             <p className="italic text-gray-800 whitespace-pre-wrap">{ticket?.description}</p>
+                        </div>
                     </div>
 
                     {/* Dropdown chọn NV Kỹ thuật */}
