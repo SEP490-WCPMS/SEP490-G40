@@ -35,6 +35,7 @@ public class ContractCustomerService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public ContractDTO getContractById(Integer id) {
         return contractRepository.findById(id)
                 .map(this::convertToDTO)
@@ -176,6 +177,16 @@ public class ContractCustomerService {
     private ContractDTO convertToDTO(Contract contract) {
         ContractDTO dto = new ContractDTO();
         BeanUtils.copyProperties(contract, dto);
+
+        dto.setCustomerId(
+                contract.getCustomer() != null ? contract.getCustomer().getId() : null
+        );
+        dto.setServiceStaffId(
+                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
+        );
+        dto.setTechnicalStaffId(
+                contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
+        );
         return dto;
     }
 }
