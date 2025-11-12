@@ -150,6 +150,13 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         WaterMeter meter = waterMeterRepository.findByMeterCode(installDTO.getMeterCode())
                 .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found with code: " + installDTO.getMeterCode()));
 
+        // --- THÊM KIỂM TRA STATUS ---
+        // Chỉ cho phép thao tác nếu đồng hồ chưa được lắp đặt
+        if (meter.getMeterStatus() != WaterMeter.MeterStatus.IN_STOCK) {
+            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + meter.getMeterStatus());
+        }
+        // --- HẾT PHẦN THÊM ---
+
         // 2. Kiểm tra trạng thái
         if (contract.getContractStatus() != Contract.ContractStatus.SIGNED) {
             throw new IllegalStateException("Cannot complete installation. Contract is not in SIGNED status.");
@@ -435,6 +442,13 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // 1. Lấy Đồng hồ (Bảng 10)
         WaterMeter meter = waterMeterRepository.findByMeterCode(dto.getMeterCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ với mã: " + dto.getMeterCode()));
+
+        // --- THÊM KIỂM TRA STATUS ---
+        // Chỉ cho phép thao tác nếu đồng hồ đang được lắp đặt
+//        if (meter.getMeterStatus() != WaterMeter.MeterStatus.INSTALLED) {
+//            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + meter.getMeterStatus());
+//        }
+        // --- HẾT PHẦN THÊM ---
 
         // 2. TẠO BẢN GHI KIỂM ĐỊNH MỚI (Bảng 14)
         MeterCalibration calibration = new MeterCalibration();

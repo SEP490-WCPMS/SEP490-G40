@@ -42,7 +42,7 @@ function ReplyTicketModal({ open, ticket, onClose, onSuccess }) {
 
     return (
         // Lớp phủ nền
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={handleClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/[.35]" onClick={handleClose}>
             {/* Thân Modal (ngăn click xuyên thấu) */}
             <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
                 {/* Header Modal */}

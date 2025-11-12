@@ -115,9 +115,6 @@ const Header = ({ isAuthenticated, user }) => {
               <li>
                 <Link to="/my-invoices">Hóa đơn của tôi</Link>
               </li>
-              <li>
-                <Link to="/my-support-tickets">Danh sách đơn của tôi</Link>
-              </li>
             </ul>
           </div>
 

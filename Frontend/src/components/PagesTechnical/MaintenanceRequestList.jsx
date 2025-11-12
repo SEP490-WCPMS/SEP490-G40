@@ -71,19 +71,19 @@ function MaintenanceRequestList() {
     // ---
 
     // Hàm xử lý khi nhấn "Thực hiện"
-    const handleProcessTicket = (ticket) => {
-        const meterCode = extractMeterCode(ticket.description);
+    // const handleProcessTicket = (ticket) => {
+    //     const meterCode = extractMeterCode(ticket.description);
         
-        if (meterCode) {
-            // Chuyển đến trang Thay thế và GỬI KÈM meterCode
-            navigate('/technical/replace-meter', { 
-                state: { prefillMeterCode: meterCode }
-            });
-        } else {
-            // Nếu là ticket hỏng (không có mã), chỉ chuyển trang
-            navigate('/technical/replace-meter');
-        }
-    };
+    //     if (meterCode) {
+    //         // Chuyển đến trang Thay thế và GỬI KÈM meterCode
+    //         navigate('/technical/replace-meter', { 
+    //             state: { prefillMeterCode: meterCode }
+    //         });
+    //     } else {
+    //         // Nếu là ticket hỏng (không có mã), chỉ chuyển trang
+    //         navigate('/technical/replace-meter');
+    //     }
+    // };
     
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
@@ -152,13 +152,13 @@ function MaintenanceRequestList() {
                                             </button>
                                             
                                             {/* Nút 2: Thực Hiện */}
-                                            <button
+                                            {/* <button
                                                 onClick={() => handleProcessTicket(ticket)}
                                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
                                                 title="Chuyển đến trang Thay thế/Kiểm định"
                                             >
                                                 Thực hiện <ArrowRight size={14} className="ml-1.5" />
-                                            </button>
+                                            </button> */}
                                         </td>
                                         {/* --- HẾT PHẦN SỬA --- */}
 
