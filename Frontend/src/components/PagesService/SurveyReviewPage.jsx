@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Tabs, Modal, Form } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ContractTable from './ContractManagement/ContractTable';
 import ContractDetailModal from './ContractManagement/ContractDetailModal';
 import ContractViewModal from './ContractManagement/ContractViewModal';
@@ -12,12 +12,14 @@ const { Search } = Input;
 
 const SurveyReviewPage = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState('pending'); // 'pending' hoặc 'pending-survey-review'
+    // Nếu URL có tab parameter, dùng nó; không thì mặc định 'pending'
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'pending');
     const [stats, setStats] = useState({
         pendingTechnicalCount: 0,
         pendingSurveyReviewCount: 0
@@ -76,7 +78,7 @@ const SurveyReviewPage = () => {
     }, [filters.keyword, activeTab]);
 
     useEffect(() => {
-        // Fetch stats using same axios client to avoid env issues
+        // Lấy thống kê sử dụng cùng axios client để tránh vấn đề env
         const fetchStats = async () => {
             try {
                 const [pendingRes, reviewRes] = await Promise.all([
@@ -118,10 +120,10 @@ const SurveyReviewPage = () => {
         if (actionType === 'approveSurvey') {
             try {
                 await approveServiceContract(contract.id);
-                message.success('Đã duyệt báo cáo khảo sát.');
+                alert('✅ Đã duyệt báo cáo khảo sát.');
                 fetchContracts(pagination.current, pagination.pageSize, activeTab);
             } catch (err) {
-                message.error('Duyệt báo cáo thất bại.');
+                alert('❌ Duyệt báo cáo thất bại.');
                 console.error(err);
             }
             return;
@@ -179,12 +181,12 @@ const SurveyReviewPage = () => {
                 await approveServiceContract(selectedContract.id);
             }
             
-            message.success('Cập nhật thành công!');
+            alert('✅ Cập nhật thành công!');
             setIsModalVisible(false);
             setSelectedContract(null);
             fetchContracts(pagination.current, pagination.pageSize, activeTab);
         } catch (error) {
-            message.error('Cập nhật thất bại!');
+            alert('❌ Cập nhật thất bại!');
             console.error("Update contract error:", error);
         } finally {
             setModalLoading(false);

@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,42 +17,55 @@ public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
+    // Người nhận thông báo: FK tới accounts.id
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false,
-            foreignKey = @ForeignKey(name = "fk_notifications_customers"))
-    private Customer customer;
+    @JoinColumn(name = "receiver_account_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_notifications_accounts"))
+    private Account receiverAccount;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "invoice_id",
-            foreignKey = @ForeignKey(name = "fk_notifications_invoices"))
-    private Invoice invoice;
+    // Tiêu đề thông báo
+    @Column(name = "title")
+    private String title;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "message_type", length = 20, nullable = false)
-    private MessageType messageType;
-
+    // Nội dung thông báo chi tiết
     @Lob
-    @Column(name = "message_content", columnDefinition = "TEXT", nullable = false)
-    private String messageContent;
+    @Column(name = "message", columnDefinition = "TEXT")
+    private String message;
 
-    @Column(name = "sent_date")
-    private LocalDate sentDate;
-
+    // Loại thông báo: SYSTEM, CONTRACT, INVOICE, MAINTENANCE, PAYMENT, SUPPORT
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20, nullable = false)
-    private Status status = Status.PENDING;
+    @Column(name = "type", length = 20)
+    private NotificationType type;
 
+    // ID đối tượng liên quan (hóa đơn/hợp đồng/ticket/...)
+    @Column(name = "reference_id")
+    private Long referenceId;
+
+    // Loại đối tượng liên quan: INVOICE, CONTRACT, TICKET, METER, NONE
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reference_type", length = 20)
+    private ReferenceType referenceType;
+
+    // Trạng thái đã đọc hay chưa
+    @Column(name = "is_read", nullable = false)
+    private boolean read = false;
+
+    // Thời điểm đánh dấu đã đọc (nếu có)
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
+
+    // Thời điểm tạo (mặc định CURRENT_TIMESTAMP)
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    public enum MessageType {
-        INVOICE, PAYMENT_REMINDER, OUTAGE, GENERAL
+    public enum NotificationType {
+        SYSTEM, CONTRACT, INVOICE, MAINTENANCE, PAYMENT, SUPPORT
     }
 
-    public enum Status {
-        SENT, PENDING, FAILED
+    public enum ReferenceType {
+        INVOICE, CONTRACT, TICKET, METER, NONE
     }
 }

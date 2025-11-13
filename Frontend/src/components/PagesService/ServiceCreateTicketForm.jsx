@@ -27,7 +27,7 @@ function ServiceCreateTicketForm() {
     const [isDropdownVisible, setIsDropdownVisible] = useState(false); // State mới
     const navigate = useNavigate();
 
-    // Load TOÀN BỘ danh sách khách hàng khi component mount
+    // Lấy TOÀN BỘ danh sách khách hàng khi component mount
     useEffect(() => {
         setLoadingCustomers(true);
         setError(null);
@@ -101,7 +101,7 @@ function ServiceCreateTicketForm() {
 
     // --- HÀM MỚI: Xử lý khi click chọn 1 KH từ dropdown ---
     const handleCustomerSelect = (customer) => {
-        setSelectedCustomerId(customer.id); // Set ID
+        setSelectedCustomerId(customer.id); // Đặt ID
         setCustomerSearchTerm(customer.customerName); // Điền tên vào ô input
         setIsDropdownVisible(false); // Ẩn dropdown
         setFilteredCustomers([]); // Xóa danh sách lọc

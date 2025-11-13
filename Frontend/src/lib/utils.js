@@ -15,6 +15,8 @@ const BASE_URL = 'http://localhost:8080/api';
  * @param {string} password
  * @returns {Promise<object>} Dữ liệu trả về (token, roleName, fullName, v.v.)
  */
+import logger from './logger';
+
 export async function loginApi(username, password) {
   try {
     const response = await fetch(`${BASE_URL}/auth/login`, {
@@ -39,7 +41,7 @@ export async function loginApi(username, password) {
     
   } catch (error) {
     // Xử lý lỗi mạng (Network error, CORS error)
-    console.error("Lỗi khi gọi API login:", error);
+    logger.error("Lỗi khi gọi API login:", error);
     // Ném lại lỗi để xử lý thông báo trên UI
     throw new Error(`Không thể kết nối đến máy chủ: ${error.message}`);
   }
@@ -70,7 +72,7 @@ export async function registerApi(registerData) {
     return data; // Trả về thông tin Account đã tạo
     
   } catch (error) {
-    console.error("Lỗi khi gọi API register:", error);
+    logger.error("Lỗi khi gọi API register:", error);
     throw new Error(`Không thể kết nối đến máy chủ: ${error.message}`);
   }
 }
