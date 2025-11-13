@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAllContracts } from '../Services/apiService';
+import { getContractsByCustomerId } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 
@@ -11,11 +11,27 @@ const ContractList = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
+    // Lấy customerId từ localStorage
+    const getCustomerId = () => {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('Current user:', user);
+        return user?.customerId || user?.id;
+    };
+
     // Hàm gọi API lấy danh sách hợp đồng
     const fetchContracts = async () => {
+        const customerId = getCustomerId();
+
+        if (!customerId) {
+            message.error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
+            return;
+        }
+
+        console.log('Fetching contracts for customerId:', customerId);
+
         setLoading(true);
         try {
-            const response = await getAllContracts();
+            const response = await getContractsByCustomerId(customerId);
             if (response.data && response.data.data) {
                 setContracts(response.data.data);
             }
@@ -59,13 +75,17 @@ const ContractList = () => {
                 color = 'cyan';
                 displayText = 'Đã duyệt';
                 break;
+            case 'PENDING_CUSTOMER_SIGN':
+                color = 'geekblue';
+                displayText = "Đang chờ khách ký";
+                break;
             case 'PENDING_SIGN':
                 color = 'geekblue';
-                displayText = 'Đang chờ khách ký';
+                displayText = 'Khách đã ký';
                 break;
             case 'SIGNED':
                 color = 'purple';
-                displayText = 'Khách đã ký, chờ lắp đặt';
+                displayText = ', chờ lắp đặt';
                 break;
             case 'ACTIVE':
                 color = 'green';

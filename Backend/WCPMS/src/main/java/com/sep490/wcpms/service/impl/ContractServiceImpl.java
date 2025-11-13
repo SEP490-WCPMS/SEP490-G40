@@ -29,6 +29,8 @@ public class ContractServiceImpl implements ContractService {
     @Autowired
     private CustomerRepository customerRepository;
     @Autowired
+    private AccountRepository accountRepository;
+    @Autowired
     private WaterPriceTypeRepository waterPriceTypeRepository;
     @Autowired
     private ContractUsageDetailRepository contractUsageDetailRepository;
@@ -36,6 +38,7 @@ public class ContractServiceImpl implements ContractService {
     private MeterInstallationRepository meterInstallationRepository;
     @Autowired
     private ApplicationEventPublisher eventPublisher; // publisher domain event
+    private ReadingRouteRepository readingRouteRepository; // Inject ReadingRouteRepository
 
     @Override
     @Transactional
@@ -112,7 +115,19 @@ public class ContractServiceImpl implements ContractService {
                 .orElse(null); // Nếu không có, truyền null
 
         // Trả về DTO với chi tiết đầy đủ
-        return new ContractRequestDetailDTO(contract, usageDetail);
+        ContractRequestDetailDTO dto = new ContractRequestDetailDTO(contract, usageDetail);
+        // Populate reading route info if available
+        try {
+            Integer routeId = dto.getRouteId();
+            if (routeId != null) {
+                readingRouteRepository.findById(routeId).ifPresent(rr -> {
+                    dto.setRouteCode(rr.getRouteCode());
+                    dto.setRouteName(rr.getRouteName());
+                });
+            }
+        } catch (Exception ignore) {
+        }
+        return dto;
     }
 
     @Override

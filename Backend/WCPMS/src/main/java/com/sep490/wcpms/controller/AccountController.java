@@ -6,10 +6,7 @@ import com.sep490.wcpms.entity.Role;
 import com.sep490.wcpms.service.AccountQueryService;
 import com.sep490.wcpms.service.CustomerQueryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -42,11 +39,27 @@ public class AccountController {
         return accountQueryService.findByRole(Role.RoleName.TECHNICAL_STAFF);
     }
 
+    // GET /api/accounts/cashiers
+    @GetMapping("/cashiers")
+    public List<AccountSummaryDTO> findCashiers() {
+        return accountQueryService.findByRole(Role.RoleName.CASHIER_STAFF);
+    }
+
     // GET /api/accounts/customer?customerName=xxx&identityNumber=yyy
     @GetMapping("/customer")
     public List<CustomerDTO> findCustomer(
             @RequestParam(required = false) String customerName,
             @RequestParam(required = false) String identityNumber) {
         return customerQueryService.findCustomers(customerName, identityNumber);
+    }
+
+    @GetMapping("/{id}")
+    public AccountSummaryDTO getAccountById(@PathVariable Integer id) {
+        return accountQueryService.findById(id);
+    }
+
+    @GetMapping("/customer/{customerId}")
+    public CustomerDTO getCustomerById(@PathVariable Integer customerId) {
+        return customerQueryService.findById(customerId);
     }
 }

@@ -1,6 +1,7 @@
 package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Contract;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import com.sep490.wcpms.entity.Account;
 import org.springframework.stereotype.Repository;
@@ -121,4 +122,6 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     List<Contract> findByCustomer_IdOrderByIdDesc(Integer customerId);
 
     List<Contract> findByCustomerIdAndContractStatus(Integer customerId, Contract.ContractStatus contractStatus);
+
+    Page<Contract> findByContractStatus(Contract.ContractStatus contractStatus, Pageable pageable);
 }

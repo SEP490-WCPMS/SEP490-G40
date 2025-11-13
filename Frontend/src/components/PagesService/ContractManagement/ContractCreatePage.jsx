@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract } from '../../Services/apiService';
+import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract, updateServiceContract } from '../../Services/apiService';
 import moment from 'moment';
 import './ContractCreatePage.css';
 
@@ -74,7 +74,7 @@ const ContractCreate = () => {
     };
 
     // Xử lý submit form
-    const handleSubmit = async () => {
+    const handleSubmit = async (values) => {
         if (!sourceContractId) {
             message.error('Thiếu sourceContractId. Không xác định được hợp đồng cần cập nhật!');
             return;
@@ -89,12 +89,46 @@ const ContractCreate = () => {
 
         setSubmitting(true);
         try {
+            // Lấy thông tin user đang đăng nhập từ localStorage
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const currentUserId = user?.id;
+
+            // Chuẩn bị dữ liệu gửi lên backend
+            const contractData = {
+                customerId: values.customerId,
+                applicationDate: values.applicationDate ? values.applicationDate.format('YYYY-MM-DD') : null,
+                surveyDate: values.surveyDate ? values.surveyDate.format('YYYY-MM-DD') : null,
+                technicalDesign: values.technicalDesign,
+                estimatedCost: values.estimatedCost,
+                installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
+                startDate: values.startDate.format('YYYY-MM-DD'),
+                endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
+                contractValue: values.contractValue,
+                paymentMethod: values.paymentMethod,
+                serviceStaffId: currentUserId,
+                technicalStaffId: values.technicalStaffId,
+                notes: values.notes,
+            };
+
+            console.log('Sending contract data:', contractData);
+
+            // Cập nhật các trường chi tiết cho hợp đồng từ form
+            await updateServiceContract(sourceContractId, {
+                installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
+                startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
+                endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
+                notes: values.notes,
+                estimatedCost: values.estimatedCost,
+                contractValue: values.contractValue,
+                paymentMethod: values.paymentMethod,
+                serviceStaffId: currentUserId,
+            });
             await approveServiceContract(sourceContractId);
-            message.success('Phê duyệt hợp đồng thành công!');
+            message.success('Tạo hợp đồng thành công!');
             navigate('/service/approved-contracts');
         } catch (error) {
             console.error('Approve contract error:', error);
-            const errorMessage = error?.response?.data?.message || 'Không thể phê duyệt hợp đồng!';
+            const errorMessage = error?.response?.data?.message || 'Không thể tạo hợp đồng!';
             message.error(errorMessage);
         } finally {
             setSubmitting(false);

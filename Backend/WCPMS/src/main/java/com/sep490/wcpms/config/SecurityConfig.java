@@ -100,6 +100,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/water-price-types/**").permitAll()
                                 .requestMatchers("/api/water-prices/**").permitAll()
                                 .requestMatchers("/api/contract-request/**").permitAll()
+                                .requestMatchers("/api/reading-routes/**").permitAll()
+                                // Allow public GET access to accounting reading-routes (so frontend can call existing path)
+                                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/accounting/reading-routes/**").permitAll()
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
@@ -117,6 +120,22 @@ public class SecurityConfig {
                                 .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER")
                                 .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF")
                                 .requestMatchers("/api/feedback/customer/my-active-meters/**").hasAuthority("SERVICE_STAFF")
+                                // --- HẾT PHẦN THÊM ---
+                                // --- THÊM MỚI: BẢO VỆ API ADMIN ---
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+
+                                // --- THÊM PHÂN QUYỀN NÀY ---
+                                .requestMatchers("/api/customer/**").hasAuthority("CUSTOMER")
+                                // --- HẾT ---
+
+                                // --- THÊM DÒNG NÀY ---
+                                .requestMatchers("/api/accounting/**").hasAuthority("ACCOUNTING_STAFF")
+                                // --- HẾT PHẦN THÊM ---
+
+                                // --- THÊM DÒNG NÀY ---
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                                // --- HẾT PHẦN THÊM ---
+
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()
                                 .requestMatchers("/staff/profile").hasAnyAuthority("TECHNICAL_STAFF", "CASHIER_STAFF", "SERVICE_STAFF")
                                 .anyRequest().authenticated()

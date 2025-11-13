@@ -50,6 +50,18 @@ import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTick
 import ContractRequestChange from './components/Customer/ContractRequestChange';
 import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
 import StaffChangePassword from './components/Staff/StaffChangePassword';
+import LayoutAccounting from './components/Layouts/LayoutAccounting';
+import ReadingRoutesList from './components/Accounting/ReadingRoutesList';
+import UnbilledFeesList from './components/Pages/PagesAccounting/UnbilledFeesList';
+import InvoiceList from './components/Pages/PagesAccounting/InvoiceList'; // <-- THÊM
+import UnbilledFeeDetail from './components/Pages/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
+import CreateServiceInvoice from './components/Pages/PagesAccounting/CreateServiceInvoice'; // <-- THÊM IMPORT MỚI
+import InvoiceDetail from './components/Pages/PagesAccounting/InvoiceDetail';
+import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
+import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
+import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
+import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
+import LayoutAdmin from './components/Layouts/LayoutAdmin';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -90,6 +102,8 @@ function App() {
           <Route path="/support-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerSupportForm /></PublicLayout>} />
           <Route path="/my-support-tickets" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MySupportTicketList /></PublicLayout>} />
           <Route path="/my-support-tickets/:ticketId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><SupportTicketDetail /></PublicLayout>} />
+          <Route path="/my-invoices" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceListPage /></PublicLayout>} />
+          <Route path="/my-invoices/:invoiceId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceDetail /></PublicLayout>} />
 
         </Route>
 
@@ -145,7 +159,41 @@ function App() {
           </Route>
         </Route>
 
+
+        {/* --- LUỒNG CỦA ACCOUNTING STAFF --- */}
+        <Route element={<PrivateRoute allowedRoles={['ACCOUNTING_STAFF']} />}>
+          <Route path="/accounting/*" element={<LayoutAccounting />}>
+            {/* Trang index của /accounting */}
+            <Route index element={<UnbilledFeesList />} />
+            <Route path="unbilled-fees" element={<UnbilledFeesList />} />
+            {/* --- THÊM 2 ROUTE MỚI --- */}
+            {/* (Req 1) Trang Chi tiết Phí */}
+            <Route path="unbilled-fees/:calibrationId" element={<UnbilledFeeDetail />} />
+            {/* Thêm: Trang Tạo Hóa đơn */}
+            <Route path="create-invoice/:calibrationId" element={<CreateServiceInvoice />} />
+            {/* (Req 3) Trang Danh sách Hóa đơn */}
+            <Route path="invoices" element={<InvoiceList />} />
+            {/* (Req 1) Trang Chi tiết Hóa đơn (Read-only) */}
+            <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
+            {/* --- HẾT --- */}
+            {/* (Thêm các trang khác của Kế toán ở đây) */}
+            <Route path="reading-routes" element={<ReadingRoutesList />} />
+            <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
+            <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
+            <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
+          </Route>
+        </Route>
+        {/* --- HẾT --- */}
+
         {/* (Thêm luồng ADMIN ở đây nếu cần) */}
+        <Route element={<PrivateRoute allowedRoles={['ADMIN']} />}>
+          <Route path="/admin/*" element={<LayoutAdmin />}>
+
+            {/* (Thêm các trang khác của Admin ở đây) */}
+            <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
+          </Route>
+        </Route>
+        {/* --- HẾT --- */}
 
       </Routes>
     </BrowserRouter>

@@ -279,6 +279,10 @@ const ContractRequestDetailModal = ({ isOpen, contractId, accountId, token, onCl
                                         <span style={styles.label}>Mã khách hàng:</span>
                                         <span style={styles.value}>{detail.customerCode || 'N/A'}</span>
                                     </div>
+                                    <div style={styles.row}>
+                                        <span style={styles.label}>Tuyến đọc:</span>
+                                        <span style={styles.value}>{(detail.routeCode ? `${detail.routeCode} — ` : '') + (detail.routeName || detail.routeId || 'N/A')}</span>
+                                    </div>
                                     <div style={{ ...styles.row, ...styles.rowFullWidth }}>
                                         <span style={styles.label}>Địa chỉ:</span>
                                         <span style={styles.value}>{detail.address || 'N/A'}</span>

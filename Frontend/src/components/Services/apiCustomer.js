@@ -45,5 +45,36 @@ export const getSupportTicketDetail = (ticketId) => {
 };
 // --- HẾT PHẦN THÊM ---
 
+
+// --- THÊM 2 HÀM MỚI ---
+
+/**
+ * Lấy danh sách Hóa đơn của Khách hàng (lọc theo status)
+ * @param {object} params - { page, size, status: ["PENDING", "OVERDUE"] }
+ */
+export const getMyInvoices = (params) => {
+    // API của Spring Boot nhận List<String> qua RequestParam
+    return apiClient.get('/customer/invoices', { 
+        params: {
+            status: params.status, // Gửi mảng status
+            page: params.page || 0,
+            size: params.size || 10
+        },
+        // Cần tùy chỉnh cách Axios gửi mảng
+        paramsSerializer: {
+            indexes: null // Gửi dạng status=PENDING&status=OVERDUE
+        }
+    });
+};
+
+/**
+ * Lấy CHI TIẾT 1 Hóa đơn (xác thực đúng chủ)
+ * @param {number} invoiceId
+ */
+export const getMyInvoiceDetail = (invoiceId) => {
+    return apiClient.get(`/customer/invoices/${invoiceId}`);
+};
+// --- HẾT PHẦN THÊM ---
+
 // --- Bạn có thể chuyển các API Customer khác vào đây ---
 // (Ví dụ: Lấy profile, Lấy danh sách hợp đồng...)

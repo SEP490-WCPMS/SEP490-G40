@@ -3,6 +3,7 @@ package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.CustomerDTO;
 import com.sep490.wcpms.entity.Customer;
+import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.CustomerRepository;
 import com.sep490.wcpms.service.CustomerQueryService;
 import lombok.RequiredArgsConstructor;
@@ -37,5 +38,12 @@ public class CustomerQueryServiceImpl implements CustomerQueryService {
         return customers.stream()
                 .map(CustomerDTO::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public CustomerDTO findById(Integer id) {
+        Customer c = customerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + id));
+        return CustomerDTO.fromEntity(c);
     }
 }

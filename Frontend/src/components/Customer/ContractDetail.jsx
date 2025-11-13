@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
+import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag, Image } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import {getContractByIdGeneral, getProfileById, getWaterMeterDetailByContract} from '../Services/apiService';
+import {getContractByIdGeneral, getAccountById, getCustomerById, getWaterMeterDetailByContract} from '../Services/apiService';
 
 const { Title } = Typography;
 
@@ -61,6 +61,10 @@ const ContractDetail = () => {
                 color = 'cyan';
                 displayText = 'Đã duyệt';
                 break;
+            case 'PENDING_CUSTOMER_SIGN':
+                color = 'geekblue';
+                displayText = "Đang chờ khách ký";
+                break;
             case 'PENDING_SIGN':
                 color = 'geekblue';
                 displayText = 'Đang chờ khách ký';
@@ -92,22 +96,27 @@ const ContractDetail = () => {
         return <Tag color={color}>{displayText}</Tag>;
     };
 
-    // Lấy thông tin profile
-    const fetchProfileName = async (accountId, setName) => {
-        if (!accountId) {
-            setName('N/A');
-            return;
-        }
+    const fetchAccountName = async (accountId, setName) => {
+        if (!accountId) return setName('N/A');
         try {
-            const response = await getProfileById(accountId);
-            if (response.data && response.data.data && response.data.data.fullName) {
-                setName(response.data.data.fullName);
-            } else {
-                setName('N/A');
-            }
-        } catch (error) {
-            console.error(`Lỗi khi tải profile ${accountId}:`, error);
+            const res = await getAccountById(accountId);
+            const fullName = res?.data?.data?.fullName ?? res?.data?.fullName ?? res?.fullName ?? null;
+            setName(fullName || 'N/A');
+        } catch (e) {
+            console.error('Lỗi profile:', e);
             setName('N/A');
+        }
+    };
+
+    const fetchCustomerName = async (customerId) => {
+        if (!customerId) return setCustomerName('N/A');
+        try {
+            const res = await getCustomerById(customerId);
+            const name = res?.data?.data?.customerName ?? res?.data?.customerName ?? res?.customerName ?? null;
+            setCustomerName(name || 'N/A');
+        } catch (e) {
+            console.error('Lỗi customer:', e);
+            setCustomerName('N/A');
         }
     };
 
@@ -140,17 +149,17 @@ const ContractDetail = () => {
                 const contractData = response.data.data;
                 setContract(contractData);
 
-                // Lấy tên khách hàng
-                fetchProfileName(contractData.customerId, setCustomerName);
+                // Khách hàng (CUSTOMER)
+                await fetchCustomerName(contractData.customerId); // dùng getCustomerById
 
-                // Lấy tên nhân viên dịch vụ
-                fetchProfileName(contractData.serviceStaffId, setServiceStaffName);
+                // Nhân viên Dịch vụ (ACCOUNT)
+                await fetchAccountName(contractData.serviceStaffId, setServiceStaffName);
 
-                // Lấy tên nhân viên kỹ thuật
-                fetchProfileName(contractData.technicalStaffId, setTechnicalStaffName);
+                // Nhân viên Kỹ thuật (ACCOUNT)
+                await fetchAccountName(contractData.technicalStaffId, setTechnicalStaffName);
 
                 // Lấy thông tin đồng hồ nước
-                fetchWaterMeterDetail();
+                await fetchWaterMeterDetail();
             }
         } catch (error) {
             message.error('Lỗi khi tải chi tiết hợp đồng!');
@@ -162,7 +171,7 @@ const ContractDetail = () => {
 
     useEffect(() => {
         fetchContractDetail();
-    }, [contractId, fetchContractDetail]);
+    }, [contractId]);
 
     // Quay lại trang danh sách
     const handleBack = () => {
