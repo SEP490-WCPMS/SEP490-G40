@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, Input as FormInput, DatePicker, Descriptions } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { getActiveContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract } from '../Services/apiService';
-import moment from 'moment';
+import dayjs from 'dayjs';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -88,17 +88,18 @@ const ActiveContractsPage = () => {
                     contractNumber: contractData.contractNumber,
                     customerName: contractData.customerName,
                     contractValue: contractData.contractValue,
-                    endDate: contractData.endDate ? moment(contractData.endDate) : null,
+                    endDate: contractData.endDate ? dayjs(contractData.endDate) : null,
                     notes: contractData.notes
                 });
             } else if (type === 'renew') {
                 form.setFieldsValue({
                     contractNumber: contractData.contractNumber,
                     customerName: contractData.customerName,
-                    currentEndDate: contractData.endDate ? moment(contractData.endDate) : null,
+                    currentEndDate: contractData.endDate ? dayjs(contractData.endDate) : null,
                     newEndDate: null,
                     notes: ''
                 });
+                        // Enforce renew logic: newEndDate must be strictly after currentEndDate
             } else if (type === 'terminate') {
                 form.setFieldsValue({
                     contractNumber: contractData.contractNumber,
@@ -205,13 +206,13 @@ const ActiveContractsPage = () => {
             title: 'Ngày bắt đầu',
             dataIndex: 'startDate',
             key: 'startDate',
-            render: (date) => <span className="text-base">{date ? moment(date).format('DD/MM/YYYY') : 'N/A'}</span>,
+            render: (date) => <span className="text-base">{date ? dayjs(date).format('DD/MM/YYYY') : 'N/A'}</span>,
         },
         {
             title: 'Ngày kết thúc',
             dataIndex: 'endDate',
             key: 'endDate',
-            render: (date) => <span className="text-base">{date ? moment(date).format('DD/MM/YYYY') : 'N/A'}</span>,
+            render: (date) => <span className="text-base">{date ? dayjs(date).format('DD/MM/YYYY') : 'N/A'}</span>,
         },
         {
             title: 'Giá trị',
@@ -294,7 +295,7 @@ const ActiveContractsPage = () => {
     const renderModalContent = () => {
         if (modalType === 'view') {
             const c = selectedContract || {};
-            const fmtDate = (d) => (d ? moment(d).format('DD/MM/YYYY') : '—');
+            const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
             const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
             
             // Debug: Log dữ liệu từ API
@@ -373,23 +374,57 @@ const ActiveContractsPage = () => {
                         <div className="font-semibold text-blue-900 text-sm">📋 Thông tin hợp đồng</div>
                     </div>
                     <Form.Item name="contractNumber" label={<span className="text-gray-700 font-medium">Số Hợp đồng</span>}>
-                        <FormInput disabled style={{backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <Form.Item name="customerName" label={<span className="text-gray-700 font-medium">Khách hàng</span>}>
-                        <FormInput disabled style={{backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <div className="bg-amber-50 border-l-4 border-amber-400 p-3 mb-4 rounded">
                         <div className="font-semibold text-amber-900 text-sm">📅 Cập nhật ngày kết thúc</div>
                     </div>
                     <Form.Item name="currentEndDate" label={<span className="text-gray-700 font-medium">Ngày kết thúc hiện tại</span>}>
-                        <DatePicker disabled style={{width: '100%', backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <DatePicker disabled style={{width: '100%', backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <Form.Item 
                         name="newEndDate" 
                         label={<span className="text-gray-700 font-medium">Ngày kết thúc mới</span>}
-                        rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}
+                        rules={[
+                            { required: true, message: 'Vui lòng chọn ngày!' },
+                            ({ getFieldValue }) => ({
+                                validator(_, value) {
+                                    try {
+                                        const current = getFieldValue('currentEndDate');
+                                        if (!value) return Promise.resolve();
+                                        if (!current) return Promise.resolve();
+                                        // Use dayjs for comparison
+                                        const v = dayjs(value);
+                                        const c = dayjs(current);
+                                        if (v.isAfter(c, 'day')) return Promise.resolve();
+                                        return Promise.reject(new Error('Ngày kết thúc mới phải lớn hơn ngày kết thúc hiện tại'));
+                                    } catch (err) {
+                                        console.error('Validator error for newEndDate:', err);
+                                        return Promise.reject(new Error('Giá trị ngày không hợp lệ'));
+                                    }
+                                }
+                            })
+                        ]}
                     >
-                        <DatePicker style={{width: '100%', color: '#000'}} placeholder="Chọn ngày kết thúc mới" />
+                        <DatePicker
+                            style={{width: '100%', color: '#000'}}
+                            placeholder="Chọn ngày kết thúc mới"
+                            disabledDate={(current) => {
+                                try {
+                                    const cur = form.getFieldValue('currentEndDate');
+                                    if (!cur) return false;
+                                    const c = dayjs(cur);
+                                    const d = dayjs(current);
+                                    return d.isSame(c, 'day') || d.isBefore(c, 'day');
+                                } catch (err) {
+                                    console.error('disabledDate error:', err);
+                                    return false;
+                                }
+                            }}
+                        />
                     </Form.Item>
                     <Form.Item name="notes" label={<span className="text-gray-700 font-medium">Note</span>}>
                         <TextArea rows={3} placeholder="Nhập ghi chú..." style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
@@ -403,10 +438,10 @@ const ActiveContractsPage = () => {
                         <div className="font-semibold text-red-900 text-sm">⚠️ Chấm dứt hợp đồng</div>
                     </div>
                     <Form.Item name="contractNumber" label={<span className="text-gray-700 font-medium">Số Hợp đồng</span>}>
-                        <FormInput disabled style={{backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <Form.Item name="customerName" label={<span className="text-gray-700 font-medium">Khách hàng</span>}>
-                        <FormInput disabled style={{backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <Form.Item 
                         name="reason" 
@@ -424,10 +459,10 @@ const ActiveContractsPage = () => {
                         <div className="font-semibold text-yellow-900 text-sm">⏸️ Tạm ngưng hợp đồng</div>
                     </div>
                     <Form.Item name="contractNumber" label={<span className="text-gray-700 font-medium">Số Hợp đồng</span>}>
-                        <FormInput disabled style={{backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <Form.Item name="customerName" label={<span className="text-gray-700 font-medium">Khách hàng</span>}>
-                        <FormInput disabled style={{backgroundColor: '#f3f4f6', color: '#000', borderColor: '#d1d5db'}} />
+                        <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
                     <Form.Item 
                         name="reason" 
