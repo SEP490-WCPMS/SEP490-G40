@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable; // <-- THÊM
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional; // <-- THÊM IMPORT
 
@@ -55,5 +56,17 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
      * Tìm TẤT CẢ Hóa đơn (không lọc status) của một Khách hàng.
      */
     Page<Invoice> findByCustomer(Customer customer, Pageable pageable);
+    // --- THÊM 2 HÀM MỚI ---
+
+    // Đếm số hóa đơn theo loại và theo khoảng ngày (để đánh số CN-YYYY-xxxx)
+    long countByInvoiceTypeAndInvoiceDateBetween(
+            Invoice.InvoiceType type,
+            LocalDate startDate,
+            LocalDate endDate
+    );
+
+    boolean existsByContract_IdAndInvoiceType(Integer contractId, Invoice.InvoiceType type);
+
     // --- HẾT PHẦN THÊM ---
+
 }

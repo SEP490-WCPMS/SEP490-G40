@@ -66,6 +66,10 @@ public class InvoiceMapper {
             dto.setAccountingStaffName(staff.getFullName());
         }
 
+        if (entity.getInvoiceType() != null) {
+            dto.setInvoiceType(entity.getInvoiceType().name());
+        }
+
         return dto;
     }
 

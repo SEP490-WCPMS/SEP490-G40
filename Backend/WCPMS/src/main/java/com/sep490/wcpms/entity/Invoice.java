@@ -26,6 +26,10 @@ public class Invoice {
     @Column(name = "invoice_number", length = 50, nullable = false, unique = true)
     private String invoiceNumber;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "invoice_type", nullable = false)
+    private InvoiceType invoiceType = InvoiceType.WATER_SERVICE; // default
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "customer_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_invoices_customers"))
@@ -99,5 +103,9 @@ public class Invoice {
 
     public enum PaymentStatus {
         PENDING, PAID, OVERDUE, CANCELLED, PARTIALLY_PAID
+    }
+
+    public enum InvoiceType {
+        CONTRACT, WATER_SERVICE
     }
 }
