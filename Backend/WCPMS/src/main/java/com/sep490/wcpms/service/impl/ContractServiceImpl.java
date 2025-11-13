@@ -6,10 +6,12 @@ import com.sep490.wcpms.dto.ContractRequestDetailDTO;
 import com.sep490.wcpms.dto.WaterMeterResponseDTO;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.entity.Contract.ContractStatus; // Import Enum
+import com.sep490.wcpms.event.ContractRequestCreatedEvent;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher; // thêm import publisher
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,8 @@ public class ContractServiceImpl implements ContractService {
     private ContractUsageDetailRepository contractUsageDetailRepository;
     @Autowired
     private MeterInstallationRepository meterInstallationRepository;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher; // publisher domain event
 
     @Override
     @Transactional
@@ -60,8 +64,16 @@ public class ContractServiceImpl implements ContractService {
         usageDetail.setPriceType(priceType);
         usageDetail.setOccupants(requestDTO.getOccupants());
         usageDetail.setUsagePercentage(new BigDecimal("100.00"));
-
         contractUsageDetailRepository.save(usageDetail);
+
+        // === PUBLISH DOMAIN EVENT (sau khi tạo thành công) ===
+        eventPublisher.publishEvent(new ContractRequestCreatedEvent(
+                savedContract.getId(),
+                customer.getId(),
+                customer.getCustomerName(),
+                savedContract.getContractNumber(),
+                java.time.LocalDateTime.now()
+        ));
     }
 
     @Override

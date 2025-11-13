@@ -4,6 +4,7 @@ import org.apache.http.HttpHeaders;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -12,6 +13,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import java.util.Arrays;
 
 @Configuration
+@EnableTransactionManagement // ✅ FIX LỖI #4: Enable transactional event listener
 public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {

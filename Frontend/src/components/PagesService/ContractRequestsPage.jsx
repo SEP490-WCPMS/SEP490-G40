@@ -32,7 +32,7 @@ const ContractRequestsPage = () => {
         setLoading(true);
         try {
             const response = await getServiceContracts({
-                page: page - 1, // API dùng 0-based indexing
+                page: page - 1, // API sử dụng 0-based indexing
                 size: pageSize,
                 status: 'DRAFT',
                 keyword: filters.keyword
@@ -112,7 +112,7 @@ const ContractRequestsPage = () => {
             
             console.log('Submit survey response:', response);
             
-            message.success('Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
+            alert('✅ Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
             setIsModalVisible(false);
             setSelectedContract(null);
             setModalMode('view');
@@ -123,7 +123,7 @@ const ContractRequestsPage = () => {
             }, 500);
         } catch (error) {
             console.error('Error submitting survey:', error);
-            message.error('Gửi khảo sát thất bại!');
+            alert('❌ Gửi khảo sát thất bại!');
         } finally {
             setModalLoading(false);
         }

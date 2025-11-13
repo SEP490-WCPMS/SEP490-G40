@@ -6,22 +6,44 @@ const apiClient = axios.create({
     baseURL: API_BASE_URL
 });
 
-// === INTERCEPTOR ĐỂ THÊM TOKEN ===
+// Add token to all requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Lấy token đã lưu
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config; // Gửi request đi
+    return config;
   },
   (error) => {
     return Promise.reject(error);
   }
 );
-// === HẾT INTERCEPTOR ===
 
-export default apiClient; // Xuất apiClient làm default
+// Lightweight response trace for notification endpoints only
+apiClient.interceptors.response.use(
+  (response) => {
+    try {
+      const url = response?.config?.url || '';
+      if (url.includes('/service/notifications')) {
+        const method = (response.config.method || 'get').toUpperCase();
+        const count = response.data?.content ? response.data.content.length : undefined;
+        console.log('[API TRACE]', method, url, 'status', response.status, 'items', count);
+      }
+    } catch {}
+    return response;
+  },
+  (error) => {
+    try {
+      const url = error?.config?.url || '';
+      if (url.includes('/service/notifications')) {
+        const method = (error.config.method || 'get').toUpperCase();
+        console.warn('[API TRACE ERROR]', method, url, 'status', error.response?.status, 'message', error.message);
+      }
+    } catch {}
+    return Promise.reject(error);
+  }
+);
 
-// Cũng có thể xuất luôn API_BASE_URL nếu các hàm public (như login) cần
+export default apiClient;
 export { API_BASE_URL };

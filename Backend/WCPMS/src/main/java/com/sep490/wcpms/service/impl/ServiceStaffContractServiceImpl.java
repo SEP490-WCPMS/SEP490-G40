@@ -34,9 +34,17 @@ import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.entity.WaterPriceType;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
 import com.sep490.wcpms.repository.WaterPriceTypeRepository;
+import org.springframework.context.ApplicationEventPublisher; // publish domain events
+import com.sep490.wcpms.event.SurveyReportApprovedEvent;
+import com.sep490.wcpms.event.ContractSentToInstallationEvent;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.sep490.wcpms.security.services.UserDetailsImpl;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ServiceStaffContractServiceImpl implements ServiceStaffContractService {
 
     private final ServiceStaffContractRepository contractRepository;
@@ -48,6 +56,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final WaterPriceTypeRepository waterPriceTypeRepository;
     private final MeterInstallationRepository meterInstallationRepository; // Thêm repository inject
+    private final ApplicationEventPublisher eventPublisher; // Inject publisher
     // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
     // private final ContractMapper contractMapper;
 
@@ -129,12 +138,37 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new RuntimeException("Cannot submit non-DRAFT contract. Current status: " + contract.getContractStatus());
         }
 
-        // Tìm và gán nhân viên kỹ thuật
+        // ✅ Tự động gán Nhân viên Dịch vụ hiện tại nếu chưa gán
+        if (contract.getServiceStaff() == null) {
+            // Lấy ID của Nhân viên Dịch vụ hiện tại từ SecurityContext
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()) {
+                throw new IllegalStateException("User not authenticated");
+            }
+            
+            Integer currentUserId;
+            if (auth.getPrincipal() instanceof UserDetailsImpl user) {
+                currentUserId = user.getId();
+            } else {
+                String username = auth.getName();
+                Account currentAccount = accountRepository.findByUsername(username)
+                        .orElseThrow(() -> new IllegalStateException("Account not found: " + username));
+                currentUserId = currentAccount.getId();
+            }
+            
+            Account currentServiceStaff = accountRepository.findById(currentUserId)
+                    .orElseThrow(() -> new RuntimeException("Service Staff not found with id: " + currentUserId));
+
+            contract.setServiceStaff(currentServiceStaff);
+            log.info("[SUBMIT-SURVEY] Auto-assigned serviceStaffId={} to contractId={}", currentUserId, contractId);
+        }
+
+        // Tìm và gán Nhân viên Kỹ thuật
         Account technicalStaff = accountRepository.findById(technicalStaffId)
                 .orElseThrow(() -> new RuntimeException("Technical staff not found with id: " + technicalStaffId));
-        
 
-        // Kiểm tra vai trò của account (tùy chọn nhưng nên có)
+
+        // Kiểm tra vai trò của tài khoản (tùy chọn nhưng nên có)
         if (technicalStaff.getRole() == null || technicalStaff.getRole().getRoleName() != Role.RoleName.TECHNICAL_STAFF) {
             throw new IllegalArgumentException("Account is not a technical staff.");
         }
@@ -152,17 +186,26 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     }
 
     @Override
+    @Transactional
     public ServiceStaffContractDTO approveSurveyReport(Integer contractId) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
 
-        // Chỉ cho phép duyệt hợp đồng có status PENDING_SURVEY_REVIEW
+        // Chỉ cho phép duyệt hợp đồng có trạng thái PENDING_SURVEY_REVIEW
         if (contract.getContractStatus() != ContractStatus.PENDING_SURVEY_REVIEW) {
             throw new RuntimeException("Cannot approve contract not in PENDING_SURVEY_REVIEW status. Current status: " + contract.getContractStatus());
         }
 
         contract.setContractStatus(ContractStatus.APPROVED);
         Contract updated = contractRepository.save(contract);
+        // Phát hành sự kiện duyệt khảo sát
+        eventPublisher.publishEvent(new SurveyReportApprovedEvent(
+                updated.getId(),
+                updated.getContractNumber(),
+                updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
+                updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
+                java.time.LocalDateTime.now()
+        ));
         return convertToDTO(updated);
     }
 
@@ -215,7 +258,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new RuntimeException("Only ACTIVE contracts can be renewed. Current status: " + contract.getContractStatus());
         }
 
-        // Update ngày kết thúc mới
+        // Cập nhật ngày kết thúc mới
         if (renewRequest.getEndDate() != null) {
             contract.setEndDate(renewRequest.getEndDate());
         } else {
@@ -240,7 +283,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new RuntimeException("Only ACTIVE contracts can be terminated. Current status: " + contract.getContractStatus());
         }
 
-        // Chuyển sang TERMINATED
+        // Chuyển trạng thái sang TERMINATED
         contract.setContractStatus(ContractStatus.TERMINATED);
         contract.setEndDate(java.time.LocalDate.now());
 
@@ -261,7 +304,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setEndDate(c.getEndDate());
         dto.setEstimatedCost(c.getEstimatedCost());
         dto.setContractValue(c.getContractValue());
-        dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null); // NEW
+        dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null); // MỚI
         dto.setNotes(c.getNotes());
         if (c.getCustomer() != null) {
             dto.setCustomerId(c.getCustomer().getId());
@@ -279,7 +322,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setSurveyDate(c.getSurveyDate());
         dto.setTechnicalDesign(c.getTechnicalDesign());
 
-        // Lấy priceTypeName từ ContractUsageDetail
+        // Lấy giá tiền loại từ Chi tiết Sử dụng Hợp đồng
         if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
             // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
             ContractUsageDetail firstUsageDetail = c.getContractUsageDetails().get(0);
@@ -291,7 +334,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         return dto;
     }
 
-    // Bản mở rộng: thêm ảnh lắp đặt (chỉ dùng cho API chi tiết)
+    // Phiên bản mở rộng: thêm ảnh lắp đặt (chỉ dùng cho API chi tiết)
     private ServiceStaffContractDTO convertToDTOWithImage(Contract c) {
         ServiceStaffContractDTO dto = convertToDTO(c);
         meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(c)
@@ -475,6 +518,16 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         }
         contract.setContractStatus(ContractStatus.SIGNED);
         Contract updated = contractRepository.save(contract);
+        // Publish event gửi lắp đặt để thông báo cho Service Staff
+        eventPublisher.publishEvent(new ContractSentToInstallationEvent(
+                this, // source object
+                updated.getId(),
+                updated.getContractNumber(),
+                updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
+                updated.getTechnicalStaff() != null ? updated.getTechnicalStaff().getId() : null,
+                updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
+                java.time.LocalDateTime.now()
+        ));
         return convertToDTO(updated);
     }
 
@@ -488,7 +541,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new IllegalStateException("Only contracts in PENDING_SURVEY_REVIEW can be rejected.");
         }
 
-        // Quay lại trạng thái PENDING để Technical sửa/khảo sát lại
+        // Quay lại trạng thái PENDING để kỹ thuật sửa/khảo sát lại
         contract.setContractStatus(ContractStatus.PENDING);
         if (reason != null && !reason.isBlank()) {
             String existing = contract.getNotes();

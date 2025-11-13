@@ -71,6 +71,31 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                     {initialData?.customerCode && (
                         <Descriptions.Item label="Mã Khách hàng">{initialData.customerCode}</Descriptions.Item>
                     )}
+                    {initialData?.applicationDate && (
+                        <Descriptions.Item label="Ngày đăng ký">{fmtDate(initialData.applicationDate)}</Descriptions.Item>
+                    )}
+
+                    {/* Thông tin Khảo sát & Kỹ thuật */}
+                    {(initialData?.surveyDate || initialData?.technicalStaffName || initialData?.technicalDesign || initialData?.estimatedCost != null) && (
+                        <>
+                            {initialData?.surveyDate && (
+                                <Descriptions.Item label="Ngày khảo sát">{fmtDate(initialData.surveyDate)}</Descriptions.Item>
+                            )}
+                            {initialData?.technicalStaffName && (
+                                <Descriptions.Item label="Nhân viên Kỹ thuật">{initialData.technicalStaffName}</Descriptions.Item>
+                            )}
+                            {initialData?.technicalDesign && (
+                                <Descriptions.Item label="Thiết kế Kỹ thuật">
+                                    <div className="whitespace-pre-wrap">{initialData.technicalDesign}</div>
+                                </Descriptions.Item>
+                            )}
+                            {initialData?.estimatedCost != null && (
+                                <Descriptions.Item label="Chi phí Ước tính">{fmtMoney(initialData.estimatedCost)}</Descriptions.Item>
+                            )}
+                        </>
+                    )}
+
+                    {/* Thông tin Hợp đồng */}
                     {(initialData?.startDate || initialData?.endDate) && (
                         <>
                             {initialData?.startDate && (
@@ -81,22 +106,23 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                             )}
                         </>
                     )}
-                    {(initialData?.contractValue != null || initialData?.estimatedCost != null) && (
-                        <>
-                            {initialData?.contractValue != null && (
-                                <Descriptions.Item label="Giá trị hợp đồng">{fmtMoney(initialData.contractValue)}</Descriptions.Item>
-                            )}
-                            {initialData?.estimatedCost != null && (
-                                <Descriptions.Item label="Giá trị dự kiến">{fmtMoney(initialData.estimatedCost)}</Descriptions.Item>
-                            )}
-                        </>
+                    {initialData?.contractValue != null && (
+                        <Descriptions.Item label="Giá trị hợp đồng">{fmtMoney(initialData.contractValue)}</Descriptions.Item>
                     )}
                     {initialData?.paymentMethod && (
                         <Descriptions.Item label="Phương thức thanh toán">{initialData.paymentMethod}</Descriptions.Item>
                     )}
-                    <Descriptions.Item label="Ghi chú" span={1}>
-                        <div className="whitespace-pre-wrap">{initialData?.notes || initialData?.customerNotes || '—'}</div>
-                    </Descriptions.Item>
+                    {initialData?.serviceStaffName && (
+                        <Descriptions.Item label="Nhân viên Dịch vụ">{initialData.serviceStaffName}</Descriptions.Item>
+                    )}
+                    {initialData?.priceTypeName && (
+                        <Descriptions.Item label="Loại giá nước">{initialData.priceTypeName}</Descriptions.Item>
+                    )}
+                    {initialData?.notes && (
+                        <Descriptions.Item label="Ghi chú" span={1}>
+                            <div className="whitespace-pre-wrap">{initialData.notes}</div>
+                        </Descriptions.Item>
+                    )}
                 </Descriptions>
             </Spin>
         </Modal>

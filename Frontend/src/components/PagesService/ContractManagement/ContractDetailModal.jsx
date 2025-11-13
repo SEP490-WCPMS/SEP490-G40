@@ -12,13 +12,13 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
   const [staffLoading, setStaffLoading] = useState(false);
   const isOpen = Boolean(typeof visible === 'undefined' ? open : visible);
 
-  // Load danh sách nhân viên kỹ thuật từ API
+  // Lấy danh sách nhân viên kỹ thuật từ API
   useEffect(() => {
     if (isOpen) {
       setStaffLoading(true);
       getTechnicalStaff()
         .then((response) => {
-          console.log('Technical staff response:', response);
+          console.log('Phản hồi nhân viên kỹ thuật:', response);
           const payload = response?.data ?? [];
           const staff = payload?.data ?? payload?.content ?? payload;
           setTechnicalStaff(Array.isArray(staff) ? staff : []);

@@ -33,7 +33,7 @@ const ActiveContractsPage = () => {
         keyword: null,
     });
 
-    // Fetch danh sách hợp đồng ACTIVE
+    // Lấy danh sách hợp đồng ACTIVE
     const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
         setLoading(true);
         try {

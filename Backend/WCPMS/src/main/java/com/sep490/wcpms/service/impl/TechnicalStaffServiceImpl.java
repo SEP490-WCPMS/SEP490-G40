@@ -43,6 +43,9 @@ import java.time.LocalDateTime; // Thêm import
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher; // Thêm import
+import com.sep490.wcpms.event.SurveyReportSubmittedEvent; // Event nộp báo cáo khảo sát
+import com.sep490.wcpms.event.InstallationCompletedEvent; // Event hoàn tất lắp đặt
 
 @Service
 // Bạn có thể đổi sang @RequiredArgsConstructor nếu muốn dùng 'final' thay vì @Autowired
@@ -70,6 +73,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private SupportTicketMapper supportTicketMapper;
     @Autowired
     private CustomerRepository customerRepository;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher; // Publish domain events
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -107,21 +112,22 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     @Transactional
     public ContractDetailsDTO submitSurveyReport(Integer contractId, SurveyReportRequestDTO reportDTO, Integer staffId) {
         Contract contract = getContractAndVerifyAccess(contractId, staffId);
-
-        // --- SỬA LỖI MESSAGE ---
-        // Kiểm tra đúng status PENDING (Chờ khảo sát)
         if (contract.getContractStatus() != Contract.ContractStatus.PENDING) {
-            // Báo lỗi đúng status
             throw new IllegalStateException("Cannot submit report. Contract is not in PENDING status.");
         }
-
-        // Cập nhật thông tin từ DTO
         contractMapper.updateContractFromSurveyDTO(contract, reportDTO);
-
-        // Chuyển trạng thái sang PENDING_SURVEY_REVIEW
         contract.setContractStatus(Contract.ContractStatus.PENDING_SURVEY_REVIEW);
-
         Contract savedContract = contractRepository.save(contract);
+
+        // Publish event sau commit
+        eventPublisher.publishEvent(new SurveyReportSubmittedEvent(
+                savedContract.getId(),
+                savedContract.getContractNumber(),
+                staffId,
+                savedContract.getServiceStaff() != null ? savedContract.getServiceStaff().getId() : null,
+                savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
         return contractMapper.toDto(savedContract);
     }
 
@@ -215,7 +221,18 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // Khối code "3. CẬP NHẬT HỢP ĐỒNG" đã được thực hiện ở bước 3 và 5
         // --- HẾT PHẦN XÓA ---
 
-        return contractMapper.toDto(contract);
+        ContractDetailsDTO dto = contractMapper.toDto(contract);
+
+        // Publish event hoàn tất lắp đặt
+        eventPublisher.publishEvent(new InstallationCompletedEvent(
+                contract.getId(),
+                contract.getContractNumber(),
+                staffId,
+                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null,
+                contract.getCustomer() != null ? contract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
+        return dto;
     }
 
     // === CHUNG ===
@@ -609,3 +626,4 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         return supportTicketMapper.toDetailDto(ticket, activeServiceContract, installationToDisplay);
     }
 }
+
