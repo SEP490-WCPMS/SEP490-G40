@@ -12,7 +12,8 @@ import {
 import {
   LayoutDashboard,
   DollarSign,
-  ListChecks
+  ListChecks,
+  ClipboardPlus
 } from 'lucide-react'; // Import icons
 import { Link, useLocation } from 'react-router-dom';
 
@@ -34,6 +35,11 @@ const accountingMenuItems = [
     title: 'Quản lý Hóa đơn',
     url: '/accounting/invoices',
     icon: ListChecks,
+  },
+  {
+    title: 'Chờ Hóa đơn Chính thức',
+    url: '/accounting/contracts/eligible-installation',
+    icon: ClipboardPlus,
   },
   // Quản lý tuyến đọc (Reading Routes)
   {

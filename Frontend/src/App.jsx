@@ -56,6 +56,8 @@ import CreateServiceInvoice from './components/Pages/PagesAccounting/CreateServi
 import InvoiceDetail from './components/Pages/PagesAccounting/InvoiceDetail';
 import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
+import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
+import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -173,6 +175,8 @@ function App() {
             {/* --- HẾT --- */}
             {/* (Thêm các trang khác của Kế toán ở đây) */}
             <Route path="reading-routes" element={<ReadingRoutesList />} />
+            <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
+            <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>
