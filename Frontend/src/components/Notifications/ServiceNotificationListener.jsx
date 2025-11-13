@@ -1,6 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { useServiceNotification } from '../../hooks/useServiceNotification';
 import { ServiceNotificationContext } from '../../contexts/ServiceNotificationContext';
+import logger from '../../lib/logger';
 
 /**
  * 🔔 SERVICE STAFF ONLY - Notification Listener
@@ -20,20 +21,20 @@ export const ServiceNotificationListener = () => {
     const isServiceStaff = userRole === 'SERVICE_STAFF';
     
     // Debug log
-    console.log('[🔔 SERVICE DEBUG] User:', user);
-    console.log('[🔔 SERVICE DEBUG] Role:', userRole);
-    console.log('[🔔 SERVICE DEBUG] Is SERVICE_STAFF?', isServiceStaff);
+    logger.debug('[🔔 SERVICE DEBUG] User:', user);
+    logger.debug('[🔔 SERVICE DEBUG] Role:', userRole);
+    logger.debug('[🔔 SERVICE DEBUG] Is SERVICE_STAFF?', isServiceStaff);
     
     // ✅ SSE chỉ enable cho SERVICE_STAFF
     const { isConnected } = useServiceNotification((notification) => {
         const enriched = { ...notification, source: 'sse' };
-        console.log('[🔔 SERVICE] Adding notification:', enriched);
+        logger.debug('[🔔 SERVICE] Adding notification:', enriched);
         addNotification(enriched);
     }, isServiceStaff); // Enable chỉ khi là SERVICE_STAFF
 
     useEffect(() => {
         if (isConnected) {
-            console.log('[🔔 SERVICE] Listener connected');
+            logger.debug('[🔔 SERVICE] Listener connected');
         }
     }, [isConnected]);
 
@@ -45,7 +46,7 @@ export const ServiceNotificationListener = () => {
                 if (!ts) return;
                 const diffMin = (Date.now() - new Date(ts).getTime()) / 60000;
                 if (diffMin > 5) {
-                    console.warn('[🔔 SERVICE] No SSE events for', diffMin.toFixed(1), 'minutes');
+                    logger.warn('[🔔 SERVICE] No SSE events for', diffMin.toFixed(1), 'minutes');
                 }
             } catch {}
         }, 60000);
@@ -54,7 +55,7 @@ export const ServiceNotificationListener = () => {
 
     // Không log nếu không phải SERVICE_STAFF
     if (!isServiceStaff) {
-        console.debug('[🔔 SERVICE] SSE disabled - user is not SERVICE_STAFF, role is:', userRole);
+        logger.debug('[🔔 SERVICE] SSE disabled - user is not SERVICE_STAFF, role is:', userRole);
         return null;
     }
 

@@ -8,7 +8,7 @@ import { Bell, X } from 'lucide-react';
  * Hiển thị ở header LayoutService
  * Click → dropdown danh sách thông báo
  */
-export const ServiceNotificationBell = () => {
+export const ServiceNotificationBell = ({ compact = false }) => {
     const navigate = useNavigate();
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useContext(ServiceNotificationContext);
     const [isOpen, setIsOpen] = useState(false);
@@ -129,118 +129,66 @@ export const ServiceNotificationBell = () => {
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* Bell Button */}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '4px 8px',
-                    position: 'relative',
-                    color: '#1890ff',
-                    fontSize: '18px'
-                }}
-                title="Thông báo"
-            >
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                    <span style={{
-                        position: 'absolute',
-                        top: '-4px',
-                        right: '-4px',
-                        backgroundColor: '#f5222d',
-                        color: '#fff',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '11px',
-                        fontWeight: 'bold'
-                    }}>
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                )}
-            </button>
-
-            {/* Dropdown Panel */}
-            {isOpen && (
-                <div style={{
-                    position: 'absolute',
-                    right: '-8px',
-                    top: '100%',
-                    marginTop: '8px',
-                    backgroundColor: '#fff',
-                    borderRadius: '4px',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
-                    width: '360px',
-                    maxHeight: '500px',
-                    overflowY: 'auto',
-                    zIndex: 1000,
-                    border: '1px solid #f0f0f0'
-                }}>
-                    {/* Header */}
-                    <div style={{
-                        padding: '12px 16px',
-                        borderBottom: '1px solid #f0f0f0',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        backgroundColor: '#fafafa'
-                    }}>
-                        <span style={{ fontWeight: 'bold', fontSize: '14px' }}>
-                            Thông báo ({notifications.length})
+            {/* Compact trigger (used inside avatar dropdown) */}
+            {compact ? (
+                <button
+                    className="dropdown-item" // ✅ Class này đã có style chữ màu xanh/đen
+                    onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+                    title="Thông báo"
+                    // ❌ Bỏ style inline 'justifyContent'
+                >
+                    <Bell size={16} />
+                    <span>Thông báo</span>
+                    {unreadCount > 0 && (
+                        // ✨ ĐỔI SANG DÙNG CLASS CSS ✨
+                        <span className="notification-badge">
+                            {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                    )}
+                </button>
+            ) : (
+                /* Default standalone bell trigger (dùng TRÊN HEADER) */
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    // ✨ Chỉ dùng class, xóa bỏ TẤT CẢ style inline ✨
+                    className="notification-bell-button" 
+                    title="Thông báo"
+                >
+                    <Bell size={20} />
+                    {unreadCount > 0 && (
+                        // ✨ ĐỔI SANG DÙNG CLASS CSS ✨
+                        <span className="notification-badge">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                    )}
+                </button>
+            )}
+
+            {/* Dropdown Panel (giữ nguyên) */}
+            {isOpen && (
+                <div className="notification-panel">
+                    {/* Header */}
+                    <div className="notification-panel-header">
+                        <span className="notification-panel-title">Thông báo ({notifications.length})</span>
+                        <div className="notification-panel-actions">
                             {unreadCount > 0 && (
-                                <button
-                                    onClick={() => markAllAsRead()}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#1890ff',
-                                        cursor: 'pointer',
-                                        fontSize: '12px',
-                                        padding: 0
-                                    }}
-                                >
+                                <button className="notification-panel-markall" onClick={() => markAllAsRead()}>
                                     Đánh dấu tất cả
                                 </button>
                             )}
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#999',
-                                    cursor: 'pointer',
-                                    padding: 0
-                                }}
-                            >
+                            <button className="notification-panel-close" onClick={() => setIsOpen(false)}>
                                 <X size={16} />
                             </button>
                         </div>
                     </div>
 
                     {/* Notifications List */}
-                    <div>
+                    <div className="notification-list">
                         {notifications.length === 0 ? (
-                            <div style={{
-                                padding: '32px 16px',
-                                textAlign: 'center',
-                                color: '#999',
-                                fontSize: '13px'
-                            }}>
-                                Không có thông báo
-                            </div>
+                            <div className="notification-empty">Không có thông báo</div>
                         ) : (
-                            // ✅ Reverse order: Mới nhất ở trên
                             [...notifications].reverse().map((notif) => {
                                 const style = getNotificationStyle(notif.type);
-                                // ✅ Tính xem có phải mới nhất không (trong 5 giây)
-                                const isLatest = notifications.length > 0 && notif.id === notifications[notifications.length - 1].id;
                                 const notifTime = new Date(notif.timestamp);
                                 const now = new Date();
                                 const isVeryRecent = (now - notifTime) < 5000; // 5 giây
@@ -249,76 +197,21 @@ export const ServiceNotificationBell = () => {
                                     <div
                                         key={notif.id}
                                         onClick={() => handleNotificationClick(notif)}
-                                        style={{
-                                            padding: '12px 16px',
-                                            borderBottom: '1px solid #f0f0f0',
-                                            cursor: 'pointer',
-                                            backgroundColor: isVeryRecent ? '#fff7e6' : (notif.isRead ? '#fff' : '#f5f7fa'),
-                                            fontWeight: isVeryRecent ? '600' : 'normal',
-                                            borderLeft: isVeryRecent ? '3px solid #ff7a00' : 'none',
-                                            paddingLeft: isVeryRecent ? '13px' : '16px',
-                                            transition: 'background-color 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!isVeryRecent) {
-                                                e.currentTarget.style.backgroundColor = '#f5f7fa';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isVeryRecent) {
-                                                e.currentTarget.style.backgroundColor = notif.isRead ? '#fff' : '#f5f7fa';
-                                            }
-                                        }}
+                                        className={`notification-item ${notif.isRead ? 'read' : 'unread'} ${isVeryRecent ? 'recent' : ''}`}
                                     >
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <span style={{ fontSize: '16px', minWidth: '24px' }}>
-                                                {style.icon}
-                                            </span>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{
-                                                    fontSize: '13px',
-                                                    fontWeight: notif.isRead ? '500' : '600',
-                                                    marginBottom: '4px',
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'flex-start'
-                                                }}>
-                                                    <span>{style.title}</span>
-                                                    <span style={{
-                                                        fontSize: '11px',
-                                                        color: '#999',
-                                                        fontWeight: 'normal',
-                                                        whiteSpace: 'nowrap',
-                                                        marginLeft: '8px'
-                                                    }}>
-                                                        {formatTimeAgo(notif.timestamp)}
-                                                    </span>
+                                        <div className="notification-item-inner">
+                                            <span className="notification-item-icon">{style.icon}</span>
+                                            <div className="notification-item-body">
+                                                <div className="notification-item-title-row">
+                                                    <span className="notification-item-title">{style.title}</span>
+                                                    <span className="notification-item-time">{formatTimeAgo(notif.timestamp)}</span>
                                                 </div>
-                                                <div style={{
-                                                    fontSize: '12px',
-                                                    color: '#666'
-                                                }}>
-                                                    {notif.message}
-                                                </div>
+                                                <div className="notification-item-message">{notif.message}</div>
                                                 {notif.contractId && (
-                                                    <div style={{
-                                                        fontSize: '11px',
-                                                        color: '#999',
-                                                        marginTop: '4px'
-                                                    }}>
-                                                        Hợp đồng #{notif.contractId}
-                                                    </div>
+                                                    <div className="notification-item-contract">Hợp đồng #{notif.contractId}</div>
                                                 )}
                                             </div>
-                                            {!notif.isRead && (
-                                                <div style={{
-                                                    width: '8px',
-                                                    height: '8px',
-                                                    backgroundColor: '#1890ff',
-                                                    borderRadius: '50%',
-                                                    marginTop: '4px'
-                                                }} />
-                                            )}
+                                            {!notif.isRead && <div className="notification-item-dot" />}
                                         </div>
                                     </div>
                                 );

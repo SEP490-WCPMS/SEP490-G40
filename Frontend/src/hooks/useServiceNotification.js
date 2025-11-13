@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import apiClient from '../components/Services/apiClient';
+import logger from '../lib/logger';
 
 export const useServiceNotification = (onNotification, enabled = true) => {
     const eventSourceRef = useRef(null);
@@ -19,7 +20,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
         const events = bufferText.split(/\n\n|\r\n\r\n/);
         for (const raw of events) {
             if (!raw || raw.trim() === '') continue;
-            console.log('[SERVICE SSE] RAW event chunk:', raw); // 🔍 DIAGNOSTIC
+            logger.debug('[SERVICE SSE] RAW event chunk:', raw); // 🔍 DIAGNOSTIC
             const lines = raw.split(/\r?\n/);
             let eventName = 'message';
             let dataLines = [];
@@ -31,17 +32,17 @@ export const useServiceNotification = (onNotification, enabled = true) => {
                 }
             }
             const dataStr = dataLines.join('\n');
-            console.log('[SERVICE SSE] EVENT TYPE:', eventName, 'DATA:', dataStr); // 🔍 DIAGNOSTIC
+            logger.debug('[SERVICE SSE] EVENT TYPE:', eventName, 'DATA:', dataStr); // 🔍 DIAGNOSTIC
             if (eventName === 'notification' && dataStr) {
                 try {
                     const notification = JSON.parse(dataStr);
                     if (notification.type !== 'INIT') {
-                        console.log('[SERVICE SSE] Received:', notification);
+                        logger.debug('[SERVICE SSE] Received:', notification);
                         try { localStorage.setItem('sseLastEventAt', new Date().toISOString()); } catch {}
                         if (onNotificationRef.current) onNotificationRef.current(notification);
                     }
                 } catch (err) {
-                    console.error('[SERVICE SSE] Parse error:', err, 'for dataStr:', dataStr);
+                    logger.error('[SERVICE SSE] Parse error:', err, 'for dataStr:', dataStr);
                 }
             }
         }
@@ -55,11 +56,11 @@ export const useServiceNotification = (onNotification, enabled = true) => {
         }
         const token = localStorage.getItem('token');
         if (!token) {
-            console.warn('[SERVICE SSE] No token found');
+            logger.warn('[SERVICE SSE] No token found');
             return false;
         }
         try {
-            console.log('[SERVICE SSE] Connecting (header mode)');
+            logger.debug('[SERVICE SSE] Connecting (header mode)');
             connectingRef.current = true;
             abortControllerRef.current = new AbortController();
             // Use Vite dev proxy via relative path to avoid CORS in dev
@@ -76,7 +77,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
             });
 
             if (!res.ok) {
-                console.warn('[SERVICE SSE] Header mode failed with status', res.status);
+                logger.warn('[SERVICE SSE] Header mode failed with status', res.status);
                 abortControllerRef.current = null;
                 connectingRef.current = false;
                 return false;
@@ -84,7 +85,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
 
             methodRef.current = 'sse';
             retryCountRef.current = 0;
-            console.log('[SERVICE SSE] Connected (header mode)');
+            logger.debug('[SERVICE SSE] Connected (header mode)');
             if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
                 pollingIntervalRef.current = null;
@@ -105,12 +106,12 @@ export const useServiceNotification = (onNotification, enabled = true) => {
                 processSSEBuffer(parts.join('\n\n'));
             }
 
-            console.warn('[SERVICE SSE] Stream ended');
+            logger.warn('[SERVICE SSE] Stream ended');
             abortControllerRef.current = null;
             connectingRef.current = false;
             return false; // indicate not connected anymore
         } catch (error) {
-            console.error('[SERVICE SSE] Header mode error:', error);
+            logger.error('[SERVICE SSE] Header mode error:', error);
             abortControllerRef.current = null;
             connectingRef.current = false;
             return false;
@@ -120,21 +121,21 @@ export const useServiceNotification = (onNotification, enabled = true) => {
     const connectSSE = useCallback(() => {
         if (!enabled) return;
         if (connectingRef.current) {
-            console.log('[SERVICE SSE] Skipping connect attempt - already connecting');
+            logger.debug('[SERVICE SSE] Skipping connect attempt - already connecting');
             return;
         }
         const token = localStorage.getItem('token');
         if (!token) {
-            console.warn('[SERVICE SSE] No token found');
+            logger.warn('[SERVICE SSE] No token found');
             return;
         }
         try {
-            console.log('[SERVICE SSE] Connecting (EventSource-first)');
+            logger.debug('[SERVICE SSE] Connecting (EventSource-first)');
             // Try EventSource with token in query first to avoid CORS preflight in many dev setups.
             const encodedToken = encodeURIComponent(token);
             const streamUrl = `/api/service/notifications/stream-token?token=${encodedToken}`;
-            console.log('[SERVICE SSE] Full URL:', streamUrl);
-            console.log('[SERVICE SSE] Token length:', token.length);
+            logger.debug('[SERVICE SSE] Full URL:', streamUrl);
+            logger.debug('[SERVICE SSE] Token length:', token.length);
             let opened = false;
 
             // Clean up any existing EventSource
@@ -150,7 +151,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
 
             const openTimeout = setTimeout(() => {
                 if (!opened) {
-                    console.warn('[SERVICE SSE] EventSource did not open in time; starting polling');
+                    logger.warn('[SERVICE SSE] EventSource did not open in time; starting polling');
                     try { eventSourceRef.current.close(); } catch {}
                     eventSourceRef.current = null;
                     connectingRef.current = false;
@@ -163,7 +164,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
                 opened = true;
                 connectingRef.current = false;
                 clearTimeout(openTimeout);
-                console.log('[SERVICE SSE] Connected (EventSource)');
+                logger.debug('[SERVICE SSE] Connected (EventSource)');
                 if (pollingIntervalRef.current) {
                     clearInterval(pollingIntervalRef.current);
                     pollingIntervalRef.current = null;
@@ -173,7 +174,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
             // BE sends an init event when connected
             eventSourceRef.current.addEventListener('init', () => {
                 try { localStorage.setItem('sseLastEventAt', new Date().toISOString()); } catch {}
-                console.log('[SERVICE SSE] Init received');
+                logger.debug('[SERVICE SSE] Init received');
             });
 
             // Optional keep-alive pings
@@ -183,20 +184,20 @@ export const useServiceNotification = (onNotification, enabled = true) => {
 
             eventSourceRef.current.addEventListener('notification', (event) => {
                 try {
-                    console.log('[SERVICE SSE] RAW event.data:', event.data); // 🔍 DIAGNOSTIC: log raw data before parsing
+                    logger.debug('[SERVICE SSE] RAW event.data:', event.data); // 🔍 DIAGNOSTIC: log raw data before parsing
                     const notification = JSON.parse(event.data);
-                    console.log('[SERVICE SSE] PARSED notification:', JSON.stringify(notification)); // 🔍 DIAGNOSTIC: log parsed object
+                    logger.debug('[SERVICE SSE] PARSED notification:', JSON.stringify(notification)); // 🔍 DIAGNOSTIC: log parsed object
                     if (notification.type === 'INIT') return;
-                    console.log('[SERVICE SSE] Received:', notification);
+                    logger.debug('[SERVICE SSE] Received:', notification);
                     try { localStorage.setItem('sseLastEventAt', new Date().toISOString()); } catch {}
                     if (onNotificationRef.current) {
-                        console.log('[SERVICE SSE] Calling onNotificationRef.current with:', notification); // 🔍 Confirm callback invoked
+                        logger.debug('[SERVICE SSE] Calling onNotificationRef.current with:', notification); // 🔍 Confirm callback invoked
                         onNotificationRef.current(notification);
                     } else {
-                        console.warn('[SERVICE SSE] onNotificationRef.current is NOT set!'); // 🔍 Critical: callback missing
+                        logger.warn('[SERVICE SSE] onNotificationRef.current is NOT set!'); // 🔍 Critical: callback missing
                     }
                 } catch (err) {
-                    console.error('[SERVICE SSE] Parse error:', err, 'for data:', event.data); // 🔍 DIAGNOSTIC: include raw data in error
+                    logger.error('[SERVICE SSE] Parse error:', err, 'for data:', event.data); // 🔍 DIAGNOSTIC: include raw data in error
                 }
             });
 
@@ -204,7 +205,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
             eventSourceRef.current.addEventListener('message', (event) => {
                 try {
                     if (!event?.data) return;
-                    console.log('[SERVICE SSE][message] RAW fallback data:', event.data); // 🔍 DIAGNOSTIC
+                    logger.debug('[SERVICE SSE][message] RAW fallback data:', event.data); // 🔍 DIAGNOSTIC
                     const data = JSON.parse(event.data);
                     // Some servers send untyped messages; normalize to notification shape if possible
                     if (data && (data.type || data.title || data.message)) {
@@ -215,30 +216,30 @@ export const useServiceNotification = (onNotification, enabled = true) => {
                             contractId: data.referenceId || data.contractId,
                             timestamp: data.createdAt || data.timestamp
                         };
-                        console.log('[SERVICE SSE][message] Fallback received:', normalized);
+                        logger.debug('[SERVICE SSE][message] Fallback received:', normalized);
                         try { localStorage.setItem('sseLastEventAt', new Date().toISOString()); } catch {}
                         if (onNotificationRef.current) {
-                            console.log('[SERVICE SSE][message] Calling onNotificationRef.current'); // 🔍 Confirm callback
+                            logger.debug('[SERVICE SSE][message] Calling onNotificationRef.current'); // 🔍 Confirm callback
                             onNotificationRef.current(normalized);
                         }
                     } else {
-                        console.debug('[SERVICE SSE][message] Ignored unrecognized payload:', data);
+                        logger.debug('[SERVICE SSE][message] Ignored unrecognized payload:', data);
                     }
                 } catch (err) {
-                    console.debug('[SERVICE SSE][message] Non-JSON payload:', err);
+                    logger.debug('[SERVICE SSE][message] Non-JSON payload:', err);
                 }
             });
 
             eventSourceRef.current.addEventListener('error', (event) => {
-                console.error('[SERVICE SSE] EventSource error:', {
+                logger.error('[SERVICE SSE] EventSource error:', {
                     readyState: eventSourceRef.current?.readyState,
                     readyStateReadyState: EventSource.CLOSED,
                     event: event
                 });
-                console.error('[SERVICE SSE] EventSource readyState codes - CONNECTING:', EventSource.CONNECTING, 'OPEN:', EventSource.OPEN, 'CLOSED:', EventSource.CLOSED);
+                logger.error('[SERVICE SSE] EventSource readyState codes - CONNECTING:', EventSource.CONNECTING, 'OPEN:', EventSource.OPEN, 'CLOSED:', EventSource.CLOSED);
                 // If EventSource is closed, start polling
                 if (eventSourceRef.current && eventSourceRef.current.readyState === EventSource.CLOSED) {
-                    console.warn('[SERVICE SSE] EventSource closed; starting polling');
+                    logger.warn('[SERVICE SSE] EventSource closed; starting polling');
                     clearTimeout(openTimeout);
                     opened = true; // Prevent double-starting polling
                     try { eventSourceRef.current.close(); } catch {}
@@ -249,7 +250,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
                 }
             });
         } catch (error) {
-            console.error('[SERVICE SSE] Setup error:', error);
+            logger.error('[SERVICE SSE] Setup error:', error);
             connectingRef.current = false;
             scheduleSSEReconnect();
         }
@@ -262,7 +263,7 @@ export const useServiceNotification = (onNotification, enabled = true) => {
             // Log minimal identity info to correlate with backend filters (no token printed)
             let userInfo = null;
             try { userInfo = JSON.parse(localStorage.getItem('user') || 'null'); } catch {}
-            console.log('[POLLING] Fetching', { userId: userInfo?.id, role: userInfo?.roleName });
+            logger.debug('[POLLING] Fetching', { userId: userInfo?.id, role: userInfo?.roleName });
             const [historyRes, unreadRes] = await Promise.all([
                 apiClient.get('/service/notifications', { params: { page: 0, size: 20, sort: 'createdAt,desc' } }),
                 apiClient.get('/service/notifications/unread-count')
@@ -270,13 +271,13 @@ export const useServiceNotification = (onNotification, enabled = true) => {
 
             const historyData = historyRes.data || {};
             const content = historyData.content || [];
-            console.log('[POLLING] Got', content.length, 'notifications', 'Unread:', unreadRes.data);
+            logger.debug('[POLLING] Got', content.length, 'notifications', 'Unread:', unreadRes.data);
 
             const stored = JSON.parse(localStorage.getItem('serviceNotifications') || '[]');
             const newItems = content.filter(c => !stored.some(s => s.id === c.id));
 
             if (newItems.length > 0) {
-                console.log('[POLLING] Found', newItems.length, 'new items, calling onNotification'); // 🔍 DEBUG
+                logger.debug('[POLLING] Found', newItems.length, 'new items, calling onNotification'); // 🔍 DEBUG
                 newItems.forEach(item => {
                     const notification = {
                         id: item.id,
@@ -287,33 +288,33 @@ export const useServiceNotification = (onNotification, enabled = true) => {
                         isRead: item.read,
                         timestamp: item.createdAt
                     };
-                    console.log('[POLLING] Processing item:', notification); // 🔍 DEBUG
+                    logger.debug('[POLLING] Processing item:', notification); // 🔍 DEBUG
                     if (onNotification) {
-                        console.log('[POLLING] Calling onNotification'); // 🔍 DEBUG callback invoked
+                        logger.debug('[POLLING] Calling onNotification'); // 🔍 DEBUG callback invoked
                         onNotification(notification);
                     } else {
-                        console.warn('[POLLING] onNotification is NOT set!'); // 🔍 Critical
+                        logger.warn('[POLLING] onNotification is NOT set!'); // 🔍 Critical
                     }
                 });
             } else {
-                console.log('[POLLING] No new items'); // 🔍 DEBUG
+                logger.debug('[POLLING] No new items'); // 🔍 DEBUG
             }
         } catch (error) {
             const status = error?.response?.status;
-            console.error('[POLLING] Error:', status || error.message);
+            logger.error('[POLLING] Error:', status || error.message);
             if (status === 401) {
                 if (pollingIntervalRef.current) {
                     clearInterval(pollingIntervalRef.current);
                     pollingIntervalRef.current = null;
                 }
-                console.warn('[POLLING] 401 - stopped polling');
+                logger.warn('[POLLING] 401 - stopped polling');
             }
         }
     }, [onNotification]);
 
     const startPolling = useCallback(() => {
         if (pollingIntervalRef.current) return;
-        console.log('[POLLING] Starting');
+        logger.debug('[POLLING] Starting');
         methodRef.current = 'polling';
         pollNotifications();
         pollingIntervalRef.current = setInterval(pollNotifications, 10000);
@@ -329,18 +330,18 @@ export const useServiceNotification = (onNotification, enabled = true) => {
     const scheduleSSEReconnect = useCallback(() => {
         const delay = Math.min(2000 * Math.pow(2, retryCountRef.current), 60000);
         retryCountRef.current++;
-        console.log(`[SSE] Reconnecting in ${delay / 1000}s`);
+        logger.debug(`[SSE] Reconnecting in ${delay / 1000}s`);
         retryTimeoutRef.current = setTimeout(() => connectSSE(), delay);
     }, [connectSSE]);
 
     useEffect(() => {
         // Only initiate (or re-initiate) when enabled changes from false->true
-        console.log('[SERVICE SSE EFFECT] enabled:', enabled, 'connectSSE defined:', !!connectSSE); // 🔍 DEBUG
+        logger.debug('[SERVICE SSE EFFECT] enabled:', enabled, 'connectSSE defined:', !!connectSSE); // 🔍 DEBUG
         if (enabled) {
-            console.log('[SERVICE SSE EFFECT] Calling connectSSE()'); // 🔍 DEBUG
+            logger.debug('[SERVICE SSE EFFECT] Calling connectSSE()'); // 🔍 DEBUG
             connectSSE();
         } else {
-            console.log('[SERVICE SSE EFFECT] disabled, cleaning up'); // 🔍 DEBUG
+            logger.debug('[SERVICE SSE EFFECT] disabled, cleaning up'); // 🔍 DEBUG
             // if disabled, ensure cleanup
             if (eventSourceRef.current) { try { eventSourceRef.current.close(); } catch {}; eventSourceRef.current = null; }
             if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null; }

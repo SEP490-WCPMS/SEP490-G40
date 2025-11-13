@@ -4,6 +4,7 @@
  */
 
 import apiClient from './apiClient';
+import logger from '../../lib/logger';
 
 /**
  * Lấy lịch sử thông báo (phân trang)
@@ -18,7 +19,7 @@ export const getNotificationHistory = async (page = 0, size = 20) => {
         });
         return response.data;
     } catch (error) {
-        console.error('[API] Lỗi khi tải lịch sử thông báo:', error);
+        logger.error('[API] Lỗi khi tải lịch sử thông báo:', error);
         throw error;
     }
 };
@@ -32,7 +33,7 @@ export const getUnreadNotificationCount = async () => {
         const response = await apiClient.get('/service/notifications/unread-count');
         return response.data;
     } catch (error) {
-        console.error('[API] Lỗi khi lấy số thông báo chưa đọc:', error);
+        logger.error('[API] Lỗi khi lấy số thông báo chưa đọc:', error);
         throw error;
     }
 };
@@ -47,10 +48,10 @@ export const markNotificationAsRead = async (notificationId) => {
         const response = await apiClient.patch(
             `/service/notifications/${notificationId}/read`
         );
-        console.log('[API] Đánh dấu thông báo là đã đọc:', notificationId);
+        logger.debug('[API] Đánh dấu thông báo là đã đọc:', notificationId);
         return response.data;
     } catch (error) {
-        console.error('[API] Lỗi khi đánh dấu đã đọc:', error);
+        logger.error('[API] Lỗi khi đánh dấu đã đọc:', error);
         throw error;
     }
 };
@@ -64,10 +65,10 @@ export const markAllNotificationsAsRead = async () => {
         const response = await apiClient.patch(
             '/service/notifications/mark-all-read'
         );
-        console.log('[API] Đánh dấu tất cả thông báo là đã đọc');
+        logger.debug('[API] Đánh dấu tất cả thông báo là đã đọc');
         return response.data;
     } catch (error) {
-        console.error('[API] Lỗi khi đánh dấu tất cả đã đọc:', error);
+        logger.error('[API] Lỗi khi đánh dấu tất cả đã đọc:', error);
         throw error;
     }
 };
@@ -85,10 +86,10 @@ export const saveNotificationToDB = async (notification) => {
             contractId: notification.contractId,
             timestamp: notification.timestamp
         });
-        console.log('[API] Lưu thông báo vào DB:', notification.id);
+        logger.debug('[API] Lưu thông báo vào DB:', notification.id);
         return response.data;
     } catch (error) {
-        console.error('[API] Lỗi khi lưu thông báo:', error);
+        logger.error('[API] Lỗi khi lưu thông báo:', error);
         throw error;
     }
 };
@@ -102,7 +103,7 @@ export const checkNotificationHealth = async () => {
         const response = await apiClient.get('/service/notifications/health');
         return response.data;
     } catch (error) {
-        console.warn('[API] Lỗi kiểm tra trạng thái thông báo:', error);
+        logger.warn('[API] Lỗi kiểm tra trạng thái thông báo:', error);
         return null;
     }
 };

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import apiClient from '../components/Services/apiClient';
+import logger from '../lib/logger';
 
 /**
  * 🔔 SERVICE STAFF ONLY - Notification Context (Hybrid: localStorage + DB)
@@ -26,7 +27,7 @@ export const ServiceNotificationProvider = ({ children }) => {
             const stored = localStorage.getItem(STORAGE_KEY);
             return stored ? JSON.parse(stored) : [];
         } catch (e) {
-            console.warn('[NOTIF] Failed to load from localStorage:', e);
+            logger.warn('[NOTIF] Failed to load from localStorage:', e);
             return [];
         }
     });
@@ -39,7 +40,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                 return notifs.filter(n => !n.isRead).length;
             }
         } catch (e) {
-            console.warn('[NOTIF] Failed to calculate unreadCount:', e);
+            logger.warn('[NOTIF] Failed to calculate unreadCount:', e);
         }
         return 0;
     });
@@ -53,7 +54,7 @@ export const ServiceNotificationProvider = ({ children }) => {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
         } catch (e) {
-            console.warn('[NOTIF LOCAL] Failed to save:', e);
+            logger.warn('[NOTIF LOCAL] Failed to save:', e);
         }
     }, [notifications]);
 
@@ -79,7 +80,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                 return next;
             });
         } catch (error) {
-            console.error('[NOTIF DB SYNC] Failed to save:', error);
+            logger.error('[NOTIF DB SYNC] Failed to save:', error);
             setPendingSaves(prev => {
                 const next = new Set(prev);
                 next.delete(notification.id);
@@ -177,12 +178,12 @@ export const ServiceNotificationProvider = ({ children }) => {
         const isServerId = id && !String(id).startsWith('notif_');
         if (!isServerId) return; // local-only notification
 
-        try {
+            try {
             apiClient.patch(`/service/notifications/${id}/read`).catch(err => 
-                console.warn('[NOTIF DB SYNC] Failed to mark as read in DB:', err)
+                logger.warn('[NOTIF DB SYNC] Failed to mark as read in DB:', err)
             );
         } catch (e) {
-            console.warn('[NOTIF DB SYNC] Error:', e);
+            logger.warn('[NOTIF DB SYNC] Error:', e);
         }
     }, []);
 
@@ -193,11 +194,11 @@ export const ServiceNotificationProvider = ({ children }) => {
         setUnreadCount(0);
 
         // ✅ Sync to DB
-        try {
+            try {
             await apiClient.patch('/service/notifications/mark-all-read');
-            console.log('[NOTIF DB SYNC] Marked all as read in DB');
+            logger.debug('[NOTIF DB SYNC] Marked all as read in DB');
         } catch (error) {
-            console.warn('[NOTIF DB SYNC] Failed to mark all as read:', error);
+            logger.warn('[NOTIF DB SYNC] Failed to mark all as read:', error);
         }
     }, []);
 
@@ -208,8 +209,8 @@ export const ServiceNotificationProvider = ({ children }) => {
                 params: { page, size }
             });
             return response.data;
-        } catch (error) {
-            console.error('[NOTIF HISTORY] Failed:', error);
+            } catch (error) {
+            logger.error('[NOTIF HISTORY] Failed:', error);
             throw error;
         }
     }, []);
@@ -242,7 +243,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                 }
             }
         } catch (error) {
-            console.error('[NOTIF REFRESH] Error:', error.message);
+            logger.error('[NOTIF REFRESH] Error:', error.message);
         }
     }, [notifications, addNotification]);
 
@@ -258,7 +259,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                 setUnreadCount(dbUnreadCount);
             }
         } catch (error) {
-            console.warn('[NOTIF DB SYNC] Failed to get unread count:', error);
+            logger.warn('[NOTIF DB SYNC] Failed to get unread count:', error);
         }
     }, [unreadCount]);
 
@@ -301,7 +302,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                     setUnreadCount(mergedUnread);
                 }
             } catch (error) {
-                console.warn('[NOTIF INIT] Failed to load history:', error);
+                logger.warn('[NOTIF INIT] Failed to load history:', error);
             }
         };
 
@@ -363,7 +364,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                         newNotifications.forEach(n => addNotification(n));
                     }
                 }
-            } catch (error) {
+                } catch (error) {
                 // ⚠️ Bỏ qua lỗi polling im lặng (backend có thể chưa allow)
                 // SSE hoạt động → polling là fallback thôi
                 if (error.response?.status !== 401 && error.message === 'canceled') {
