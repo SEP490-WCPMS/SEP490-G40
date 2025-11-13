@@ -40,7 +40,6 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final WaterPriceTypeRepository priceTypeRepository; // (Cần tạo Repo Bảng 5)
     private final CustomerRepository customerRepository; // <-- Cần Repo này
     private final ContractRepository contractRepository; // <-- Cần Repo này
-    private final ContractMapper contractMapper; // (Cần tạo Mapper Bảng )
 
     @Override
     @Transactional(readOnly = true)
@@ -226,8 +225,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         LocalDate startOfYear = invoiceDate.withDayOfYear(1);
         LocalDate endOfYear = invoiceDate.withMonth(12).withDayOfMonth(31);
 
-        long countThisYear = invoiceRepository.countByInvoiceTypeAndInvoiceDateBetween(
-                Invoice.InvoiceType.CONTRACT,
+        long countThisYear = invoiceRepository.countByInvoiceDateBetween(
                 startOfYear,
                 endOfYear
         );
@@ -244,8 +242,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         // 2. Lọc bỏ HĐ đã có hóa đơn lắp đặt (CONTRACT)
         List<ContractDTO> list = activeContracts.getContent().stream()
-                .filter(c -> !invoiceRepository.existsByContract_IdAndInvoiceType(
-                        c.getId(), Invoice.InvoiceType.CONTRACT
+                .filter(c -> !invoiceRepository.existsByContract_Id(
+                        c.getId()
                 ))
                 .map(contract -> {
                     ContractDTO dto = new ContractDTO();
@@ -284,8 +282,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         }
 
         // 3. Kiểm tra đã có HĐ lắp đặt chưa
-        boolean exists = invoiceRepository.existsByContract_IdAndInvoiceType(
-                contract.getId(), Invoice.InvoiceType.CONTRACT
+        boolean exists = invoiceRepository.existsByContract_Id(
+                contract.getId()
         );
         if (exists) {
             throw new IllegalStateException("Hợp đồng này đã có hóa đơn lắp đặt");
@@ -337,9 +335,6 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
                     .orElseThrow(() -> new ResourceNotFoundException("Staff not found: " + staffId));
             inv.setAccountingStaff(staff);
         }
-
-        // Loại hóa đơn lắp đặt
-        inv.setInvoiceType(Invoice.InvoiceType.CONTRACT);
 
         Invoice saved = invoiceRepository.save(inv);
         return invoiceMapper.toDto(saved);

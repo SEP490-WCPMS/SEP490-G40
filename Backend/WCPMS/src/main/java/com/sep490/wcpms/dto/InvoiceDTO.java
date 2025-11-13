@@ -14,7 +14,6 @@ public class InvoiceDTO {
 
     private Integer id;
     private String invoiceNumber; // Số hóa đơn (vd: HD-123 hoặc DV-456)
-    private String invoiceType;
 
     // --- Thông tin Khách hàng (Lấy từ Bảng 7) ---
     private Integer customerId;

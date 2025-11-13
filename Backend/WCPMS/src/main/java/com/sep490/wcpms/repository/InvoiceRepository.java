@@ -59,13 +59,12 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     // --- THÊM 2 HÀM MỚI ---
 
     // Đếm số hóa đơn theo loại và theo khoảng ngày (để đánh số CN-YYYY-xxxx)
-    long countByInvoiceTypeAndInvoiceDateBetween(
-            Invoice.InvoiceType type,
+    long countByInvoiceDateBetween(
             LocalDate startDate,
             LocalDate endDate
     );
 
-    boolean existsByContract_IdAndInvoiceType(Integer contractId, Invoice.InvoiceType type);
+    boolean existsByContract_Id(Integer contractId);
 
     // --- HẾT PHẦN THÊM ---
 

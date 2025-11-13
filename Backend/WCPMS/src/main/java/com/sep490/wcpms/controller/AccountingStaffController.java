@@ -133,7 +133,6 @@ public class AccountingStaffController {
     /**
      * Tạo hóa đơn lắp đặt (CONTRACT invoice) cho 1 Hợp đồng ACTIVE.
      * POST /api/accounting/invoices/installation
-     *
      * Body:
      * {
      *   "contractId": 3,
