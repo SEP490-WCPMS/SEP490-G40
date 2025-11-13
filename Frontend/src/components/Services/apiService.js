@@ -187,7 +187,7 @@ export const getTechnicalStaffList = async () => {
  * @returns {Promise<ContractDTO>}
  */
 export const createContract = (contractData) => {
-    return apiClient.post(`${API_BASE_URL}/v1/contracts`, contractData);
+    return axios.post(`${API_BASE_URL}/v1/contracts`, contractData);
 };
 
 /**

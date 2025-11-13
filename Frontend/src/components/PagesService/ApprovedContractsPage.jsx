@@ -36,7 +36,7 @@ const ApprovedContractsPage = () => {
         setLoading(true);
         try {
             const response = await getServiceContracts({
-                page: page - 1, // API dùng 0-based indexing
+                page: page - 1, // API sử dụng 0-based indexing
                 size: pageSize,
                 status: 'APPROVED',
                 keyword: filters.keyword
@@ -83,10 +83,10 @@ const ApprovedContractsPage = () => {
         if (actionType === 'sendToSign') {
             try {
                 await sendContractToSign(contract.id);
-                message.success('Đã gửi hợp đồng cho khách hàng ký.');
+                alert('✅ Đã gửi hợp đồng cho khách hàng ký.');
                 fetchContracts(pagination.current, pagination.pageSize);
             } catch (err) {
-                message.error('Gửi ký thất bại.');
+                alert('❌ Gửi ký thất bại.');
                 console.error(err);
             }
             return;
@@ -188,11 +188,12 @@ const ApprovedContractsPage = () => {
                     okText="Đóng"
                     cancelButtonProps={{ style: { display: 'none' } }}
                     destroyOnClose
-                    width={750}
+                    width={800}
                 >
                     <Spin spinning={modalLoading}>
                         <Descriptions bordered size="small" column={1}>
-                            <Descriptions.Item label="Số Hợp đồng">
+                            {/* PHẦN 1: THÔNG TIN KHÁCH HÀNG */}
+                            <Descriptions.Item label="Số Hợp đồng" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
                                 {selectedContract.contractNumber || '—'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Khách hàng">
@@ -201,13 +202,39 @@ const ApprovedContractsPage = () => {
                             <Descriptions.Item label="Mã Khách hàng">
                                 {selectedContract.customerCode || '—'}
                             </Descriptions.Item>
-                            {selectedContract.contractType && (
-                                <Descriptions.Item label="Loại Hợp đồng">
-                                    {selectedContract.contractType}
+                            {selectedContract.applicationDate && (
+                                <Descriptions.Item label="Ngày đăng ký">
+                                    {moment(selectedContract.applicationDate).format('DD/MM/YYYY')}
                                 </Descriptions.Item>
                             )}
+
+                            {/* PHẦN 2: THÔNG TIN KHẢO SÁT & KỸ THUẬT */}
+                            {selectedContract.surveyDate && (
+                                <Descriptions.Item label="Ngày khảo sát" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
+                                    {moment(selectedContract.surveyDate).format('DD/MM/YYYY')}
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.technicalStaffName && (
+                                <Descriptions.Item label="Nhân viên Kỹ thuật">
+                                    {selectedContract.technicalStaffName}
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.technicalDesign && (
+                                <Descriptions.Item label="Thiết kế Kỹ thuật">
+                                    <div className="whitespace-pre-wrap">
+                                        {selectedContract.technicalDesign}
+                                    </div>
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.estimatedCost !== undefined && selectedContract.estimatedCost !== null ? (
+                                <Descriptions.Item label="Chi phí Ước tính">
+                                    {Number(selectedContract.estimatedCost).toLocaleString('vi-VN')} đ
+                                </Descriptions.Item>
+                            ) : null}
+
+                            {/* PHẦN 3: THÔNG TIN HỢP ĐỒNG */}
                             {selectedContract.startDate && (
-                                <Descriptions.Item label="Ngày bắt đầu">
+                                <Descriptions.Item label="Ngày bắt đầu" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
                                     {moment(selectedContract.startDate).format('DD/MM/YYYY')}
                                 </Descriptions.Item>
                             )}
@@ -216,7 +243,7 @@ const ApprovedContractsPage = () => {
                                     {moment(selectedContract.endDate).format('DD/MM/YYYY')}
                                 </Descriptions.Item>
                             )}
-                            {selectedContract.contractValue || selectedContract.contractValue === 0 ? (
+                            {selectedContract.contractValue !== undefined && selectedContract.contractValue !== null ? (
                                 <Descriptions.Item label="Giá trị Hợp đồng">
                                     {Number(selectedContract.contractValue).toLocaleString('vi-VN')} đ
                                 </Descriptions.Item>
@@ -226,11 +253,21 @@ const ApprovedContractsPage = () => {
                                     {selectedContract.paymentMethod}
                                 </Descriptions.Item>
                             )}
+                            {selectedContract.serviceStaffName && (
+                                <Descriptions.Item label="Nhân viên Dịch vụ">
+                                    {selectedContract.serviceStaffName}
+                                </Descriptions.Item>
+                            )}
                             {selectedContract.notes && (
                                 <Descriptions.Item label="Ghi chú">
                                     <div className="whitespace-pre-wrap">
                                         {selectedContract.notes}
                                     </div>
+                                </Descriptions.Item>
+                            )}
+                            {selectedContract.priceTypeName && (
+                                <Descriptions.Item label="Loại giá nước">
+                                    {selectedContract.priceTypeName}
                                 </Descriptions.Item>
                             )}
                         </Descriptions>

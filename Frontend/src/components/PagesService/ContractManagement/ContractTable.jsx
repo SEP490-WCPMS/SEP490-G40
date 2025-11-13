@@ -191,6 +191,9 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
       pagination={pagination}
       onChange={onPageChange}
       rowKey="id"
+      onRow={(record) => ({
+        'data-contract-id': record.id
+      })}
       className="bg-white rounded-lg shadow"
       size="middle"
       bordered={false}

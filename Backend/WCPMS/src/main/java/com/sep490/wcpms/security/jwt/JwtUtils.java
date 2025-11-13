@@ -81,6 +81,7 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setSubject(userPrincipal.getUsername()) // Đặt username làm subject
+                .claim("userId", userPrincipal.getId()) // ✅ THÊM userId vào token
                 .setIssuedAt(new Date()) // Thời gian phát hành
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs)) // Thời gian hết hạn
                 .signWith(this.signingKey, SignatureAlgorithm.HS256) // Ký bằng key đã khởi tạo và thuật toán HS256
@@ -113,6 +114,21 @@ public class JwtUtils {
                 .parseClaimsJws(token) // Parse và xác thực token
                 .getBody()            // Lấy phần payload (claims)
                 .getSubject();         // Lấy subject (username)
+    }
+
+    /**
+     * ✅ Lấy userId từ JWT token.
+     * @param token Chuỗi JWT token.
+     * @return UserId (Integer).
+     */
+    public Integer getUserIdFromJwtToken(String token) {
+        // Parse token và lấy claim "userId"
+        return Jwts.parserBuilder()
+                .setSigningKey(key())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("userId", Integer.class); // ✅ Lấy userId từ claim
     }
 
     /**
