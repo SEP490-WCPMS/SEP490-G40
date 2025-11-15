@@ -168,7 +168,6 @@ function CreateInstallationInvoice() {
                             </p>
                             <p className="flex items-center">
                                 <span className="font-medium text-gray-600 mr-1">Giá trị HĐ: </span>
-                                <DollarSign size={14} className="text-emerald-600 mr-0.5" />
                                 { (contract.contractValue || 0).toLocaleString('vi-VN') } đ
                             </p>
                         </div>
