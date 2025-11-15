@@ -23,6 +23,17 @@ public class ContractDetailsDTO {
     private LocalDate surveyDate;
     private String technicalDesign;
     private BigDecimal estimatedCost;
+    // --- THÊM 2 TRƯỜNG MỚI ---
+    /**
+     * Lấy từ Bảng 10 (contract_usage_details)
+     */
+    private String priceTypeName;
+
+    /**
+     * Lấy từ Bảng 8 (contracts) -> Bảng 4 (reading_routes)
+     */
+    private String routeName;
+    // --- HẾT PHẦN THÊM ---
 
     // Thông tin kỹ thuật viên
     private Integer technicalStaffId;

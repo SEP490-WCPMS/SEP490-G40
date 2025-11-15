@@ -44,6 +44,13 @@ public class InvoiceMapper {
             dto.setCustomerId(customer.getId());
             dto.setCustomerName(customer.getCustomerName());
             dto.setCustomerAddress(customer.getAddress());
+            // --- THÊM LOGIC LẤY SĐT/EMAIL ---
+            // (Giả định Customer entity đã liên kết với Account)
+            if (customer.getAccount() != null) {
+                dto.setCustomerPhone(customer.getAccount().getPhone());
+                dto.setCustomerEmail(customer.getAccount().getEmail());
+            }
+            // --- HẾT PHẦN THÊM ---
         }
 
         // 3. Thông tin Hợp đồng (Từ Bảng 8)

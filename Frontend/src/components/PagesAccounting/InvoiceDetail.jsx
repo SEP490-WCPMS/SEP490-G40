@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getInvoiceDetail } from '../../Services/apiAccountingStaff';
+import { getInvoiceDetail } from '../Services/apiAccountingStaff';
 import { ArrowLeft, User, Home, Hash, DollarSign, Calendar, FileText, AlertCircle, Save, Info } from 'lucide-react';
 import moment from 'moment';
 

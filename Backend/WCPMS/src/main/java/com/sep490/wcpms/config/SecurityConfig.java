@@ -110,10 +110,12 @@ public class SecurityConfig {
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
+                                .requestMatchers("/api/payment/webhook/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
                                 .requestMatchers("/api/readings/**").hasAuthority("CASHIER_STAFF")
+                                .requestMatchers("/api/cashier/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/meter-scan/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/service/**").hasAuthority("SERVICE_STAFF")
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getUnbilledFeeDetail, createServiceInvoice } from '../../Services/apiAccountingStaff'; // Đảm bảo import đúng
+import { getUnbilledFeeDetail, createServiceInvoice } from '../Services/apiAccountingStaff'; // Đảm bảo import đúng
 import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
 import moment from 'moment';
 
@@ -48,7 +48,7 @@ function CreateServiceInvoice() {
 
                 // Pre-fill form
                 setFormData({
-                    invoiceNumber: `DV-${calibrationId}-${moment().format('MMYYYY')}`,
+                    invoiceNumber: `DVKĐ${calibrationId}${moment().format('MMYYYY')}`,
                     invoiceDate: moment().format('YYYY-MM-DD'),
                     dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
                     subtotalAmount: subtotal,

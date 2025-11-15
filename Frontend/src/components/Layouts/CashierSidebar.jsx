@@ -9,21 +9,33 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'; // Đường dẫn component UI của bạn
-import { LayoutDashboard, ScanLine } from 'lucide-react'; // Icons (Thêm ScanLine)
+import { LayoutDashboard, ScanLine, Banknote, ListTodo } from 'lucide-react'; // Icons (Thêm ScanLine)
 import { Link, useLocation } from 'react-router-dom';
 
 // Menu Items cho Thu Ngân
 const cashierMenuItems = [
-  // { // Ví dụ: Dashboard Thu Ngân nếu có
-  //   title: 'Dashboard',
-  //   url: '/cashier',
-  //   icon: LayoutDashboard,
-  // },
+  { // Ví dụ: Dashboard Thu Ngân nếu có
+    title: 'Dashboard',
+    url: '/cashier',
+    icon: LayoutDashboard,
+  },
   {
     title: 'Ghi Chỉ Số (Scan)',
     url: '/cashier/scan', // Đường dẫn tuyệt đối
     icon: ScanLine, // Icon quét
   },
+  // --- SỬA LẠI MENU THANH TOÁN ---
+  {
+    title: 'Thu Tiền Tại Quầy',
+    url: '/cashier/payment-counter', // (Sửa link cũ)
+    icon: Banknote,
+  },
+  {
+    title: 'Hóa Đơn Theo Tuyến', // (Thu tại nhà)
+    url: '/cashier/my-route',
+    icon: ListTodo, // Icon mới
+  },
+  // --- HẾT PHẦN SỬA ---
   // Thêm các menu khác cho Thu Ngân nếu cần (ví dụ: Quản lý biên lai,...)
 ];
 
