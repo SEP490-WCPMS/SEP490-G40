@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
 import { useAuth } from './hooks/use-auth';
+import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
+import { ServiceNotificationListener } from './components/Notifications/ServiceNotificationListener';
+import { ServiceNotificationToast } from './components/Notifications/ServiceNotificationToast';
 import Login from './components/Authentication/Login';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
@@ -49,15 +52,19 @@ import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceReq
 import StaffChangePassword from './components/Staff/StaffChangePassword';
 import LayoutAccounting from './components/Layouts/LayoutAccounting';
 import ReadingRoutesList from './components/Accounting/ReadingRoutesList';
-import UnbilledFeesList from './components/Pages/PagesAccounting/UnbilledFeesList';
-import InvoiceList from './components/Pages/PagesAccounting/InvoiceList'; // <-- THÊM
-import UnbilledFeeDetail from './components/Pages/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
-import CreateServiceInvoice from './components/Pages/PagesAccounting/CreateServiceInvoice'; // <-- THÊM IMPORT MỚI
-import InvoiceDetail from './components/Pages/PagesAccounting/InvoiceDetail';
+import UnbilledFeesList from './components/PagesAccounting/UnbilledFeesList';
+import InvoiceList from './components/PagesAccounting/InvoiceList'; // <-- THÊM
+import UnbilledFeeDetail from './components/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
+import CreateServiceInvoice from './components/PagesAccounting/CreateServiceInvoice'; // <-- THÊM IMPORT MỚI
+import InvoiceDetail from './components/PagesAccounting/InvoiceDetail';
 import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
-import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
-import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
+import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice";
+import EligibleInstallationContracts from "@/components/PagesAccounting/EligibleInstallationContracts.jsx";
+import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; // <-- THÊM
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; // <-- THÊM
+import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -135,6 +142,9 @@ function App() {
             {/* <Route index element={<CashierDashboard />} /> */}
             <Route path="scan" element={<MeterScan />} />
             <Route path="submit-reading" element={<ReadingConfirmation />} />
+            <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
+            <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
+            <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
           </Route>
         </Route>
 
@@ -161,7 +171,8 @@ function App() {
         <Route element={<PrivateRoute allowedRoles={['ACCOUNTING_STAFF']} />}>
           <Route path="/accounting/*" element={<LayoutAccounting />}>
             {/* Trang index của /accounting */}
-            <Route index element={<UnbilledFeesList />} />
+            <Route index element={<AccountingDashboard />} /> {/* Trang index mới */}
+            <Route path="dashboard" element={<AccountingDashboard />} /> {/* Thêm /dashboard */}
             <Route path="unbilled-fees" element={<UnbilledFeesList />} />
             {/* --- THÊM 2 ROUTE MỚI --- */}
             {/* (Req 1) Trang Chi tiết Phí */}
@@ -197,4 +208,10 @@ function App() {
   );
 }
 
-export default App;
+export default () => (
+  <ServiceNotificationProvider>
+    <ServiceNotificationListener />
+    <ServiceNotificationToast />
+    <App />
+  </ServiceNotificationProvider>
+);

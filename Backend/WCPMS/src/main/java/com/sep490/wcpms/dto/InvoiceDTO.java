@@ -19,6 +19,8 @@ public class InvoiceDTO {
     private Integer customerId;
     private String customerName;
     private String customerAddress;
+    private String customerPhone;
+    private String customerEmail;
 
     // --- Thông tin Hợp đồng (Lấy từ Bảng 8 hoặc 9) ---
     private Integer contractId; // ID HĐ Lắp đặt (Bảng 8)

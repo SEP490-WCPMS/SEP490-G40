@@ -38,6 +38,23 @@ public class ContractMapper {
         dto.setSurveyDate(contract.getSurveyDate());
         dto.setTechnicalDesign(contract.getTechnicalDesign());
         dto.setEstimatedCost(contract.getEstimatedCost());
+        // --- LOGIC MỚI: LẤY LOẠI GIÁ VÀ TUYẾN ĐỌC ---
+
+        // 1. Lấy Loại giá (Từ Bảng 10)
+        if (contract.getContractUsageDetails() != null && !contract.getContractUsageDetails().isEmpty()) {
+            // Lấy loại giá từ bản ghi đầu tiên
+            var usageDetail = contract.getContractUsageDetails().get(0);
+            if (usageDetail != null && usageDetail.getPriceType() != null) {
+                dto.setPriceTypeName(usageDetail.getPriceType().getTypeName());
+            }
+        }
+
+        // 2. Lấy Tuyến đọc (Từ Bảng 8 -> Bảng 4)
+        if (contract.getReadingRoute() != null) {
+            dto.setRouteName(contract.getReadingRoute().getRouteName());
+        }
+
+        // --- HẾT PHẦN THÊM ---
 
         return dto;
     }

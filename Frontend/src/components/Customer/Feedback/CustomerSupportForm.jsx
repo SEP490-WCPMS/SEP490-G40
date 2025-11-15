@@ -58,7 +58,23 @@ function CustomerSupportForm() {
             // setTimeout(() => navigate('/my-requests'), 2000);
         } catch (err) {
             console.error("Lỗi khi gửi yêu cầu:", err);
-            setError(err.response?.data?.message || "Gửi yêu cầu thất bại. Vui lòng thử lại.");
+            // --- SỬA LẠI LOGIC BẮT LỖI ---
+            let errorMessage = "Gửi yêu cầu thất bại. Vui lòng thử lại.";
+
+            if (err.response) {
+                // Kiểm tra xem có phải lỗi 409 (Conflict) không
+                if (err.response.status === 409) {
+                    // Lấy message trả về từ BE (thường nằm ở data hoặc data.message)
+                    errorMessage = err.response.data.message || err.response.data || "Yêu cầu này đã tồn tại.";
+                } 
+                // (Nếu là lỗi Validation 400)
+                else if (err.response.data && err.response.data.message) {
+                    errorMessage = err.response.data.message;
+                }
+            }
+            
+            setError(errorMessage); // Hiển thị lỗi 409 (nếu có)
+            // --- HẾT PHẦN SỬA ---
         } finally {
             setSubmitting(false);
         }

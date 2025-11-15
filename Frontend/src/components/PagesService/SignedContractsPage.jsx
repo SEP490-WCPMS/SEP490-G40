@@ -34,7 +34,7 @@ const SignedContractsPage = () => {
         setLoading(true);
         try {
             const response = await getServiceContracts({
-                page: page - 1, // API dùng 0-based indexing
+                page: page - 1, // API sử dụng 0-based indexing
                 size: pageSize,
                 status: 'PENDING_SIGN', // Chỉ lấy những hợp đồng khách đã ký xong
                 keyword: filters.keyword
@@ -77,6 +77,8 @@ const SignedContractsPage = () => {
 
     // Gửi lắp đặt NGAY (không confirm)
     const handleSendToInstallation = async (contract) => {
+        console.log('[SEND TO INSTALL] Starting for contract:', contract.id);
+        
         // Optimistic update: ẩn ngay dòng, nếu fail sẽ rollback
         const prevContracts = contracts;
         const prevTotal = pagination.total;
@@ -86,15 +88,21 @@ const SignedContractsPage = () => {
         setSelectedContract(null);
 
         try {
+            console.log('[SEND TO INSTALL] Calling API...');
             await sendContractToInstallation(contract.id);
-            message.success('Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".');
+            console.log('[SEND TO INSTALL] API success!');
+            
+            // Show success message
+            alert('✅ Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".');
+            
             // Đồng bộ lại với server (phòng trường hợp còn bản ghi tràn trang)
             fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
+            console.error('[SEND TO INSTALL] API error:', error);
             // Rollback nếu thất bại
             setContracts(prevContracts);
             setPagination(prev => ({ ...prev, total: prevTotal }));
-            message.error('Gửi lắp đặt thất bại!');
+            alert('❌ Gửi lắp đặt thất bại!');
             console.error(error);
         }
     };

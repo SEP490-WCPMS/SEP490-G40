@@ -43,6 +43,9 @@ import java.time.LocalDateTime; // Thêm import
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.context.ApplicationEventPublisher; // Thêm import
+import com.sep490.wcpms.event.SurveyReportSubmittedEvent; // Event nộp báo cáo khảo sát
+import com.sep490.wcpms.event.InstallationCompletedEvent; // Event hoàn tất lắp đặt
 
 @Service
 // Bạn có thể đổi sang @RequiredArgsConstructor nếu muốn dùng 'final' thay vì @Autowired
@@ -70,6 +73,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private SupportTicketMapper supportTicketMapper;
     @Autowired
     private CustomerRepository customerRepository;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher; // Publish domain events
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -107,21 +112,22 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     @Transactional
     public ContractDetailsDTO submitSurveyReport(Integer contractId, SurveyReportRequestDTO reportDTO, Integer staffId) {
         Contract contract = getContractAndVerifyAccess(contractId, staffId);
-
-        // --- SỬA LỖI MESSAGE ---
-        // Kiểm tra đúng status PENDING (Chờ khảo sát)
         if (contract.getContractStatus() != Contract.ContractStatus.PENDING) {
-            // Báo lỗi đúng status
             throw new IllegalStateException("Cannot submit report. Contract is not in PENDING status.");
         }
-
-        // Cập nhật thông tin từ DTO
         contractMapper.updateContractFromSurveyDTO(contract, reportDTO);
-
-        // Chuyển trạng thái sang PENDING_SURVEY_REVIEW
         contract.setContractStatus(Contract.ContractStatus.PENDING_SURVEY_REVIEW);
-
         Contract savedContract = contractRepository.save(contract);
+
+        // Publish event sau commit
+        eventPublisher.publishEvent(new SurveyReportSubmittedEvent(
+                savedContract.getId(),
+                savedContract.getContractNumber(),
+                staffId,
+                savedContract.getServiceStaff() != null ? savedContract.getServiceStaff().getId() : null,
+                savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
         return contractMapper.toDto(savedContract);
     }
 
@@ -222,7 +228,18 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // Khối code "3. CẬP NHẬT HỢP ĐỒNG" đã được thực hiện ở bước 3 và 5
         // --- HẾT PHẦN XÓA ---
 
-        return contractMapper.toDto(contract);
+        ContractDetailsDTO dto = contractMapper.toDto(contract);
+
+        // Publish event hoàn tất lắp đặt
+        eventPublisher.publishEvent(new InstallationCompletedEvent(
+                contract.getId(),
+                contract.getContractNumber(),
+                staffId,
+                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null,
+                contract.getCustomer() != null ? contract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
+        return dto;
     }
 
     // === CHUNG ===
@@ -347,7 +364,9 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         newInstallation.setInitialReading(dto.getNewMeterInitialReading()); // Chỉ số ĐẦU MỚI
         newInstallation.setInstallationImageBase64(dto.getInstallationImageBase64());
         newInstallation.setNotes(dto.getNotes());
-        meterInstallationRepository.save(newInstallation);
+        // --- SỬA LỖI 1: Gán kết quả save vào biến ---
+        MeterInstallation savedNewInstallation = meterInstallationRepository.save(newInstallation);
+        // ---
 
         // --- BƯỚC 6.5 (MỚI): CẬP NHẬT BẢNG CUSTOMERS (BẢNG 7) ---
         // (Customer đã được lấy ở Bước 3)
@@ -409,7 +428,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
                             "- Đồng hồ mới (Mã: %s) lắp đặt với chỉ số đầu: %s m³.\n" +
                             "- Lý do: %s.\n\n" +
                             "GHI CHÚ CỦA KỸ THUẬT:\n%s\n\n" +
-                            "---IMAGE_SEPARATOR---%s", // Dùng một chuỗi phân cách đặc biệt
+                            "---INSTALLATION_ID---%d", // Dùng một chuỗi phân cách đặc biệt
 
                     LocalDate.now().toString(),
                     dto.getOldMeterCode(),
@@ -418,7 +437,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
                     dto.getNewMeterInitialReading().toString(),
                     "CALIBRATION".equalsIgnoreCase(dto.getReplacementReason()) ? "Kiểm định 5 năm" : "Đồng hồ hỏng",
                     replacementNotes, // Thêm ghi chú
-                    dto.getInstallationImageBase64() // Thêm chuỗi Base64 của ảnh
+                    savedNewInstallation.getId() // <-- Gửi ID (Bảng 13)
             );
             // --- HẾT PHẦN SỬA NỘI DUNG ---
 
@@ -540,13 +559,28 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         return tickets.map(supportTicketMapper::toDto);
     }
 
-    // === CHI TIẾT TICKET (ĐÃ SỬA LỖI LOGIC) ===
+    // --- HÀM HELPER (Đã code ở lần trước, đảm bảo bạn có nó) ---
+    private String extractMeterCodeFromDescription(String description) {
+        if (description == null) return null;
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\[(.*?)\\]");
+        java.util.regex.Matcher matcher = pattern.matcher(description);
+        if (matcher.find()) return matcher.group(1);
+        return null;
+    }
+    // ---
+
+    /**
+     * === CHI TIẾT TICKET (ĐÃ SỬA LẠI LOGIC HOÀN TOÀN) ===
+     * Logic: Ưu tiên 1 (cao nhất): Lấy đồng hồ (meter_id) đã được gán TRỰC TIẾP trong Ticket (Bảng 20).
+     * Ưu tiên 2 (dự phòng): Trích xuất mã đồng hồ từ Description (vd: [M001]).
+     * Ưu tiên 3 (cuối cùng): Lấy đồng hồ INSTALLED mới nhất của khách hàng.
+     */
     @Override
     @Transactional(readOnly = true)
     public SupportTicketDetailDTO getMyMaintenanceRequestDetail(Integer staffId, Integer ticketId) {
         Account staff = getStaffAccountById(staffId);
 
-        // 1. Tìm Ticket
+        // 1. Tìm Ticket VÀ Fetch Customer (EAGER)
         CustomerFeedback ticket = customerFeedbackRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Yêu cầu Hỗ trợ (Ticket) với ID: " + ticketId));
 
@@ -557,69 +591,56 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         Customer customer = ticket.getCustomer();
 
-        // 3. Tìm HĐ Dịch vụ (Bảng 9) ACTIVE của Khách hàng
+        // 3. Tìm HĐ Dịch vụ (Bảng 9) ACTIVE (để lấy thông tin chung)
         WaterServiceContract activeServiceContract = customer.getWaterServiceContracts().stream()
                 .filter(wsc -> wsc.getContractStatus() == WaterServiceContract.WaterServiceContractStatus.ACTIVE)
                 .findFirst()
                 .orElse(null);
 
-        // --- SỬA LỖI LOGIC HIỂN THỊ N/A ---
+        // --- LOGIC MỚI: TÌM ĐỒNG HỒ ĐÚNG ---
 
-        MeterInstallation installationToDisplay = null; // Bản ghi lắp đặt sẽ hiển thị
+        MeterInstallation installationToDisplay = null;
+        WaterMeter meterToFind = null;
 
-        if (activeServiceContract != null) {
-            // Tìm bản ghi lắp đặt MỚI NHẤT thuộc HĐ Dịch vụ này với đồng hồ đang được lắp đặt
-            Optional<MeterInstallation> latestInstallationOpt = meterInstallationRepository
+        // Ưu tiên 1: Lấy đồng hồ đã gán (meter_id) trong Bảng 20
+        if (ticket.getWaterMeter() != null) {
+            meterToFind = ticket.getWaterMeter();
+        }
+
+        // Ưu tiên 2: (Nếu không có meter_id) Thử trích xuất từ Description
+        if (meterToFind == null) {
+            String meterCodeFromDesc = extractMeterCodeFromDescription(ticket.getDescription());
+            if (meterCodeFromDesc != null) {
+                meterToFind = waterMeterRepository.findByMeterCode(meterCodeFromDesc).orElse(null);
+            }
+        }
+
+        // Nếu tìm thấy đồng hồ (bằng Ưu tiên 1 hoặc 2)
+        if (meterToFind != null) {
+            // Lấy bản ghi lắp đặt MỚI NHẤT của đồng hồ CỤ THỂ đó
+            Optional<MeterInstallation> installationOpt = meterInstallationRepository
+                    .findTopByWaterMeterOrderByInstallationDateDesc(meterToFind);
+            if (installationOpt.isPresent()) {
+                installationToDisplay = installationOpt.get();
+            }
+        }
+        // Ưu tiên 3: (Nếu cả 2 cách trên đều thất bại)
+        // Mới lấy đồng hồ INSTALLED mới nhất của HĐ Active (làm dự phòng)
+        else if (activeServiceContract != null) {
+            Optional<MeterInstallation> latestInstalledOpt = meterInstallationRepository
                     .findTopByWaterServiceContractAndWaterMeter_MeterStatusOrderByInstallationDateDesc(
                             activeServiceContract,
                             WaterMeter.MeterStatus.INSTALLED
                     );
-
-            if (latestInstallationOpt.isPresent()) {
-                MeterInstallation latestInstallation = latestInstallationOpt.get();
-
-                // KIỂM TRA: Nếu ticket này là ticket KIỂM ĐỊNH 5 NĂM (auto-gen)
-                // HOẶC ticket BÁO HỎNG (thủ công)
-                // VÀ đồng hồ của bản ghi lắp đặt mới nhất đang là INSTALLED
-                // (Tức là đồng hồ M003 đang chạy tốt, nhưng ticket là về M001)
-
-                // Logic MỚI:
-                // 1. Ưu tiên tìm đồng hồ đang INSTALLED
-                if (latestInstallation.getWaterMeter() != null &&
-                        latestInstallation.getWaterMeter().getMeterStatus() == WaterMeter.MeterStatus.INSTALLED)
-                {
-                    // Nếu ticket này là về đồng hồ ĐANG CHẠY (INSTALLED)
-                    // (Ví dụ: Khách hàng báo hỏng M003)
-                    String meterCode = latestInstallation.getWaterMeter().getMeterCode();
-                    if (ticket.getDescription().contains("[" + meterCode + "]")) {
-                        installationToDisplay = latestInstallation;
-                    } else {
-                        // Ticket này là về một đồng hồ cũ (ví dụ M001)
-                        // nhưng KH đang dùng đồng hồ M003.
-                        // Chúng ta vẫn cần hiển thị M003 để NV Kỹ thuật biết.
-                        installationToDisplay = latestInstallation;
-                    }
-                }
-                // 2. Nếu đồng hồ mới nhất KHÔNG PHẢI INSTALLED (ví dụ: BROKEN)
-                else {
-                    // (Ví dụ: M003 đã bị báo hỏng, và ticket này là về M003)
-                    installationToDisplay = latestInstallation;
-                }
+            if (latestInstalledOpt.isPresent()) {
+                installationToDisplay = latestInstalledOpt.get();
             }
         }
 
-        // Nếu không tìm thấy HĐ Dịch vụ (ví dụ HĐ đã TERMINATED),
-        // thử tìm bản ghi lắp đặt cuối cùng của khách hàng này
-        if (installationToDisplay == null) {
-            Optional<MeterInstallation> lastAnyInstallation = meterInstallationRepository
-                    .findTopByCustomerOrderByInstallationDateDesc(customer);
-            if(lastAnyInstallation.isPresent()) {
-                installationToDisplay = lastAnyInstallation.get();
-            }
-        }
-        // --- HẾT PHẦN SỬA ---
+        // --- HẾT LOGIC MỚI ---
 
         // 7. Map sang DTO chi tiết
         return supportTicketMapper.toDetailDto(ticket, activeServiceContract, installationToDisplay);
     }
 }
+

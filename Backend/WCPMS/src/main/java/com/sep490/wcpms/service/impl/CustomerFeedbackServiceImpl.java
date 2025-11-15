@@ -17,6 +17,7 @@ import com.sep490.wcpms.service.CustomerFeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sep490.wcpms.exception.DuplicateResourceException;
 import com.sep490.wcpms.exception.AccessDeniedException; // <-- THÊM IMPORT
 import org.springframework.data.domain.Page; // <-- THÊM IMPORT
 import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
@@ -70,45 +71,60 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
 
     /**
      * Hàm private xử lý logic tạo ticket chung (Bảng 20)
+     * (ĐÃ CẬP NHẬT: Thêm logic Chống Spam)
      */
     private SupportTicketDTO createTicket(FeedbackCreateRequestDTO dto, Customer customer, Account requestedBy) {
-        CustomerFeedback ticket = new CustomerFeedback();
 
-        // Tạo mã ticket (ví dụ: FB-timestamp)
-        String ticketNumber = "FB-" + System.currentTimeMillis();
-        ticket.setFeedbackNumber(ticketNumber);
-
-        ticket.setCustomer(customer);
-        ticket.setDescription(dto.getDescription());
-        // --- SỬA LẠI LOGIC Ở ĐÂY ---
-        // Đọc loại feedback từ DTO thay vì ghi cứng
+        // 1. Chuyển đổi FeedbackType (Code cũ)
         CustomerFeedback.FeedbackType type;
         try {
-            // Chuyển chuỗi "FEEDBACK" hoặc "SUPPORT_REQUEST" thành Enum
             type = CustomerFeedback.FeedbackType.valueOf(dto.getFeedbackType().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
-            // Nếu FE gửi bậy, mặc định là FEEDBACK
             type = CustomerFeedback.FeedbackType.FEEDBACK;
         }
-        ticket.setFeedbackType(type); // <-- ĐÃ SỬA
-        // --- HẾT PHẦN SỬA ---
-        ticket.setStatus(CustomerFeedback.Status.PENDING); // Luôn là PENDING
-        ticket.setSubmittedDate(LocalDateTime.now());
-        ticket.setRequestedBy(requestedBy); // Gán người yêu cầu (có thể là KH hoặc NV)
-        // assignedTo (NV Kỹ thuật) sẽ là null, chờ Service Staff gán ở Bước 2
 
-        // --- CẬP NHẬT: LƯU METER_ID NẾU CÓ ---
+        WaterMeter meter = null; // Biến để lưu đồng hồ
+
+        // 2. Cập nhật: Lấy WaterMeter (nếu có) (Code cũ)
         if (dto.getMeterId() != null) {
-            // Tìm đồng hồ để liên kết
-            WaterMeter meter = waterMeterRepository.findById(dto.getMeterId())
+            meter = waterMeterRepository.findById(dto.getMeterId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ (WaterMeter) với ID: " + dto.getMeterId()));
-
-            // (Thêm kiểm tra bảo mật: Đồng hồ này có thực sự thuộc khách hàng này không?)
-            // (Bỏ qua bước này để đơn giản hóa)
-
-            ticket.setWaterMeter(meter); // Gán đồng hồ vào ticket
         }
-        // --- HẾT PHẦN CẬP NHẬT ---
+
+        // --- 3. LOGIC CHỐNG SPAM (MỚI) ---
+        // Chỉ kiểm tra nếu là Yêu cầu Hỗ trợ VÀ có gán đồng hồ
+        if (type == CustomerFeedback.FeedbackType.SUPPORT_REQUEST && meter != null) {
+
+            // 3a. Định nghĩa các trạng thái "đang mở"
+            List<CustomerFeedback.Status> openStatuses = List.of(
+                    CustomerFeedback.Status.PENDING,
+                    CustomerFeedback.Status.IN_PROGRESS
+            );
+
+            // 3b. Gọi hàm Repo mới
+            boolean alreadyExists = customerFeedbackRepository.existsByWaterMeterAndStatusIn(meter, openStatuses);
+
+            if (alreadyExists) {
+                // 3c. Ném lỗi (409) với thông điệp bạn yêu cầu
+                throw new DuplicateResourceException(
+                        "Đơn hỗ trợ với mã đồng hồ [" + meter.getMeterCode() + "] của bạn đã tồn tại và đang được xử lý. " +
+                                "Quý khách vui lòng kiên nhẫn chờ đợi."
+                );
+            }
+        }
+        // --- HẾT LOGIC MỚI ---
+
+        // 4. (Code cũ) Tạo ticket
+        CustomerFeedback ticket = new CustomerFeedback();
+        String ticketNumber = "FB-" + System.currentTimeMillis();
+        ticket.setFeedbackNumber(ticketNumber);
+        ticket.setCustomer(customer);
+        ticket.setDescription(dto.getDescription());
+        ticket.setFeedbackType(type);
+        ticket.setStatus(CustomerFeedback.Status.PENDING);
+        ticket.setSubmittedDate(LocalDateTime.now());
+        ticket.setRequestedBy(requestedBy);
+        ticket.setWaterMeter(meter); // Gán đồng hồ (nếu có)
 
         CustomerFeedback savedTicket = customerFeedbackRepository.save(ticket);
 

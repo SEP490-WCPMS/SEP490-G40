@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { createInstallationInvoice } from '../../Services/apiAccountingStaff';
+import { createInstallationInvoice } from '../Services/apiAccountingStaff';
 import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
 import moment from 'moment';
 
