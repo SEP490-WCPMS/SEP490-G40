@@ -22,6 +22,9 @@ import com.sep490.wcpms.dto.ServiceInvoiceCreateDTO; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.Customer; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.Contract; // <-- THÊM IMPORT
 import java.time.LocalDateTime;
+import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
+import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
+import com.sep490.wcpms.entity.Invoice.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -40,6 +43,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final WaterPriceTypeRepository priceTypeRepository; // (Cần tạo Repo Bảng 5)
     private final CustomerRepository customerRepository; // <-- Cần Repo này
     private final ContractRepository contractRepository; // <-- Cần Repo này
+    private final ReceiptRepository receiptRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -341,4 +345,38 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
 
     // === HẾT PHẦN THÊM ===
+
+
+    // --- THÊM HÀM MỚI ---
+    @Override
+    @Transactional(readOnly = true)
+    public AccountingStatsDTO getDashboardStats() {
+        AccountingStatsDTO stats = new AccountingStatsDTO();
+
+        // 1. (To-do) Phí chờ lập HĐ (Từ Bảng 14)
+        stats.setUnbilledFeesCount(calibrationRepository.countUnbilledFees());
+
+        // 2. (KPI) Hóa đơn chờ thanh toán (Pending + Overdue)
+        List<PaymentStatus> pendingStatuses = List.of(PaymentStatus.PENDING, PaymentStatus.OVERDUE);
+        stats.setPendingInvoicesCount(invoiceRepository.countByPaymentStatusIn(pendingStatuses));
+
+        // 3. (KPI) Tổng tiền chờ thanh toán
+        BigDecimal pendingAmount = invoiceRepository.sumTotalAmountByPaymentStatusIn(pendingStatuses);
+        stats.setPendingInvoicesAmount(pendingAmount != null ? pendingAmount : BigDecimal.ZERO);
+
+        // 4. (KPI) Số Hóa đơn đã quá hạn
+        stats.setOverdueInvoicesCount(invoiceRepository.countOverdueInvoices(PaymentStatus.OVERDUE, LocalDate.now()));
+
+        return stats;
+    }
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<DailyRevenueDTO> getRevenueReport(LocalDate startDate, LocalDate endDate) {
+        // Gọi thẳng hàm Repository đã tạo
+        return receiptRepository.getDailyRevenueReport(startDate, endDate);
+    }
+    // --- HẾT PHẦN THÊM ---
 }

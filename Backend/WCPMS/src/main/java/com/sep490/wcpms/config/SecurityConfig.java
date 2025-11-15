@@ -113,8 +113,12 @@ public class SecurityConfig {
                                 // Polling endpoints (fallback khi SSE fail) - controller tự validate JWT từ header
                                 .requestMatchers(HttpMethod.GET, "/api/service/notifications").permitAll()
                                 .requestMatchers("/api/service/notifications/unread-count").permitAll()
+                                .requestMatchers("/api/payment/webhook/**").permitAll()
+
+//// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
                                 .requestMatchers("/api/readings/**").hasAuthority("CASHIER_STAFF")
+                                .requestMatchers("/api/cashier/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/meter-scan/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/service/**").hasAuthority("SERVICE_STAFF")
                                 .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER")

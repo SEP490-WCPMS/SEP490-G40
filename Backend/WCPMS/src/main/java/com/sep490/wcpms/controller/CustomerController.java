@@ -1,6 +1,7 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.InvoiceDTO;
+import com.sep490.wcpms.dto.InstallationDetailDTO;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.service.CustomerService;
 import com.sep490.wcpms.exception.AccessDeniedException;
@@ -70,4 +71,19 @@ public class CustomerController {
         return ResponseEntity.ok(invoice);
     }
     // === HẾT PHẦN THÊM ===
+
+    // --- THÊM API MỚI ---
+    /**
+     * API Lấy chi tiết 1 Bản ghi Lắp đặt (Bảng 13)
+     * Path: GET /api/customer/installation/{installationId}
+     */
+    @GetMapping("/installation/{installationId}")
+    public ResponseEntity<InstallationDetailDTO> getMyInstallationDetail(
+            @PathVariable Integer installationId
+    ) {
+        Integer customerAccountId = getAuthenticatedUserId();
+        InstallationDetailDTO detail = customerService.getMyInstallationDetail(customerAccountId, installationId);
+        return ResponseEntity.ok(detail);
+    }
+    // ---
 }

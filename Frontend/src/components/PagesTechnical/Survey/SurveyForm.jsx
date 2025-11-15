@@ -126,6 +126,10 @@ function SurveyForm() {
                             <p><strong>Ngày yêu cầu:</strong> {contractDetails.applicationDate ? moment(contractDetails.applicationDate).format('DD/MM/YYYY') : 'N/A'}</p>
                             {/* Địa chỉ chiếm 2 cột trên màn hình lớn */}
                             <p className="md:col-span-2"><strong>Địa chỉ:</strong> {contractDetails.customerAddress || 'N/A'}</p>
+                            {/* --- THÊM 2 TRƯỜNG MỚI VÀO ĐÂY --- */}
+                            <p><strong>Loại giá yêu cầu:</strong> {contractDetails.priceTypeName || 'N/A'}</p>
+                            <p><strong>Tuyến đọc:</strong> {contractDetails.routeName || 'N/A'}</p>
+                            {/* --- HẾT PHẦN THÊM --- */}
                         </div>
                     </div>
 

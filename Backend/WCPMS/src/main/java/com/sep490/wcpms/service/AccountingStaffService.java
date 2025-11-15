@@ -1,8 +1,17 @@
 package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.*;
+import com.sep490.wcpms.dto.CalibrationFeeDTO;
+import com.sep490.wcpms.dto.AccountingInvoiceDetailDTO;
+import com.sep490.wcpms.dto.InvoiceDTO; // <-- Cần tạo DTO này
+import com.sep490.wcpms.dto.ServiceInvoiceCreateDTO;
+import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
+import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.sep490.wcpms.dto.*;
+import java.time.LocalDate;
+import java.util.List;
 
 public interface AccountingStaffService {
 
@@ -55,5 +64,19 @@ public interface AccountingStaffService {
      */
     InvoiceDTO createInstallationInvoice(ContractInstallationInvoiceCreateDTO request, Integer staffId);
 
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Lấy các chỉ số KPI cho Thẻ Thống kê (Stats Cards).
+     */
+    AccountingStatsDTO getDashboardStats();
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Lấy dữ liệu Báo cáo Doanh thu cho Dashboard.
+     */
+    List<DailyRevenueDTO> getRevenueReport(LocalDate startDate, LocalDate endDate);
     // --- HẾT PHẦN THÊM ---
 }
