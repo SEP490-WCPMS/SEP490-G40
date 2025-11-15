@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getEligibleInstallationContracts } from '../../Services/apiAccountingStaff';
+import { getEligibleInstallationContracts } from '../Services/apiAccountingStaff';
 import { RefreshCw, FileText } from 'lucide-react';
 import moment from 'moment';
 

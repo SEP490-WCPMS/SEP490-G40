@@ -1,16 +1,19 @@
 package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Customer; // <-- THÊM IMPORT
+import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.CustomerFeedback;
+import com.sep490.wcpms.entity.WaterMeter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import java.util.Optional; // <-- THÊM IMPORT
-import java.util.List; // <-- Thêm import
-import org.springframework.data.jpa.repository.Query; // <-- Thêm import
-import org.springframework.data.repository.query.Param; // <-- Thêm import
+
+import java.util.Collection;
+import java.util.Optional;
+import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedback, Integer> {
@@ -69,5 +72,20 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
             @Param("status") CustomerFeedback.Status status,
             @Param("meterCode") String meterCode
     );
+
+    // --- THÊM HÀM MỚI (CHỐNG SPAM) ---
+    /**
+     * Kiểm tra xem có tồn tại ticket nào
+     * cho một đồng hồ (WaterMeter) cụ thể
+     * VÀ đang ở 1 trong các trạng thái (PENDING, IN_PROGRESS) hay không.
+     * @param waterMeter Đối tượng đồng hồ (Bảng 12)
+     * @param statuses Danh sách trạng thái [PENDING, IN_PROGRESS]
+     * @return true nếu tồn tại, false nếu không
+     */
+    boolean existsByWaterMeterAndStatusIn(
+            WaterMeter waterMeter,
+            Collection<CustomerFeedback.Status> statuses
+    );
+    // --- HẾT PHẦN THÊM ---
 
 }

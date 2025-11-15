@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,5 +39,27 @@ public class GlobalExceptionHandler {
         body.put("error", ex.getMessage());
         return new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    // --- THÊM HÀM NÀY VÀO ---
+    /**
+     * Xử lý lỗi Trùng lặp (DuplicateResourceException)
+     * Trả về mã 409 (Conflict) - Đây là lỗi bạn cần.
+     */
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<Object> handleDuplicateResourceException(
+            DuplicateResourceException ex, WebRequest request) {
+
+        // Tạo một body JSON chuẩn để FE có thể đọc (khớp với code FE của bạn)
+        Map<String, Object> body = Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", HttpStatus.CONFLICT.value(), // 409
+                "error", "Conflict",
+                "message", ex.getMessage(), // <-- Đây là thông báo "Đơn hỗ trợ đã tồn tại..."
+                "path", request.getDescription(false).replace("uri=", "")
+        );
+
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT); // Trả về 409
+    }
+    // --- HẾT PHẦN THÊM ---
 }
 

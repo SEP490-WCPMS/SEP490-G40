@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getInvoices, cancelInvoice } from '../../Services/apiAccountingStaff';
+import { getInvoices, cancelInvoice } from '../Services/apiAccountingStaff';
 import { RefreshCw, Filter, XCircle, CheckCircle, Eye } from 'lucide-react';
 import moment from 'moment';
 // (Import component Phân trang của bạn)

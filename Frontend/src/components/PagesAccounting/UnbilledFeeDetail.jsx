@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getUnbilledFeeDetail } from '../../Services/apiAccountingStaff';
+import { getUnbilledFeeDetail } from '../Services/apiAccountingStaff';
 import { ArrowLeft, User, Home, Hash, DollarSign, FilePlus, AlertCircle } from 'lucide-react';
 import moment from 'moment';
 

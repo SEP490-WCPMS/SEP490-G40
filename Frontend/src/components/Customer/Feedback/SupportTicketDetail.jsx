@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSupportTicketDetail } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
+import { getSupportTicketDetail, getInstallationDetail } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
 import { ArrowLeft, User, MessageSquare } from 'lucide-react';
 import moment from 'moment';
 
@@ -13,6 +13,11 @@ function SupportTicketDetail() {
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    // --- SỬA LỖI TẠI ĐÂY ---
+    // Khai báo state cho ảnh và text
+    const [installationImage, setInstallationImage] = useState(null);
+    const [responseText, setResponseText] = useState(null); // Dùng const [var, setVar]
+    // --- HẾT PHẦN SỬA ---
 
     useEffect(() => {
         if (!ticketId) {
@@ -23,10 +28,35 @@ function SupportTicketDetail() {
         
         setLoading(true);
         setError(null);
+        setInstallationImage(null);
+        setResponseText(null);
         
         getSupportTicketDetail(ticketId)
             .then(response => {
                 setTicket(response.data);
+                const rawResponse = response.data.response || "";
+                
+                // Tách chuỗi phản hồi
+                if (rawResponse.includes("---INSTALLATION_ID---")) {
+                    const parts = rawResponse.split("---INSTALLATION_ID---");
+                    // --- SỬA LỖI TẠI ĐÂY ---
+                    // Dùng hàm setResponseText() để cập nhật
+                    setResponseText(parts[0]); // Phần chữ
+                    // ---
+                    
+                    const installId = parseInt(parts[1]); // Lấy ID Lắp đặt
+                    if (installId) {
+                        // Gọi API thứ 2 để lấy ảnh
+                        getInstallationDetail(installId)
+                            .then(imgRes => {
+                                setInstallationImage(imgRes.data.installationImageBase64);
+                            })
+                            .catch(imgErr => console.error("Lỗi tải ảnh lắp đặt:", imgErr));
+                    }
+                } else {
+                    // Nếu không có ID ảnh (ví dụ: trả lời FEEDBACK)
+                    setResponseText(rawResponse);
+                }
             })
             .catch(err => {
                 console.error("Lỗi khi tải chi tiết ticket:", err);
@@ -76,8 +106,8 @@ function SupportTicketDetail() {
     }
 
     // --- LOGIC TÁCH CHUỖI PHẢN HỒI ---
-    let responseText = ticket.response || null;
-    let responseImageBase64 = null;
+    // let responseText = ticket.response || null;
+    // let responseImageBase64 = null;
     
     if (responseText && responseText.includes("---IMAGE_SEPARATOR---")) {
         const parts = responseText.split("---IMAGE_SEPARATOR---");
@@ -150,11 +180,11 @@ function SupportTicketDetail() {
                         )}
 
                         {/* Ảnh đính kèm (Phần Ảnh) */}
-                        {responseImageBase64 && (
+                        {installationImage && (
                             <div className="mt-4">
                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Ảnh đính kèm (lắp đặt mới):</h4>
                                 <img 
-                                    src={`data:image/jpeg;base64,${responseImageBase64}`} 
+                                    src={`data:image/jpeg;base64,${installationImage}`} 
                                     alt="Ảnh lắp đặt/thay thế"
                                     className="max-w-full md:max-w-md rounded border border-gray-300 shadow-sm"
                                 />

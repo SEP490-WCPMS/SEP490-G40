@@ -33,5 +33,15 @@ public interface MeterCalibrationRepository extends JpaRepository<MeterCalibrati
      */
     Optional<MeterCalibration> findByInvoice(Invoice invoice);
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Đếm số lượng phí dịch vụ (Bảng 14) chưa lập hóa đơn.
+     */
+    @Query("SELECT COUNT(cal) FROM MeterCalibration cal " +
+            "WHERE cal.invoice IS NULL " +
+            "AND cal.calibrationCost > 0")
+    long countUnbilledFees();
+    // --- HẾT PHẦN THÊM ---
 }
 

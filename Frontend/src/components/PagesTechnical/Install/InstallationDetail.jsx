@@ -141,6 +141,10 @@ function InstallationDetail() {
                             <p><strong>Khách hàng:</strong> {contract.customerName}</p>
                             <p><strong>Ngày yêu cầu:</strong> {contract.applicationDate}</p>
                             <p className="md:col-span-2"><strong>Địa chỉ lắp đặt:</strong> {contract.customerAddress}</p>
+                            {/* --- THÊM 2 TRƯỜNG MỚI VÀO ĐÂY --- */}
+                            <p><strong>Loại giá yêu cầu:</strong> {contractDetails.priceTypeName || 'N/A'}</p>
+                            <p><strong>Tuyến đọc:</strong> {contractDetails.routeName || 'N/A'}</p>
+                            {/* --- HẾT PHẦN THÊM --- */}
                         </div>
                     </div>
 

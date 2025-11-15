@@ -151,7 +151,22 @@ function ServiceCreateTicketForm() {
             setFilteredCustomers([]);
         } catch (err) {
             console.error("Lỗi khi tạo ticket:", err);
-            setError(err.response?.data?.message || "Tạo ticket thất bại.");
+            // --- SỬA LẠI LOGIC BẮT LỖI ---
+            let errorMessage = "Tạo ticket thất bại. Vui lòng thử lại.";
+
+            if (err.response) {
+                // Kiểm tra xem có phải lỗi 409 (Conflict) không
+                if (err.response.status === 409) {
+                    errorMessage = "Yêu cầu này đã tồn tại.";
+                } 
+                // (Nếu là lỗi Validation 400)
+                else if (err.response.data && err.response.data.message) {
+                    errorMessage = err.response.data.message;
+                }
+            }
+            
+            setError(errorMessage); // Hiển thị lỗi 409 (nếu có)
+            // --- HẾT PHẦN SỬA ---
         } finally {
             setSubmitting(false);
         }
