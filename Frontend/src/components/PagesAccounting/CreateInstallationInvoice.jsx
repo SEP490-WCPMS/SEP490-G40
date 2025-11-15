@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { createInstallationInvoice } from '../Services/apiAccountingStaff';
-import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
 import moment from 'moment';
 
 function CreateInstallationInvoice() {
@@ -58,15 +58,6 @@ function CreateInstallationInvoice() {
         setFormData((prev) => ({
             ...prev,
             [name]: value
-        }));
-    };
-
-    const handleRecalculateTotal = () => {
-        const subtotal = parseFloat(formData.subtotalAmount) || 0;
-        const vat = parseFloat(formData.vatAmount) || 0;
-        setFormData((prev) => ({
-            ...prev,
-            totalAmount: subtotal + vat
         }));
     };
 
