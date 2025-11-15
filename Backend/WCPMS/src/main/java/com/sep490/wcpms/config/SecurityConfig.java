@@ -91,13 +91,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // Cấu hình phân quyền truy cập
-                .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép CORS Preflight Requests (OPTIONS) đi qua
-                                // Trong SecurityConfig.java -> filterChain() -> authorizeHttpRequests()
-
-// ... (permitAll cho OPTIONS, /api/auth, /api/meter-scan, /, /about) ...
                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers("/api/auth/**").permitAll()
                                 .requestMatchers("/", "/about").permitAll()
@@ -110,6 +106,13 @@ public class SecurityConfig {
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
+                                // SSE endpoints - permitAll, controller tự validate JWT (header hoặc query param)
+                                .requestMatchers("/api/service/notifications/stream").permitAll()
+                                .requestMatchers("/api/service/notifications/stream-token").permitAll()
+                                .requestMatchers("/api/service/notifications/test").permitAll()
+                                // Polling endpoints (fallback khi SSE fail) - controller tự validate JWT từ header
+                                .requestMatchers(HttpMethod.GET, "/api/service/notifications").permitAll()
+                                .requestMatchers("/api/service/notifications/unread-count").permitAll()
                                 .requestMatchers("/api/payment/webhook/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
@@ -118,10 +121,8 @@ public class SecurityConfig {
                                 .requestMatchers("/api/cashier/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/meter-scan/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/service/**").hasAuthority("SERVICE_STAFF")
-
-                                // --- THÊM 2 DÒNG NÀY ---
-                                .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER") // Cho phép Customer tạo
-                                .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF") // Cho phép Service Staff tạo
+                                .requestMatchers("/api/feedback/customer/**").hasAuthority("CUSTOMER")
+                                .requestMatchers("/api/feedback/service").hasAuthority("SERVICE_STAFF")
                                 .requestMatchers("/api/feedback/customer/my-active-meters/**").hasAuthority("SERVICE_STAFF")
                                 // --- HẾT PHẦN THÊM ---
                                 // --- THÊM MỚI: BẢO VỆ API ADMIN ---
@@ -141,9 +142,7 @@ public class SecurityConfig {
 
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()
                                 .requestMatchers("/staff/profile").hasAnyAuthority("TECHNICAL_STAFF", "CASHIER_STAFF", "SERVICE_STAFF")
-//// --- HẾT PHÂN QUYỀN ĐÚNG ---
-
-                                .anyRequest().authenticated() // Mọi thứ khác cần đăng nhập
+                                .anyRequest().authenticated()
                 )
                 .formLogin(login -> login.disable())
                 .httpBasic(basic -> basic.disable());

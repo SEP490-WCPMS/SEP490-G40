@@ -231,7 +231,7 @@ const ContractRequestStatusList = () => {
                     {requests.map(req => {
                         const statusDisplay = getStatusDisplay(req.status);
                         return (
-                            <div key={req.contractId} style={styles.card} className="request-card">
+                            <div key={req.contractId} data-contract-id={req.contractId} style={styles.card} className="request-card">
                                 <div style={styles.cardHeader}>
                                     <span style={styles.contractNumber}>{req.contractNumber}</span>
                                     <span style={styles.statusBadge(statusDisplay.className)}>

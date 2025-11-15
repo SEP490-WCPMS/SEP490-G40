@@ -1,5 +1,7 @@
 package com.sep490.wcpms.controller;
 
+import com.sep490.wcpms.dto.*;
+import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.dto.CalibrationFeeDTO;
 import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
@@ -14,6 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping; // <-- THÊM
+import org.springframework.web.bind.annotation.PutMapping; // <-- THÊM
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import com.sep490.wcpms.dto.ServiceInvoiceCreateDTO;
@@ -123,6 +128,45 @@ public class AccountingStaffController {
         return ResponseEntity.ok(cancelledInvoice);
     }
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 HÀM MỚI ---
+
+    /**
+     * Lấy danh sách HĐ ACTIVE chưa có hóa đơn lắp đặt.
+     * GET /api/accounting/contracts/eligible-installation
+     */
+    @GetMapping("/contracts/eligible-installation")
+    public ResponseEntity<Page<ContractDTO>> getEligibleInstallationContracts(
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        Page<ContractDTO> result = accountingService.getActiveContractsWithoutInstallationInvoice(pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Tạo hóa đơn lắp đặt (CONTRACT invoice) cho 1 Hợp đồng ACTIVE.
+     * POST /api/accounting/invoices/installation
+     * Body:
+     * {
+     *   "contractId": 3,
+     *   "invoiceNumber": "CN-2025-0001", // backend tự sinh
+     *   "invoiceDate": "2025-11-13",
+     *   "dueDate": "2025-11-28",
+     *   "subtotalAmount": 5000000,
+     *   "vatAmount": 500000,
+     *   "totalAmount": 5500000
+     * }
+     */
+    @PostMapping("/invoices/installation")
+    public ResponseEntity<InvoiceDTO> createInstallationInvoice(
+            @RequestBody ContractInstallationInvoiceCreateDTO body
+    ) {
+        Integer staffId = getAuthenticatedStaffId();
+        InvoiceDTO dto = accountingService.createInstallationInvoice(body, staffId);
+        return new ResponseEntity<>(dto, HttpStatus.CREATED);
+    }
+
+    // --- HẾT HÀM THÊM ---
 
     // --- THÊM API MỚI ---
     /**

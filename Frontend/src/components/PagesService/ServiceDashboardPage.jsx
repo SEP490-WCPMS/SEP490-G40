@@ -146,7 +146,7 @@ const ServiceDashboardPage = () => {
         try {
             const statuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW', 'APPROVED', 'PENDING_SIGN', 'SIGNED'];
             
-            // Fetch tất cả status song song để nhanh hơn
+            // Lấy tất cả status song song để nhanh hơn
             const promises = statuses.map(status => 
                 getServiceContracts({
                     page: 0,
@@ -218,8 +218,8 @@ const ServiceDashboardPage = () => {
             // Gọi BE: giờ BE đã trả theo hướng C (actions) trong các field hiện có
             const response = await getServiceStaffChartData(startDate, endDate);
             const beLabels = response?.data?.labels;
-            const beSent = response?.data?.surveyCompletedCounts; // mapped: sent
-            const beApproved = response?.data?.installationCompletedCounts; // mapped: approved
+            const beSent = response?.data?.surveyCompletedCounts; // ánh xạ: gửi
+            const beApproved = response?.data?.installationCompletedCounts; // ánh xạ: duyệt
 
             const labels = beLabels?.length ? beLabels : buildLabels(startDate, endDate);
 
@@ -319,16 +319,32 @@ const ServiceDashboardPage = () => {
         try {
             // Điều hướng/thực thi theo action, để các nút trong bảng Dashboard hoạt động đúng
             if (action === 'sendToSign') {
-                await sendContractToSign(record.id);
-                message.success('Đã gửi hợp đồng cho khách hàng ký.');
+                try {
+                    await sendContractToSign(record.id);
+                    alert('✅ Đã gửi hợp đồng cho khách hàng ký.');
+                } catch (err) {
+                    alert('❌ Gửi ký thất bại.');
+                    throw err;
+                } finally {
+                    setModalLoading(false);
+                    return;
+                }
                 // làm tươi bảng và thống kê
                 fetchRecentContracts();
                 fetchStatsFallback();
                 return;
             }
             if (action === 'sendToInstallation') {
-                await sendContractToInstallation(record.id);
-                message.success('Đã gửi hợp đồng cho kỹ thuật lắp đặt.');
+                try {
+                    await sendContractToInstallation(record.id);
+                    alert('✅ Đã gửi hợp đồng cho kỹ thuật lắp đặt.');
+                } catch (err) {
+                    alert('❌ Gửi lắp đặt thất bại.');
+                    throw err;
+                } finally {
+                    setModalLoading(false);
+                    return;
+                }
                 fetchRecentContracts();
                 fetchStatsFallback();
                 return;
@@ -421,7 +437,7 @@ const ServiceDashboardPage = () => {
                 });
             }
             
-            message.success('Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
+            alert('✅ Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
             
             handleModalClose();
             
@@ -433,7 +449,7 @@ const ServiceDashboardPage = () => {
             }, 500);
         } catch (error) {
             console.error('Error saving contract:', error);
-            message.error('Lỗi khi gửi khảo sát!');
+            alert('❌ Lỗi khi gửi khảo sát!');
         } finally {
             setModalLoading(false);
         }
@@ -442,7 +458,7 @@ const ServiceDashboardPage = () => {
     // Load dữ liệu khi component mount
     useEffect(() => {
         fetchStats();
-        // Fetch chart với 7 ngày gần nhất (mặc định)
+        // Lấy biểu đồ với 7 ngày gần nhất (mặc định)
         fetchChartData(dateRange[0], dateRange[1]);
         fetchRecentContracts();
     }, []);

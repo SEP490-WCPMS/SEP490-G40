@@ -1,0 +1,63 @@
+import React, { useContext, useEffect } from 'react';
+import { useServiceNotification } from '../../hooks/useServiceNotification';
+import { ServiceNotificationContext } from '../../contexts/ServiceNotificationContext';
+import logger from '../../lib/logger';
+
+/**
+ * 🔔 SERVICE STAFF ONLY - Notification Listener
+ * Wrapper component:
+ * - Sử dụng hook SSE (Fetch API + Authorization header)
+ * - Đẩy thông báo vào Context
+ * - Component này không render UI, chỉ quản lý logic
+ * - Chỉ hoạt động cho SERVICE_STAFF role
+ */
+export const ServiceNotificationListener = () => {
+    const { addNotification } = useContext(ServiceNotificationContext);
+    
+    // Check xem user có phải SERVICE_STAFF không
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // Field name là 'roleName' hoặc 'role' (tùy response format)
+    const userRole = user.roleName || user.role;
+    const isServiceStaff = userRole === 'SERVICE_STAFF';
+    
+    // Debug log
+    logger.debug('[🔔 SERVICE DEBUG] User:', user);
+    logger.debug('[🔔 SERVICE DEBUG] Role:', userRole);
+    logger.debug('[🔔 SERVICE DEBUG] Is SERVICE_STAFF?', isServiceStaff);
+    
+    // ✅ SSE chỉ enable cho SERVICE_STAFF
+    const { isConnected } = useServiceNotification((notification) => {
+        const enriched = { ...notification, source: 'sse' };
+        logger.debug('[🔔 SERVICE] Adding notification:', enriched);
+        addNotification(enriched);
+    }, isServiceStaff); // Enable chỉ khi là SERVICE_STAFF
+
+    useEffect(() => {
+        if (isConnected) {
+            logger.debug('[🔔 SERVICE] Listener connected');
+        }
+    }, [isConnected]);
+
+    // Watchdog: nếu 5 phút không nhận SSE event, log cảnh báo để debug backend
+    useEffect(() => {
+        const interval = setInterval(() => {
+            try {
+                const ts = localStorage.getItem('sseLastEventAt');
+                if (!ts) return;
+                const diffMin = (Date.now() - new Date(ts).getTime()) / 60000;
+                if (diffMin > 5) {
+                    logger.warn('[🔔 SERVICE] No SSE events for', diffMin.toFixed(1), 'minutes');
+                }
+            } catch {}
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Không log nếu không phải SERVICE_STAFF
+    if (!isServiceStaff) {
+        logger.debug('[🔔 SERVICE] SSE disabled - user is not SERVICE_STAFF, role is:', userRole);
+        return null;
+    }
+
+    return null; // Không render gì
+};

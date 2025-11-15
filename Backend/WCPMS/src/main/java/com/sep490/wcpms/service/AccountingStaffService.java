@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service;
 
+import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.dto.CalibrationFeeDTO;
 import com.sep490.wcpms.dto.AccountingInvoiceDetailDTO;
 import com.sep490.wcpms.dto.InvoiceDTO; // <-- Cần tạo DTO này
@@ -48,6 +49,20 @@ public interface AccountingStaffService {
      * Hủy một Hóa đơn (PENDING -> CANCELLED) (Req 5)
      */
     InvoiceDTO cancelInvoice(Integer invoiceId, Integer staffId);
+
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 HÀM MỚI ---
+
+    /**
+     * Lấy danh sách HĐ ACTIVE chưa có hóa đơn lắp đặt (CONTRACT invoice).
+     */
+    Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable);
+
+    /**
+     * Tạo Hóa đơn lắp đặt cho 1 Hợp đồng ACTIVE.
+     */
+    InvoiceDTO createInstallationInvoice(ContractInstallationInvoiceCreateDTO request, Integer staffId);
 
     // --- HẾT PHẦN THÊM ---
 

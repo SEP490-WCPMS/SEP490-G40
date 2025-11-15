@@ -5,11 +5,14 @@ import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
+import com.sep490.wcpms.mapper.ContractMapper;
 import com.sep490.wcpms.mapper.InvoiceMapper; // <-- Cần tạo Mapper này
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.AccountingStaffService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -216,6 +219,131 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         return invoiceMapper.toDto(cancelledInvoice);
     }
+
+    // === HẾT PHẦN THÊM ===
+
+    // === THÊM 3 HÀM MỚI ===
+
+    // --- THÊM MỚI: sinh số hóa đơn CN-YYYY-xxxx ---
+    private String generateContractInvoiceNumber(LocalDate invoiceDate) {
+        LocalDate startOfYear = invoiceDate.withDayOfYear(1);
+        LocalDate endOfYear = invoiceDate.withMonth(12).withDayOfMonth(31);
+
+        long countThisYear = invoiceRepository.countByInvoiceDateBetween(
+                startOfYear,
+                endOfYear
+        );
+
+        long next = countThisYear + 1;
+        return String.format("CN-%d-%04d", invoiceDate.getYear(), next);
+    }
+
+    @Override
+    public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable) {
+        // 1. Lấy tất cả HĐ ACTIVE
+        Page<Contract> activeContracts =
+                contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
+
+        // 2. Lọc bỏ HĐ đã có hóa đơn lắp đặt (CONTRACT)
+        List<ContractDTO> list = activeContracts.getContent().stream()
+                .filter(c -> !invoiceRepository.existsByContract_Id(
+                        c.getId()
+                ))
+                .map(contract -> {
+                    ContractDTO dto = new ContractDTO();
+                    // copy các field cơ bản
+                    BeanUtils.copyProperties(contract, dto);
+
+                    // set thêm các id liên kết (đang dùng giống convertToDTO trong ContractCustomerService)
+                    dto.setCustomerId(
+                            contract.getCustomer() != null ? contract.getCustomer().getId() : null
+                    );
+                    dto.setServiceStaffId(
+                            contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
+                    );
+                    dto.setTechnicalStaffId(
+                            contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
+                    );
+
+                    return dto;
+                })
+                .toList();
+
+        return new PageImpl<>(list, pageable, activeContracts.getTotalElements());
+    }
+
+    @Override
+    @Transactional
+    public InvoiceDTO createInstallationInvoice(ContractInstallationInvoiceCreateDTO request, Integer staffId) {
+
+        // 1. Lấy Hợp đồng
+        Contract contract = contractRepository.findById(request.getContractId())
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found: " + request.getContractId()));
+
+        // 2. Kiểm tra trạng thái ACTIVE
+        if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE) {
+            throw new IllegalStateException("Chỉ tạo hóa đơn lắp đặt cho HĐ đang ACTIVE");
+        }
+
+        // 3. Kiểm tra đã có HĐ lắp đặt chưa
+        boolean exists = invoiceRepository.existsByContract_Id(
+                contract.getId()
+        );
+        if (exists) {
+            throw new IllegalStateException("Hợp đồng này đã có hóa đơn lắp đặt");
+        }
+
+        // 4. Lấy giá trị tiền do FE gửi lên
+        BigDecimal subtotal = request.getSubtotalAmount();
+        BigDecimal vatAmount = request.getVatAmount();
+        BigDecimal total = request.getTotalAmount();
+
+        LocalDate invoiceDate = request.getInvoiceDate();
+        LocalDate dueDate = request.getDueDate();
+
+        // 5. Số hóa đơn: nếu bạn muốn backend sinh, có thể override request.getInvoiceNumber()
+        String invoiceNumber = request.getInvoiceNumber();
+        if (invoiceNumber == null || invoiceNumber.isBlank()) {
+            invoiceNumber = generateContractInvoiceNumber(invoiceDate);
+        }
+
+        // 6. Ngày kỳ tính: tạm dùng ngày lắp đặt nếu có, ngược lại dùng invoiceDate
+        LocalDate baseDate = contract.getInstallationDate() != null
+                ? contract.getInstallationDate()
+                : invoiceDate;
+
+        Invoice inv = new Invoice();
+        inv.setInvoiceNumber(invoiceNumber);
+        inv.setCustomer(contract.getCustomer());
+        inv.setContract(contract);
+        inv.setMeterReading(null); // Hóa đơn lắp đặt không gắn meter_reading
+
+        inv.setFromDate(baseDate);
+        inv.setToDate(baseDate);
+        inv.setTotalConsumption(BigDecimal.ZERO);
+
+        inv.setSubtotalAmount(subtotal);
+        inv.setVatAmount(vatAmount);
+        inv.setEnvironmentFeeAmount(BigDecimal.ZERO);
+        inv.setTotalAmount(total);
+        inv.setLatePaymentFee(BigDecimal.ZERO);
+        inv.setIsMinimumUsageFee(0);
+
+        inv.setInvoiceDate(invoiceDate);
+        inv.setDueDate(dueDate);
+        inv.setPaymentStatus(Invoice.PaymentStatus.PENDING);
+
+        // Kế toán lập HĐ
+        if (staffId != null) {
+            Account staff = accountRepository.findById(staffId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Staff not found: " + staffId));
+            inv.setAccountingStaff(staff);
+        }
+
+        Invoice saved = invoiceRepository.save(inv);
+        return invoiceMapper.toDto(saved);
+    }
+
     // === HẾT PHẦN THÊM ===
 
 

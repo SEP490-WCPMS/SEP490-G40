@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './App.css';
 import { useAuth } from './hooks/use-auth';
+import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
+import { ServiceNotificationListener } from './components/Notifications/ServiceNotificationListener';
+import { ServiceNotificationToast } from './components/Notifications/ServiceNotificationToast';
 import Login from './components/Authentication/Login';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
@@ -56,6 +59,8 @@ import CreateServiceInvoice from './components/PagesAccounting/CreateServiceInvo
 import InvoiceDetail from './components/PagesAccounting/InvoiceDetail';
 import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
+import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice";
+import EligibleInstallationContracts from "@/components/PagesAccounting/EligibleInstallationContracts.jsx";
 import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
 import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; // <-- THÊM
 import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; // <-- THÊM
@@ -181,6 +186,8 @@ function App() {
             {/* --- HẾT --- */}
             {/* (Thêm các trang khác của Kế toán ở đây) */}
             <Route path="reading-routes" element={<ReadingRoutesList />} />
+            <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
+            <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>
@@ -201,4 +208,10 @@ function App() {
   );
 }
 
-export default App;
+export default () => (
+  <ServiceNotificationProvider>
+    <ServiceNotificationListener />
+    <ServiceNotificationToast />
+    <App />
+  </ServiceNotificationProvider>
+);

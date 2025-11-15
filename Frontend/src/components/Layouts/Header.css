@@ -102,6 +102,158 @@
   gap: 15px;
 }
 
+/* --- BẮT ĐẦU SỬA CHUÔNG THÔNG BÁO --- */
+
+/* 1. Style CHUNG cho nút chuông */
+.notification-bell-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px; /* Kích thước icon */
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* 2. Style RIÊNG cho chuông trên Header (nền xanh) */
+/* Dùng class cha .header-right để chỉ định */
+.header-right .notification-bell-button {
+  color: white; /* <-- MÀU TRẮNG CHO HEADER */
+}
+
+.header-right .notification-bell-button:hover {
+  color: #93c5fd; /* Màu hover trên header */
+  transform: translateY(-1px);
+}
+
+/* 3. Style cho cái chấm đỏ (badge) */
+/* Áp dụng cho cả 2 chế độ */
+.notification-badge {
+  background-color: #f5222d; /* Màu đỏ */
+  color: #fff;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+/* 4. Style badge cho chuông trên Header (standalone) */
+.header-right .notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  box-shadow: 0 0 0 2px #1e40af; /* Viền trùng màu nền header */
+}
+
+/* 5. Style badge cho chuông trong dropdown (compact) */
+.dropdown-item .notification-badge {
+  margin-left: auto;
+  position: static;
+  box-shadow: none;
+}
+
+/* --- KẾT THÚC SỬA CHUÔNG THÔNG BÁO --- */
+
+/* Notification panel styling (blue theme) */
+.notification-panel {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 8px;
+  width: 360px;
+  max-height: 500px;
+  overflow: auto;
+  z-index: 1100;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.2);
+  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 100%); /* deep blue */
+  color: #ffffff;
+}
+
+.notification-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+}
+
+.notification-panel-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #e6f0ff;
+}
+
+.notification-panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.notification-panel-markall {
+  background: none;
+  border: none;
+  color: #cfe6ff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.notification-panel-close {
+  background: none;
+  border: none;
+  color: #cfe6ff;
+  cursor: pointer;
+}
+
+.notification-list {
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notification-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: rgba(255,255,255,0.8);
+  font-size: 13px;
+}
+
+.notification-item {
+  background: #ffffff; /* white card for readability */
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.08s ease;
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+.notification-item:hover { transform: translateY(-2px); }
+
+.notification-item.recent { border-left: 3px solid #ff7a00; }
+
+.notification-item-inner { display:flex; gap:10px; align-items:flex-start; }
+.notification-item-icon { font-size: 16px; min-width:24px; }
+.notification-item-body { flex:1; }
+.notification-item-title-row { display:flex; justify-content:space-between; gap:8px; align-items:flex-start }
+.notification-item-title { font-weight:600; font-size:13px }
+.notification-item-time { font-size:11px; color:#64748b }
+.notification-item-message { font-size:12px; color:#475569; margin-top:4px }
+.notification-item-contract { font-size:11px; color:#94a3b8; margin-top:6px }
+.notification-item-dot { width:8px; height:8px; background:#1890ff; border-radius:50%; margin-left:8px }
+
+
 /* Login Button */
 .login-button {
   background-color: #22c55e;
@@ -361,67 +513,14 @@
   }
 }
 
-/* --- THÊM VÀO CUỐI FILE Header.css --- */
-
-/* 1. Class cha ("Hợp đồng")
-   - Bắt buộc phải có "position: relative"
-   - Đảm bảo nó là một "nav-item" để giữ nguyên style
-*/
-.nav-item.nav-dropdown {
-  position: relative;
-  cursor: pointer;
-  height: 100%; /* Đảm bảo nó chiếm đủ chiều cao */
-  display: flex;
-  align-items: center;
-}
-/* Style cho chữ "Hợp đồng" */
-.nav-item.nav-dropdown > span {
-  padding: 0 15px; /* Giống như các .nav-item khác */
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
-.nav-item.nav-dropdown:hover > span {
-    background-color: #f4f7fc; /* Màu nền khi hover (giống link) */
-    color: #0A77E2; /* Màu chữ xanh khi hover (giống link) */
-}
-
-
-/* 2. Menu con (danh sách xổ xuống)
-   - "display: none" để ẩn đi
-   - "position: absolute" để nó "nổi" lên trên
-*/
-.nav-dropdown .dropdown-menu {
-  display: none; /* Ẩn đi mặc định */
-  position: absolute;
-  top: 95%; /* Vị trí ngay dưới (điều chỉnh 95% hoặc 100%) */
-  left: 0;
-  background-color: #ffffff;
-  min-width: 220px; /* Độ rộng tối thiểu */
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  padding: 8px 0;
-  list-style: none; /* Bỏ dấu chấm */
-  
-  /* Ghi đè các thuộc tính bị kế thừa từ .main-nav */
-  flex-direction: column;
-  height: auto;
-  margin: 0; 
-}
-
-/* 3. Hiển thị menu con khi di chuột vào cha */
-.nav-dropdown:hover .dropdown-menu {
-  display: block; /* Hiện ra khi hover */
-}
 
 /* --- BẮT ĐẦU: CSS NÂNG CẤP CHO DROPDOWN --- */
-/* (Xóa đoạn CSS cũ của bạn cho nav-dropdown và thay bằng đoạn này) */
+/* (Tôi đã xóa phiên bản CSS dropdown cũ bị trùng lặp của bạn) */
 
 /* 1. Class cha ("Hỗ Trợ", "Hợp đồng") */
 .nav-item.nav-dropdown {
   position: relative;
-  /* Chúng ta không cần các style flex hay height ở đây nữa */
+  /* Bỏ style flex/height cũ để dùng trigger */
 }
 
 /* 2. Trigger (Bao gồm chữ "Hỗ Trợ" + icon) */
@@ -431,16 +530,12 @@
   gap: 6px; /* Khoảng cách giữa chữ và icon */
   cursor: pointer;
   
-  /* Phần này quan trọng: 
-    Giúp nó kế thừa style của .nav-item thông thường 
-    và có chỗ cho đường gạch chân animation
-  */
+  /* Kế thừa style của .nav-item */
   color: white;
   font-size: 15px;
   font-weight: 500;
   transition: color 0.3s ease;
   position: relative;
-  /* Đẩy đường gạch chân xuống dưới giống các nav-item khác */
   padding-bottom: 5px; 
 }
 
@@ -545,27 +640,4 @@
 
 /* --- HẾT: CSS NÂNG CẤP CHO DROPDOWN --- */
 
-/* 4. Các mục con bên trong menu */
-.dropdown-menu li {
-  width: 100%;
-  height: auto;
-  margin: 0; /* Ghi đè margin-left nếu có */
-}
 
-.dropdown-menu li a {
-  display: block;
-  width: 100%;
-  padding: 10px 20px;
-  color: #334155;
-  text-decoration: none;
-  white-space: nowrap; /* Không xuống dòng */
-  
-  /* Ghi đè các thuộc tính bị kế thừa từ .nav-item */
-  height: auto; 
-  background-color: transparent;
-}
-
-.dropdown-menu li a:hover {
-  background-color: #f4f7fc;
-  color: #0A77E2;
-}

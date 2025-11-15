@@ -41,7 +41,7 @@ const ContractCreate = () => {
                     const contractData = contractResponse.data;
                     setSourceContract(contractData);
 
-                    // Set các giá trị vào form
+                    // Đặt các giá trị vào form
                     form.setFieldsValue({
                         customerId: contractData.customerId,
                         customerName: contractData.customerName,

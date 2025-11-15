@@ -54,6 +54,36 @@ export const cancelInvoice = (invoiceId) => {
 };
 // --- HẾT PHẦN THÊM ---
 
+// --- THÊM 2 HÀM MỚI ---
+
+/**
+ * Lấy danh sách HĐ ACTIVE chưa có Hóa đơn lắp đặt (CONTRACT invoice).
+ * @param {object} params - { page: 0, size: 10 }
+ */
+export const getEligibleInstallationContracts = (params) => {
+    return apiClient.get('/accounting/contracts/eligible-installation', { params });
+};
+
+/**
+ * Tạo Hóa đơn lắp đặt (CONTRACT invoice) cho 1 Hợp đồng ACTIVE.
+ * @param {object} payload - ContractInstallationInvoiceCreateDTO
+ * {
+ *   contractId,
+ *   invoiceNumber,
+ *   invoiceDate,
+ *   dueDate,
+ *   subtotalAmount,
+ *   vatAmount,
+ *   totalAmount
+ * }
+ */
+export const createInstallationInvoice = (payload) => {
+    return apiClient.post('/accounting/invoices/installation', payload);
+};
+
+
+// --- HẾT PHẦN THÊM ---
+
 // --- THÊM HÀM MỚI ---
 /**
  * Lấy dữ liệu Báo cáo Doanh thu (Dashboard).

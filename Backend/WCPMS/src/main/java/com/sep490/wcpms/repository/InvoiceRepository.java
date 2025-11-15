@@ -12,6 +12,7 @@ import com.sep490.wcpms.entity.Invoice.PaymentStatus; // <-- THÊM
 import java.math.BigDecimal; // <-- THÊM
 import java.time.LocalDate; // <-- THÊM
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional; // <-- THÊM IMPORT
@@ -61,7 +62,18 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
      * Tìm TẤT CẢ Hóa đơn (không lọc status) của một Khách hàng.
      */
     Page<Invoice> findByCustomer(Customer customer, Pageable pageable);
+    // --- THÊM 2 HÀM MỚI ---
+
+    // Đếm số hóa đơn theo loại và theo khoảng ngày (để đánh số CN-YYYY-xxxx)
+    long countByInvoiceDateBetween(
+            LocalDate startDate,
+            LocalDate endDate
+    );
+
+    boolean existsByContract_Id(Integer contractId);
+
     // --- HẾT PHẦN THÊM ---
+
 
     // Hàm  (cho Thu ngân tại quầy)
     /**
