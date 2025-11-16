@@ -119,3 +119,31 @@ export const getRecentUnbilledFees = (limit = 5) => {
     return apiClient.get('/accounting/unbilled-calibrations', { params });
 };
 // --- HẾT PHẦN THÊM ---
+
+
+// === SỬA LẠI CÁC HÀM QUẢN LÝ TUYẾN ===
+
+/** Lấy tất cả Tuyến đọc (Bảng 4) */
+export const getAllRoutes = () => {
+    return apiClient.get('/accounting/routes');
+};
+
+/** (XÓA HÀM getUnassignedContracts) */
+
+/** Lấy danh sách HĐ ĐÃ GÁN vào 1 tuyến (theo ID tuyến) */
+export const getContractsByRoute = (routeId) => {
+    // Gọi API mới
+    return apiClient.get(`/accounting/routes/${routeId}/contracts`);
+};
+
+/**
+ * Cập nhật Thứ tự HĐ trong Tuyến
+ * @param {number} routeId - ID của Tuyến (Bảng 4)
+ * @param {number[]} orderedContractIds - Mảng các ID HĐ (Bảng 9) theo thứ tự mới
+ */
+export const updateRouteOrder = (routeId, orderedContractIds) => {
+    const dto = { orderedContractIds };
+    // Gọi API mới
+    return apiClient.put(`/accounting/routes/${routeId}/update-order`, dto);
+};
+// --- HẾT PHẦN SỬA ---

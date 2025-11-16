@@ -54,4 +54,14 @@ export const getCashierInvoiceDetail = (invoiceId) => {
 };
 // --- HẾT PHẦN THÊM ---
 
+// --- THÊM HÀM MỚI ---
+/**
+ * Lấy danh sách HỢP ĐỒNG (Khách hàng) đã sắp xếp
+ * theo tuyến của Thu ngân.
+ */
+export const getMyRouteContracts = () => {
+    return apiClient.get('/cashier/my-route-contracts');
+};
+// ---
+
 // Bạn có thể thêm các API Dashboard/Báo cáo của Thu Ngân vào đây

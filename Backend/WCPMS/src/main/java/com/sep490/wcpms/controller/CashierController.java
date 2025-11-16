@@ -2,6 +2,7 @@ package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.ReceiptDTO;
+import com.sep490.wcpms.dto.RouteManagementDTO;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.service.CashierService;
 import com.sep490.wcpms.exception.AccessDeniedException;
@@ -11,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -95,6 +97,20 @@ public class CashierController {
         Integer cashierId = getAuthenticatedStaffId();
         InvoiceDTO invoice = cashierService.getCashierInvoiceDetail(cashierId, invoiceId);
         return ResponseEntity.ok(invoice);
+    }
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM API MỚI (Lấy HỢP ĐỒNG) ---
+    /**
+     * API Lấy danh sách Hợp đồng/Khách hàng (Đã sắp xếp)
+     * theo tuyến của Thu ngân.
+     * Path: GET /api/cashier/my-route-contracts
+     */
+    @GetMapping("/my-route-contracts")
+    public ResponseEntity<List<RouteManagementDTO>> getMyRouteContracts() {
+        Integer cashierId = getAuthenticatedStaffId();
+        List<RouteManagementDTO> contracts = cashierService.getMyRouteContracts(cashierId);
+        return ResponseEntity.ok(contracts);
     }
     // --- HẾT PHẦN THÊM ---
 }

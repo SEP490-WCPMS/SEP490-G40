@@ -4,6 +4,7 @@ import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.dto.CalibrationFeeDTO;
 import com.sep490.wcpms.dto.InvoiceDTO;
+import com.sep490.wcpms.entity.ReadingRoute;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.AccountingStaffService;
 import lombok.RequiredArgsConstructor;
@@ -194,4 +195,33 @@ public class AccountingStaffController {
         return ResponseEntity.ok(report);
     }
     // --- HẾT PHẦN THÊM ---
+
+    // --- SỬA LẠI API NÀY ---
+    /** Lấy tất cả Tuyến đọc (Giữ nguyên) */
+    @GetMapping("/routes")
+    public ResponseEntity<List<ReadingRouteDTO>> getAllRoutes() { // <-- SỬA KIỂU TRẢ VỀ
+        return ResponseEntity.ok(accountingService.getAllRoutes());
+    }
+    // --- HẾT PHẦN SỬA ---
+
+    /** (XÓA API /routes/unassigned-contracts) */
+
+    /** API Lấy danh sách HĐ ĐÃ GÁN (theo 1 tuyến) */
+    @GetMapping("/routes/{routeId}/contracts") // <-- SỬA TÊN API
+    public ResponseEntity<List<RouteManagementDTO>> getContractsByRoute( // <-- SỬA TÊN HÀM
+                                                                         @PathVariable Integer routeId
+    ) {
+        return ResponseEntity.ok(accountingService.getContractsByRoute(routeId)); // <-- SỬA TÊN HÀM
+    }
+
+    /** API Cập nhật Thứ tự HĐ trong Tuyến */
+    @PutMapping("/routes/{routeId}/update-order") // <-- SỬA TÊN API
+    public ResponseEntity<Void> updateRouteOrder( // <-- SỬA TÊN HÀM
+                                                  @PathVariable Integer routeId,
+                                                  @RequestBody RouteOrderUpdateRequestDTO dto
+    ) {
+        accountingService.updateRouteOrder(routeId, dto); // <-- SỬA TÊN HÀM
+        return ResponseEntity.ok().build();
+    }
+    // === HẾT PHẦN SỬA ===
 }

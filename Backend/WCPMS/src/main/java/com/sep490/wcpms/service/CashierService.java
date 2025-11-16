@@ -2,9 +2,11 @@ package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.ReceiptDTO;
+import com.sep490.wcpms.dto.RouteManagementDTO;
 import org.springframework.data.domain.Page; // <-- THÊM
 import org.springframework.data.domain.Pageable; // <-- THÊM
 import java.math.BigDecimal;
+import java.util.List;
 
 public interface CashierService {
 
@@ -35,4 +37,13 @@ public interface CashierService {
      * Lấy chi tiết 1 Hóa đơn (xác thực Thu ngân có quyền xem).
      */
     InvoiceDTO getCashierInvoiceDetail(Integer cashierId, Integer invoiceId);
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Lấy danh sách Hợp đồng/Khách hàng
+     * thuộc các tuyến (Routes) mà Thu ngân này quản lý,
+     * đã được SẮP XẾP theo route_order.
+     */
+    List<RouteManagementDTO> getMyRouteContracts(Integer cashierId);
+    // --- HẾT PHẦN THÊM ---
 }
