@@ -65,6 +65,8 @@ import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
 import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; // <-- THÊM
 import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; // <-- THÊM
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
+import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
+import CashierRouteList from './components/PagesCashier/CashierRouteList';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -143,8 +145,11 @@ function App() {
             <Route path="scan" element={<MeterScan />} />
             <Route path="submit-reading" element={<ReadingConfirmation />} />
             <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
+            {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
             <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
             <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
+            {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
+            <Route path="route-list" element={<CashierRouteList />} />
           </Route>
         </Route>
 
@@ -184,6 +189,7 @@ function App() {
             {/* (Req 1) Trang Chi tiết Hóa đơn (Read-only) */}
             <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
             {/* --- HẾT --- */}
+            <Route path="route-management" element={<RouteManagementPage />} />
             {/* (Thêm các trang khác của Kế toán ở đây) */}
             <Route path="reading-routes" element={<ReadingRoutesList />} />
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />

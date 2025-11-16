@@ -29,7 +29,9 @@ import com.sep490.wcpms.entity.Invoice.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +46,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final CustomerRepository customerRepository; // <-- Cần Repo này
     private final ContractRepository contractRepository; // <-- Cần Repo này
     private final ReceiptRepository receiptRepository;
+    private final ReadingRouteRepository readingRouteRepository;
+    private final WaterServiceContractRepository waterServiceContractRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -379,4 +383,72 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         return receiptRepository.getDailyRevenueReport(startDate, endDate);
     }
     // --- HẾT PHẦN THÊM ---
+
+    // === SỬA LẠI HÀM NÀY ===
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReadingRouteDTO> getAllRoutes() {
+        // 1. Lấy tất cả các tuyến (Entity)
+        List<ReadingRoute> routes = readingRouteRepository.findAll();
+
+        // 2. Chuyển đổi (Map) sang DTO để ngắt vòng lặp
+        return routes.stream()
+                .map(ReadingRouteDTO::new) // Dùng constructor của DTO
+                .collect(Collectors.toList());
+    }
+    // --- HẾT PHẦN SỬA ---
+
+    // (XÓA HÀM getUnassignedContracts())
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RouteManagementDTO> getContractsByRoute(Integer routeId) {
+        // Tìm HĐ (Bảng 9) Active và theo route_id (Đã sắp xếp theo routeOrder)
+        List<WaterServiceContract> contracts = waterServiceContractRepository
+                .findByReadingRoute_IdAndContractStatusOrderByRouteOrderAsc(
+                        routeId,
+                        WaterServiceContract.WaterServiceContractStatus.ACTIVE
+                );
+
+        return contracts.stream()
+                .map(RouteManagementDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateRouteOrder(Integer routeId, RouteOrderUpdateRequestDTO dto) {
+        // 1. Lấy Tuyến đọc (Bảng 4) (Chỉ để kiểm tra)
+        readingRouteRepository.findById(routeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Tuyến đọc: " + routeId));
+
+        // 2. Lấy danh sách ID HĐ (Bảng 9) mà FE gửi lên (đã có thứ tự)
+        List<Integer> orderedContractIds = dto.getOrderedContractIds();
+
+        if (orderedContractIds == null || orderedContractIds.isEmpty()) {
+            return; // Không có gì để cập nhật
+        }
+
+        // 3. Lấy tất cả HĐ (Bảng 9) theo danh sách ID đó
+        List<WaterServiceContract> contractsToUpdate = waterServiceContractRepository.findAllById(orderedContractIds);
+
+        // 4. Dùng Map để tăng tốc độ tìm kiếm
+        Map<Integer, WaterServiceContract> contractMap = contractsToUpdate.stream()
+                .collect(Collectors.toMap(WaterServiceContract::getId, c -> c));
+
+        // 5. Lặp qua danh sách ID ĐÃ SẮP XẾP từ FE
+        for (int i = 0; i < orderedContractIds.size(); i++) {
+            Integer contractId = orderedContractIds.get(i);
+            WaterServiceContract contract = contractMap.get(contractId);
+
+            if (contract != null) {
+                // (Không cần gán Tuyến nữa, vì HĐ đã thuộc Tuyến này rồi)
+                contract.setRouteOrder(i + 1); // Gán Thứ tự MỚI (1, 2, 3...)
+            }
+        }
+
+        // 6. Lưu tất cả thay đổi 1 lần
+        waterServiceContractRepository.saveAll(contractsToUpdate);
+    }
+    // === HẾT PHẦN SỬA ===
 }
