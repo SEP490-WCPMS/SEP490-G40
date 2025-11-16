@@ -43,6 +43,26 @@ public class WaterServiceContract {
             foreignKey = @ForeignKey(name = "fk_water_service_contracts_price_types"))
     private WaterPriceType priceType;
 
+    // --- THÊM 2 TRƯỜNG CỦA BẠN VÀO ĐÂY ---
+
+    /**
+     * Liên kết đến Tuyến đọc (Bảng 4)
+     * (Khớp với cột 'route_id' bạn đã ALTER)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "route_id",
+            foreignKey = @ForeignKey(name = "fk_wsc_route"))
+    private ReadingRoute readingRoute;
+
+    /**
+     * Thứ tự đọc trong tuyến
+     * (Khớp với cột 'route_order' bạn đã ALTER)
+     */
+    @Column(name = "route_order")
+    private Integer routeOrder;
+
+    // --- HẾT PHẦN THÊM ---
+
     @NotNull
     @Column(name = "service_start_date", nullable = false)
     private LocalDate serviceStartDate;

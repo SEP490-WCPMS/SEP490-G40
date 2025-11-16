@@ -24,6 +24,11 @@ const cashierMenuItems = [
     url: '/cashier/scan', // Đường dẫn tuyệt đối
     icon: ScanLine, // Icon quét
   },
+  {
+    title: 'HĐ Theo Tuyến (Ghi số)', // <-- Sửa tên
+    url: '/cashier/route-list', // <-- Link mới
+    icon: ListTodo,
+  },
   // --- SỬA LẠI MENU THANH TOÁN ---
   {
     title: 'Thu Tiền Tại Quầy',
@@ -31,7 +36,7 @@ const cashierMenuItems = [
     icon: Banknote,
   },
   {
-    title: 'Hóa Đơn Theo Tuyến', // (Thu tại nhà)
+    title: 'HĐ Theo Tuyến (Thu tiền)', // (Thu tại nhà)
     url: '/cashier/my-route',
     icon: ListTodo, // Icon mới
   },

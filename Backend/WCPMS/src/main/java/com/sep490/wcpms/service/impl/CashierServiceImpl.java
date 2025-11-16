@@ -17,6 +17,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sep490.wcpms.dto.RouteManagementDTO;
+import com.sep490.wcpms.entity.ReadingRoute;
+import com.sep490.wcpms.entity.WaterServiceContract;
+import com.sep490.wcpms.repository.ReadingRouteRepository;
+import com.sep490.wcpms.repository.WaterServiceContractRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,6 +38,7 @@ public class CashierServiceImpl implements CashierService {
     private final InvoiceMapper invoiceMapper;
     private final ReceiptMapper receiptMapper;
     private final ReadingRouteRepository readingRouteRepository;
+    private final WaterServiceContractRepository waterServiceContractRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -150,4 +156,35 @@ public class CashierServiceImpl implements CashierService {
         return invoiceMapper.toDto(invoice);
     }
     // === HẾT PHẦN THÊM ===
+
+    // --- THÊM HÀM MỚI ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<RouteManagementDTO> getMyRouteContracts(Integer cashierId) {
+        // 1. Lấy Account Thu ngân
+        Account cashier = accountRepository.findById(cashierId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản Thu ngân: " + cashierId));
+
+        // 2. Tìm các tuyến (Bảng 4) mà Thu ngân này được gán
+        List<ReadingRoute> routes = readingRouteRepository.findAllByAssignedReader(cashier);
+
+        if (routes.isEmpty()) {
+            return List.of(); // Trả về danh sách rỗng nếu không được gán tuyến nào
+        }
+
+        // 3. Lấy danh sách các ID của Tuyến
+        List<Integer> routeIds = routes.stream().map(ReadingRoute::getId).collect(Collectors.toList());
+
+        // 4. Tìm tất cả HĐ (Bảng 9) thuộc các tuyến này, ĐÃ SẮP XẾP
+        List<WaterServiceContract> contracts = waterServiceContractRepository
+                .findByReadingRoute_IdInAndContractStatusOrderByReadingRoute_IdAscRouteOrderAsc( // <-- Gọi hàm Repo mới
+                        routeIds,
+                        WaterServiceContract.WaterServiceContractStatus.ACTIVE
+                );
+
+        return contracts.stream()
+                .map(RouteManagementDTO::new)
+                .collect(Collectors.toList());
+    }
+    // --- HẾT PHẦN THÊM ---
 }
