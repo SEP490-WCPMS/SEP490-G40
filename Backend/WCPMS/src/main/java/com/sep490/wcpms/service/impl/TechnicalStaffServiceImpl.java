@@ -189,6 +189,17 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
             throw new IllegalStateException("Contract is missing Usage Details (Price Type).");
         }
 
+        // --- THÊM LOGIC LƯU ROUTE_ID VÀO ĐÂY ---
+        // 4b. Lấy Route (Tuyến đọc) từ HĐ Lắp đặt (Bảng 8)
+        if (contract.getReadingRoute() != null) {
+            serviceContract.setReadingRoute(contract.getReadingRoute()); // Gán Tuyến
+
+            // (Tạm thời gán route_order = 0 (hoặc NULL),
+            // Kế toán sẽ sắp xếp lại sau)
+            serviceContract.setRouteOrder(null);
+        }
+        // --- HẾT PHẦN THÊM ---
+
         serviceContract.setServiceStartDate(LocalDate.now());
         serviceContract.setContractSignedDate(LocalDate.now()); // Giả định ngày ký là hôm nay
         serviceContract.setContractStatus(WaterServiceContract.WaterServiceContractStatus.ACTIVE);
@@ -370,10 +381,10 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         // --- BƯỚC 6.5 (MỚI): CẬP NHẬT BẢNG CUSTOMERS (BẢNG 7) ---
         // (Customer đã được lấy ở Bước 3)
-        customer.setMeterCode(newMeter.getMeterCode()); // Cập nhật mã đồng hồ mới
-        customer.setMeterSerialNumber(newMeter.getSerialNumber()); // Cập nhật serial mới
-        customer.setMeterStatus(Customer.MeterStatus.WORKING); // Giả định trạng thái WORKING
-        customerRepository.save(customer); // Lưu lại Bảng 7
+//        customer.setMeterCode(newMeter.getMeterCode()); // Cập nhật mã đồng hồ mới
+//        customer.setMeterSerialNumber(newMeter.getSerialNumber()); // Cập nhật serial mới
+//        customer.setMeterStatus(Customer.MeterStatus.WORKING); // Giả định trạng thái WORKING
+//        customerRepository.save(customer); // Lưu lại Bảng 7
         // --- HẾT PHẦN THÊM ---
 
         // 7. XỬ LÝ LÝ DO & CẬP NHẬT TRẠNG THÁI ĐỒNG HỒ (Bảng 10)
