@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Đảm bảo import đúng file service của Service Staff
-import { createSupportTicketForCustomer, getAllCustomersSimple, getCustomerActiveMeters } from '../Services/apiService'; 
+import { createSupportTicketForCustomer, getAllCustomersSimple, getCustomerActiveMeters } from '../../Services/apiService'; 
 import { ArrowLeft, AlertCircle, CheckCircle, Search } from 'lucide-react';
 import moment from 'moment'; // (Giữ lại nếu bạn dùng)
 

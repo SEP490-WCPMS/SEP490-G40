@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Table } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import ContractTable from './ContractManagement/ContractTable';
-import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import ContractViewModal from './ContractManagement/ContractViewModal';
-import { getServiceContracts, getServiceContractDetail, updateServiceContract, submitContractForSurvey } from '../Services/apiService';
+import ContractTable from '../ContractTable';
+import AssignSurveyModal from './AssignSurveyModal';
+import ContractViewModal from '../ContractViewModal';
+import { getServiceContracts, getServiceContractDetail, updateServiceContract, submitContractForSurvey } from '../../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -180,7 +180,7 @@ const ContractRequestsPage = () => {
                         loading={modalLoading}
                     />
                 ) : (
-                    <ContractDetailModal
+                    <AssignSurveyModal
                         visible={isModalVisible}
                         onCancel={handleCancelModal}
                         onSave={handleSaveModal}

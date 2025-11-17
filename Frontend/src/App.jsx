@@ -22,15 +22,15 @@ import LayoutCashier from './components/Layouts/LayoutCashier';
 import MeterScan from './components/PagesCashier/MeterScan';
 import ReadingConfirmation from './components/PagesCashier/ReadingConfirmation';
 import LayoutService from './components/Layouts/LayoutService';
-import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage';
-import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
-import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
-import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
-import SignedContractsPage from './components/PagesService/SignedContractsPage';
-import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
-import ContractTransferList from './components/PagesService/ContractManagement/Requests/ContractTransferList';
-import ContractAnnulList from './components/PagesService/ContractManagement/Requests/ContractAnnulList';
-import ContractCreatePage from './components/PagesService/ContractManagement/ContractCreatePage';
+import ServiceDashboardPage from './components/PagesService/Dashboard/ServiceDashboardPage';
+import ContractRequestsPage from './components/PagesService/ContractCreation/ContractRequestsPage';
+import SurveyReviewPage from './components/PagesService/ContractCreation/SurveyReviewPage';
+import ApprovedContractsPage from './components/PagesService/ContractCreation/ApprovedContractsPage';
+import SignedContractsPage from './components/PagesService/ContractCreation/SignedContractsPage';
+import ActiveContractsPage from './components/PagesService/ActiveContracts/ActiveContractsPage';
+import ContractTransferList from './components/PagesService/AnnulTransfer/ContractTransferList';
+import ContractAnnulList from './components/PagesService/AnnulTransfer/ContractAnnulList';
+import ContractCreatePage from './components/PagesService/ContractCreation/ContractCreatePage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import ContractList from './components/Customer/ContractList';
@@ -42,12 +42,12 @@ import PrivateRoute from './PrivateRoute';
 import CustomerChangePassword from './components/Customer/CustomerChangePassword';
 import MeterReplacementForm from './components/PagesTechnical/Replacement/MeterReplacementForm'; // <-- Trang mới
 import OnSiteCalibrationForm from './components/PagesTechnical/OnSiteCalibration/OnSiteCalibrationForm'; // <-- Trang mới
-import SupportTicketList from './components/PagesService/SupportTicketList'; // <-- Trang mới
+import SupportTicketList from './components/PagesService/SupportTickets/SupportTicketList'; // <-- Trang mới
 import MaintenanceRequestList from './components/PagesTechnical/MaintenanceRequestList'; // <-- Trang mới
 import CustomerSupportForm from './components/Customer/Feedback/CustomerSupportForm'; // <-- Trang mới
 import MySupportTicketList from './components/Customer/Feedback/MySupportTicketList'; // <-- Trang mới
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
-import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
+import ServiceCreateTicketForm from './components/PagesService/SupportTickets/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
 import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
 import StaffChangePassword from './components/Staff/StaffChangePassword';

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, message } from 'antd';
-import { getTransferRequests, approveTransferRequest, rejectTransferRequest, getServiceRequestDetail } from '../../../Services/apiService';
-import apiClient from '../../../Services/apiClient';
+import { getAnnulRequests, approveAnnulRequest, rejectAnnulRequest, getServiceRequestDetail } from '../../Services/apiService';
+import apiClient from '../../Services/apiClient';
 import RequestDetailModal from './RequestDetailModal';
 
-const ContractTransferList = () => {
-  const [transfers, setTransfers] = useState([]);
+const ContractAnnulList = () => {
+  const [annuls, setAnnuls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -29,14 +29,9 @@ const ContractTransferList = () => {
       key: 'contractNumber',
     },
     {
-      title: 'Khách hàng cũ',
-      dataIndex: 'currentCustomer',
-      key: 'currentCustomer',
-    },
-    {
-      title: 'Khách hàng mới',
-      dataIndex: 'newCustomer',
-      key: 'newCustomer',
+      title: 'Tên Khách hàng',
+      dataIndex: 'customerName',
+      key: 'customerName',
     },
     {
       title: 'Ngày yêu cầu',
@@ -44,11 +39,16 @@ const ContractTransferList = () => {
       key: 'requestDate',
     },
     {
+      title: 'Lý do',
+      dataIndex: 'reason',
+      key: 'reason',
+      ellipsis: true,
+    },
+    {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
-        // Hỗ trợ cả dạng chuỗi và object { code, message }
         const code = typeof status === 'object' && status !== null
           ? (status.code || status.name || status.value || status.state || 'PENDING')
           : (status || 'PENDING');
@@ -125,20 +125,19 @@ const ContractTransferList = () => {
     getServiceRequestDetail(record.id)
       .then(res => {
         const payload = res?.data;
-        // Một số BE trả { status: 200, data: {...} }, số khác trả thẳng object
         const core = payload?.data || payload?.result || payload?.content || payload || {};
         const normalized = {
           requestNumber: core.requestNumber || record.requestNumber,
           contractNumber: core.contractNumber || record.contractNumber,
           requestDate: core.requestDate || record.requestDate,
-          requestType: (core.requestType || record.requestType || 'TRANSFER').toString().toUpperCase(),
+          requestType: (core.requestType || record.requestType || 'ANNUL').toString().toUpperCase(),
           status: (typeof core.approvalStatus === 'string' ? core.approvalStatus : null)
             || (typeof core.status === 'object' && core.status ? (core.status.code || core.status.name || core.status.value) : null)
             || (typeof core.status === 'string' ? core.status : null)
             || record.status,
           reason: core.reason || core.notes || core.note,
-          fromCustomerName: core.fromCustomerName || record.currentCustomer,
-          toCustomerName: core.toCustomerName || record.newCustomer,
+          fromCustomerName: core.fromCustomerName || record.customerName,
+          toCustomerName: core.toCustomerName,
           attachedEvidence: core.attachedEvidence || core.evidence || core.files,
           approvalNote: core.approvalNote || core.note || core.notes,
         };
@@ -154,8 +153,8 @@ const ContractTransferList = () => {
 
   const handleApprove = async (record) => {
     try {
-      await approveTransferRequest(record.id);
-      message.success('Duyệt yêu cầu chuyển nhượng thành công!');
+      await approveAnnulRequest(record.id);
+      message.success('Duyệt yêu cầu hủy hợp đồng thành công!');
       fetchData();
     } catch (error) {
       message.error('Duyệt yêu cầu thất bại!');
@@ -165,8 +164,8 @@ const ContractTransferList = () => {
 
   const handleReject = async (record) => {
     try {
-      await rejectTransferRequest(record.id, 'Từ chối yêu cầu');
-      message.success('Từ chối yêu cầu chuyển nhượng thành công!');
+      await rejectAnnulRequest(record.id, 'Từ chối yêu cầu');
+      message.success('Từ chối yêu cầu hủy hợp đồng thành công!');
       fetchData();
     } catch (error) {
       message.error('Từ chối yêu cầu thất bại!');
@@ -177,15 +176,13 @@ const ContractTransferList = () => {
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
-      const response = await getTransferRequests({
+      const response = await getAnnulRequests({
         page: (params.current || pagination.current) - 1,
         size: params.pageSize || pagination.pageSize
       });
-      // Chấp nhận nhiều dạng payload từ BE: Page, array, hoặc wrapper khác
       const data = response?.data;
-      // Debug nhẹ để kiểm tra cấu trúc BE qua Console devtools
       // eslint-disable-next-line no-console
-      console.log('[TransferList] payload', data);
+      console.log('[AnnulList] payload', data);
       // Tìm mảng items theo nhiều cấu trúc trả về khác nhau (kể cả lồng 1 cấp)
       const pickArray = (obj) => {
         if (Array.isArray(obj)) return obj;
@@ -202,36 +199,34 @@ const ContractTransferList = () => {
       };
       const rawItems = pickArray(data);
       // eslint-disable-next-line no-console
-      console.log('[TransferList] items.length', rawItems.length, 'first.keys', rawItems[0] && Object.keys(rawItems[0]));
-      // Chuẩn hóa field cho bảng (mapping field name theo BE)
+      console.log('[AnnulList] items.length', rawItems.length, 'first.keys', rawItems[0] && Object.keys(rawItems[0]));
       const items = rawItems.map((it) => ({
         ...it,
         contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-        currentCustomer: it.fromCustomerName || (it.fromCustomerId ? `KH #${it.fromCustomerId}` : '—'),
-        newCustomer: it.toCustomerName || (it.toCustomerId ? `KH #${it.toCustomerId}` : '—'),
+        customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
         requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
+        reason: it.reason || it.note || '—',
         status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
           || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
           || (typeof it.status === 'string' ? it.status : null)
           || 'PENDING',
       }));
       let finalItems = items;
-      // Fallback: nếu không có dữ liệu do filter BE khác casing/tên tham số, thử gọi không filter rồi lọc client
       if (!items.length) {
         try {
           const alt = await apiClient.get('/service/requests', { params: { page: (params.current || pagination.current) - 1, size: params.pageSize || pagination.pageSize } });
           const altData = alt?.data;
           // eslint-disable-next-line no-console
-          console.log('[TransferList] alt payload', altData);
+          console.log('[AnnulList] alt payload', altData);
           const altRaw = pickArray(altData);
           finalItems = altRaw
-            .filter(it => (it.requestType || it.type || '').toString().toUpperCase() === 'TRANSFER')
+            .filter(it => (it.requestType || it.type || '').toString().toUpperCase() === 'ANNUL')
             .map((it) => ({
               ...it,
               contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-              currentCustomer: it.fromCustomerName || (it.fromCustomerId ? `KH #${it.fromCustomerId}` : '—'),
-              newCustomer: it.toCustomerName || (it.toCustomerId ? `KH #${it.toCustomerId}` : '—'),
+              customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
               requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
+              reason: it.reason || it.note || '—',
               status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
                 || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
                 || (typeof it.status === 'string' ? it.status : null)
@@ -239,10 +234,10 @@ const ContractTransferList = () => {
             }));
         } catch (e) {
           // eslint-disable-next-line no-console
-          console.warn('[TransferList] alt fetch failed', e);
+          console.warn('[AnnulList] alt fetch failed', e);
         }
       }
-      setTransfers(finalItems);
+      setAnnuls(finalItems);
       const total = Array.isArray(data)
         ? finalItems.length
         : (data?.totalElements ?? data?.total ?? data?.recordCount ?? finalItems.length ?? 0);
@@ -253,7 +248,7 @@ const ContractTransferList = () => {
         pageSize: params.pageSize || pagination.pageSize
       });
     } catch (error) {
-      message.error('Không thể tải danh sách yêu cầu chuyển nhượng');
+      message.error('Không thể tải danh sách yêu cầu hủy hợp đồng');
       console.error('Fetch error:', error);
     } finally {
       setLoading(false);
@@ -276,10 +271,10 @@ const ContractTransferList = () => {
 
   return (
     <>
-      <Card title="Danh sách yêu cầu chuyển nhượng hợp đồng">
+      <Card title="Danh sách yêu cầu hủy hợp đồng">
         <Table
           columns={columns}
-          dataSource={transfers}
+          dataSource={annuls}
           pagination={pagination}
           loading={loading}
           onChange={handleTableChange}
@@ -296,4 +291,4 @@ const ContractTransferList = () => {
   );
 };
 
-export default ContractTransferList;
+export default ContractAnnulList;
