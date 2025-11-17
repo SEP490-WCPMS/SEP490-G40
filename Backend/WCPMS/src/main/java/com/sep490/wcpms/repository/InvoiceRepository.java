@@ -144,4 +144,29 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
             @Param("today") LocalDate today
     );
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 HÀM MỚI CHO STATS ---
+
+    /**
+     * Đếm số Hóa đơn (Bảng 17) theo danh sách Tuyến (Routes) và Trạng thái.
+     */
+    @Query("SELECT COUNT(inv) FROM Invoice inv " +
+            "WHERE inv.contract.readingRoute.id IN :routeIds " +
+            "AND inv.paymentStatus IN :statuses")
+    long countByRouteIdsAndStatus(
+            @Param("routeIds") Collection<Integer> routeIds,
+            @Param("statuses") Collection<Invoice.PaymentStatus> statuses
+    );
+
+    /**
+     * Tính TỔNG TIỀN của Hóa đơn (Bảng 17) theo Tuyến và Trạng thái.
+     */
+    @Query("SELECT SUM(inv.totalAmount) FROM Invoice inv " +
+            "WHERE inv.contract.readingRoute.id IN :routeIds " +
+            "AND inv.paymentStatus IN :statuses")
+    BigDecimal sumTotalAmountByRouteIdsAndStatus(
+            @Param("routeIds") Collection<Integer> routeIds,
+            @Param("statuses") Collection<Invoice.PaymentStatus> statuses
+    );
+    // --- HẾT PHẦN THÊM ---
 }

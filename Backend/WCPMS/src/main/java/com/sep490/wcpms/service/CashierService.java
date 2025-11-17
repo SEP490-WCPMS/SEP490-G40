@@ -1,11 +1,12 @@
 package com.sep490.wcpms.service;
 
-import com.sep490.wcpms.dto.InvoiceDTO;
-import com.sep490.wcpms.dto.ReceiptDTO;
-import com.sep490.wcpms.dto.RouteManagementDTO;
+import com.sep490.wcpms.dto.*;
+import com.sep490.wcpms.dto.dashboard.CashierDashboardStatsDTO;
+import com.sep490.wcpms.dto.dashboard.DailyReadingCountDTO;
 import org.springframework.data.domain.Page; // <-- THÊM
 import org.springframework.data.domain.Pageable; // <-- THÊM
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface CashierService {
@@ -38,12 +39,43 @@ public interface CashierService {
      */
     InvoiceDTO getCashierInvoiceDetail(Integer cashierId, Integer invoiceId);
 
-    // --- THÊM HÀM MỚI ---
+    // === THÊM/SỬA (Luồng Ghi Chỉ Số) ===
+
     /**
-     * Lấy danh sách Hợp đồng/Khách hàng
-     * thuộc các tuyến (Routes) mà Thu ngân này quản lý,
-     * đã được SẮP XẾP theo route_order.
+     * (Mới - Req 1) Lấy danh sách các Tuyến đọc (Bảng 4)
+     * mà Thu ngân này được gán.
+     */
+    List<ReadingRouteDTO> getMyAssignedRoutes(Integer cashierId);
+
+    /**
+     * (Sửa - Req 1) Lấy danh sách HĐ (đã sắp xếp)
+     * thuộc 1 Tuyến (routeId) CỤ THỂ mà Thu ngân quản lý.
+     */
+    List<RouteManagementDTO> getMyContractsByRoute(Integer cashierId, Integer routeId);
+
+    /**
+     * (Mới - Req 3) Lấy Chi tiết 1 Hợp đồng (xác thực theo tuyến).
+     */
+    CashierContractDetailDTO getCashierContractDetail(Integer cashierId, Integer contractId);
+
+    // --- THÊM HÀM CÒN THIẾU VÀO ĐÂY ---
+    /**
+     * Lấy danh sách Hợp đồng/Khách hàng (Đã sắp xếp)
+     * theo TẤT CẢ các tuyến của Thu ngân.
+     * (Dùng cho Bảng "Việc cần làm" trên Dashboard)
      */
     List<RouteManagementDTO> getMyRouteContracts(Integer cashierId);
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 HÀM MỚI ---
+    /**
+     * Lấy các chỉ số KPI cho Thẻ Thống kê (Stats Cards).
+     */
+    CashierDashboardStatsDTO getDashboardStats(Integer cashierId);
+
+    /**
+     * Lấy dữ liệu Biểu đồ Ghi số.
+     */
+    List<DailyReadingCountDTO> getReadingChartData(Integer cashierId, LocalDate startDate, LocalDate endDate);
     // --- HẾT PHẦN THÊM ---
 }
