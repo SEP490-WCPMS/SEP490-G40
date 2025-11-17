@@ -75,29 +75,33 @@ function RouteManagementPage() {
 
     // --- SỬA LỖI 1: useEffect Tải Tuyến (routes) ---
     // ...
-    // 1. Tải danh sách Tuyến (Bảng 4)
+    // --- SỬA LỖI 1: useEffect Tải Tuyến (routes) ---
     useEffect(() => {
         setLoadingRoutes(true);
-        getAllRoutes() // Gọi API
+        getAllRoutes()
             .then(res => {
-                // --- SỬA LẠI LOGIC KIỂM TRA ---
-                let routesArray = []; // Mặc định là mảng rỗng
+                let data = res.data;
+                let routesArray = [];
                 
+                // Nếu BE trả về JSON string (do Content-Type sai)
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { data = []; }
+                }
+
                 // Kịch bản 1: BE trả về Page (Object)
-                if (res.data && Array.isArray(res.data.content)) {
-                    routesArray = res.data.content;
+                if (data && Array.isArray(data.content)) {
+                    routesArray = data.content;
                 } 
                 // Kịch bản 2: BE trả về List (Array)
-                else if (Array.isArray(res.data)) {
-                    routesArray = res.data;
+                else if (Array.isArray(data)) {
+                    routesArray = data;
                 }
-                // Kịch bản 3: BE trả về cái gì đó lạ (null, string, object rỗng)
+                // Kịch bản 3: Lỗi
                 else {
-                    console.warn("getAllRoutes API did not return an array or a Page object. Response data:", res.data);
+                    console.warn("getAllRoutes API did not return an array or a Page object. Response data:", data);
                 }
                 
                 setRoutes(routesArray); // Luôn set bằng một Array
-                // --- HẾT PHẦN SỬA ---
             })
             .catch(err => {
                 setError("Lỗi tải danh sách Tuyến đọc.");
@@ -106,33 +110,36 @@ function RouteManagementPage() {
             .finally(() => setLoadingRoutes(false));
     }, []);
 
-    // 2. Tải danh sách HĐ ĐÃ GÁN (khi đổi Tuyến)
+    // --- SỬA LỖI 2: useEffect Tải Hợp đồng (assignedList) ---
     useEffect(() => {
         if (!selectedRouteId) {
-            setAssignedList([]); 
+            setAssignedList([]);
             return;
         }
         setLoadingContracts(true);
         setError(null);
         setSuccess(null);
         
-        getContractsByRoute(selectedRouteId) // Gọi API
+        getContractsByRoute(selectedRouteId)
             .then(res => {
-                // --- SỬA LẠI LOGIC KIỂM TRA ---
-                let contractsArray = []; // Mặc định rỗng
+                let data = res.data;
+                let contractsArray = [];
                 
-                if (res.data && Array.isArray(res.data.content)) {
-                    contractsArray = res.data.content;
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) { data = []; }
+                }
+
+                if (data && Array.isArray(data.content)) {
+                    contractsArray = data.content;
                 } 
-                else if (Array.isArray(res.data)) {
-                    contractsArray = res.data;
+                else if (Array.isArray(data)) {
+                    contractsArray = data;
                 }
                 else {
-                     console.warn("getContractsByRoute API did not return an array or a Page object. Response data:", res.data);
+                     console.warn("getContractsByRoute API did not return an array or a Page object. Response data:", data);
                 }
                 
                 setAssignedList(contractsArray); // Luôn set bằng Array
-                // --- HẾT PHẦN SỬA ---
             })
             .catch(err => {
                 setError("Lỗi tải HĐ đã gán của Tuyến này.");
@@ -140,6 +147,7 @@ function RouteManagementPage() {
             })
             .finally(() => setLoadingContracts(false));
     }, [selectedRouteId]);
+    // --- HẾT SỬA LỖI ---
     
     // ... (code còn lại)
 

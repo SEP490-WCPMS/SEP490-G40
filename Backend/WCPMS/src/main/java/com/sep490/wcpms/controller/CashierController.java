@@ -1,17 +1,23 @@
 package com.sep490.wcpms.controller;
 
+import com.sep490.wcpms.dto.CashierContractDetailDTO;
 import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.ReceiptDTO;
 import com.sep490.wcpms.dto.RouteManagementDTO;
+import com.sep490.wcpms.dto.ReadingRouteDTO;
+import com.sep490.wcpms.dto.dashboard.CashierDashboardStatsDTO;
+import com.sep490.wcpms.dto.dashboard.DailyReadingCountDTO;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.service.CashierService;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -100,17 +106,88 @@ public class CashierController {
     }
     // --- HẾT PHẦN THÊM ---
 
-    // --- THÊM API MỚI (Lấy HỢP ĐỒNG) ---
+    // === SỬA LẠI CÁC API GHI CHỈ SỐ ===
+
+    /**
+     * (Mới - Req 1) API Lấy danh sách Tuyến (Routes) MÀ TÔI được gán
+     * Path: GET /api/cashier/my-assigned-routes
+     */
+    @GetMapping("/my-assigned-routes")
+    public ResponseEntity<List<ReadingRouteDTO>> getMyAssignedRoutes() {
+        Integer cashierId = getAuthenticatedStaffId();
+        List<ReadingRouteDTO> routes = cashierService.getMyAssignedRoutes(cashierId);
+        return ResponseEntity.ok(routes);
+    }
+
+    /**
+     * (Sửa - Req 1) API Lấy danh sách Hợp đồng/Khách hàng (Đã sắp xếp)
+     * theo MỘT Tuyến (routeId) CỤ THỂ.
+     * Path: GET /api/cashier/route/{routeId}/contracts
+     */
+    @GetMapping("/route/{routeId}/contracts")
+    public ResponseEntity<List<RouteManagementDTO>> getMyContractsByRoute(
+            @PathVariable Integer routeId
+    ) {
+        Integer cashierId = getAuthenticatedStaffId();
+        List<RouteManagementDTO> contracts = cashierService.getMyContractsByRoute(cashierId, routeId);
+        return ResponseEntity.ok(contracts);
+    }
+
+    /**
+     * (Mới - Req 3) API Lấy Chi tiết 1 Hợp đồng (xác thực theo tuyến).
+     * Path: GET /api/cashier/route/contract-detail/{contractId}
+     */
+    @GetMapping("/route/contract-detail/{contractId}")
+    public ResponseEntity<CashierContractDetailDTO> getCashierContractDetail(
+            @PathVariable Integer contractId
+    ) {
+        Integer cashierId = getAuthenticatedStaffId();
+        CashierContractDetailDTO detail = cashierService.getCashierContractDetail(cashierId, contractId);
+        return ResponseEntity.ok(detail);
+    }
+    // === HẾT PHẦN SỬA ===
+
+    // --- THÊM API CÒN THIẾU (CHO DASHBOARD) ---
     /**
      * API Lấy danh sách Hợp đồng/Khách hàng (Đã sắp xếp)
-     * theo tuyến của Thu ngân.
+     * theo TẤT CẢ các tuyến của Thu ngân.
+     * (Dùng cho Bảng "Việc cần làm" trên Dashboard)
      * Path: GET /api/cashier/my-route-contracts
      */
     @GetMapping("/my-route-contracts")
     public ResponseEntity<List<RouteManagementDTO>> getMyRouteContracts() {
         Integer cashierId = getAuthenticatedStaffId();
+        // (Hàm này đã có trong CashierServiceImpl)
         List<RouteManagementDTO> contracts = cashierService.getMyRouteContracts(cashierId);
         return ResponseEntity.ok(contracts);
+    }
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 API MỚI ---
+
+    /**
+     * API Lấy Thẻ Thống kê (KPIs) cho Dashboard Thu ngân.
+     * Path: GET /api/cashier/dashboard/stats
+     */
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<CashierDashboardStatsDTO> getDashboardStats() {
+        Integer cashierId = getAuthenticatedStaffId();
+        CashierDashboardStatsDTO stats = cashierService.getDashboardStats(cashierId);
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * API Lấy dữ liệu Biểu đồ Ghi số.
+     * Path: GET /api/cashier/dashboard/reading-chart?startDate=...&endDate=...
+     */
+    @GetMapping("/dashboard/reading-chart")
+    public ResponseEntity<List<DailyReadingCountDTO>> getReadingChartData(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        Integer cashierId = getAuthenticatedStaffId();
+        List<DailyReadingCountDTO> report = cashierService.getReadingChartData(cashierId, startDate, endDate);
+        return ResponseEntity.ok(report);
     }
     // --- HẾT PHẦN THÊM ---
 }

@@ -33,18 +33,20 @@ function SupportTicketDetail() {
         
         getSupportTicketDetail(ticketId)
             .then(response => {
+                const loadedTicket = response.data;
                 setTicket(response.data);
-                const rawResponse = response.data.response || "";
+                const rawResponse = loadedTicket.response || "";
                 
                 // Tách chuỗi phản hồi
                 if (rawResponse.includes("---INSTALLATION_ID---")) {
                     const parts = rawResponse.split("---INSTALLATION_ID---");
-                    // --- SỬA LỖI TẠI ĐÂY ---
+                    
+                    // --- SỬA LỖI TẠI ĐÂY (Dòng 114 của bạn) ---
                     // Dùng hàm setResponseText() để cập nhật
                     setResponseText(parts[0]); // Phần chữ
                     // ---
                     
-                    const installId = parseInt(parts[1]); // Lấy ID Lắp đặt
+                    const installId = parseInt(parts[1]);
                     if (installId) {
                         // Gọi API thứ 2 để lấy ảnh
                         getInstallationDetail(installId)
@@ -55,16 +57,15 @@ function SupportTicketDetail() {
                     }
                 } else {
                     // Nếu không có ID ảnh (ví dụ: trả lời FEEDBACK)
-                    setResponseText(rawResponse);
+                    // --- SỬA LỖI TẠI ĐÂY (Tương tự) ---
+                    setResponseText(rawResponse); // Dùng hàm set
                 }
             })
-            .catch(err => {
-                console.error("Lỗi khi tải chi tiết ticket:", err);
-                setError(err.response?.data?.message || "Không thể tải chi tiết yêu cầu.");
-            })
+            .catch(err => setError(err.response?.data?.message || "Lỗi tải chi tiết."))
             .finally(() => setLoading(false));
     }, [ticketId]);
 
+    
     const getStatusClass = (status) => {
         switch (status) {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800';
