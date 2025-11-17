@@ -1,7 +1,11 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.dto.CashierContractDetailDTO;
+import com.sep490.wcpms.dto.dashboard.CashierDashboardStatsDTO;
+import com.sep490.wcpms.dto.dashboard.DailyReadingCountDTO;
 import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.ReceiptDTO;
+import com.sep490.wcpms.dto.ReadingRouteDTO;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
@@ -22,6 +26,7 @@ import com.sep490.wcpms.entity.ReadingRoute;
 import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.repository.ReadingRouteRepository;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
+import com.sep490.wcpms.repository.MeterReadingRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,6 +44,7 @@ public class CashierServiceImpl implements CashierService {
     private final ReceiptMapper receiptMapper;
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
+    private final MeterReadingRepository meterReadingRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -157,28 +163,49 @@ public class CashierServiceImpl implements CashierService {
     }
     // === HẾT PHẦN THÊM ===
 
-    // --- THÊM HÀM MỚI ---
+    // === THÊM/SỬA CÁC HÀM GHI CHỈ SỐ ===
+
+    /**
+     * (Helper private) Lấy Account Thu ngân (đã có)
+     */
+    private Account getCashierAccount(Integer cashierId) {
+        return accountRepository.findById(cashierId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản Thu ngân: " + cashierId));
+    }
+
+    /**
+     * (Mới - Req 1) Lấy danh sách Tuyến (Bảng 4) được gán
+     */
     @Override
     @Transactional(readOnly = true)
-    public List<RouteManagementDTO> getMyRouteContracts(Integer cashierId) {
-        // 1. Lấy Account Thu ngân
-        Account cashier = accountRepository.findById(cashierId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản Thu ngân: " + cashierId));
+    public List<ReadingRouteDTO> getMyAssignedRoutes(Integer cashierId) {
+        Account cashier = getCashierAccount(cashierId);
 
-        // 2. Tìm các tuyến (Bảng 4) mà Thu ngân này được gán
         List<ReadingRoute> routes = readingRouteRepository.findAllByAssignedReader(cashier);
 
-        if (routes.isEmpty()) {
-            return List.of(); // Trả về danh sách rỗng nếu không được gán tuyến nào
+        return routes.stream()
+                .map(ReadingRouteDTO::new) // Dùng constructor DTO
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * (Sửa - Req 1) Lấy Hợp đồng của 1 Tuyến CỤ THỂ
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<RouteManagementDTO> getMyContractsByRoute(Integer cashierId, Integer routeId) {
+        // 1. Lấy các tuyến của Thu ngân (để xác thực)
+        List<Integer> myRouteIds = getMyRouteIds(cashierId);
+
+        // 2. Kiểm tra xem Thu ngân có quyền xem tuyến này không
+        if (!myRouteIds.contains(routeId)) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập Tuyến đọc (ID: " + routeId + ").");
         }
 
-        // 3. Lấy danh sách các ID của Tuyến
-        List<Integer> routeIds = routes.stream().map(ReadingRoute::getId).collect(Collectors.toList());
-
-        // 4. Tìm tất cả HĐ (Bảng 9) thuộc các tuyến này, ĐÃ SẮP XẾP
+        // 3. Lấy HĐ (đã sắp xếp) của Tuyến này
         List<WaterServiceContract> contracts = waterServiceContractRepository
-                .findByReadingRoute_IdInAndContractStatusOrderByReadingRoute_IdAscRouteOrderAsc( // <-- Gọi hàm Repo mới
-                        routeIds,
+                .findByReadingRoute_IdAndContractStatusOrderByRouteOrderAsc(
+                        routeId,
                         WaterServiceContract.WaterServiceContractStatus.ACTIVE
                 );
 
@@ -186,5 +213,106 @@ public class CashierServiceImpl implements CashierService {
                 .map(RouteManagementDTO::new)
                 .collect(Collectors.toList());
     }
-    // --- HẾT PHẦN THÊM ---
+
+    /**
+     * (Mới - Req 3) Lấy Chi tiết 1 Hợp đồng (xác thực)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public CashierContractDetailDTO getCashierContractDetail(Integer cashierId, Integer contractId) {
+        // 1. Lấy các tuyến của Thu ngân (để xác thực)
+        List<Integer> myRouteIds = getMyRouteIds(cashierId);
+
+        // 2. Lấy HĐ Dịch vụ (Bảng 9)
+        WaterServiceContract wsc = waterServiceContractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Hợp đồng Dịch vụ: " + contractId));
+
+        // 3. Xác thực
+        if (wsc.getReadingRoute() == null || !myRouteIds.contains(wsc.getReadingRoute().getId())) {
+            throw new AccessDeniedException("Bạn không có quyền xem Hợp đồng này (không thuộc tuyến của bạn).");
+        }
+
+        // 4. Map sang DTO chi tiết
+        return new CashierContractDetailDTO(wsc);
+    }
+    // === HẾT PHẦN THÊM ===
+
+
+    // --- HÀM MỚI (CHO DASHBOARD) ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<RouteManagementDTO> getMyRouteContracts(Integer cashierId) {
+        List<Integer> myRouteIds = getMyRouteIds(cashierId);
+
+        if (myRouteIds.isEmpty()) {
+            return List.of(); // Trả về danh sách rỗng
+        }
+
+        List<WaterServiceContract> contracts = waterServiceContractRepository
+                .findByReadingRoute_IdInAndContractStatusOrderByReadingRoute_IdAscRouteOrderAsc(
+                        myRouteIds,
+                        WaterServiceContract.WaterServiceContractStatus.ACTIVE
+                );
+
+        return contracts.stream()
+                .map(RouteManagementDTO::new)
+                .collect(Collectors.toList());
+    }
+    // --- HẾT HÀM MỚI ---
+
+
+    // === THÊM 2 HÀM MỚI (Dashboard) ===
+
+    @Override
+    @Transactional(readOnly = true)
+    public CashierDashboardStatsDTO getDashboardStats(Integer cashierId) {
+        Account cashier = getCashierAccount(cashierId);
+        CashierDashboardStatsDTO stats = new CashierDashboardStatsDTO();
+        LocalDate today = LocalDate.now();
+
+        // 1. Số đồng hồ đã ghi HÔM NAY
+        stats.setReadingsTodayCount(
+                meterReadingRepository.countByReaderAndReadingDate(cashier, today)
+        );
+
+        // 2. Tiền mặt đã thu HÔM NAY
+        BigDecimal cashToday = receiptRepository.sumAmountByCashierAndDateAndMethod(
+                cashier, today, Receipt.PaymentMethod.CASH
+        );
+        stats.setCashCollectedToday(cashToday != null ? cashToday : BigDecimal.ZERO);
+
+        // 3. Lấy các tuyến của Thu ngân
+        List<Integer> myRouteIds = getMyRouteIds(cashierId);
+
+        if (myRouteIds.isEmpty()) {
+            // Nếu Thu ngân chưa được gán tuyến, trả về 0
+            stats.setPendingInvoicesOnMyRoutesCount(0);
+            stats.setPendingInvoicesOnMyRoutesAmount(BigDecimal.ZERO);
+        } else {
+            // 4. Lấy HĐ PENDING/OVERDUE trên tuyến
+            List<Invoice.PaymentStatus> unpaidStatuses = List.of(
+                    Invoice.PaymentStatus.PENDING,
+                    Invoice.PaymentStatus.OVERDUE
+            );
+
+            stats.setPendingInvoicesOnMyRoutesCount(
+                    invoiceRepository.countByRouteIdsAndStatus(myRouteIds, unpaidStatuses)
+            );
+
+            BigDecimal pendingAmount = invoiceRepository.sumTotalAmountByRouteIdsAndStatus(myRouteIds, unpaidStatuses);
+            stats.setPendingInvoicesOnMyRoutesAmount(pendingAmount != null ? pendingAmount : BigDecimal.ZERO);
+        }
+
+        return stats;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DailyReadingCountDTO> getReadingChartData(Integer cashierId, LocalDate startDate, LocalDate endDate) {
+        Account cashier = getCashierAccount(cashierId);
+
+        // Gọi thẳng hàm Repository
+        return meterReadingRepository.getDailyReadingCountReport(cashier, startDate, endDate);
+    }
+    // === HẾT PHẦN THÊM ===
 }

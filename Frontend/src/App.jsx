@@ -67,6 +67,8 @@ import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; /
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
 import CashierRouteList from './components/PagesCashier/CashierRouteList';
+import CashierContractDetail from './components/PagesCashier/CashierContractDetail';
+import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
@@ -139,17 +141,24 @@ function App() {
         </Route>
 
         {/* --- LUỒNG CỦA CASHIER STAFF --- */}
-        <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
-          <Route path="/cashier" element={<LayoutCashier />}>
-            {/* <Route index element={<CashierDashboard />} /> */}
-            <Route path="scan" element={<MeterScan />} />
-            <Route path="submit-reading" element={<ReadingConfirmation />} />
-            <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
-            {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
-            <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
-            <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
-            {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
-            <Route path="route-list" element={<CashierRouteList />} />
+          <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
+            <Route path="/cashier/*" element={<LayoutCashier />}>
+              
+              {/* --- SỬA LẠI ROUTE --- */}
+              <Route index element={<CashierDashboard />} /> {/* Trang index mới */}
+              <Route path="dashboard" element={<CashierDashboard />} /> {/* Thêm /dashboard */}
+              {/* --- */}
+              <Route path="scan" element={<MeterScan />} />
+              <Route path="submit-reading" element={<ReadingConfirmation />} />
+              <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
+              {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
+              <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
+              <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
+              {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
+              <Route path="route-list" element={<CashierRouteList />} />
+              <Route path="route-contract/:contractId" element={<CashierContractDetail />} />
+
+            <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>
 
