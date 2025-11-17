@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ScrollToTop from './components/common/ScrollToTop';
 import './App.css';
 import { useAuth } from './hooks/use-auth';
 import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
@@ -79,6 +80,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
 
         {/* === PUBLIC ROUTES (Đăng nhập, Đăng ký) === */}
