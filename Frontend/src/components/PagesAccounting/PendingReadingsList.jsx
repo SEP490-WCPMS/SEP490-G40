@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPendingReadings, generateWaterBill } from '../../Services/apiAccountingStaff'; // Đảm bảo đường dẫn đúng
+import { getPendingReadings, generateWaterBill } from '../Services/apiAccountingStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw, FileText, AlertCircle } from 'lucide-react';
 import moment from 'moment';
 // (Bạn có thể cần import component Pagination nếu nhóm bạn có)
