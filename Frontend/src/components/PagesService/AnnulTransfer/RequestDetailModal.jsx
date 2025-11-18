@@ -138,7 +138,7 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
                 {typeof data.attachedEvidence === 'string' ? (
                   // Nếu chuỗi là data URI hoặc dài (base64), hiển thị ảnh
                   (data.attachedEvidence.startsWith('data:image') || data.attachedEvidence.length > 200) ? (
-                    <img src={data.attachedEvidence} alt="evidence" style={{ maxWidth: '100%', maxHeight: 400 }} />
+                    <img src={`data:image/png;base64,${data.attachedEvidence}`} alt="evidence" style={{ maxWidth: '100%', maxHeight: 400 }} />
                   ) : (
                     <a href={data.attachedEvidenceUrl || '#'} target="_blank" rel="noreferrer">{data.attachedEvidence}</a>
                   )
