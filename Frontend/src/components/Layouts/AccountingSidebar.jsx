@@ -13,7 +13,8 @@ import {
   LayoutDashboard,
   DollarSign,
   ListChecks,
-  ClipboardPlus
+  ClipboardPlus,
+  FileText
 } from 'lucide-react'; // Import icons
 import { Link, useLocation } from 'react-router-dom';
 
@@ -46,6 +47,11 @@ const accountingMenuItems = [
     title: 'Quản lý Tuyến đọc',
     url: '/accounting/reading-routes',
     icon: ListChecks,
+  },
+  {
+    title: 'Lập Hóa đơn Tiền nước',
+    url: '/accounting/billing/pending-readings', // Đường dẫn này phải khớp với App.jsx
+    icon: FileText, // Icon mới
   },
   // --- HẾT ---
   // (Thêm các trang khác của Kế toán sau, vd: Quản lý Hóa đơn)

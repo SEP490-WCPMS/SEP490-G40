@@ -62,7 +62,10 @@ import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
 import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
+import PendingReadingsList from './components/Pages/PagesAccounting/PendingReadingsList';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
+import ContactPage from './components/Pages/ContactPage';
+
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -88,6 +91,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
+        <Route path="/contact" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContactPage /></PublicLayout>} />
         <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
 
 
@@ -183,6 +187,8 @@ function App() {
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
+            {/* ROUTE CHO HÓA ĐƠN TIỀN NƯỚC */}
+            <Route path="billing/pending-readings" element={<PendingReadingsList />} />
           </Route>
         </Route>
         {/* --- HẾT --- */}

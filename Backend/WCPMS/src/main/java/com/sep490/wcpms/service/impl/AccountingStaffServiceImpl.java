@@ -21,6 +21,13 @@ import com.sep490.wcpms.entity.MeterCalibration;
 import com.sep490.wcpms.dto.ServiceInvoiceCreateDTO; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.Customer; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.Contract; // <-- THÊM IMPORT
+import com.sep490.wcpms.dto.PendingReadingDTO;
+import com.sep490.wcpms.entity.MeterReading;
+import com.sep490.wcpms.entity.WaterPrice;
+import com.sep490.wcpms.entity.WaterServiceContract;
+import com.sep490.wcpms.repository.MeterReadingRepository;
+import com.sep490.wcpms.repository.WaterPriceRepository;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 import java.math.BigDecimal;
@@ -40,6 +47,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final WaterPriceTypeRepository priceTypeRepository; // (Cần tạo Repo Bảng 5)
     private final CustomerRepository customerRepository; // <-- Cần Repo này
     private final ContractRepository contractRepository; // <-- Cần Repo này
+    private final MeterReadingRepository meterReadingRepository;
+    private final WaterPriceRepository waterPriceRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -341,4 +350,95 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
 
     // === HẾT PHẦN THÊM ===
+
+    // ==========================================================
+    // === ✨ THÊM 2 HÀM MỚI CHO HÓA ĐƠN TIỀN NƯỚC ✨ ===
+    // ==========================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PendingReadingDTO> getPendingReadings(Pageable pageable) {
+        // 1. Gọi hàm repo mới
+        Page<MeterReading> readingsPage = meterReadingRepository.findCompletedReadingsNotBilled(pageable);
+
+        // 2. Map sang DTO
+        return readingsPage.map(PendingReadingDTO::new);
+    }
+
+    @Override
+    @Transactional
+    public InvoiceDTO generateWaterBill(Integer meterReadingId, Integer accountingStaffId) {
+        // 1. Lấy bản ghi đọc số
+        MeterReading reading = meterReadingRepository.findById(meterReadingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bản ghi đọc số: " + meterReadingId));
+
+        // 2. Kiểm tra (Double check)
+        if (reading.getReadingStatus() != MeterReading.ReadingStatus.COMPLETED) {
+            throw new IllegalStateException("Chỉ số này không ở trạng thái 'COMPLETED'.");
+        }
+        if (invoiceRepository.existsByMeterReading(reading)) {
+            throw new IllegalStateException("Chỉ số này đã được lập hóa đơn.");
+        }
+
+        // 3. Lấy các thông tin liên quan
+        MeterInstallation installation = reading.getMeterInstallation();
+        WaterServiceContract serviceContract = installation.getWaterServiceContract();
+        if (serviceContract == null) {
+            throw new ResourceNotFoundException("Bản ghi lắp đặt này không liên kết với Hợp đồng Dịch vụ nào.");
+        }
+        Customer customer = serviceContract.getCustomer();
+        WaterPriceType priceType = serviceContract.getPriceType();
+        Account accountingStaff = accountRepository.findById(accountingStaffId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản Kế toán: " + accountingStaffId));
+
+        // 4. Tìm biểu giá chính xác tại ngày đọc số
+        WaterPrice price = waterPriceRepository.findActivePriceForDate(priceType, reading.getReadingDate())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biểu giá (" + priceType.getTypeName() + ") có hiệu lực cho ngày " + reading.getReadingDate()));
+
+        // 5. Lấy các giá trị từ biểu giá
+        BigDecimal consumption = reading.getConsumption(); // Số lượng
+        BigDecimal unitPrice = price.getUnitPrice();       // Đơn giá
+        BigDecimal envFeeRate = price.getEnvironmentFee(); // Phí BVMT
+        BigDecimal vatRate = price.getVatRate();         // VAT % (ví dụ: 5.00)
+
+        // 6. Áp dụng CÔNG THỨC TÍNH TIỀN
+        // Tiền trước thuế = Số lượng X Đơn giá
+        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(0, RoundingMode.HALF_UP);
+        // Phí BVMT = Số lượng X Phí BVMT
+        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(0, RoundingMode.HALF_UP);
+        // Thuế VAT = %VAT * (Tiền trước thuế)
+        BigDecimal vatAmount = subtotal.multiply(vatRate.divide(new BigDecimal(100))).setScale(0, RoundingMode.HALF_UP);
+        // Tổng tiền = Tiền trước thuế + Phí BVMT + Thuế VAT
+        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount);
+
+        // 7. Tạo Hóa đơn (Bảng 17)
+        Invoice invoice = new Invoice();
+        invoice.setInvoiceNumber("HD-" + meterReadingId + "-" + System.currentTimeMillis()); // (Nên có logic sinh số HĐ tốt hơn)
+        invoice.setCustomer(customer);
+        invoice.setContract(serviceContract.getSourceContract()); // Lấy HĐ Lắp đặt gốc
+        invoice.setMeterReading(reading); // QUAN TRỌNG: Liên kết với bản ghi đọc số
+
+        invoice.setFromDate(reading.getReadingDate().withDayOfMonth(1)); // (Cần logic xác định kỳ HĐ)
+        invoice.setToDate(reading.getReadingDate()); // (Cần logic xác định kỳ HĐ)
+
+        invoice.setTotalConsumption(consumption);
+        invoice.setSubtotalAmount(subtotal);
+        invoice.setEnvironmentFeeAmount(envAmount);
+        invoice.setVatAmount(vatAmount);
+        invoice.setTotalAmount(totalAmount);
+
+        invoice.setInvoiceDate(LocalDate.now());
+        invoice.setDueDate(LocalDate.now().plusDays(10)); // (Cần logic lấy hạn TT từ HĐ)
+        invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
+        invoice.setAccountingStaff(accountingStaff);
+
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        // 8. Cập nhật trạng thái bản ghi đọc số
+        reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
+        meterReadingRepository.save(reading);
+
+        // 9. Trả về DTO của Hóa đơn vừa tạo
+        return invoiceMapper.toDto(savedInvoice);
+    }
 }
