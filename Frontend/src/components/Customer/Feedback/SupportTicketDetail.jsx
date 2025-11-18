@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSupportTicketDetail } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
+import { getSupportTicketDetail, getInstallationDetail } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
 import { ArrowLeft, User, MessageSquare } from 'lucide-react';
 import moment from 'moment';
 
@@ -13,6 +13,11 @@ function SupportTicketDetail() {
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    // --- SỬA LỖI TẠI ĐÂY ---
+    // Khai báo state cho ảnh và text
+    const [installationImage, setInstallationImage] = useState(null);
+    const [responseText, setResponseText] = useState(null); // Dùng const [var, setVar]
+    // --- HẾT PHẦN SỬA ---
 
     useEffect(() => {
         if (!ticketId) {
@@ -23,18 +28,44 @@ function SupportTicketDetail() {
         
         setLoading(true);
         setError(null);
+        setInstallationImage(null);
+        setResponseText(null);
         
         getSupportTicketDetail(ticketId)
             .then(response => {
+                const loadedTicket = response.data;
                 setTicket(response.data);
+                const rawResponse = loadedTicket.response || "";
+                
+                // Tách chuỗi phản hồi
+                if (rawResponse.includes("---INSTALLATION_ID---")) {
+                    const parts = rawResponse.split("---INSTALLATION_ID---");
+                    
+                    // --- SỬA LỖI TẠI ĐÂY (Dòng 114 của bạn) ---
+                    // Dùng hàm setResponseText() để cập nhật
+                    setResponseText(parts[0]); // Phần chữ
+                    // ---
+                    
+                    const installId = parseInt(parts[1]);
+                    if (installId) {
+                        // Gọi API thứ 2 để lấy ảnh
+                        getInstallationDetail(installId)
+                            .then(imgRes => {
+                                setInstallationImage(imgRes.data.installationImageBase64);
+                            })
+                            .catch(imgErr => console.error("Lỗi tải ảnh lắp đặt:", imgErr));
+                    }
+                } else {
+                    // Nếu không có ID ảnh (ví dụ: trả lời FEEDBACK)
+                    // --- SỬA LỖI TẠI ĐÂY (Tương tự) ---
+                    setResponseText(rawResponse); // Dùng hàm set
+                }
             })
-            .catch(err => {
-                console.error("Lỗi khi tải chi tiết ticket:", err);
-                setError(err.response?.data?.message || "Không thể tải chi tiết yêu cầu.");
-            })
+            .catch(err => setError(err.response?.data?.message || "Lỗi tải chi tiết."))
             .finally(() => setLoading(false));
     }, [ticketId]);
 
+    
     const getStatusClass = (status) => {
         switch (status) {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800';
@@ -76,8 +107,8 @@ function SupportTicketDetail() {
     }
 
     // --- LOGIC TÁCH CHUỖI PHẢN HỒI ---
-    let responseText = ticket.response || null;
-    let responseImageBase64 = null;
+    // let responseText = ticket.response || null;
+    // let responseImageBase64 = null;
     
     if (responseText && responseText.includes("---IMAGE_SEPARATOR---")) {
         const parts = responseText.split("---IMAGE_SEPARATOR---");
@@ -150,11 +181,11 @@ function SupportTicketDetail() {
                         )}
 
                         {/* Ảnh đính kèm (Phần Ảnh) */}
-                        {responseImageBase64 && (
+                        {installationImage && (
                             <div className="mt-4">
                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Ảnh đính kèm (lắp đặt mới):</h4>
                                 <img 
-                                    src={`data:image/jpeg;base64,${responseImageBase64}`} 
+                                    src={`data:image/jpeg;base64,${installationImage}`} 
                                     alt="Ảnh lắp đặt/thay thế"
                                     className="max-w-full md:max-w-md rounded border border-gray-300 shadow-sm"
                                 />

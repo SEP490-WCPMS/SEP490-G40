@@ -6,14 +6,28 @@ import apiClient from './apiClient'; // Import apiClient đã có interceptor
  * @param {string} description - Nội dung yêu cầu
  * @param {string} feedbackType - "FEEDBACK" hoặc "SUPPORT_REQUEST"
  */
-export const submitSupportTicket = (description, feedbackType) => {
+export const submitSupportTicket = (description, feedbackType, meterId) => {
     const dto = {
         description: description,
         feedbackType: feedbackType, // <-- THÊM feedbackType vào DTO
+        meterId: meterId || null,
         customerId: null // BE sẽ tự lấy ID từ token
     };
     return apiClient.post('/feedback/customer', dto);
 };
+
+// --- THÊM HÀM MỚI ---
+/**
+ * Lấy chi tiết 1 Bản ghi Lắp đặt (Bảng 13)
+ * (Dùng để lấy ảnh Base64)
+ * @param {number} installationId - ID của Bảng 13
+ */
+export const getInstallationDetail = (installationId) => {
+    // (Cần tạo API BE cho việc này,
+    // tạm thời giả sử nó nằm ở /api/customer/installation/{id})
+    return apiClient.get(`/customer/installation/${installationId}`);
+};
+// ---
 
 // --- THÊM HÀM MỚI ---
 /**

@@ -6,9 +6,14 @@ import com.sep490.wcpms.entity.MeterReading;
 import org.springframework.data.domain.Page; // <-- THÊM
 import org.springframework.data.domain.Pageable; // <-- THÊM
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query; // <-- THÊM IMPORT
+import org.springframework.data.repository.query.Param; // <-- THÊM IMPORT
 import org.springframework.stereotype.Repository;
+import com.sep490.wcpms.entity.Invoice.PaymentStatus; // <-- THÊM
+import java.math.BigDecimal; // <-- THÊM
+import java.time.LocalDate; // <-- THÊM
 
-import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional; // <-- THÊM IMPORT
 
@@ -73,4 +78,99 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
      * Kiểm tra xem đã tồn tại Hóa đơn nào được tạo từ MeterReading này chưa.
      */
     boolean existsByMeterReading(MeterReading meterReading);
+
+    // Hàm  (cho Thu ngân tại quầy)
+    /**
+     * Dùng cho Thu ngân (Cashier) thu tiền mặt.
+     * Tìm Hóa đơn (Bảng 17) bằng Số Hóa đơn
+     * VÀ chỉ trả về nếu trạng thái là PENDING hoặc OVERDUE.
+     */
+    @Query("SELECT inv FROM Invoice inv " +
+            "WHERE inv.invoiceNumber = :invoiceNumber " +
+            "AND inv.paymentStatus IN :statuses") // Tìm trong danh sách
+    Optional<Invoice> findUnpaidByInvoiceNumber(
+            @Param("invoiceNumber") String invoiceNumber,
+            @Param("statuses") Collection<Invoice.PaymentStatus> statuses
+    );
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 HÀM MỚI (Cho Thu ngân tại nhà) ---
+
+    /**
+     * Lấy danh sách Hóa đơn (phân trang)
+     * dựa trên DANH SÁCH CÁC TUYẾN (routeIds) VÀ DANH SÁCH TRẠNG THÁI.
+     * (Giả định: Invoice (17) -> Contract (8) -> route_id)
+     */
+    @Query("SELECT inv FROM Invoice inv " +
+            "WHERE inv.contract.readingRoute.id IN :routeIds " + // Lọc theo route_id trên Bảng 8
+            "AND inv.paymentStatus IN :statuses")
+    Page<Invoice> findByRouteIdsAndStatus(
+            @Param("routeIds") Collection<Integer> routeIds,
+            @Param("statuses") Collection<Invoice.PaymentStatus> statuses,
+            Pageable pageable
+    );
+
+    /**
+     * Lấy chi tiết 1 Hóa đơn VÀ kiểm tra xem HĐ đó
+     * có thuộc 1 trong các tuyến (routeIds) mà Thu ngân quản lý không.
+     */
+    @Query("SELECT inv FROM Invoice inv " +
+            "WHERE inv.id = :invoiceId " +
+            "AND inv.contract.readingRoute.id IN :routeIds")
+    Optional<Invoice> findByIdAndRouteIds(
+            @Param("invoiceId") Integer invoiceId,
+            @Param("routeIds") Collection<Integer> routeIds
+    );
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 3 HÀM MỚI CHO STATS ---
+
+    /**
+     * Đếm số Hóa đơn theo danh sách trạng thái
+     */
+    @Query("SELECT COUNT(i) FROM Invoice i WHERE i.paymentStatus IN :statuses")
+    long countByPaymentStatusIn(@Param("statuses") Collection<PaymentStatus> statuses);
+
+    /**
+     * Tính TỔNG TIỀN của Hóa đơn theo danh sách trạng thái
+     */
+    @Query("SELECT SUM(i.totalAmount) FROM Invoice i WHERE i.paymentStatus IN :statuses")
+    BigDecimal sumTotalAmountByPaymentStatusIn(@Param("statuses") Collection<PaymentStatus> statuses);
+
+    /**
+     * Đếm số Hóa đơn QUÁ HẠN (OVERDUE và ngày < hôm nay)
+     * (Thực ra status OVERDUE đã đủ, nhưng đây là cách check an toàn hơn)
+     */
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+            "WHERE i.paymentStatus = :status AND i.dueDate < :today")
+    long countOverdueInvoices(
+            @Param("status") PaymentStatus status,
+            @Param("today") LocalDate today
+    );
+    // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM 2 HÀM MỚI CHO STATS ---
+
+    /**
+     * Đếm số Hóa đơn (Bảng 17) theo danh sách Tuyến (Routes) và Trạng thái.
+     */
+    @Query("SELECT COUNT(inv) FROM Invoice inv " +
+            "WHERE inv.contract.readingRoute.id IN :routeIds " +
+            "AND inv.paymentStatus IN :statuses")
+    long countByRouteIdsAndStatus(
+            @Param("routeIds") Collection<Integer> routeIds,
+            @Param("statuses") Collection<Invoice.PaymentStatus> statuses
+    );
+
+    /**
+     * Tính TỔNG TIỀN của Hóa đơn (Bảng 17) theo Tuyến và Trạng thái.
+     */
+    @Query("SELECT SUM(inv.totalAmount) FROM Invoice inv " +
+            "WHERE inv.contract.readingRoute.id IN :routeIds " +
+            "AND inv.paymentStatus IN :statuses")
+    BigDecimal sumTotalAmountByRouteIdsAndStatus(
+            @Param("routeIds") Collection<Integer> routeIds,
+            @Param("statuses") Collection<Invoice.PaymentStatus> statuses
+    );
+    // --- HẾT PHẦN THÊM ---
 }

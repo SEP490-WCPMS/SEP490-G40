@@ -1,6 +1,7 @@
 package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.InvoiceDTO; // <-- THÊM IMPORT
+import com.sep490.wcpms.dto.InstallationDetailDTO;
 import com.sep490.wcpms.dto.ContractRequestDTO;
 // ... (các import DTO khác)
 import org.springframework.data.domain.Page; // <-- THÊM IMPORT
@@ -29,4 +30,9 @@ public interface CustomerService {
     InvoiceDTO getMyInvoiceDetail(Integer customerAccountId, Integer invoiceId);
 
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI ---
+    /** Lấy chi tiết (ảnh) của 1 bản ghi Lắp đặt (Bảng 13) */
+    InstallationDetailDTO getMyInstallationDetail(Integer customerAccountId, Integer installationId);
+    // ---
 }

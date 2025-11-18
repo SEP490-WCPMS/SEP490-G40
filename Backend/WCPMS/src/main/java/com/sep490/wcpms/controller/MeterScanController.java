@@ -25,7 +25,17 @@ public class MeterScanController {
                 return ResponseEntity.badRequest().body(result);
             }
 
-            byte[] imageBytes = Base64.getDecoder().decode(dto.getImageBase64());
+
+            String base64String = dto.getImageBase64();
+
+            // Thêm bước kiểm tra/làm sạch (an toàn)
+            if (base64String.contains(",")) {
+                base64String = base64String.substring(base64String.indexOf(",") + 1);
+            }
+
+            // Decode chuỗi sạch
+            byte[] imageBytes = Base64.getDecoder().decode(base64String);
+
 
             try (ImageAnnotatorClient vision = ImageAnnotatorClient.create()) {
                 Image img = Image.newBuilder().setContent(ByteString.copyFrom(imageBytes)).build();

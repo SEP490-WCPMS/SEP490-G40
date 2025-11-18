@@ -2,6 +2,10 @@ package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
+import com.sep490.wcpms.dto.CalibrationFeeDTO;
+import com.sep490.wcpms.dto.InvoiceDTO;
+import com.sep490.wcpms.entity.ReadingRoute;
+import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.AccountingStaffService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +22,16 @@ import org.springframework.web.bind.annotation.PutMapping; // <-- THÊM
 import com.sep490.wcpms.dto.PendingReadingDTO;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import com.sep490.wcpms.dto.ServiceInvoiceCreateDTO;
+import com.sep490.wcpms.dto.AccountingInvoiceDetailDTO;
+import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
+import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/accounting")
@@ -185,4 +199,60 @@ public class AccountingStaffController {
         InvoiceDTO invoice = accountingService.generateWaterBill(readingId, accountingStaffId);
         return new ResponseEntity<>(invoice, HttpStatus.CREATED);
     }
+
+    // --- THÊM API MỚI ---
+    /**
+     * API Lấy Thẻ Thống kê (KPIs) cho Dashboard.
+     * Path: GET /api/accounting/dashboard/stats
+     */
+    @GetMapping("/dashboard/stats")
+    public ResponseEntity<AccountingStatsDTO> getDashboardStats() {
+        AccountingStatsDTO stats = accountingService.getDashboardStats();
+        return ResponseEntity.ok(stats);
+    }
+    // ---
+
+    // --- THÊM API MỚI ---
+    /**
+     * API Lấy dữ liệu Doanh thu cho Biểu đồ Dashboard.
+     * Path: GET /api/accounting/dashboard/revenue-report?startDate=...&endDate=...
+     */
+    @GetMapping("/dashboard/revenue-report")
+    public ResponseEntity<List<DailyRevenueDTO>> getRevenueReport(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        List<DailyRevenueDTO> report = accountingService.getRevenueReport(startDate, endDate);
+        return ResponseEntity.ok(report);
+    }
+    // --- HẾT PHẦN THÊM ---
+
+    // --- SỬA LẠI API NÀY ---
+    /** Lấy tất cả Tuyến đọc (Giữ nguyên) */
+    @GetMapping("/routes")
+    public ResponseEntity<List<ReadingRouteDTO>> getAllRoutes() { // <-- SỬA KIỂU TRẢ VỀ
+        return ResponseEntity.ok(accountingService.getAllRoutes());
+    }
+    // --- HẾT PHẦN SỬA ---
+
+    /** (XÓA API /routes/unassigned-contracts) */
+
+    /** API Lấy danh sách HĐ ĐÃ GÁN (theo 1 tuyến) */
+    @GetMapping("/routes/{routeId}/contracts") // <-- SỬA TÊN API
+    public ResponseEntity<List<RouteManagementDTO>> getContractsByRoute( // <-- SỬA TÊN HÀM
+                                                                         @PathVariable Integer routeId
+    ) {
+        return ResponseEntity.ok(accountingService.getContractsByRoute(routeId)); // <-- SỬA TÊN HÀM
+    }
+
+    /** API Cập nhật Thứ tự HĐ trong Tuyến */
+    @PutMapping("/routes/{routeId}/update-order") // <-- SỬA TÊN API
+    public ResponseEntity<Void> updateRouteOrder( // <-- SỬA TÊN HÀM
+                                                  @PathVariable Integer routeId,
+                                                  @RequestBody RouteOrderUpdateRequestDTO dto
+    ) {
+        accountingService.updateRouteOrder(routeId, dto); // <-- SỬA TÊN HÀM
+        return ResponseEntity.ok().build();
+    }
+    // === HẾT PHẦN SỬA ===
 }

@@ -38,6 +38,7 @@ public class ContractServiceImpl implements ContractService {
     private MeterInstallationRepository meterInstallationRepository;
     @Autowired
     private ApplicationEventPublisher eventPublisher; // publisher domain event
+    @Autowired
     private ReadingRouteRepository readingRouteRepository; // Inject ReadingRouteRepository
 
     @Override
@@ -49,6 +50,13 @@ public class ContractServiceImpl implements ContractService {
         WaterPriceType priceType = waterPriceTypeRepository.findById(requestDTO.getPriceTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy loại giá nước với ID: " + requestDTO.getPriceTypeId()));
 
+        // Fetch reading route from request
+        ReadingRoute readingRoute = null;
+        if (requestDTO.getRouteId() != null) {
+            readingRoute = readingRouteRepository.findById(requestDTO.getRouteId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tuyến đọc với ID: " + requestDTO.getRouteId()));
+        }
+
         Contract newContract = new Contract();
         newContract.setCustomer(customer);
         newContract.setApplicationDate(LocalDate.now());
@@ -59,6 +67,11 @@ public class ContractServiceImpl implements ContractService {
         newContract.setStartDate(LocalDate.now()); // Ngày bắt đầu tạm thời
         newContract.setContractNumber("REQ-" + customer.getId() + "-" + System.currentTimeMillis());
         newContract.setNotes(requestDTO.getNotes());
+
+        // set reading route on contract if provided
+        if (readingRoute != null) {
+            newContract.setReadingRoute(readingRoute);
+        }
 
         Contract savedContract = contractRepository.save(newContract);
 
@@ -116,14 +129,13 @@ public class ContractServiceImpl implements ContractService {
 
         // Trả về DTO với chi tiết đầy đủ
         ContractRequestDetailDTO dto = new ContractRequestDetailDTO(contract, usageDetail);
-        // Populate reading route info if available
+        // Populate reading route info if available (safeguard)
         try {
-            Integer routeId = dto.getRouteId();
-            if (routeId != null) {
-                readingRouteRepository.findById(routeId).ifPresent(rr -> {
-                    dto.setRouteCode(rr.getRouteCode());
-                    dto.setRouteName(rr.getRouteName());
-                });
+            if (contract.getReadingRoute() != null) {
+                ReadingRoute rr = contract.getReadingRoute();
+                dto.setRouteId(rr.getId());
+                dto.setRouteCode(rr.getRouteCode());
+                dto.setRouteName(rr.getRouteName());
             }
         } catch (Exception ignore) {
         }

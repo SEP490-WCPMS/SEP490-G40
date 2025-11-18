@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import moment from 'moment';
 
 /**
  * Lấy danh sách các khoản phí kiểm định "treo" (chưa lập hóa đơn).
@@ -100,3 +101,68 @@ export const generateWaterBill = (meterReadingId) => {
   return apiClient.post(`/accounting/billing/generate-bill/${meterReadingId}`);
 };
 // --- HẾT PHẦN THÊM ---
+// --- HẾT PHẦN THÊM ---
+
+// --- THÊM HÀM MỚI ---
+/**
+ * Lấy dữ liệu Báo cáo Doanh thu (Dashboard).
+ */
+export const getRevenueReport = (startDate, endDate) => {
+    const params = {
+        // Format ngày sang YYYY-MM-DD
+        startDate: moment(startDate).format('YYYY-MM-DD'),
+        endDate: moment(endDate).format('YYYY-MM-DD')
+    };
+    return apiClient.get('/accounting/dashboard/revenue-report', { params });
+};
+// --- HẾT PHẦN THÊM ---
+
+// --- THÊM 2 HÀM MỚI ---
+/**
+ * Lấy các Thẻ Thống kê (KPIs) cho Dashboard Kế toán.
+ */
+export const getAccountingDashboardStats = () => {
+    return apiClient.get('/accounting/dashboard/stats');
+};
+
+/**
+ * Lấy 5 khoản phí "treo" (chưa lập HĐ) MỚI NHẤT
+ * (Dùng cho bảng "Việc cần làm" trên Dashboard)
+ */
+export const getRecentUnbilledFees = (limit = 5) => {
+    const params = {
+        page: 0,
+        size: limit,
+        sort: 'calibrationDate,desc' // Lấy 5 cái MỚI NHẤT
+    };
+    return apiClient.get('/accounting/unbilled-calibrations', { params });
+};
+// --- HẾT PHẦN THÊM ---
+
+
+// === SỬA LẠI CÁC HÀM QUẢN LÝ TUYẾN ===
+
+/** Lấy tất cả Tuyến đọc (Bảng 4) */
+export const getAllRoutes = () => {
+    return apiClient.get('/accounting/routes');
+};
+
+/** (XÓA HÀM getUnassignedContracts) */
+
+/** Lấy danh sách HĐ ĐÃ GÁN vào 1 tuyến (theo ID tuyến) */
+export const getContractsByRoute = (routeId) => {
+    // Gọi API mới
+    return apiClient.get(`/accounting/routes/${routeId}/contracts`);
+};
+
+/**
+ * Cập nhật Thứ tự HĐ trong Tuyến
+ * @param {number} routeId - ID của Tuyến (Bảng 4)
+ * @param {number[]} orderedContractIds - Mảng các ID HĐ (Bảng 9) theo thứ tự mới
+ */
+export const updateRouteOrder = (routeId, orderedContractIds) => {
+    const dto = { orderedContractIds };
+    // Gọi API mới
+    return apiClient.put(`/accounting/routes/${routeId}/update-order`, dto);
+};
+// --- HẾT PHẦN SỬA ---

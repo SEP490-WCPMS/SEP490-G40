@@ -96,6 +96,14 @@ public class Contract {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+
+    // --- THÊM TRƯỜNG NÀY VÀO (Khớp với SQL của bạn) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "route_id", // Tên cột trong Bảng 8
+            foreignKey = @ForeignKey(name = "fk_contract_route"))
+    private ReadingRoute readingRoute; // Liên kết đến Bảng 4
+    // --- HẾT PHẦN THÊM ---
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -53,16 +53,26 @@ import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceReq
 import StaffChangePassword from './components/Staff/StaffChangePassword';
 import LayoutAccounting from './components/Layouts/LayoutAccounting';
 import ReadingRoutesList from './components/Accounting/ReadingRoutesList';
-import UnbilledFeesList from './components/Pages/PagesAccounting/UnbilledFeesList';
-import InvoiceList from './components/Pages/PagesAccounting/InvoiceList'; // <-- THÊM
-import UnbilledFeeDetail from './components/Pages/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
-import CreateServiceInvoice from './components/Pages/PagesAccounting/CreateServiceInvoice'; // <-- THÊM IMPORT MỚI
-import InvoiceDetail from './components/Pages/PagesAccounting/InvoiceDetail';
+import UnbilledFeesList from './components/PagesAccounting/UnbilledFeesList';
+import InvoiceList from './components/PagesAccounting/InvoiceList'; // <-- THÊM
+import UnbilledFeeDetail from './components/PagesAccounting/UnbilledFeeDetail'; // <-- THÊM
+import CreateServiceInvoice from './components/PagesAccounting/CreateServiceInvoice'; // <-- THÊM IMPORT MỚI
+import InvoiceDetail from './components/PagesAccounting/InvoiceDetail';
 import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
 import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
 import PendingReadingsList from './components/Pages/PagesAccounting/PendingReadingsList';
+import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice";
+import EligibleInstallationContracts from "@/components/PagesAccounting/EligibleInstallationContracts.jsx";
+import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; // <-- THÊM
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; // <-- THÊM
+import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
+import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
+import CashierRouteList from './components/PagesCashier/CashierRouteList';
+import CashierContractDetail from './components/PagesCashier/CashierContractDetail';
+import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 import ContactPage from './components/Pages/ContactPage';
 
@@ -139,11 +149,24 @@ function App() {
         </Route>
 
         {/* --- LUỒNG CỦA CASHIER STAFF --- */}
-        <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
-          <Route path="/cashier" element={<LayoutCashier />}>
-            {/* <Route index element={<CashierDashboard />} /> */}
-            <Route path="scan" element={<MeterScan />} />
-            <Route path="submit-reading" element={<ReadingConfirmation />} />
+          <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
+            <Route path="/cashier/*" element={<LayoutCashier />}>
+              
+              {/* --- SỬA LẠI ROUTE --- */}
+              <Route index element={<CashierDashboard />} /> {/* Trang index mới */}
+              <Route path="dashboard" element={<CashierDashboard />} /> {/* Thêm /dashboard */}
+              {/* --- */}
+              <Route path="scan" element={<MeterScan />} />
+              <Route path="submit-reading" element={<ReadingConfirmation />} />
+              <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
+              {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
+              <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
+              <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
+              {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
+              <Route path="route-list" element={<CashierRouteList />} />
+              <Route path="route-contract/:contractId" element={<CashierContractDetail />} />
+
+            <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>
 
@@ -170,7 +193,8 @@ function App() {
         <Route element={<PrivateRoute allowedRoles={['ACCOUNTING_STAFF']} />}>
           <Route path="/accounting/*" element={<LayoutAccounting />}>
             {/* Trang index của /accounting */}
-            <Route index element={<UnbilledFeesList />} />
+            <Route index element={<AccountingDashboard />} /> {/* Trang index mới */}
+            <Route path="dashboard" element={<AccountingDashboard />} /> {/* Thêm /dashboard */}
             <Route path="unbilled-fees" element={<UnbilledFeesList />} />
             {/* --- THÊM 2 ROUTE MỚI --- */}
             {/* (Req 1) Trang Chi tiết Phí */}
@@ -182,6 +206,7 @@ function App() {
             {/* (Req 1) Trang Chi tiết Hóa đơn (Read-only) */}
             <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
             {/* --- HẾT --- */}
+            <Route path="route-management" element={<RouteManagementPage />} />
             {/* (Thêm các trang khác của Kế toán ở đây) */}
             <Route path="reading-routes" element={<ReadingRoutesList />} />
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />

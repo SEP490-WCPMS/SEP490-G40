@@ -37,7 +37,7 @@ public class AiScanLog {
     private String userCorrectedMeterIdText;
 
     @Lob
-    @Column(name = "scan_image_base64", nullable = false, columnDefinition = "LONGTEXT")
+    @Column(name = "scan_image_base64", columnDefinition = "LONGTEXT")
     private String scanImageBase64;
 
     @CreationTimestamp
