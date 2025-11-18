@@ -187,12 +187,30 @@ const ContractRequestChange = () => {
         return false; // Không upload tự động
     };
 
+    const fileDataToUrl = (file) => {
+        return new Promise((resolve, reject) => {
+           const reader = new FileReader();
+           reader.onload = () => resolve(reader.result);
+           reader.onerror = reject;
+           reader.readAsDataURL(file);
+        });
+    }
+
     // Xử lý submit form
     const handleSubmit = async (values) => {
         setSubmitting(true);
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const requestedBy = user?.id;
+
+            // Chuẩn bị attachedEvidence: convert file -> dataUrl
+            let attachedEvidence = null;
+            if (fileList.length > 0) {
+                const fileObj = fileList[0].originFileObj;
+                if (fileObj) {
+                    attachedEvidence = await fileDataToUrl(fileObj);
+                }
+            }
 
             // Chuẩn bị dữ liệu gửi lên backend
             const requestData = {
@@ -201,7 +219,7 @@ const ContractRequestChange = () => {
                 requestNumber: values.requestNumber,
                 requestDate: values.requestDate ? values.requestDate.format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'),
                 reason: values.reason,
-                attachedEvidence: fileList.length > 0 ? fileList[0].name : null, // Hoặc upload file và lấy URL
+                attachedEvidence,
                 requestedById: requestedBy,
                 fromCustomerId: values.requestType === 'TRANSFER' ? fromCustomerId : null,
                 toCustomerId: values.requestType === 'TRANSFER' ? values.toCustomerId : null,
