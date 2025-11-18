@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, InputNumber, DatePicker, Descriptions } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import ContractTable from './ContractManagement/ContractTable';
-import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import ContractViewModal from './ContractManagement/ContractViewModal';
-import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../Services/apiService';
+import ContractTable from '../ContractTable';
+import AssignSurveyModal from './AssignSurveyModal';
+import ContractViewModal from '../ContractViewModal';
+import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../../Services/apiService';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 

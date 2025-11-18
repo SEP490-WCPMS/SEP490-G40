@@ -21,10 +21,10 @@ import {
     Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import StatisticCard from '../common/StatisticCard';
-import ContractTable from './ContractManagement/ContractTable';
-import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import ContractViewModal from './ContractManagement/ContractViewModal';
+import StatisticCard from '../../common/StatisticCard';
+import ContractTable from '../ContractTable';
+import AssignSurveyModal from '../ContractCreation/AssignSurveyModal';
+import ContractViewModal from '../ContractViewModal';
 import { 
     getServiceStaffDashboardStats, 
     getServiceStaffChartData,
@@ -35,7 +35,7 @@ import {
     sendContractToSign,
     sendContractToInstallation,
     terminateContract
-} from '../Services/apiService';
+} from '../../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 
@@ -632,15 +632,15 @@ const ServiceDashboardPage = () => {
             )}
 
             {/* Modal gửi khảo sát - Có thể chỉnh sửa */}
-            {modalMode === 'edit' && (
-                <ContractDetailModal
-                    visible={isModalVisible}
-                    onCancel={handleModalClose}
-                    onSave={handleModalSave}
-                    initialData={selectedContract}
-                    loading={modalLoading}
-                />
-            )}
+                {modalMode === 'edit' && (
+                    <AssignSurveyModal
+                        visible={isModalVisible}
+                        onCancel={handleModalClose}
+                        onSave={handleModalSave}
+                        initialData={selectedContract}
+                        loading={modalLoading}
+                    />
+                )}
         </div>
     );
 };

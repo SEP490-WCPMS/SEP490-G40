@@ -19,6 +19,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.GetMapping; // <-- THÊM
 import org.springframework.web.bind.annotation.PutMapping; // <-- THÊM
+import com.sep490.wcpms.dto.PendingReadingDTO;
+import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -168,6 +170,35 @@ public class AccountingStaffController {
     }
 
     // --- HẾT HÀM THÊM ---
+
+    // ==========================================================
+    // === ✨ THÊM 2 API MỚI CHO HÓA ĐƠN TIỀN NƯỚC ✨ ===
+    // ==========================================================
+
+    /**
+     * API Lấy danh sách chỉ số đã đọc (COMPLETED) chờ lập hóa đơn.
+     * Path: GET /api/accounting/billing/pending-readings
+     */
+    @GetMapping("/billing/pending-readings")
+    public ResponseEntity<Page<PendingReadingDTO>> getPendingReadings(
+            @PageableDefault(size = 10, sort = "readingDate", direction = Sort.Direction.ASC) Pageable pageable
+    ) {
+        Page<PendingReadingDTO> readings = accountingService.getPendingReadings(pageable);
+        return ResponseEntity.ok(readings);
+    }
+
+    /**
+     * API Tạo Hóa đơn tiền nước TỪ MỘT BẢN GHI ĐỌC SỐ.
+     * Path: POST /api/accounting/billing/generate-bill/{readingId}
+     */
+    @PostMapping("/billing/generate-bill/{readingId}")
+    public ResponseEntity<InvoiceDTO> generateWaterBill(
+            @PathVariable Integer readingId
+    ) {
+        Integer accountingStaffId = getAuthenticatedStaffId();
+        InvoiceDTO invoice = accountingService.generateWaterBill(readingId, accountingStaffId);
+        return new ResponseEntity<>(invoice, HttpStatus.CREATED);
+    }
 
     // --- THÊM API MỚI ---
     /**
