@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, Input as FormInput, DatePicker, Descriptions } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { getActiveContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract } from '../Services/apiService';
+import { getActiveContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract } from '../../Services/apiService';
 import dayjs from 'dayjs';
 
 const { Title, Paragraph } = Typography;

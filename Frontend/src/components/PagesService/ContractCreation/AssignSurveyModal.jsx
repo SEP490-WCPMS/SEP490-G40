@@ -1,12 +1,15 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿// File: src/component/PagesService/ContractManagement/AssignSurveyModal.jsx
+
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, Input, Spin, message, Divider, Row, Col, Tag } from 'antd';
 import { FileTextOutlined, UserOutlined, AppstoreOutlined, InfoCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { getTechnicalStaff } from '../../Services/apiService';
-import './ContractModal.css';
+import './AssignSurveyModal.css'; // ✨ SỬA LỖI 1: Đổi tên file CSS import cho khớp
 
 const { TextArea } = Input;
 
-const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initialData }) => {
+// ✨ SỬA LỖI 2: Đổi tên Component cho khớp với tên file
+const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialData }) => {
   const [form] = Form.useForm();
   const [technicalStaff, setTechnicalStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
@@ -35,7 +38,7 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
 
   useEffect(() => {
     if (isOpen && initialData) {
-      console.log('ContractDetailModal - initialData:', initialData);
+      console.log('AssignSurveyModal - initialData:', initialData); // Sửa tên log
       form.setFieldsValue({
         contractNumber: initialData.contractNumber,
         customerName: initialData.customerName,
@@ -169,4 +172,4 @@ const ContractDetailModal = ({ visible, open, onCancel, onSave, loading, initial
   );
 };
 
-export default ContractDetailModal;
+export default AssignSurveyModal; // ✨ SỬA LỖI 3: Đổi tên export

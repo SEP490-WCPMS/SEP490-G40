@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Sửa lại import, chỉ lấy từ apiService
-import { getSupportTickets } from '../Services/apiService'; 
+import { getSupportTickets } from '../../Services/apiService'; 
 import { RefreshCw, UserCheck, MessageSquare } from 'lucide-react'; // <-- Thêm MessageSquare
 import AssignTicketModal from './AssignTicketModal';
 import ReplyTicketModal from './ReplyTicketModal'; // <-- THÊM MODAL MỚI

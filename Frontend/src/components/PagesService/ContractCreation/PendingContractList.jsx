@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, Button, message } from 'antd';
 import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { getServiceContracts, updateContractStatus } from '../../../Services/apiService';
+import { getServiceContracts, updateContractStatus } from '../../Services/apiService';
 
 const PendingContractList = () => {
   const [contracts, setContracts] = useState([]);

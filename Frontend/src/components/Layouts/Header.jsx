@@ -90,7 +90,7 @@ const Header = ({ isAuthenticated, user }) => {
           >
             Giá nước
           </button>
-          <a href="#lien-he" className="nav-item">Liên hệ</a>
+          <Link to="/contact" className="nav-item">Liên hệ</Link>
           {/* --- BẮT ĐẦU THAY ĐỔI Ở ĐÂY --- */}
           <div className="nav-item nav-dropdown">
             <span className="nav-dropdown-trigger">
@@ -269,7 +269,7 @@ const Header = ({ isAuthenticated, user }) => {
           >
             Giá nước
           </button>
-          <a href="#lien-he" className="mobile-nav-item">Liên hệ</a>
+          <Link to="/contact" className="nav-item">Liên hệ</Link>
         </nav>
       )}
     </header>

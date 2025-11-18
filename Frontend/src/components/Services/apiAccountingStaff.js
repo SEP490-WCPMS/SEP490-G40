@@ -81,7 +81,26 @@ export const createInstallationInvoice = (payload) => {
     return apiClient.post('/accounting/invoices/installation', payload);
 };
 
+// === THÊM 2 HÀM MỚI CHO HÓA ĐƠN TIỀN NƯỚC ===
 
+/**
+ * Lấy danh sách các chỉ số đã đọc (COMPLETED) chờ lập hóa đơn.
+ * @param {object} params - { page: 0, size: 10, sort: 'readingDate,asc' }
+ */
+export const getPendingReadings = (params) => {
+  return apiClient.get('/accounting/billing/pending-readings', { params });
+};
+
+/**
+ * Ra lệnh cho backend tạo hóa đơn tiền nước từ một chỉ số đã đọc
+ * @param {number} meterReadingId - ID của bản ghi meter_reading
+ */
+export const generateWaterBill = (meterReadingId) => {
+  // Backend DTO chỉ cần ID, nên chúng ta gửi một object rỗng hoặc không cần body
+  // Dựa trên Controller của bạn, nó chỉ lấy ID từ PathVariable
+  return apiClient.post(`/accounting/billing/generate-bill/${meterReadingId}`);
+};
+// --- HẾT PHẦN THÊM ---
 // --- HẾT PHẦN THÊM ---
 
 // --- THÊM HÀM MỚI ---

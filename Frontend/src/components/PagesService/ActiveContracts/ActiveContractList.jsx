@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, Button, message } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
-import { getServiceContracts } from '../../../Services/apiService';
+import { getServiceContracts } from '../../Services/apiService';
 
 const ActiveContractList = () => {
   const [contracts, setContracts] = useState([]);

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button, Tabs, Modal, Form } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import ContractTable from './ContractManagement/ContractTable';
-import ContractDetailModal from './ContractManagement/ContractDetailModal';
-import ContractViewModal from './ContractManagement/ContractViewModal';
-import { getServiceContracts, getServiceContractDetail, submitContractForSurvey, approveServiceContract, rejectSurveyReport } from '../Services/apiService';
+import ContractTable from '../ContractTable';
+import AssignSurveyModal from './AssignSurveyModal';
+import ContractViewModal from '../ContractViewModal';
+import { getServiceContracts, getServiceContractDetail, submitContractForSurvey, approveServiceContract, rejectSurveyReport } from '../../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -273,7 +273,7 @@ const SurveyReviewPage = () => {
                         initialData={selectedContract}
                     />
                 ) : (
-                    <ContractDetailModal
+                    <AssignSurveyModal
                         open={isModalVisible}
                         onCancel={handleCancelModal}
                         onSave={handleSaveModal}
