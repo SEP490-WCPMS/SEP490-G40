@@ -2,6 +2,7 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.Customer;
+import com.sep490.wcpms.entity.MeterReading;
 import org.springframework.data.domain.Page; // <-- THÊM
 import org.springframework.data.domain.Pageable; // <-- THÊM
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,7 +13,6 @@ import com.sep490.wcpms.entity.Invoice.PaymentStatus; // <-- THÊM
 import java.math.BigDecimal; // <-- THÊM
 import java.time.LocalDate; // <-- THÊM
 
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional; // <-- THÊM IMPORT
@@ -74,6 +74,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
 
     // --- HẾT PHẦN THÊM ---
 
+    /**
+     * Kiểm tra xem đã tồn tại Hóa đơn nào được tạo từ MeterReading này chưa.
+     */
+    boolean existsByMeterReading(MeterReading meterReading);
 
     // Hàm  (cho Thu ngân tại quầy)
     /**

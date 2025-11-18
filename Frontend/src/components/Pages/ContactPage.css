@@ -1,0 +1,84 @@
+.contact-container {
+  max-width: 1200px;
+  margin: 48px auto;
+  padding: 40px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+
+  /* ---  THÊM HIỆU ỨNG HOVER CHO CẢ KHUNG  --- */
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  /* Đảm bảo trình duyệt tối ưu hóa animation */
+  will-change: transform, box-shadow; 
+}
+
+.contact-container:hover {
+  /* 1. Nổi lên (dịch chuyển lên trên 5px) */
+  transform: translateY(-5px); 
+  /* 2. Sáng nhẹ (tăng cường độ đổ bóng) */
+  box-shadow: 0 12px 40px rgba(30, 64, 175, 0.12);
+}
+/* --- HẾT HIỆU ỨNG HOVER --- */
+
+.contact-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1e40af; /* Màu xanh đậm giống header */
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 16px;
+}
+
+.contact-section-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  margin-top: 32px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  font-size: 17px;
+  line-height: 1.7;
+  color: #374151;
+  margin-bottom: 16px;
+}
+
+.contact-icon-wrapper {
+  color: #1e40af;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.contact-label {
+  font-weight: 600;
+  color: #6b7280; /* Màu xám */
+  display: block;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.contact-paragraph {
+  font-size: 17px; 
+  margin-bottom: 32px; 
+  color: #374151;
+}
+
+.contact-email-link {
+  color: #1e40af;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.contact-email-link:hover {
+  /* Hiệu ứng riêng của link email */
+  transform: scale(1.03) translateY(-2px);
+  color: #2563eb;
+  text-shadow: 0 0 8px rgba(30, 64, 175, 0.3);
+  text-decoration: underline;
+}

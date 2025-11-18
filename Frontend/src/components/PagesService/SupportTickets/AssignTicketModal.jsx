@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAvailableTechStaff, assignTechToTicket } from '../Services/apiService'; // Đảm bảo đường dẫn đúng
+import { getAvailableTechStaff, assignTechToTicket } from '../../Services/apiService'; // Đảm bảo đường dẫn đúng
 
 /**
  * Modal để gán một Yêu cầu Hỗ trợ (Ticket) cho NV Kỹ thuật.

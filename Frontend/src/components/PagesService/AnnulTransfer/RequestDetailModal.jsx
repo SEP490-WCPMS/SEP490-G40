@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Descriptions, Tag, Typography, Button, Space, Input, message } from 'antd';
-import { approveTransferRequest, rejectTransferRequest, approveAnnulRequest, rejectAnnulRequest } from '../../../Services/apiService';
+import { approveTransferRequest, rejectTransferRequest, approveAnnulRequest, rejectAnnulRequest } from '../../Services/apiService';
 
 const { Text } = Typography;
 

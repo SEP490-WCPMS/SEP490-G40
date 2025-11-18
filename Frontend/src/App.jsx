@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ScrollToTop from './components/common/ScrollToTop';
 import './App.css';
 import { useAuth } from './hooks/use-auth';
 import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
@@ -21,15 +22,15 @@ import LayoutCashier from './components/Layouts/LayoutCashier';
 import MeterScan from './components/PagesCashier/MeterScan';
 import ReadingConfirmation from './components/PagesCashier/ReadingConfirmation';
 import LayoutService from './components/Layouts/LayoutService';
-import ServiceDashboardPage from './components/PagesService/ServiceDashboardPage';
-import ContractRequestsPage from './components/PagesService/ContractRequestsPage';
-import SurveyReviewPage from './components/PagesService/SurveyReviewPage';
-import ApprovedContractsPage from './components/PagesService/ApprovedContractsPage';
-import SignedContractsPage from './components/PagesService/SignedContractsPage';
-import ActiveContractsPage from './components/PagesService/ActiveContractsPage';
-import ContractTransferList from './components/PagesService/ContractManagement/Requests/ContractTransferList';
-import ContractAnnulList from './components/PagesService/ContractManagement/Requests/ContractAnnulList';
-import ContractCreatePage from './components/PagesService/ContractManagement/ContractCreatePage';
+import ServiceDashboardPage from './components/PagesService/Dashboard/ServiceDashboardPage';
+import ContractRequestsPage from './components/PagesService/ContractCreation/ContractRequestsPage';
+import SurveyReviewPage from './components/PagesService/ContractCreation/SurveyReviewPage';
+import ApprovedContractsPage from './components/PagesService/ContractCreation/ApprovedContractsPage';
+import SignedContractsPage from './components/PagesService/ContractCreation/SignedContractsPage';
+import ActiveContractsPage from './components/PagesService/ActiveContracts/ActiveContractsPage';
+import ContractTransferList from './components/PagesService/AnnulTransfer/ContractTransferList';
+import ContractAnnulList from './components/PagesService/AnnulTransfer/ContractAnnulList';
+import ContractCreatePage from './components/PagesService/ContractCreation/ContractCreatePage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import ContractList from './components/Customer/ContractList';
@@ -41,12 +42,12 @@ import PrivateRoute from './PrivateRoute';
 import CustomerChangePassword from './components/Customer/CustomerChangePassword';
 import MeterReplacementForm from './components/PagesTechnical/Replacement/MeterReplacementForm'; // <-- Trang mới
 import OnSiteCalibrationForm from './components/PagesTechnical/OnSiteCalibration/OnSiteCalibrationForm'; // <-- Trang mới
-import SupportTicketList from './components/PagesService/SupportTicketList'; // <-- Trang mới
+import SupportTicketList from './components/PagesService/SupportTickets/SupportTicketList'; // <-- Trang mới
 import MaintenanceRequestList from './components/PagesTechnical/MaintenanceRequestList'; // <-- Trang mới
 import CustomerSupportForm from './components/Customer/Feedback/CustomerSupportForm'; // <-- Trang mới
 import MySupportTicketList from './components/Customer/Feedback/MySupportTicketList'; // <-- Trang mới
 import SupportTicketDetail from './components/Customer/Feedback/SupportTicketDetail'; // <-- Trang mới
-import ServiceCreateTicketForm from './components/PagesService/ServiceCreateTicketForm'; // <-- Trang mới
+import ServiceCreateTicketForm from './components/PagesService/SupportTickets/ServiceCreateTicketForm'; // <-- Trang mới
 import ContractRequestChange from './components/Customer/ContractRequestChange';
 import MaintenanceRequestDetail from './components/PagesTechnical/MaintenanceRequestDetail'; // <-- THÊM IMPORT NÀY
 import StaffChangePassword from './components/Staff/StaffChangePassword';
@@ -59,6 +60,9 @@ import CreateServiceInvoice from './components/PagesAccounting/CreateServiceInvo
 import InvoiceDetail from './components/PagesAccounting/InvoiceDetail';
 import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
+import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
+import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
+import PendingReadingsList from './components/Pages/PagesAccounting/PendingReadingsList';
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice";
 import EligibleInstallationContracts from "@/components/PagesAccounting/EligibleInstallationContracts.jsx";
 import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
@@ -70,6 +74,8 @@ import CashierRouteList from './components/PagesCashier/CashierRouteList';
 import CashierContractDetail from './components/PagesCashier/CashierContractDetail';
 import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
+import ContactPage from './components/Pages/ContactPage';
+
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -87,6 +93,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
 
         {/* === PUBLIC ROUTES (Đăng nhập, Đăng ký) === */}
@@ -94,6 +101,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
+        <Route path="/contact" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContactPage /></PublicLayout>} />
         <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
 
 
@@ -204,6 +212,8 @@ function App() {
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
+            {/* ROUTE CHO HÓA ĐƠN TIỀN NƯỚC */}
+            <Route path="billing/pending-readings" element={<PendingReadingsList />} />
           </Route>
         </Route>
         {/* --- HẾT --- */}

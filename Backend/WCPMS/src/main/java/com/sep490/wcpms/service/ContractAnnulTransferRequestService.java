@@ -139,6 +139,14 @@ public class ContractAnnulTransferRequestService {
             }
         }
 
+        // --- NEW: Khi từ chối, yêu cầu có lý do (notes) để audit ---
+        if (dto.getApprovalStatus() == ContractAnnulTransferRequest.ApprovalStatus.REJECTED) {
+            if (dto.getNotes() == null || dto.getNotes().trim().isEmpty()) {
+                throw new IllegalArgumentException("notes (reason) is required when rejecting a request.");
+            }
+        }
+
+        // cập nhật entity (managed) - sẽ được flush khi transaction commit
         mapper.updateApproval(entity, dto, approvedBy);
 
         // Hệ quả khi APPROVED
@@ -162,6 +170,9 @@ public class ContractAnnulTransferRequestService {
             }
 
         }
+
+        // Explicit save to ensure immediate persistence and to trigger any DB-level constraints
+        entity = repository.save(entity);
 
         return mapper.toDTO(entity);
     }

@@ -72,7 +72,7 @@ const HomePage = ({ isAuthenticated, user }) => {
     },
     { 
       name: 'MB Bank', 
-      logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/logo-sacombank-150x150.jpg',
+      logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/tai-xuong-150x150.png',
       isImage: true
     },
     { 
@@ -82,7 +82,7 @@ const HomePage = ({ isAuthenticated, user }) => {
     },
     { 
       name: 'Payoo', 
-      logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/tai-xuong-150x150.png',
+      logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/logo-sacombank-150x150.jpg',
       isImage: true
     }
   ];

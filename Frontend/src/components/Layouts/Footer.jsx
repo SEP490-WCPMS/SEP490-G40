@@ -70,7 +70,7 @@ const Footer = () => {
         <div className="footer-section">
           <h3 className="footer-title">THÔNG TIN</h3>
           <ul className="footer-links">
-            <li><a href="#about">Giới thiệu công ty</a></li>
+            <li><a href="/about">Giới thiệu công ty</a></li>
             <li><a href="#news">Tin tức & thông báo</a></li>
             <li><a href="#policy">Chính sách bảo mật</a></li>
             <li><a href="#quality">Chất lượng nước</a></li>
@@ -85,14 +85,6 @@ const Footer = () => {
           <p className="copyright">
             © 2025 Công ty Cổ phần Cấp nước Phú Thọ. All rights reserved.
           </p>
-          <div className="footer-socials">
-            <a href="#facebook" className="social-icon" title="Facebook">
-              <Facebook size={18} />
-            </a>
-            <a href="#twitter" className="social-icon" title="Website">
-              <Zap size={18} />
-            </a>
-          </div>
         </div>
       </div>
     </footer>
