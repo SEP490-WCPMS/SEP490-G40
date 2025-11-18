@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, message } from 'antd';
-import { getAnnulRequests, approveAnnulRequest, rejectAnnulRequest, getServiceRequestDetail } from '../../Services/apiService';
+import { getAnnulRequests, getServiceRequestDetail } from '../../Services/apiService'; // Xóa approve/reject
 import apiClient from '../../Services/apiClient';
 import RequestDetailModal from './RequestDetailModal';
 
@@ -75,45 +75,15 @@ const ContractAnnulList = () => {
       title: 'Hành động',
       key: 'action',
       render: (_, record) => {
-        const actions = [];
-        actions.push(
+        // ✨ CHỈ GIỮ LẠI NÚT CHI TIẾT ✨
+        return (
           <button
             key="detail"
             onClick={() => handleViewDetails(record)}
             className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
           >
-            Chi tiết
+            Chi tiết & Xử lý
           </button>
-        );
-        if ((record.status || '').toString().toUpperCase() === 'PENDING') {
-          actions.push(
-            <button
-              key="approve"
-              onClick={() => handleApprove(record)}
-              className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-            >
-              Duyệt
-            </button>
-          );
-          actions.push(
-            <button
-              key="reject"
-              onClick={() => handleReject(record)}
-              className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-            >
-              Từ chối
-            </button>
-          );
-        }
-        return (
-          <div className="flex flex-wrap items-center gap-3">
-            {actions.map((el, idx) => (
-              <React.Fragment key={idx}>
-                {idx > 0 && <span className="text-gray-300">|</span>}
-                {el}
-              </React.Fragment>
-            ))}
-          </div>
         );
       },
     },
@@ -127,6 +97,9 @@ const ContractAnnulList = () => {
         const payload = res?.data;
         const core = payload?.data || payload?.result || payload?.content || payload || {};
         const normalized = {
+          // Gán id cho đúng (rất quan trọng)
+          id: record.id, 
+          // ... (các trường chuẩn hóa khác giữ nguyên)
           requestNumber: core.requestNumber || record.requestNumber,
           contractNumber: core.contractNumber || record.contractNumber,
           requestDate: core.requestDate || record.requestDate,
@@ -151,110 +124,91 @@ const ContractAnnulList = () => {
       .finally(() => setDetailLoading(false));
   };
 
-  const handleApprove = async (record) => {
-    try {
-      await approveAnnulRequest(record.id);
-      message.success('Duyệt yêu cầu hủy hợp đồng thành công!');
-      fetchData();
-    } catch (error) {
-      message.error('Duyệt yêu cầu thất bại!');
-      console.error('Approve error:', error);
-    }
-  };
+  // ❌ XÓA HÀM handleApprove ❌
+  // ❌ XÓA HÀM handleReject ❌
 
-  const handleReject = async (record) => {
-    try {
-      await rejectAnnulRequest(record.id, 'Từ chối yêu cầu');
-      message.success('Từ chối yêu cầu hủy hợp đồng thành công!');
-      fetchData();
-    } catch (error) {
-      message.error('Từ chối yêu cầu thất bại!');
-      console.error('Reject error:', error);
-    }
-  };
-
+  // (Hàm fetchData và useEffect giữ nguyên)
   const fetchData = async (params = {}) => {
-    setLoading(true);
-    try {
-      const response = await getAnnulRequests({
-        page: (params.current || pagination.current) - 1,
-        size: params.pageSize || pagination.pageSize
-      });
-      const data = response?.data;
-      // eslint-disable-next-line no-console
-      console.log('[AnnulList] payload', data);
-      // Tìm mảng items theo nhiều cấu trúc trả về khác nhau (kể cả lồng 1 cấp)
-      const pickArray = (obj) => {
-        if (Array.isArray(obj)) return obj;
-        const direct = obj?.content || obj?.items || obj?.list || obj?.records || obj?.data;
-        if (Array.isArray(direct)) return direct;
-        if (direct && typeof direct === 'object' && Array.isArray(direct.content)) return direct.content;
-        if (obj && typeof obj === 'object') {
-          for (const k of Object.keys(obj)) {
-            const v = obj[k];
-            if (Array.isArray(v) && v.length && typeof v[0] === 'object') return v;
-          }
-        }
-        return [];
-      };
-      const rawItems = pickArray(data);
-      // eslint-disable-next-line no-console
-      console.log('[AnnulList] items.length', rawItems.length, 'first.keys', rawItems[0] && Object.keys(rawItems[0]));
-      const items = rawItems.map((it) => ({
-        ...it,
-        contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-        customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
-        requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
-        reason: it.reason || it.note || '—',
-        status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
-          || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
-          || (typeof it.status === 'string' ? it.status : null)
-          || 'PENDING',
-      }));
-      let finalItems = items;
-      if (!items.length) {
-        try {
-          const alt = await apiClient.get('/service/requests', { params: { page: (params.current || pagination.current) - 1, size: params.pageSize || pagination.pageSize } });
-          const altData = alt?.data;
-          // eslint-disable-next-line no-console
-          console.log('[AnnulList] alt payload', altData);
-          const altRaw = pickArray(altData);
-          finalItems = altRaw
-            .filter(it => (it.requestType || it.type || '').toString().toUpperCase() === 'ANNUL')
-            .map((it) => ({
-              ...it,
-              contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-              customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
-              requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
-              reason: it.reason || it.note || '—',
-              status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
-                || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
-                || (typeof it.status === 'string' ? it.status : null)
-                || 'PENDING',
-            }));
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn('[AnnulList] alt fetch failed', e);
-        }
-      }
-      setAnnuls(finalItems);
-      const total = Array.isArray(data)
-        ? finalItems.length
-        : (data?.totalElements ?? data?.total ?? data?.recordCount ?? finalItems.length ?? 0);
-      setPagination({
-        ...pagination,
-        total,
-        current: params.current || pagination.current,
-        pageSize: params.pageSize || pagination.pageSize
-      });
-    } catch (error) {
-      message.error('Không thể tải danh sách yêu cầu hủy hợp đồng');
-      console.error('Fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    setLoading(true);
+    try {
+      const response = await getAnnulRequests({
+        page: (params.current || pagination.current) - 1,
+        size: params.pageSize || pagination.pageSize
+      });
+      const data = response?.data;
+      // eslint-disable-next-line no-console
+      console.log('[AnnulList] payload', data);
+      // Tìm mảng items theo nhiều cấu trúc trả về khác nhau (kể cả lồng 1 cấp)
+      const pickArray = (obj) => {
+        if (Array.isArray(obj)) return obj;
+        const direct = obj?.content || obj?.items || obj?.list || obj?.records || obj?.data;
+        if (Array.isArray(direct)) return direct;
+        if (direct && typeof direct === 'object' && Array.isArray(direct.content)) return direct.content;
+        if (obj && typeof obj === 'object') {
+          for (const k of Object.keys(obj)) {
+            const v = obj[k];
+            if (Array.isArray(v) && v.length && typeof v[0] === 'object') return v;
+          }
+        }
+        return [];
+      };
+      const rawItems = pickArray(data);
+      // eslint-disable-next-line no-console
+      console.log('[AnnulList] items.length', rawItems.length, 'first.keys', rawItems[0] && Object.keys(rawItems[0]));
+      const items = rawItems.map((it) => ({
+        ...it,
+        contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
+        customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
+        requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
+        reason: it.reason || it.note || '—',
+        status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
+          || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
+          || (typeof it.status === 'string' ? it.status : null)
+          || 'PENDING',
+      }));
+      let finalItems = items;
+      if (!items.length) {
+        try {
+          const alt = await apiClient.get('/service/requests', { params: { page: (params.current || pagination.current) - 1, size: params.pageSize || pagination.pageSize } });
+          const altData = alt?.data;
+          // eslint-disable-next-line no-console
+          console.log('[AnnulList] alt payload', altData);
+          const altRaw = pickArray(altData);
+          finalItems = altRaw
+            .filter(it => (it.requestType || it.type || '').toString().toUpperCase() === 'ANNUL')
+            .map((it) => ({
+              ...it,
+              contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
+              customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
+              requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
+              reason: it.reason || it.note || '—',
+              status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
+                || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
+                || (typeof it.status === 'string' ? it.status : null)
+                || 'PENDING',
+            }));
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[AnnulList] alt fetch failed', e);
+        }
+      }
+      setAnnuls(finalItems);
+      const total = Array.isArray(data)
+        ? finalItems.length
+        : (data?.totalElements ?? data?.total ?? data?.recordCount ?? finalItems.length ?? 0);
+      setPagination({
+        ...pagination,
+        total,
+        current: params.current || pagination.current,
+        pageSize: params.pageSize || pagination.pageSize
+      });
+    } catch (error) {
+      message.error('Không thể tải danh sách yêu cầu hủy hợp đồng');
+      console.error('Fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
     fetchData();
   }, []);
@@ -286,6 +240,7 @@ const ContractAnnulList = () => {
         onCancel={() => setDetailOpen(false)}
         loading={detailLoading}
         data={detailData}
+        onSuccess={fetchData} // ✨ THÊM DÒNG NÀY ĐỂ TỰ ĐỘNG TẢI LẠI BẢNG ✨
       />
     </>
   );
