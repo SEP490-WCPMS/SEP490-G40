@@ -60,16 +60,14 @@ import CreateServiceInvoice from './components/PagesAccounting/CreateServiceInvo
 import InvoiceDetail from './components/PagesAccounting/InvoiceDetail';
 import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage";
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
-import CreateInstallationInvoice from "./components/Pages/PagesAccounting/CreateInstallationInvoice";
-import EligibleInstallationContracts from "@/components/Pages/PagesAccounting/EligibleInstallationContracts.jsx";
-import PendingReadingsList from './components/Pages/PagesAccounting/PendingReadingsList';
-import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice";
-import EligibleInstallationContracts from "@/components/PagesAccounting/EligibleInstallationContracts.jsx";
-import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
-import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; // <-- THÊM
-import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; // <-- THÊM
+import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
+import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
+import PendingReadingsList from './components/PagesAccounting/PendingReadingsList'; // Sửa đường dẫn
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; 
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; 
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
+import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
 import CashierRouteList from './components/PagesCashier/CashierRouteList';
 import CashierContractDetail from './components/PagesCashier/CashierContractDetail';
 import CashierDashboard from './components/PagesCashier/CashierDashboard';
