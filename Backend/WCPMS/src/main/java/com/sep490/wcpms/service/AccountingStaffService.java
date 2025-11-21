@@ -105,4 +105,6 @@ public interface AccountingStaffService {
     void updateRouteOrder(Integer routeId, RouteOrderUpdateRequestDTO dto);
 
     // --- HẾT PHẦN SỬA ---
+    /** Tính toán chi tiết tiền nước (Xem trước) */
+    WaterBillCalculationDTO calculateWaterBill(Integer meterReadingId);
 }

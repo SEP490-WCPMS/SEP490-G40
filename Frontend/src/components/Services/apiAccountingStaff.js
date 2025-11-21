@@ -166,3 +166,14 @@ export const updateRouteOrder = (routeId, orderedContractIds) => {
     return apiClient.put(`/accounting/routes/${routeId}/update-order`, dto);
 };
 // --- HẾT PHẦN SỬA ---
+
+/**
+ * Lấy chi tiết tính toán (giá, phí) cho 1 chỉ số đọc (để xem trước)
+ * @param {number} meterReadingId - ID của bản ghi meter_reading
+ */
+export const getWaterBillCalculation = (meterReadingId) => {
+    // Gọi đến API backend: /api/accounting/billing/calculate-bill/{id}
+    // Lưu ý: serviceApiClient phải được định nghĩa ở trên (trỏ về base URL đúng)
+    // Nếu không có serviceApiClient, bạn có thể dùng apiClient chung.
+    return apiClient.get(`/accounting/billing/calculate-bill/${meterReadingId}`);
+};

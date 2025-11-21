@@ -450,6 +450,53 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         return invoiceMapper.toDto(savedInvoice);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public WaterBillCalculationDTO calculateWaterBill(Integer meterReadingId) {
+        // 1. Lấy dữ liệu
+        MeterReading reading = meterReadingRepository.findById(meterReadingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chỉ số: " + meterReadingId));
+
+        MeterInstallation installation = reading.getMeterInstallation();
+        WaterServiceContract serviceContract = installation.getWaterServiceContract();
+        WaterPriceType priceType = serviceContract.getPriceType();
+
+        // Tìm giá có hiệu lực
+        WaterPrice price = waterPriceRepository.findActivePriceForDate(priceType, reading.getReadingDate())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giá áp dụng cho ngày " + reading.getReadingDate()));
+
+        // 2. Tính toán
+        BigDecimal consumption = reading.getConsumption();
+        BigDecimal unitPrice = price.getUnitPrice();
+        BigDecimal envFeeRate = price.getEnvironmentFee();
+        BigDecimal vatRate = price.getVatRate();
+
+        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal vatAmount = subtotal.multiply(vatRate.divide(new BigDecimal(100))).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount);
+
+        // 3. Trả về DTO
+        WaterBillCalculationDTO dto = new WaterBillCalculationDTO();
+        dto.setMeterReadingId(reading.getId());
+        dto.setReadingDate(reading.getReadingDate());
+        dto.setPreviousReading(reading.getPreviousReading());
+        dto.setCurrentReading(reading.getCurrentReading());
+        dto.setConsumption(consumption);
+
+        dto.setPriceTypeName(priceType.getTypeName());
+        dto.setUnitPrice(unitPrice);
+        dto.setEnvironmentFee(envFeeRate);
+        dto.setVatRate(vatRate);
+
+        dto.setSubtotalAmount(subtotal);
+        dto.setEnvironmentFeeAmount(envAmount);
+        dto.setVatAmount(vatAmount);
+        dto.setTotalAmount(totalAmount);
+
+        return dto;
+    }
+
 
     // --- THÊM HÀM MỚI ---
     @Override

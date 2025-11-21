@@ -200,6 +200,13 @@ public class AccountingStaffController {
         return new ResponseEntity<>(invoice, HttpStatus.CREATED);
     }
 
+    @GetMapping("/billing/calculate-bill/{meterReadingId}")
+    public ResponseEntity<WaterBillCalculationDTO> calculateWaterBill(
+            @PathVariable Integer meterReadingId
+    ) {
+        return ResponseEntity.ok(accountingService.calculateWaterBill(meterReadingId));
+    }
+
     // --- THÊM API MỚI ---
     /**
      * API Lấy Thẻ Thống kê (KPIs) cho Dashboard.
