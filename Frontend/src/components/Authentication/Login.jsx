@@ -24,8 +24,8 @@ export default function Login() {
 
     try {
       // 1. Gọi login (giả định hàm này LƯU token + user vào localStorage)
-      const loginResponse = await login(username, password); 
-      
+      const loginResponse = await login(username, password);
+
       // 2. Lấy roleName từ response (an toàn hơn là đọc lại từ localStorage)
       const roleName = loginResponse?.user?.roleName || JSON.parse(localStorage.getItem('user'))?.roleName;
 
@@ -47,12 +47,12 @@ export default function Login() {
 
       // 4. Navigate VÀ TẢI LẠI TRANG
       // navigate(targetPath); // <-- CÁCH CŨ (GÂY LỖI)
-      
+
       // --- SỬA LẠI THÀNH CÁCH NÀY ---
       // Gán thẳng URL và tải lại trang.
       // Điều này đảm bảo toàn bộ ứng dụng (bao gồm apiService.js)
       // được khởi tạo lại và Interceptor sẽ đọc token mới nhất.
-      window.location.href = targetPath; 
+      window.location.href = targetPath;
       // --- HẾT PHẦN SỬA ---
 
     } catch (err) {
@@ -62,55 +62,68 @@ export default function Login() {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        <h1 className="login-title">Đăng Nhập Hệ Thống WCPMS</h1>
-        
-        <form onSubmit={handleSubmit} className="login-form">
-          
-          {/* Hiển thị lỗi */}
-          {error && <p className="error-message">{error}</p>}
-
-          {/* Trường Tên đăng nhập */}
-          <div className="form-group">
-            <label htmlFor="username">Tên đăng nhập</label>
-            <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Nhập tên đăng nhập..."
-              disabled={loading}
-              className="login-input"
+    <div className="login-page">
+      <div className="login-inner">
+        <aside className="brand-panel">
+          <div className="brand-logo">
+            <img
+              src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
+              alt="Cấp nước Phú Thọ"
+              className="brand-logo-image"
             />
           </div>
+          <h2 className="brand-title">Công ty Cổ phần cấp nước Phú Thọ</h2>
+          <p className="brand-subtitle">Dịch vụ cấp nước sạch — Tin cậy, bền vững và thân thiện</p>
+        </aside>
 
-          {/* Trường Mật khẩu */}
-          <div className="form-group">
-            <label htmlFor="password">Mật khẩu</label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Nhập mật khẩu..."
-              disabled={loading}
-              className="login-input"
-            />
+        <main className="form-panel">
+          <div className="form-card">
+            <h1 className="login-title">Đăng Nhập</h1>
+
+            <form onSubmit={handleSubmit} className="login-form">
+              {error && <p className="error-message">{error}</p>}
+
+              <div className="form-group">
+                <label htmlFor="username">Tên đăng nhập</label>
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Nhập tên đăng nhập"
+                  disabled={loading}
+                  className="login-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password">Mật khẩu</label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu"
+                  disabled={loading}
+                  className="login-input"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="login-button"
+              >
+                {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
+              </Button>
+
+              <div className="form-links">
+                <a href="/register" className="register">Đăng kí tài khoản</a>
+                <a href="/forgot" className="forgot-password">Quên mật khẩu?</a>
+              </div>
+            </form>
           </div>
-
-          {/* Nút Đăng nhập */}
-          <Button 
-            type="submit" 
-            disabled={loading} 
-            className="login-button"
-          >
-            {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
-          </Button>
-
-          <a href="/register" className="register">Đăng kí</a>
-          <a href="/forgot" className="forgot-password">Quên mật khẩu ?</a>
-        </form>
+        </main>
       </div>
     </div>
   );
