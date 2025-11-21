@@ -187,12 +187,17 @@ const ContractRequestChange = () => {
         return false; // Không upload tự động
     };
 
-    const fileDataToUrl = (file) => {
+    const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
-           const reader = new FileReader();
-           reader.onload = () => resolve(reader.result);
-           reader.onerror = reject;
-           reader.readAsDataURL(file);
+            const reader = new FileReader();
+
+            reader.onload = () => {
+                const dataUrl = reader.result;
+                const base64 = dataUrl.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
         });
     }
 
@@ -208,7 +213,7 @@ const ContractRequestChange = () => {
             if (fileList.length > 0) {
                 const fileObj = fileList[0].originFileObj;
                 if (fileObj) {
-                    attachedEvidence = await fileDataToUrl(fileObj);
+                    attachedEvidence = await fileToBase64(fileObj);
                 }
             }
 
