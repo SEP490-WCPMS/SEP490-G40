@@ -273,6 +273,47 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         return convertToDTO(updated);
     }
 
+    //LOGIC TẠM NGƯNG
+    @Override
+    @Transactional
+    public ServiceStaffContractDTO suspendContract(Integer contractId, String reason) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
+            throw new IllegalStateException("Only ACTIVE contracts can be suspended. Current: " + contract.getContractStatus());
+        }
+
+        contract.setContractStatus(ContractStatus.SUSPENDED);
+        if (reason != null && !reason.isBlank()) {
+            String existing = contract.getNotes();
+            contract.setNotes((existing == null ? "" : existing + "\n") + "[Suspend]: " + reason);
+        }
+
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
+    //LOGIC KÍCH HOẠT LẠI
+    @Override
+    @Transactional
+    public ServiceStaffContractDTO reactivateContract(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+
+        if (contract.getContractStatus() != ContractStatus.SUSPENDED) {
+            throw new IllegalStateException("Only SUSPENDED contracts can be reactivated. Current: " + contract.getContractStatus());
+        }
+
+        contract.setContractStatus(ContractStatus.ACTIVE);
+        // Có thể thêm log vào notes nếu cần
+        // String existing = contract.getNotes();
+        // contract.setNotes((existing == null ? "" : existing + "\n") + "[Reactivate]: Activated on " + LocalDate.now());
+
+        Contract updated = contractRepository.save(contract);
+        return convertToDTO(updated);
+    }
+
     @Override
     public ServiceStaffContractDTO terminateContract(Integer contractId, String reason) {
         Contract contract = contractRepository.findById(contractId)
