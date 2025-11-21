@@ -622,6 +622,17 @@ export const renewContract = (id, renewData) => {
     return apiClient.put(`/service/contracts/${id}/renew`, renewData);
 };
 
+/** Tạm ngưng hợp đồng ACTIVE */
+export const suspendContract = (id, reason) => {
+    // Gửi reason qua query param (khớp với Controller backend)
+    return apiClient.put(`/service/contracts/${id}/suspend?reason=${encodeURIComponent(reason)}`);
+};
+
+/** Kích hoạt lại hợp đồng SUSPENDED */
+export const reactivateContract = (id) => {
+    return apiClient.put(`/service/contracts/${id}/reactivate`);
+};
+
 /**
  * Hủy/Chấm dứt hợp đồng ACTIVE
  * @param {number} id ID của hợp đồng
@@ -636,6 +647,3 @@ export const terminateContract = (id, reason) => {
  * @param {number} id ID của hợp đồng
  * @param {string} reason Lý do tạm ngưng
  */
-export const suspendContract = (id, reason) => {
-    return apiClient.put(`/service/contracts/${id}/suspend?reason=${encodeURIComponent(reason)}`);
-};

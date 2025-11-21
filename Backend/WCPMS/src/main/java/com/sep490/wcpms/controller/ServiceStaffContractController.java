@@ -347,12 +347,26 @@ public class ServiceStaffContractController {
     }
 
     /**
-     * Gửi hợp đồng cho Tech lắp đặt (PENDING_SIGN → SIGNED)
+     * Gửi hợp đồng cho Tech lắp đặt (PENDING_CUSTOMER_SIGN → SIGNED)
      * PUT /api/service/contracts/{id}/send-to-installation
      */
     @PutMapping("/{id}/send-to-installation")
     public ResponseEntity<ServiceStaffContractDTO> sendToInstallation(@PathVariable Integer id) {
         ServiceStaffContractDTO dto = service.sendContractToInstallation(id);
         return ResponseEntity.ok(dto);
+    }
+
+    // THÊM API TẠM NGƯNG
+    @PutMapping("/{id}/suspend")
+    public ServiceStaffContractDTO suspendContract(
+            @PathVariable Integer id,
+            @RequestParam String reason) {
+        return service.suspendContract(id, reason);
+    }
+
+    // THÊM API KÍCH HOẠT LẠI
+    @PutMapping("/{id}/reactivate")
+    public ServiceStaffContractDTO reactivateContract(@PathVariable Integer id) {
+        return service.reactivateContract(id);
     }
 }
