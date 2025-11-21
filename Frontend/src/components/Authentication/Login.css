@@ -9,37 +9,114 @@
     --error-color: #dc3545;
     --border-color: #ced4da;
 }
+/* Layout for branded two-column login like corporate site */
 
-.login-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    background-color: var(--light-blue); /* Nền xanh nhạt */
-    padding: 20px;
+:root {
+    --primary-blue: #0077b6; /* a water blue tuned */
+    --accent: #00a6fb;
+    --light-blue: #e9f7ff;
+    --white: #ffffff;
+    --text-color: #1f2937;
+    --muted: #6b7280;
+    --error-color: #dc3545;
+    --border-color: #d1d5db;
 }
 
-.login-card {
-    background-color: var(--white);
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #f6fbff 0%, #eaf9ff 100%);
+    padding: 24px;
+}
+
+.login-inner {
     width: 100%;
-    max-width: 400px;
-    text-align: center;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 32px;
+    align-items: stretch;
+}
+
+.brand-panel {
+    background: linear-gradient(135deg, var(--primary-blue), var(--accent));
+    color: var(--white);
+    border-radius: 12px;
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    box-shadow: 0 10px 30px rgba(3, 37, 65, 0.08);
+}
+
+.brand-logo .logo-circle {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    font-size: 0.95rem;
+}
+
+.logo-small {
+    display: block;
+    font-size: 0.7rem;
+    opacity: 0.95;
+}
+
+/* Company logo image (from Homepage/Header) */
+.brand-logo-image {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+}
+
+.brand-title {
+    margin-top: 18px;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.brand-subtitle {
+    margin-top: 8px;
+    color: rgba(255,255,255,0.92);
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.form-panel {
+    display: flex;
+    align-items: center;
+}
+
+.form-card {
+    width: 100%;
+    background: var(--white);
+    padding: 36px;
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(16,24,40,0.06);
 }
 
 .login-title {
-    color: var(--primary-blue);
-    margin-bottom: 30px;
-    font-size: 1.8rem;
-    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    font-weight: 700;
 }
 
 .login-form {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 14px;
 }
 
 .form-group {
@@ -48,68 +125,58 @@
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
+    margin-bottom: 6px;
+    font-weight: 600;
     color: var(--text-color);
+    font-size: 0.95rem;
 }
 
-/* Tùy chỉnh Input (giả định Input.jsx dùng class 'login-input') */
 .login-input {
     width: 100%;
-    padding: 10px;
+    padding: 10px 12px;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    transition: border-color 0.3s;
+    border-radius: 8px;
 }
 
 .login-input:focus {
     border-color: var(--primary-blue);
+    box-shadow: 0 6px 18px rgba(0,138,255,0.08);
     outline: none;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-/* Tùy chỉnh Button (giả định Button.jsx dùng class 'login-button') */
 .login-button {
     background-color: var(--primary-blue);
     color: var(--white);
-    padding: 12px;
+    padding: 12px 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
-    font-weight: 600;
-    transition: background-color 0.3s, opacity 0.3s;
-    margin-top: 10px;
+    font-weight: 700;
 }
 
-.login-button:hover:not(:disabled) {
-    background-color: #0056b3; /* Xanh đậm hơn khi hover */
-}
-
-.login-button:disabled {
-    background-color: #a0c9e8;
-    cursor: not-allowed;
-}
+.login-button:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .error-message {
     color: var(--error-color);
-    background-color: #f8d7da;
-    border: 1px solid var(--error-color);
+    background-color: #fff1f2;
+    border: 1px solid rgba(220,53,69,0.12);
     padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 15px;
-    text-align: left;
-    font-size: 0.9rem;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
 }
 
-.register, .forgot-password {
-    color: var(--primary-blue);
-    text-decoration: none;
-    font-size: 0.9rem;
-    margin-top: 10px;
-    display: block;
+.form-links {
+    margin-top: 8px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-start;
 }
 
-.register:hover, .forgot-password:hover {
-    text-decoration: underline;
+.form-links a { color: var(--primary-blue); font-weight: 600; font-size: 0.95rem; text-decoration: none; }
+
+@media (max-width: 900px) {
+    .login-inner { grid-template-columns: 1fr; padding: 12px; }
+    .brand-panel { display: none; }
 }

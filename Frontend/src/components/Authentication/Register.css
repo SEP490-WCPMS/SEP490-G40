@@ -1,109 +1,69 @@
-/* src/components/SignUp/SignUp.css */
+/* Register uses same branding as login */
 
-/* Tái sử dụng các biến màu từ Login.css nếu có */
 :root {
-    --primary-blue: #007bff; 
-    --light-blue: #e9f5ff; 
+    --primary-blue: #0077b6;
+    --accent: #00a6fb;
     --white: #ffffff;
-    --text-color: #333333;
+    --text-color: #1f2937;
+    --muted: #6b7280;
     --error-color: #dc3545;
-    --success-color: #28a745; /* Màu xanh lá cho thông báo thành công */
-    --border-color: #ced4da;
+    --success-color: #16a34a;
+    --border-color: #d1d5db;
 }
 
-.register-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.register-page {
     min-height: 100vh;
-    background-color: var(--light-blue); 
-    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #f6fbff 0%, #eaf9ff 100%);
+    padding: 24px;
 }
 
-.register-card {
-    background-color: var(--white);
-    padding: 40px;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+.register-inner {
     width: 100%;
-    max-width: 450px;
-    text-align: center;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 32px;
 }
 
-.register-title {
-    color: var(--primary-blue);
-    margin-bottom: 30px;
-    font-size: 2rem;
-    font-weight: 600;
-}
-
-.register-form {
+.brand-panel {
+    background: linear-gradient(135deg, var(--primary-blue), var(--accent));
+    color: var(--white);
+    border-radius: 12px;
+    padding: 36px 28px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    justify-content: center;
+    align-items: flex-start;
 }
 
-.form-group {
-    text-align: left;
+.brand-logo .logo-circle { width: 88px; height: 88px; border-radius: 50%; background: rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; font-weight:700; }
+.brand-title { margin-top: 18px; font-size: 1.2rem; font-weight:700; }
+.brand-subtitle { margin-top: 8px; color: rgba(255,255,255,0.92); font-size: 0.95rem; }
+
+/* Company logo image (from Homepage/Header) */
+.brand-logo-image {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.06);
 }
 
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-    color: var(--text-color);
-}
+.form-panel { display:flex; align-items:center; }
+.form-card { width:100%; background:var(--white); padding:36px; border-radius:12px; box-shadow:0 6px 24px rgba(16,24,40,0.06); }
 
-.register-input {
-    /* Tái sử dụng style của input */
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-}
+.register-title { font-size:1.5rem; color:var(--text-color); margin-bottom: 18px; font-weight:700; }
+.register-form { display:flex; flex-direction:column; gap:12px; }
+.form-group { text-align:left; }
+.form-group label { display:block; margin-bottom:6px; font-weight:600; color:var(--text-color); }
+.register-input { width:100%; padding:10px 12px; border:1px solid var(--border-color); border-radius:8px; }
+.register-button { background:var(--primary-blue); color:var(--white); padding:12px 16px; border-radius:8px; border:none; font-weight:700; }
+.error-message { color:var(--error-color); background:#fff1f2; padding:10px; border-radius:8px; }
+.success-message { color:var(--success-color); background:#ecfdf5; padding:10px; border-radius:8px; }
+.login-link { margin-top:10px; }
+.login-link a { color:var(--primary-blue); font-weight:600; }
 
-.register-button {
-    background-color: var(--primary-blue);
-    color: var(--white);
-    padding: 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    margin-top: 15px;
-}
-
-.signup-button:hover:not(:disabled) {
-    background-color: #0056b3; 
-}
-
-/* Thông báo lỗi và thành công */
-.error-message {
-    color: var(--error-color);
-    background-color: #f8d7da;
-    border: 1px solid var(--error-color);
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-}
-
-.success-message {
-    color: var(--success-color);
-    background-color: #d4edda;
-    border: 1px solid var(--success-color);
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-}
-
-.login-link {
-    margin-top: 20px;
-    font-size: 0.9rem;
-}
-
-.login-link a {
-    color: var(--primary-blue);
-    text-decoration: none;
-    font-weight: 600;
-}
+@media (max-width:900px) { .register-inner { grid-template-columns: 1fr; } .brand-panel { display:none; } }
