@@ -41,7 +41,7 @@ function CreateInstallationInvoice() {
         const total = subtotal + vat;
 
         setFormData({
-            invoiceNumber: `CN-${contractFromState.id}-${moment().format('MMYYYY')}`,
+            invoiceNumber: `CN${contractFromState.id}${moment().format('MMYYYY')}`,
             invoiceDate: moment().format('YYYY-MM-DD'),
             dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
             subtotalAmount: subtotal,

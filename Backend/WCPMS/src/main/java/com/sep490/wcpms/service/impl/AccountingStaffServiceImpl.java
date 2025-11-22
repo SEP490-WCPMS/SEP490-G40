@@ -238,17 +238,10 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     // === THÊM 3 HÀM MỚI ===
 
     // --- THÊM MỚI: sinh số hóa đơn CN-YYYY-xxxx ---
-    private String generateContractInvoiceNumber(LocalDate invoiceDate) {
-        LocalDate startOfYear = invoiceDate.withDayOfYear(1);
-        LocalDate endOfYear = invoiceDate.withMonth(12).withDayOfMonth(31);
-
-        long countThisYear = invoiceRepository.countByInvoiceDateBetween(
-                startOfYear,
-                endOfYear
-        );
-
-        long next = countThisYear + 1;
-        return String.format("CN-%d-%04d", invoiceDate.getYear(), next);
+    private String generateContractInvoiceNumber(LocalDate invoiceDate, Integer contractId) {
+        String month = String.format("%02d", invoiceDate.getMonthValue());
+        int year = invoiceDate.getYear();
+        return "CN" + contractId + month + year;
     }
 
     @Override
@@ -317,7 +310,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         // 5. Số hóa đơn: nếu bạn muốn backend sinh, có thể override request.getInvoiceNumber()
         String invoiceNumber = request.getInvoiceNumber();
         if (invoiceNumber == null || invoiceNumber.isBlank()) {
-            invoiceNumber = generateContractInvoiceNumber(invoiceDate);
+            invoiceNumber = generateContractInvoiceNumber(invoiceDate, contract.getId());
         }
 
         // 6. Ngày kỳ tính: tạm dùng ngày lắp đặt nếu có, ngược lại dùng invoiceDate
