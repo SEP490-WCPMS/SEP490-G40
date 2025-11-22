@@ -56,13 +56,26 @@ const Footer = () => {
 
         {/* Guide Section */}
         <div className="footer-section">
-          <h3 className="footer-title">HƯỚNG DẪN</h3>
+          <h3 className="footer-title">DỊCH VỤ KHÁCH HÀNG</h3> {/* Đổi tên cho phù hợp hơn */}
           <ul className="footer-links">
-            <li><a href="#guide-register">Đăng ký cấp nước</a></li>
-            <li><a href="#guide-transfer">Sang tên hợp đồng</a></li>
-            <li><a href="#guide-payment">Thanh toán hóa đơn</a></li>
-            <li><a href="#guide-suspend">Tạm ngưng cấp nước</a></li>
-            <li><a href="#guide-invoice">Tra cứu hóa đơn</a></li>
+            <li>
+                <Link to="/contract-request">Đăng ký cấp nước mới</Link>
+            </li>
+            <li>
+                <Link to="/contract-request-change">Sang tên / Hủy hợp đồng</Link>
+            </li>
+            <li>
+                <Link to="/my-invoices">Thanh toán hóa đơn</Link> {/* Trỏ về DS hóa đơn */}
+            </li>
+            <li>
+                <Link to="/support-request">Tạm ngưng cấp nước</Link> 
+            </li>
+            <li>
+                <Link to="/my-invoices">Tra cứu hóa đơn</Link>
+            </li>
+            <li>
+                 <Link to="/support-request">Gửi yêu cầu hỗ trợ</Link> {/* Thêm cái này rất hữu ích */}
+            </li>
           </ul>
         </div>
 

@@ -238,17 +238,10 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     // === THÊM 3 HÀM MỚI ===
 
     // --- THÊM MỚI: sinh số hóa đơn CN-YYYY-xxxx ---
-    private String generateContractInvoiceNumber(LocalDate invoiceDate) {
-        LocalDate startOfYear = invoiceDate.withDayOfYear(1);
-        LocalDate endOfYear = invoiceDate.withMonth(12).withDayOfMonth(31);
-
-        long countThisYear = invoiceRepository.countByInvoiceDateBetween(
-                startOfYear,
-                endOfYear
-        );
-
-        long next = countThisYear + 1;
-        return String.format("CN-%d-%04d", invoiceDate.getYear(), next);
+    private String generateContractInvoiceNumber(LocalDate invoiceDate, Integer contractId) {
+        String month = String.format("%02d", invoiceDate.getMonthValue());
+        int year = invoiceDate.getYear();
+        return "CN" + contractId + month + year;
     }
 
     @Override
@@ -317,7 +310,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         // 5. Số hóa đơn: nếu bạn muốn backend sinh, có thể override request.getInvoiceNumber()
         String invoiceNumber = request.getInvoiceNumber();
         if (invoiceNumber == null || invoiceNumber.isBlank()) {
-            invoiceNumber = generateContractInvoiceNumber(invoiceDate);
+            invoiceNumber = generateContractInvoiceNumber(invoiceDate, contract.getId());
         }
 
         // 6. Ngày kỳ tính: tạm dùng ngày lắp đặt nếu có, ngược lại dùng invoiceDate
@@ -448,6 +441,53 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         // 9. Trả về DTO của Hóa đơn vừa tạo
         return invoiceMapper.toDto(savedInvoice);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WaterBillCalculationDTO calculateWaterBill(Integer meterReadingId) {
+        // 1. Lấy dữ liệu
+        MeterReading reading = meterReadingRepository.findById(meterReadingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chỉ số: " + meterReadingId));
+
+        MeterInstallation installation = reading.getMeterInstallation();
+        WaterServiceContract serviceContract = installation.getWaterServiceContract();
+        WaterPriceType priceType = serviceContract.getPriceType();
+
+        // Tìm giá có hiệu lực
+        WaterPrice price = waterPriceRepository.findActivePriceForDate(priceType, reading.getReadingDate())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy giá áp dụng cho ngày " + reading.getReadingDate()));
+
+        // 2. Tính toán
+        BigDecimal consumption = reading.getConsumption();
+        BigDecimal unitPrice = price.getUnitPrice();
+        BigDecimal envFeeRate = price.getEnvironmentFee();
+        BigDecimal vatRate = price.getVatRate();
+
+        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal vatAmount = subtotal.multiply(vatRate.divide(new BigDecimal(100))).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount);
+
+        // 3. Trả về DTO
+        WaterBillCalculationDTO dto = new WaterBillCalculationDTO();
+        dto.setMeterReadingId(reading.getId());
+        dto.setReadingDate(reading.getReadingDate());
+        dto.setPreviousReading(reading.getPreviousReading());
+        dto.setCurrentReading(reading.getCurrentReading());
+        dto.setConsumption(consumption);
+
+        dto.setPriceTypeName(priceType.getTypeName());
+        dto.setUnitPrice(unitPrice);
+        dto.setEnvironmentFee(envFeeRate);
+        dto.setVatRate(vatRate);
+
+        dto.setSubtotalAmount(subtotal);
+        dto.setEnvironmentFeeAmount(envAmount);
+        dto.setVatAmount(vatAmount);
+        dto.setTotalAmount(totalAmount);
+
+        return dto;
     }
 
 
