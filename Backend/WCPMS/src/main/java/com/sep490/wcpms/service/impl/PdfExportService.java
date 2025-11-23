@@ -116,6 +116,6 @@ public class PdfExportService {
         } catch (Exception e) {
             throw new RuntimeException("Error writing PDF file: " + outFile.getAbsolutePath(), e);
         }
-        return outFile.getAbsolutePath();
+        return baseDir + "/" + outFile.getName();
     }
 }

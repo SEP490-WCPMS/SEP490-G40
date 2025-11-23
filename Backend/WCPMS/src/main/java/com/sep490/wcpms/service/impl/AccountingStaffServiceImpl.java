@@ -9,6 +9,7 @@ import com.sep490.wcpms.mapper.ContractMapper;
 import com.sep490.wcpms.mapper.InvoiceMapper; // <-- Cần tạo Mapper này
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.AccountingStaffService;
+import com.sep490.wcpms.service.InvoiceNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -57,6 +58,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final ReceiptRepository receiptRepository;
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
+    private final InvoiceNotificationService invoiceNotificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -121,6 +123,13 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         // 6. CẬP NHẬT BẢNG 14 (Đánh dấu đã lập hóa đơn)
         calibration.setInvoice(savedInvoice);
         calibrationRepository.save(calibration);
+
+        // 7. GỬI THÔNG BÁO + PDF HÓA ĐƠN DỊCH VỤ PHÁT SINH
+        invoiceNotificationService.sendServiceInvoiceIssued(
+                savedInvoice,
+                "Phí kiểm định đồng hồ nước", // mô tả dịch vụ, đang dùng phí kiểm định
+                "5%"                          // VAT hiển thị; chỉnh lại nếu bạn dùng % khác
+        );
 
         return invoiceMapper.toDto(savedInvoice);
     }
@@ -347,6 +356,10 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         }
 
         Invoice saved = invoiceRepository.save(inv);
+
+        // Gửi thông báo + PDF hóa đơn LẮP ĐẶT
+        invoiceNotificationService.sendInstallationInvoiceIssued(saved, contract);
+
         return invoiceMapper.toDto(saved);
     }
 
@@ -434,6 +447,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setAccountingStaff(accountingStaff);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        // Gửi thông báo + PDF hóa đơn TIỀN NƯỚC
+        invoiceNotificationService.sendWaterBillIssued(savedInvoice, reading);
 
         // 8. Cập nhật trạng thái bản ghi đọc số
         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);

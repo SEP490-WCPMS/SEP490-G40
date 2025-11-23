@@ -173,4 +173,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
             @Param("statuses") Collection<Invoice.PaymentStatus> statuses
     );
     // --- HẾT PHẦN THÊM ---
+
+    List<Invoice> findTop4ByCustomerAndMeterReadingIsNotNullOrderByInvoiceDateDesc(Customer customer);
 }

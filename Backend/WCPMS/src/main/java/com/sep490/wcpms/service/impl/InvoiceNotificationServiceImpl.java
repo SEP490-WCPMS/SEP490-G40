@@ -2,8 +2,10 @@ package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.repository.CustomerNotificationRepository;
-//import com.sep490.wcpms.service.CustomerNotificationEmailService;
+import com.sep490.wcpms.repository.MeterCalibrationRepository;
+import com.sep490.wcpms.service.CustomerNotificationEmailService;
 import com.sep490.wcpms.service.InvoiceNotificationService;
+import com.sep490.wcpms.service.LeakDetectionNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,18 +17,35 @@ import java.time.format.DateTimeFormatter;
 public class InvoiceNotificationServiceImpl implements InvoiceNotificationService {
 
     private final CustomerNotificationRepository notificationRepository;
-//    private final CustomerNotificationEmailService emailService;
+    private final CustomerNotificationEmailService emailService;
     private final InvoicePdfExportService invoicePdfExportService;
+    private final MeterCalibrationRepository calibrationRepository;
+    private final LeakDetectionNotificationService leakDetectionNotificationService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MONTH_YEAR_FMT = DateTimeFormatter.ofPattern("MM/yyyy");
 
-    // TODO: đưa vào application.yml
     private static final String COMPANY_ADDR = "Số 8, Trần Phú, Phường Tân Dân, TP Việt Trì, Phú Thọ";
     private static final String COMPANY_PHONE = "0210 6251998 / 0210 3992369";
     private static final String COMPANY_EMAIL = "cskh@capnuocphutho.vn";
-    private static final String BANK_ACCOUNT = "0123456789";
-    private static final String BANK_NAME = "Vietinbank CN Phú Thọ";
+    private static final String BANK_ACCOUNT = "4271015210";
+    private static final String BANK_NAME = "CONG TY CAP NUOC PHU THO";
+
+    // VALIDATE: 3 loại hóa đơn
+    private boolean isWaterInvoice(Invoice invoice) {
+        return invoice.getMeterReading() != null;
+    }
+
+    private boolean isServiceInvoice(Invoice invoice) {
+        return calibrationRepository.findByInvoice(invoice).isPresent()
+                && invoice.getMeterReading() == null;
+    }
+
+    private boolean isInstallationInvoice(Invoice invoice) {
+        return invoice.getMeterReading() == null
+                && calibrationRepository.findByInvoice(invoice).isEmpty();
+    }
+
 
     // ---------------------------
     // 1. HÓA ĐƠN TIỀN NƯỚC
@@ -34,11 +53,28 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
     @Override
     public void sendWaterBillIssued(Invoice invoice, MeterReading reading) {
 
+        // VALIDATE: phải là hóa đơn tiền nước
+        if (!isWaterInvoice(invoice) || isServiceInvoice(invoice)) {
+            throw new IllegalArgumentException(
+                    "Hóa đơn ID=" + invoice.getId() + " không phải HÓA ĐƠN TIỀN NƯỚC."
+            );
+        }
+
+        if (reading == null) {
+            reading = invoice.getMeterReading();
+        } else if (!reading.getId().equals(invoice.getMeterReading().getId())) {
+            throw new IllegalArgumentException("MeterReading không khớp với hóa đơn.");
+        }
+
+        // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportWaterBillPdf(
                 invoice,
                 reading,
-                COMPANY_ADDR, COMPANY_PHONE, COMPANY_EMAIL,
-                BANK_ACCOUNT, BANK_NAME
+                COMPANY_ADDR,
+                COMPANY_PHONE,
+                COMPANY_EMAIL,
+                BANK_ACCOUNT,
+                BANK_NAME
         );
 
         Customer customer = invoice.getCustomer();
@@ -78,7 +114,10 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
         n.setMessageContent(body);
 
         notificationRepository.save(n);
-        //emailService.sendEmail(n);
+        emailService.sendEmail(n);
+
+        // Kiểm tra cảnh báo rò rỉ nước cho hóa đơn nước hiện tại
+        leakDetectionNotificationService.checkAndSendLeakWarning(invoice);
     }
 
     // ---------------------------
@@ -87,13 +126,24 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
     @Override
     public void sendInstallationInvoiceIssued(Invoice invoice, Contract contract) {
 
+        // VALIDATE: phải là hóa đơn lắp đặt đồng hồ nước
+        if (!isInstallationInvoice(invoice)) {
+            throw new IllegalArgumentException(
+                    "Hóa đơn ID=" + invoice.getId() + " không phải HÓA ĐƠN LẮP ĐẶT."
+            );
+        }
+
+        // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportInstallationInvoicePdf(
                 invoice,
                 contract.getContractNumber(),      // <--- CHỈNH LẠI
                 contract.getCreatedAt() != null ?
                         contract.getCreatedAt().toLocalDate() : LocalDate.now(),
-                COMPANY_ADDR, COMPANY_PHONE, COMPANY_EMAIL,
-                BANK_ACCOUNT, BANK_NAME
+                COMPANY_ADDR,
+                COMPANY_PHONE,
+                COMPANY_EMAIL,
+                BANK_ACCOUNT,
+                BANK_NAME
         );
 
         Customer customer = invoice.getCustomer();
@@ -129,7 +179,7 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
         n.setMessageContent(body);
 
         notificationRepository.save(n);
-        //emailService.sendEmail(n);
+        emailService.sendEmail(n);
     }
 
 
@@ -139,12 +189,23 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
     @Override
     public void sendServiceInvoiceIssued(Invoice invoice, String serviceDescription, String vatRate) {
 
+        // VALIDATE: phải là hóa đơn dịch vụ phát sinh
+        if (!isServiceInvoice(invoice)) {
+            throw new IllegalArgumentException(
+                    "Hóa đơn ID=" + invoice.getId() + " không phải HÓA ĐƠN DỊCH VỤ PHÁT SINH."
+            );
+        }
+
+        // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportServiceInvoicePdf(
                 invoice,
                 serviceDescription,
                 vatRate,
-                COMPANY_ADDR, COMPANY_PHONE, COMPANY_EMAIL,
-                BANK_ACCOUNT, BANK_NAME
+                COMPANY_ADDR,
+                COMPANY_PHONE,
+                COMPANY_EMAIL,
+                BANK_ACCOUNT,
+                BANK_NAME
         );
 
         Customer customer = invoice.getCustomer();
@@ -177,6 +238,6 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
         n.setMessageContent(body);
 
         notificationRepository.save(n);
-        //emailService.sendEmail(n);
+        emailService.sendEmail(n);
     }
 }

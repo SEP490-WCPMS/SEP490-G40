@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +33,39 @@ public class InvoicePdfExportService {
             "không", "một", "hai", "ba", "bốn", "năm",
             "sáu", "bảy", "tám", "chín"
     };
+
+    private static final String VIETQR_BANK_ID = "970418";
+    private static final String VIETQR_TEMPLATE = "compact2";
+    private static final String VIETQR_ACCOUNT_NAME = "CONG TY CAP NUOC PHU THO";
+
+    private String buildVietQrUrl(Invoice invoice, String bankAccount) {
+        try {
+            // 1. Nội dung chuyển khoản: dùng đúng mã HĐ
+            String content = invoice.getInvoiceNumber();
+            String encodedContent = URLEncoder.encode(content, StandardCharsets.UTF_8);
+
+            // 2. Tên chủ tài khoản
+            String encodedAccountName = URLEncoder.encode(VIETQR_ACCOUNT_NAME, StandardCharsets.UTF_8);
+
+            // 3. Số tiền
+            String amount = invoice.getTotalAmount() != null
+                    ? invoice.getTotalAmount().toPlainString()
+                    : "0";
+
+            // 4. Ghép thành URL VietQR
+            return String.format(
+                    "https://img.vietqr.io/image/%s-%s-%s.png?amount=%s&addInfo=%s&accountName=%s",
+                    VIETQR_BANK_ID,
+                    bankAccount,
+                    VIETQR_TEMPLATE,
+                    amount,
+                    encodedContent,
+                    encodedAccountName
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Error building VietQR URL", e);
+        }
+    }
 
     private String fmtDate(LocalDate d) {
         return d == null ? "" : d.format(DATE_FMT);
@@ -154,13 +189,14 @@ public class InvoicePdfExportService {
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
         model.put("environmentFeeAmount", fmtMoney(invoice.getEnvironmentFeeAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-
         model.put("vatRate", "5%"); // nếu sau này bạn lấy từ price thì sửa ở đây
+
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
         model.put("bankAccount", bankAccount);
         model.put("bankName", bankName);
         model.put("transferNote", invoice.getInvoiceNumber());
+        model.put("qrImage", buildVietQrUrl(invoice, bankAccount));
 
         model.put("dueDate", fmtDate(invoice.getDueDate()));
 
@@ -205,9 +241,12 @@ public class InvoicePdfExportService {
         model.put("vatRate", "10%"); // hoặc tham số riêng
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
+
         model.put("bankAccount", bankAccount);
         model.put("bankName", bankName);
         model.put("transferNote", invoice.getInvoiceNumber());
+        model.put("qrImage", buildVietQrUrl(invoice, bankAccount));
+
         model.put("dueDate", fmtDate(invoice.getDueDate()));
 
         model.put("printDay", today.getDayOfMonth());
@@ -247,11 +286,15 @@ public class InvoicePdfExportService {
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
         model.put("vatRate", vatRate);
+
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
         model.put("bankAccount", bankAccount);
         model.put("bankName", bankName);
         model.put("transferNote", invoice.getInvoiceNumber());
+
+        model.put("qrImage", buildVietQrUrl(invoice, bankAccount));
+
         model.put("dueDate", fmtDate(invoice.getDueDate()));
 
         model.put("printDay", today.getDayOfMonth());
