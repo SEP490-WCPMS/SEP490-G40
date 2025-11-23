@@ -23,3 +23,9 @@ spring:
           characterEncoding: UTF-8
           useUnicode: true
         globally_quoted_identifiers: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username:
+    password:
