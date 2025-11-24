@@ -124,4 +124,10 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     List<Contract> findByCustomerIdAndContractStatus(Integer customerId, Contract.ContractStatus contractStatus);
 
     Page<Contract> findByContractStatus(Contract.ContractStatus contractStatus, Pageable pageable);
+
+    List<Contract> findByContractStatusAndEndDateBetween(
+            Contract.ContractStatus contractStatus,
+            LocalDate from,
+            LocalDate to
+    );
 }
