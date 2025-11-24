@@ -91,4 +91,8 @@ export const getMyInvoiceDetail = (invoiceId) => {
 // --- HẾT PHẦN THÊM ---
 
 // --- Bạn có thể chuyển các API Customer khác vào đây ---
+export const getMyCustomerNotifications = () => {
+    return apiClient.get('/customer/notifications');
+}
+
 // (Ví dụ: Lấy profile, Lấy danh sách hợp đồng...)
