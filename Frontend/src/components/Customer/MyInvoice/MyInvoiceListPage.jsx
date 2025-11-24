@@ -138,7 +138,11 @@ function MyInvoiceListPage({ title, statuses }) {
                                             {invoice.invoiceNumber}
                                             {/* Phân biệt HĐ Dịch vụ (ko có readingId) */}
                                             {!invoice.meterReadingId && (
-                                                <span className="block text-xs text-blue-600">(Phí Kiểm Định & Sửa Chữa, Thay Thế)</span>
+                                                <span className="block text-xs text-blue-600">(Phí Kiểm Định & Sửa Chữa, Lắp Đặt)</span>
+                                            )}
+                                            {/* Phân biệt HĐ Dịch vụ (có readingId) */}
+                                            {invoice.meterReadingId && (
+                                                <span className="block text-xs text-blue-600">(Phí Sử Dụng Nước Trong Kì)</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 ...">{moment(invoice.invoiceDate).format('DD/MM/YYYY')}</td>
