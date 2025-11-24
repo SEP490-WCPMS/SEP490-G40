@@ -5,47 +5,52 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map; // Import Map
+import com.fasterxml.jackson.databind.JsonNode; // Import
+import com.sep490.wcpms.dto.PaymentLinkDTO; // Import
 
 /**
  * Controller CÔNG KHAI (Public) để nhận thông báo (Webhook/IPN)
  * từ phía ngân hàng (VietQR/Napas) khi khách hàng thanh toán thành công.
  */
 @RestController
-@RequestMapping("/api/payment/webhook")
+@RequestMapping("/api/payment")
 @RequiredArgsConstructor
 @CrossOrigin("*") // Phải cho phép CORS vì ngân hàng sẽ gọi từ server lạ
 public class PaymentWebhookController {
 
     private final PaymentService paymentService;
 
-    /**
-     * Endpoint để nhận thông báo thanh toán (thường là HTTP POST).
-     * @param payload Nội dung JSON mà ngân hàng gửi
-     * @return ResponseEntity
-     */
-    @PostMapping("/vietqr")
-    public ResponseEntity<Map<String, String>> handleVietQRWebhook(
-            @RequestBody Map<String, Object> payload
-            // @RequestHeader("X-Bank-Signature") String signature // (Nâng cao: Kiểm tra chữ ký bí mật)
-    ) {
-        System.out.println("ĐÃ NHẬN WEBHOOK THANH TOÁN: " + payload.toString());
-
+    // --- API NHẬN WEBHOOK TỪ PAYOS ---
+    @PostMapping("/webhook/payos")
+    public ResponseEntity<String> handlePayOSWebhook(@RequestBody JsonNode webhookBody) {
         try {
-            // (Nâng cao: Cần kiểm tra 'signature' hoặc IP nguồn để đảm bảo request là từ ngân hàng)
+            // Gọi service để xác thực và xử lý
+            paymentService.processPayOSWebhook(webhookBody);
 
-            // Gọi Service để xử lý payload
-            paymentService.processPaymentNotification(payload);
-
-            // Trả về 200 OK để báo cho ngân hàng biết đã nhận
-            // (Ngân hàng VietQR thường yêu cầu response cụ thể)
-            Map<String, String> response = Map.of("status", "00", "message", "Success");
-            return ResponseEntity.ok(response);
-
+            // PayOS yêu cầu trả về chuỗi "success" nếu thành công
+            return ResponseEntity.ok("success");
         } catch (Exception e) {
-            System.err.println("LỖI XỬ LÝ WEBHOOK: " + e.getMessage());
-            // Trả về 500 hoặc 400 để ngân hàng biết và thử gửi lại
-            Map<String, String> response = Map.of("status", "01", "message", "Error: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            System.err.println("LỖI WEBHOOK PAYOS (Đã bỏ qua để PayOS không retry): " + e.getMessage());
+            e.printStackTrace();
+
+            // QUAN TRỌNG: Vẫn phải trả về 200 OK "success"
+            // Để PayOS biết là server mình vẫn sống và cho phép Lưu cấu hình.
+            return ResponseEntity.ok("success");
+        }
+    }
+
+    @PostMapping("/create-link/{invoiceId}")
+    public ResponseEntity<?> createPaymentLink(@PathVariable Integer invoiceId) {
+        try {
+            PaymentLinkDTO dto = paymentService.createPaymentLink(invoiceId);
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            // 1. In lỗi đỏ lòm ra Console IntelliJ để bạn đọc
+            System.err.println("LỖI TẠO LINK PAYOS: " + e.getMessage());
+            e.printStackTrace();
+
+            // 2. Trả lỗi về cho React hiển thị
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }
