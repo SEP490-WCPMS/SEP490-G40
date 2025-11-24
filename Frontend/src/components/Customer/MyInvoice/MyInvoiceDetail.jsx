@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getMyInvoiceDetail } from '../../Services/apiCustomer';
+import { getMyInvoiceDetail, createPayOSLink } from '../../Services/apiCustomer';
 import { ArrowLeft, CheckCircle, Clock } from 'lucide-react';
 import moment from 'moment';
 // Import component QR (đã code ở bước trước)
@@ -13,10 +13,11 @@ import InvoiceQRCode from '../QRCode/InvoiceQRCode'; // <-- ĐẢM BẢO ĐÚNG 
 function InvoiceDetail() {
     const { invoiceId } = useParams();
     const navigate = useNavigate();
-    
+
     const [invoice, setInvoice] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [payOSData, setPayOSData] = useState(null);
 
     useEffect(() => {
         if (!invoiceId) {
@@ -24,7 +25,7 @@ function InvoiceDetail() {
             setLoading(false);
             return;
         }
-        
+
         getMyInvoiceDetail(invoiceId)
             .then(response => {
                 setInvoice(response.data);
@@ -33,23 +34,34 @@ function InvoiceDetail() {
             .finally(() => setLoading(false));
     }, [invoiceId]);
 
+
+    // --- useEffect Mới: Tự động tạo QR PayOS khi vào trang ---
+    useEffect(() => {
+        if (invoice && invoice.paymentStatus === 'PENDING') {
+            createPayOSLink(invoice.id)
+                .then(res => setPayOSData(res.data))
+                .catch(err => console.error("Lỗi tạo PayOS link", err));
+        }
+    }, [invoice]);
+
+
     if (loading) return <div className="p-8 text-center">Đang tải chi tiết hóa đơn...</div>;
-    
+
     if (error) {
-         return (
-             <div className="p-8 max-w-4xl mx-auto">
-                 {/* Sửa lại Nút Quay lại (dùng Link) */}
-                 <Link to="/my-invoices" className="inline-flex items-center text-blue-600 hover:underline mb-4">
-                     <ArrowLeft size={18} className="mr-1" /> Quay lại
-                 </Link>
-                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+        return (
+            <div className="p-8 max-w-4xl mx-auto">
+                {/* Sửa lại Nút Quay lại (dùng Link) */}
+                <Link to="/my-invoices" className="inline-flex items-center text-blue-600 hover:underline mb-4">
+                    <ArrowLeft size={18} className="mr-1" /> Quay lại
+                </Link>
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
                     <p className="font-bold">Đã xảy ra lỗi</p>
                     <p>{error}</p>
                 </div>
-             </div>
+            </div>
         );
     }
-    
+
     if (!invoice) return <div className="p-8 text-center">Không tìm thấy dữ liệu hóa đơn.</div>;
 
     // Xác định loại HĐ
@@ -60,13 +72,13 @@ function InvoiceDetail() {
         <div className="space-y-6 p-4 md:p-8 max-w-4xl mx-auto bg-gray-50 min-h-screen">
             {/* Nút Quay lại (Sửa lại: dùng navigate(-1) để quay lại đúng trang trước đó) */}
             <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
-                 <ArrowLeft size={18} className="mr-1" />
-                 Quay lại danh sách
+                <ArrowLeft size={18} className="mr-1" />
+                Quay lại danh sách
             </button>
 
             {/* --- Container chính: Hóa đơn và QR --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
+
                 {/* CỘT TRÁI: CHI TIẾT HÓA ĐƠN */}
                 <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-lg shadow space-y-5">
                     {/* Header Hóa đơn */}
@@ -89,7 +101,7 @@ function InvoiceDetail() {
                             <span className="font-medium">Chờ thanh toán (Hạn chót: {moment(invoice.dueDate).format('DD/MM/YYYY')})</span>
                         </div>
                     )}
-                    
+
                     {/* Thông tin Khách hàng */}
                     <div className="pt-4 border-t">
                         <h3 className="text-base font-semibold text-gray-700 mb-2">Thông tin Khách hàng</h3>
@@ -100,9 +112,9 @@ function InvoiceDetail() {
                     {/* Chi tiết Tiêu thụ (Nếu là HĐ Nước) */}
                     {!isServiceInvoice && (
                         <div className="pt-4 border-t">
-                             <h3 className="text-base font-semibold text-gray-700 mb-2">Chi tiết Tiêu thụ</h3>
-                             <p className="text-sm">Kỳ: {moment(invoice.fromDate).format('DD/MM')} - {moment(invoice.toDate).format('DD/MM/YYYY')}</p>
-                             <p className="text-sm">Tiêu thụ: <strong className="text-lg">{invoice.totalConsumption} m³</strong></p>
+                            <h3 className="text-base font-semibold text-gray-700 mb-2">Chi tiết Tiêu thụ</h3>
+                            <p className="text-sm">Kỳ: {moment(invoice.fromDate).format('DD/MM')} - {moment(invoice.toDate).format('DD/MM/YYYY')}</p>
+                            <p className="text-sm">Tiêu thụ: <strong className="text-lg">{invoice.totalConsumption} m³</strong></p>
                         </div>
                     )}
 
@@ -130,11 +142,60 @@ function InvoiceDetail() {
                     </div>
                 </div>
 
-                {/* CỘT PHẢI: MÃ QR (Chỉ hiện nếu chưa trả) */}
+                {/* CỘT PHẢI: PAYOS QR */}
                 {!isPaid && (
                     <div className="lg:col-span-1">
-                        {/* Import và render component QR Code */}
-                        <InvoiceQRCode invoice={invoice} />
+                        <div className="bg-white p-4 rounded-lg shadow text-center">
+                            <h4 className="font-bold text-lg mb-4">Thanh toán Online</h4>
+
+                            {payOSData ? (
+                                <>
+                                    {/* --- SỬA ĐOẠN NÀY: Tự tạo link ảnh VietQR từ dữ liệu PayOS --- */}
+                                    {/* Lý do: Ảnh Base64 trả về có thể bị lỗi hoặc quá dài, dùng link này nhẹ và ổn định hơn */}
+                                    <img
+                                        src={`https://img.vietqr.io/image/${payOSData.bin}-${payOSData.accountNumber}-compact.png?amount=${payOSData.amount}&addInfo=${encodeURIComponent(payOSData.description)}&accountName=${encodeURIComponent(payOSData.accountName)}`}
+                                        alt="PayOS QR"
+                                        className="w-full max-w-[250px] mx-auto border rounded"
+                                    />
+                                    {/* ------------------------------------------------------------- */}
+                                    <p className="text-sm mt-2 text-gray-600">Quét mã bằng App Ngân hàng</p>
+
+                                    {/* --- THÊM ĐOẠN LƯU Ý NÀY VÀO ĐÂY --- */}
+                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-left text-sm text-gray-800 shadow-sm">
+                                        <p className="leading-relaxed">
+                                            <span className="font-bold text-yellow-700">⚠️ Lưu ý quan trọng:</span>
+                                            <br />
+                                            Vui lòng nhập chính xác:
+                                        </p>
+                                        <ul className="list-disc list-inside mt-1 space-y-1">
+                                            <li>
+                                                Số tiền: <strong className="text-red-600 text-base">{payOSData.amount.toLocaleString('vi-VN')}</strong>
+                                            </li>
+                                            <li>
+                                                Nội dung: <strong className="text-blue-700 bg-blue-50 px-1 rounded border border-blue-100 break-all select-all">
+                                                    {payOSData.description}
+                                                </strong>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    {/* ------------------------------------- */}
+
+                                    <div className="my-4 border-t pt-4">
+                                        <p className="text-sm mb-2">Hoặc bấm vào nút bên dưới:</p>
+                                        <a
+                                            href={payOSData.checkoutUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="block w-full py-3 bg-purple-600 text-white rounded font-bold hover:bg-purple-700 transition"
+                                        >
+                                            Thanh toán qua PayOS
+                                        </a>
+                                    </div>
+                                </>
+                            ) : (
+                                <p>Đang tạo mã thanh toán...</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

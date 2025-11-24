@@ -90,5 +90,14 @@ export const getMyInvoiceDetail = (invoiceId) => {
 };
 // --- HẾT PHẦN THÊM ---
 
+
+// ...
+/**
+ * Tạo link thanh toán PayOS cho hóa đơn
+ */
+export const createPayOSLink = (invoiceId) => {
+    return apiClient.post(`/payment/create-link/${invoiceId}`);
+};
+
 // --- Bạn có thể chuyển các API Customer khác vào đây ---
 // (Ví dụ: Lấy profile, Lấy danh sách hợp đồng...)
