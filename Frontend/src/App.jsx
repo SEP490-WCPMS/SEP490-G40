@@ -33,6 +33,7 @@ import ContractAnnulList from './components/PagesService/AnnulTransfer/ContractA
 import ContractCreatePage from './components/PagesService/ContractCreation/ContractCreatePage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
+import CustomerNotificationList from './components/Customer/CustomerNotificationList';
 import ContractList from './components/Customer/ContractList';
 import ContractDetail from './components/Customer/ContractDetail';
 import PendingSignContract from './components/Customer/PendingSignContract';
@@ -118,7 +119,7 @@ function App() {
           <Route path="/my-support-tickets/:ticketId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><SupportTicketDetail /></PublicLayout>} />
           <Route path="/my-invoices" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceListPage /></PublicLayout>} />
           <Route path="/my-invoices/:invoiceId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceDetail /></PublicLayout>} />
-
+          <Route path="/my-notifications" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerNotificationList /></PublicLayout>} />
         </Route>
 
 
