@@ -9,7 +9,9 @@ import com.sep490.wcpms.repository.CustomerRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -30,7 +32,8 @@ public class CustomerContractEventListener {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
+    @EventListener
     public void onContractRequestCreated(ContractRequestCreatedEvent event) {
         log.info("[CUSTOMER-NOTIFY] onContractRequestCreated: contractId={}, customerId={}",
                 event.getContractId(), event.getCustomerId());
@@ -80,7 +83,8 @@ public class CustomerContractEventListener {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
+    @EventListener
     public void onSurveyReportSubmitted(SurveyReportSubmittedEvent event) {
         log.info("[CUSTOMER-NOTIFY] onSurveyReportSubmitted: contractId={}, contractNumber={}",
                 event.getContractId(), event.getContractNumber());
@@ -134,7 +138,8 @@ public class CustomerContractEventListener {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
+    @EventListener
     public void onSurveyReportApproved(SurveyReportApprovedEvent event) {
         log.info("[CUSTOMER-NOTIFY] onSurveyReportApproved: contractId={}, contractNumber={}",
                 event.getContractId(), event.getContractNumber());
@@ -184,7 +189,8 @@ public class CustomerContractEventListener {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
+    @EventListener
     public void onInstallationCompleted(InstallationCompletedEvent event) {
         log.info("[CUSTOMER-NOTIFY] onInstallationCompleted: contractId={}, contractNumber={}",
                 event.getContractId(), event.getContractNumber());

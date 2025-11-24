@@ -114,7 +114,7 @@ public class PdfExportService {
         try (FileOutputStream fos = new FileOutputStream(outFile)) {
             fos.write(pdfBytes);
         } catch (Exception e) {
-            throw new RuntimeException("Error writing PDF file: " + outFile.getAbsolutePath(), e);
+            throw new RuntimeException("Error writing PDF file: " + outFile.getName(), e);
         }
         return baseDir + "/" + outFile.getName();
     }

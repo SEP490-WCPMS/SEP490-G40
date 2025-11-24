@@ -175,4 +175,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     // --- HẾT PHẦN THÊM ---
 
     List<Invoice> findTop4ByCustomerAndMeterReadingIsNotNullOrderByInvoiceDateDesc(Customer customer);
+
+    /**
+     * Tìm các hóa đơn còn nợ, đến hạn vào đúng 1 ngày cụ thể.
+     * Dùng cho scheduler nhắc thanh toán.
+     */
+    List<Invoice> findByPaymentStatusInAndDueDate(
+            Collection<Invoice.PaymentStatus> statuses,
+            LocalDate dueDate
+    );
 }

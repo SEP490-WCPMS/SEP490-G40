@@ -24,4 +24,10 @@ public interface CustomerNotificationRepository extends JpaRepository<CustomerNo
             Integer relatedId,
             CustomerNotification.CustomerNotificationMessageType messageType
     );
+
+    /**
+     * Lấy notification mới nhất của 1 hóa đơn có đính kèm PDF (nếu có),
+     * dùng lại attachmentUrl khi nhắc thanh toán.
+     */
+    CustomerNotification findTop1ByInvoiceAndAttachmentUrlIsNotNullOrderByCreatedAtDesc(Invoice invoice);
 }

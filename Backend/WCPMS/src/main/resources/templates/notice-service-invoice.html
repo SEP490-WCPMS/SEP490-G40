@@ -99,7 +99,7 @@
         }
         .qr-cell {
             width: 35%;
-            text-align: right;
+            text-align: center;
         }
         .qr-cell img {
             max-width: 35mm;
@@ -256,7 +256,7 @@
 
     <p>
         Trong trường hợp Quý khách đã thanh toán, vui lòng bỏ qua thông báo này.
-        Nếu có vướng mắc về chỉ số, sản lượng hoặc số tiền phải thanh toán,
+        Nếu có vướng mắc về số tiền phải thanh toán,
         xin liên hệ số điện thoại chăm sóc khách hàng để được hỗ trợ.
     </p>
 
@@ -265,9 +265,10 @@
         <tr>
             <td class="footer-note">
                 <p>
-                    <b><i>Lưu ý: Quý khách vui lòng thanh toán trước ngày
-                        <span th:text="${dueDate}">...</span>.
-                        Nếu quá thời hạn trên, Công ty sẽ tạm ngừng cung cấp dịch vụ.
+                    <b><i>
+                        Lưu ý: Đề nghị Quý khách thanh toán trước ngày
+                        <span th:text="${dueDate}">...</span>
+                        để tránh phát sinh nhắc nợ và các biện pháp xử lý công nợ theo quy định của Công ty.
                     </i></b>
                 </p>
             </td>

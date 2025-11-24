@@ -28,6 +28,8 @@ public class InvoicePdfExportService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MONTH_YEAR_FMT =
             DateTimeFormatter.ofPattern("MM/yyyy");
+    private static final DateTimeFormatter FILE_DATE_FMT =
+            DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private static final String[] NUM_WORDS = {
             "không", "một", "hai", "ba", "bốn", "năm",
@@ -75,6 +77,25 @@ public class InvoicePdfExportService {
         if (amount == null) return "0";
         DecimalFormat df = new DecimalFormat("#,###");
         return df.format(amount);
+    }
+
+    private String buildInvoicePdfFilePrefix(String typePrefix, Invoice invoice, String contractCode, LocalDate today) {
+        String contractNumber = contractCode;
+        if (contractNumber == null || contractNumber.isBlank()) {
+            if (invoice.getContract() != null && invoice.getContract().getContractNumber() != null) {
+                contractNumber = invoice.getContract().getContractNumber();
+            } else {
+                contractNumber = "NO_CONTRACT";
+            }
+        }
+
+        String invoiceNumber = invoice.getInvoiceNumber() != null
+                ? invoice.getInvoiceNumber()
+                : "NO_INVOICE_NUMBER";
+
+        String dateStr = today.format(FILE_DATE_FMT);
+
+        return String.format("%s-INVOICE_%s_%s_%s", typePrefix, contractNumber, invoiceNumber, dateStr);
     }
 
     private String readThreeDigits(int number) {
@@ -204,11 +225,13 @@ public class InvoicePdfExportService {
         model.put("printMonth", today.getMonthValue());
         model.put("printYear", today.getYear());
 
+        String filePrefix = buildInvoicePdfFilePrefix("WS", invoice, null, today);
+
         return pdfExportService.renderPdfToFile(
                 "notice-water-bill",
                 model,
                 BASE_DIR,
-                "water-bill-" + invoice.getId()
+                filePrefix
         );
     }
 
@@ -253,11 +276,13 @@ public class InvoicePdfExportService {
         model.put("printMonth", today.getMonthValue());
         model.put("printYear", today.getYear());
 
+        String filePrefix = buildInvoicePdfFilePrefix("CN", invoice, contractCode, today);
+
         return pdfExportService.renderPdfToFile(
                 "notice-installation-invoice",
                 model,
                 BASE_DIR,
-                "installation-invoice-" + invoice.getId()
+                filePrefix
         );
     }
 
@@ -301,11 +326,13 @@ public class InvoicePdfExportService {
         model.put("printMonth", today.getMonthValue());
         model.put("printYear", today.getYear());
 
+        String filePrefix = buildInvoicePdfFilePrefix("SV", invoice, null, today);
+
         return pdfExportService.renderPdfToFile(
                 "notice-service-invoice",
                 model,
                 BASE_DIR,
-                "service-invoice-" + invoice.getId()
+                filePrefix
         );
     }
 }

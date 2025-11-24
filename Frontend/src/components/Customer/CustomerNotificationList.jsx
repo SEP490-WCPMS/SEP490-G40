@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import { RefreshCw, Eye } from 'lucide-react';
+import { RefreshCw, Eye, ChevronDown, ChevronRight } from 'lucide-react';
 import { getMyCustomerNotifications } from '../Services/apiCustomer';
 
 /**
@@ -12,6 +12,7 @@ function CustomerNotificationList() {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [expandedIds, setExpandedIds] = useState({});
 
     const fetchNotifications = () => {
         setLoading(true);
@@ -30,6 +31,10 @@ function CustomerNotificationList() {
     useEffect(() => {
         fetchNotifications();
     }, []);
+
+    const toggleExpand = (id) => {
+        setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const getTypeLabel = (type) => {
         switch (type) {
@@ -85,6 +90,16 @@ function CustomerNotificationList() {
         }
     };
 
+    // Chỉ những messageType liên quan tới hóa đơn mới cho phép xem hóa đơn
+    const isInvoiceRelated = (messageType) => {
+        return [
+            'INSTALLATION_INVOICE_ISSUED',
+            'WATER_BILL_ISSUED',
+            'SERVICE_INVOICE_ISSUED',
+            'PAYMENT_REMINDER',
+        ].includes(messageType);
+    };
+
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen">
             {/* Header */}
@@ -135,7 +150,7 @@ function CustomerNotificationList() {
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                     Tiêu đề
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
                                     Trạng thái
                                 </th>
                                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
@@ -144,54 +159,78 @@ function CustomerNotificationList() {
                             </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
-                            {notifications.map((n) => (
-                                <tr key={n.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                                        {n.createdAt
-                                            ? moment(n.createdAt).format('DD/MM/YYYY HH:mm')
-                                            : ''}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
-                                        {getTypeLabel(n.messageType)}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-gray-700">
-                                        <div className="font-medium text-gray-900">
-                                            {n.messageSubject}
-                                        </div>
-                                        <div className="text-xs text-gray-500 line-clamp-2 mt-1">
-                                            {n.messageContent}
-                                        </div>
-                                        {n.attachmentUrl && (
-                                            <div className="text-[11px] text-blue-600 mt-1">
-                                                (Đã gửi kèm file PDF vào email của bạn)
+                            {notifications.map((n) => {
+                                const expanded = !!expandedIds[n.id];
+                                return (
+                                    <tr key={n.id} className="hover:bg-gray-50">
+                                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                                            {n.createdAt
+                                                ? moment(n.createdAt).format('DD/MM/YYYY HH:mm')
+                                                : ''}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                                            {getTypeLabel(n.messageType)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                            <div className="flex items-start gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleExpand(n.id)}
+                                                    className="mt-0.5 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                                    aria-label={expanded ? 'Thu gọn' : 'Xem chi tiết'}
+                                                >
+                                                    {expanded ? (
+                                                        <ChevronDown size={16} />
+                                                    ) : (
+                                                        <ChevronRight size={16} />
+                                                    )}
+                                                </button>
+                                                <div>
+                                                    <div className="font-medium text-gray-900">
+                                                        {n.messageSubject || '(Không có tiêu đề)'}
+                                                    </div>
+                                                    <div
+                                                        className={
+                                                            'text-xs text-gray-500 mt-1 ' +
+                                                            (expanded ? '' : 'line-clamp-2')
+                                                        }
+                                                    >
+                                                        {n.messageContent}
+                                                    </div>
+                                                    {n.attachmentUrl && (
+                                                        <div className="text-[11px] text-blue-600 mt-1">
+                                                            (Đã gửi kèm file PDF vào email của bạn)
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm">
-                      <span
-                          className={
-                              'inline-flex px-2 py-1 rounded-full text-xs font-medium ' +
-                              getStatusClass(n.status)
-                          }
-                      >
-                        {getStatusText(n.status)}
-                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
-                                        {n.invoiceId ? (
-                                            <Link
-                                                to={`/my-invoices/${n.invoiceId}`}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
-                                            >
-                                                <Eye size={14} />
-                                                Xem hóa đơn
-                                            </Link>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">—</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm whitespace-nowrap">
+                                                <span
+                                                    className={
+                                                        'inline-flex px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ' +
+                                                        getStatusClass(n.status)
+                                                    }
+                                                >
+                                                    {getStatusText(n.status)}
+                                                </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                                            {n.invoiceId && isInvoiceRelated(n.messageType) ? (
+                                                <Link
+                                                    to={`/my-invoices/${n.invoiceId}`}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                >
+                                                    <Eye size={14} />
+                                                    Xem hóa đơn
+                                                </Link>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             </tbody>
                         </table>
                     )}
