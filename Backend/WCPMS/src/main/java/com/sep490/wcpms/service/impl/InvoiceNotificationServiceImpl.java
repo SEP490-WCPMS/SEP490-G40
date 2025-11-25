@@ -1,11 +1,13 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.dto.PaymentLinkDTO;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.repository.MeterCalibrationRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
 import com.sep490.wcpms.service.InvoiceNotificationService;
 import com.sep490.wcpms.service.LeakDetectionNotificationService;
+import com.sep490.wcpms.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,7 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
     private final InvoicePdfExportService invoicePdfExportService;
     private final MeterCalibrationRepository calibrationRepository;
     private final LeakDetectionNotificationService leakDetectionNotificationService;
+    private final PaymentService paymentService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MONTH_YEAR_FMT = DateTimeFormatter.ofPattern("MM/yyyy");
@@ -28,8 +31,6 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
     private static final String COMPANY_ADDR = "Số 8, Trần Phú, Phường Tân Dân, TP Việt Trì, Phú Thọ";
     private static final String COMPANY_PHONE = "0210 6251998 / 0210 3992369";
     private static final String COMPANY_EMAIL = "cskh@capnuocphutho.vn";
-    private static final String BANK_ACCOUNT = "4271015210";
-    private static final String BANK_NAME = "CONG TY CAP NUOC PHU THO";
 
     // VALIDATE: 3 loại hóa đơn
     private boolean isWaterInvoice(Invoice invoice) {
@@ -46,6 +47,25 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
                 && calibrationRepository.findByInvoice(invoice).isEmpty();
     }
 
+    // Lấy PaymentLink từ PayOS cho hóa đơn; nếu lỗi thì trả null
+    private PaymentLinkDTO getPaymentLink(Invoice invoice) {
+        try {
+            PaymentLinkDTO link = paymentService.createPaymentLink(invoice.getId());
+            if (link == null) {
+                System.err.println("[InvoiceNotification] PayOS trả null cho invoice " + invoice.getId());
+            } else {
+                System.out.println("[InvoiceNotification] PayOS link cho invoice " + invoice.getId()
+                        + " | accountNumber=" + link.getAccountNumber()
+                        + " | accountName=" + link.getAccountName());
+            }
+            return link;
+        } catch (Exception e) {
+            System.err.println("[InvoiceNotification] Lỗi gọi PayOS cho invoice "
+                    + invoice.getId() + ": " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     // ---------------------------
     // 1. HÓA ĐƠN TIỀN NƯỚC
@@ -66,6 +86,11 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
             throw new IllegalArgumentException("MeterReading không khớp với hóa đơn.");
         }
 
+        // LẤY THÔNG TIN TÀI KHOẢN TỪ PAYOS
+        PaymentLinkDTO payLink = getPaymentLink(invoice);
+        String bankAccount = payLink != null ? payLink.getAccountNumber() : null;
+        String bankName = payLink != null ? payLink.getAccountName() : null;
+
         // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportWaterBillPdf(
                 invoice,
@@ -73,8 +98,8 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
                 COMPANY_ADDR,
                 COMPANY_PHONE,
                 COMPANY_EMAIL,
-                BANK_ACCOUNT,
-                BANK_NAME
+                bankAccount,
+                bankName
         );
 
         Customer customer = invoice.getCustomer();
@@ -133,6 +158,11 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
             );
         }
 
+        // LẤY THÔNG TIN TÀI KHOẢN TỪ PAYOS
+        PaymentLinkDTO payLink = getPaymentLink(invoice);
+        String bankAccount = payLink != null ? payLink.getAccountNumber() : null;
+        String bankName = payLink != null ? payLink.getAccountName() : null;
+
         // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportInstallationInvoicePdf(
                 invoice,
@@ -142,8 +172,8 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
                 COMPANY_ADDR,
                 COMPANY_PHONE,
                 COMPANY_EMAIL,
-                BANK_ACCOUNT,
-                BANK_NAME
+                bankAccount,
+                bankName
         );
 
         Customer customer = invoice.getCustomer();
@@ -196,6 +226,11 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
             );
         }
 
+        // LẤY THÔNG TIN TÀI KHOẢN TỪ PAYOS
+        PaymentLinkDTO payLink = getPaymentLink(invoice);
+        String bankAccount = payLink != null ? payLink.getAccountNumber() : null;
+        String bankName = payLink != null ? payLink.getAccountName() : null;
+
         // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportServiceInvoicePdf(
                 invoice,
@@ -204,8 +239,8 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
                 COMPANY_ADDR,
                 COMPANY_PHONE,
                 COMPANY_EMAIL,
-                BANK_ACCOUNT,
-                BANK_NAME
+                bankAccount,
+                bankName
         );
 
         Customer customer = invoice.getCustomer();
