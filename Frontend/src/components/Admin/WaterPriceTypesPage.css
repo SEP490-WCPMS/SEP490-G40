@@ -1,0 +1,12 @@
+.wpt-page { display:flex; flex-direction:column; gap:16px }
+.wpt-form-card, .wpt-list-card { background:white; padding:16px; border-radius:8px; box-shadow:0 6px 18px rgba(15,23,42,0.04) }
+.wpt-row { display:flex; gap:12px; margin-bottom:10px }
+.wpt-field { flex:1 }
+.wpt-field label { display:block; font-weight:600; margin-bottom:6px }
+.wpt-actions { margin-top:8px; display:flex; gap:8px }
+.wpt-list-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px }
+.wpt-table { width:100%; border-collapse:collapse }
+.wpt-table th, .wpt-table td { padding:8px 10px; border-bottom:1px solid #eef2f7 }
+.wpt-table tr.inactive td { opacity:0.6; text-decoration:line-through }
+.wpt-error { color:#b91c1c; background:#fff1f2; padding:8px; border-radius:6px; margin-bottom:8px }
+@media (max-width:800px) { .wpt-row { flex-direction:column } }

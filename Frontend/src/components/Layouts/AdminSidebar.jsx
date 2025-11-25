@@ -9,10 +9,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'; // Đảm bảo đường dẫn đúng
-import { 
-    LayoutDashboard, 
-    Users, 
-    ShieldCheck 
+import {
+  LayoutDashboard,
+  Users,
+  ShieldCheck
 } from 'lucide-react'; // Import icons (Ví dụ: Dashboard, Users, Roles)
 import { Link, useLocation } from 'react-router-dom';
 
@@ -34,7 +34,22 @@ const adminMenuItems = [
     url: '/admin/roles',
     icon: ShieldCheck,
   },
+  {
+    title: 'Quản lý Đồng hồ',
+    url: '/admin/water-meters',
+    icon: Users,
+  },
   // (Thêm các trang Quản trị khác ở đây)
+  {
+    title: 'Quản lý Loại Giá Nước',
+    url: '/admin/water-price-types',
+    icon: Users,
+  },
+  {
+    title: 'Quản lý Giá Nước',
+    url: '/admin/water-prices',
+    icon: Users,
+  },
 ];
 // --- Hết Menu Items ---
 
@@ -46,7 +61,7 @@ export function AdminSidebar() {
   const isItemActive = (itemUrl) => {
     // Nếu là link Dashboard (index), chỉ active khi đường dẫn chính xác
     if (itemUrl === '/admin') {
-        return location.pathname === '/admin';
+      return location.pathname === '/admin';
     }
     // Đối với các link khác, kiểm tra xem đường dẫn hiện tại có BẮT ĐẦU bằng url của item không
     return location.pathname.startsWith(itemUrl);
@@ -65,9 +80,9 @@ export function AdminSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={isItemActive(item.url)}
-                    style={isItemActive(item.url) ? { 
-                        backgroundColor: '#5B21B6', // Màu active (ví dụ: tím)
-                        color: 'white' 
+                    style={isItemActive(item.url) ? {
+                      backgroundColor: '#5B21B6', // Màu active (ví dụ: tím)
+                      color: 'white'
                     } : {}}
                   >
                     <Link to={item.url}>
