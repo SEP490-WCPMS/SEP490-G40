@@ -9,6 +9,7 @@ import com.sep490.wcpms.dto.SupportTicketDTO; // <-- THÊM IMPORT
 import java.util.List; // <-- THÊM
 import com.sep490.wcpms.dto.CustomerSimpleDTO; // <-- Import cho hàm lấy DS KH
 import com.sep490.wcpms.dto.*; // Import tất cả DTO
+import com.sep490.wcpms.dto.ContractAnnulTransferRequestDTO;
 
 public interface ServiceStaffContractService {
 
@@ -127,4 +128,21 @@ public interface ServiceStaffContractService {
 
     /** Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech) */
     Page<ServiceStaffContractDTO> getPendingSignContracts(String keyword, Pageable pageable);
+
+    // === Annul/Transfer Contract Requests Management ===
+
+    /**
+     * Lấy danh sách yêu cầu hủy/chuyển nhượng hợp đồng đang PENDING (chờ duyệt)
+     */
+    Page<ContractAnnulTransferRequestDTO> getPendingAnnulTransferRequests(String keyword, Pageable pageable);
+
+    /**
+     * Duyệt yêu cầu hủy/chuyển nhượng hợp đồng: chuyển trạng thái sang APPROVED
+     */
+    ContractAnnulTransferRequestDTO approveAnnulTransferRequest(Integer requestId);
+
+    /**
+     * Từ chối yêu cầu hủy/chuyển nhượng hợp đồng: chuyển trạng thái sang REJECTED, lưu lý do
+     */
+    ContractAnnulTransferRequestDTO rejectAnnulTransferRequest(Integer requestId, String reason);
 }

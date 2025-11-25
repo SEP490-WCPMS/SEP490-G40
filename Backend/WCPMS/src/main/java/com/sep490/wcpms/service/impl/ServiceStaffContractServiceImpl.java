@@ -1,11 +1,9 @@
 package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.*;
-import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Contract;
+import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.entity.Contract.ContractStatus;
 import com.sep490.wcpms.entity.Contract.PaymentMethod;
-import com.sep490.wcpms.entity.Role;
 import com.sep490.wcpms.repository.ServiceStaffContractRepository;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.service.ServiceStaffContractService;
@@ -17,12 +15,9 @@ import com.sep490.wcpms.mapper.SupportTicketMapper;
 import com.sep490.wcpms.repository.CustomerFeedbackRepository;
 import org.springframework.transaction.annotation.Transactional;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
-import com.sep490.wcpms.entity.CustomerFeedback; // <-- THÊM DÒNG NÀY
-import com.sep490.wcpms.entity.ContractUsageDetail; // <-- THÊM DÒNG NÀY (sử dụng explicit type để tránh warning)
 import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
 import com.sep490.wcpms.repository.WaterMeterRepository;
 import com.sep490.wcpms.repository.MeterInstallationRepository; // Thêm import
-import com.sep490.wcpms.entity.MeterInstallation; // Thêm import
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,8 +25,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 // Import mới cho việc tạo hợp đồng dịch vụ nước
-import com.sep490.wcpms.entity.WaterServiceContract;
-import com.sep490.wcpms.entity.WaterPriceType;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
 import com.sep490.wcpms.repository.WaterPriceTypeRepository;
 import org.springframework.context.ApplicationEventPublisher; // publish domain events
@@ -41,6 +34,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import lombok.extern.slf4j.Slf4j;
+import com.sep490.wcpms.repository.ContractAnnulTransferRequestRepository;
+import com.sep490.wcpms.service.ContractAnnulTransferRequestService; // thêm import
+import com.sep490.wcpms.dto.ContractAnnulTransferRequestUpdateDTO; // thêm import
 
 @Service
 @RequiredArgsConstructor
@@ -57,7 +53,8 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final WaterPriceTypeRepository waterPriceTypeRepository;
     private final MeterInstallationRepository meterInstallationRepository; // Thêm repository inject
     private final ApplicationEventPublisher eventPublisher; // Inject publisher
-    // Giả định bạn có ContractMapper được inject nếu convertToDTO cần
+    private final ContractAnnulTransferRequestRepository contractAnnulTransferRequestRepository; // Inject repository cho annul/transfer requests
+    private final ContractAnnulTransferRequestService contractAnnulTransferRequestService; // delegate to central service
     // private final ContractMapper contractMapper;
 
     @Override
@@ -600,5 +597,111 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     public Page<ServiceStaffContractDTO> getPendingSignContracts(String keyword, Pageable pageable) {
         return contractRepository.findByStatusAndKeyword(ContractStatus.PENDING_SIGN, keyword, pageable)
                 .map(this::convertToDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ContractAnnulTransferRequestDTO> getPendingAnnulTransferRequests(String keyword, Pageable pageable) {
+        // Giả sử repository có method findByStatus với PENDING
+        // Nếu không có, cần thêm vào repository
+        //        return contractAnnulTransferRequestRepository.findByApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING, pageable)
+        //                .map(this::convertToAnnulTransferDTO);
+        // Use the new repository method to fetch customers eagerly so names are available
+        return contractAnnulTransferRequestRepository.findWithCustomersByApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING, pageable)
+                .map(this::convertToAnnulTransferDTO);
+    }
+
+    @Override
+    @Transactional
+    public ContractAnnulTransferRequestDTO approveAnnulTransferRequest(Integer requestId) {
+        // Delegate to ContractAnnulTransferRequestService to reuse validation and mapping logic
+        ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
+                .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.APPROVED)
+                .approvalDate(LocalDate.now())
+                .build();
+
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl ud) {
+                dto.setApprovedById(ud.getId());
+            }
+        } catch (Exception ex) {
+            // ignore - central service will validate
+        }
+
+        return contractAnnulTransferRequestService.updateApproval(requestId, dto);
+    }
+
+    @Override
+    @Transactional
+    public ContractAnnulTransferRequestDTO rejectAnnulTransferRequest(Integer requestId, String reason) {
+        // Delegate to central service to enforce notes required for rejection
+        ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
+                .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED)
+                .approvalDate(LocalDate.now())
+                .notes(reason)
+                .build();
+
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl ud) {
+                dto.setApprovedById(ud.getId());
+            }
+        } catch (Exception ex) {
+            // ignore
+        }
+
+        return contractAnnulTransferRequestService.updateApproval(requestId, dto);
+    }
+
+    private ContractAnnulTransferRequestDTO convertToAnnulTransferDTO(ContractAnnulTransferRequest request) {
+        ContractAnnulTransferRequestDTO dto = new ContractAnnulTransferRequestDTO();
+        dto.setId(request.getId());
+        dto.setRequestType(request.getRequestType() != null ? request.getRequestType().name() : null);
+        dto.setStatus(request.getApprovalStatus() != null ? request.getApprovalStatus().name() : null);
+        dto.setReason(request.getReason());
+        dto.setRejectionReason(request.getRejectionReason());
+        dto.setCreatedDate(request.getCreatedAt());
+        dto.setProcessedDate(request.getApprovalDate());
+        // Also populate createdAt/updatedAt (some frontend expects these names)
+        dto.setCreatedAt(request.getCreatedAt());
+        dto.setUpdatedAt(request.getUpdatedAt());
+        if (request.getContract() != null) {
+            dto.setContractId(request.getContract().getId());
+            dto.setContractNumber(request.getContract().getContractNumber());
+        }
+        if (request.getRequestedBy() != null) {
+            dto.setRequesterId(request.getRequestedBy().getId());
+            dto.setRequesterName(request.getRequestedBy().getFullName());
+        }
+        // Set customer ids and names for transfer requests
+        //        if (request.getFromCustomer() != null) {
+        //            dto.setFromCustomerId(request.getFromCustomer().getId());
+        //            dto.setFromCustomerName(request.getFromCustomer().getCustomerName());
+        //        }
+        //        if (request.getToCustomer() != null) {
+        //            dto.setToCustomerId(request.getToCustomer().getId());
+        //            dto.setToCustomerName(request.getToCustomer().getCustomerName());
+        //        }
+        // The repository fetches fromCustomer/toCustomer eagerly; still guard for null
+        if (request.getFromCustomer() != null) {
+            dto.setFromCustomerId(request.getFromCustomer().getId());
+            dto.setFromCustomerName(request.getFromCustomer().getCustomerName());
+        } else {
+            // Fallback: set fromCustomerName from the contract's customer (current owner)
+            if (request.getContract() != null && request.getContract().getCustomer() != null) {
+                dto.setFromCustomerId(request.getContract().getCustomer().getId());
+                dto.setFromCustomerName(request.getContract().getCustomer().getCustomerName());
+            } else {
+                dto.setFromCustomerName(null);
+            }
+        }
+        if (request.getToCustomer() != null) {
+            dto.setToCustomerId(request.getToCustomer().getId());
+            dto.setToCustomerName(request.getToCustomer().getCustomerName());
+        } else {
+            dto.setToCustomerName(null);
+        }
+        return dto;
     }
 }
