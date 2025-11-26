@@ -22,5 +22,5 @@ public class NotificationDTO {
     private boolean read;
     private LocalDateTime createdAt;
     private LocalDateTime readAt;
+    private Integer actorId; // ID của người thực hiện hành động (nếu có)
 }
-

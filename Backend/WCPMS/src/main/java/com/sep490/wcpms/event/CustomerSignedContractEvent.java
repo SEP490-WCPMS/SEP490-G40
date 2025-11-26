@@ -9,6 +9,7 @@ public class CustomerSignedContractEvent extends ApplicationEvent {
     private final Integer serviceStaffId;  // Notify Service Staff
     private final String customerName;
     private final LocalDateTime signedAt;
+    private final Integer customerAccountId; // account id of customer who signed
 
     public CustomerSignedContractEvent(
             Object source,
@@ -16,13 +17,15 @@ public class CustomerSignedContractEvent extends ApplicationEvent {
             String contractNumber,
             Integer serviceStaffId,
             String customerName,
-            LocalDateTime signedAt) {
+            LocalDateTime signedAt,
+            Integer customerAccountId) {
         super(source);
         this.contractId = contractId;
         this.contractNumber = contractNumber;
         this.serviceStaffId = serviceStaffId;
         this.customerName = customerName;
         this.signedAt = signedAt;
+        this.customerAccountId = customerAccountId;
     }
 
     public Integer getContractId() {
@@ -44,5 +47,8 @@ public class CustomerSignedContractEvent extends ApplicationEvent {
     public LocalDateTime getSignedAt() {
         return signedAt;
     }
-}
 
+    public Integer getCustomerAccountId() {
+        return customerAccountId;
+    }
+}

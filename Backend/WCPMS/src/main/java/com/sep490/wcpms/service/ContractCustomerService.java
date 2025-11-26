@@ -105,7 +105,8 @@ public class ContractCustomerService {
                 updated.getContractNumber(),
                 updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
                 updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
-                java.time.LocalDateTime.now()
+                java.time.LocalDateTime.now(),
+                updated.getCustomer() != null && updated.getCustomer().getAccount() != null ? updated.getCustomer().getAccount().getId() : null
         ));
 
         return convertToDTO(updated);

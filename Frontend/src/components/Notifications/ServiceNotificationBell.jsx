@@ -10,7 +10,7 @@ import { Bell, X } from 'lucide-react';
  */
 export const ServiceNotificationBell = ({ compact = false }) => {
     const navigate = useNavigate();
-    const { notifications, unreadCount, markAsRead, markAllAsRead } = useContext(ServiceNotificationContext);
+    const { notifications, unreadCount, markAsRead, markAllAsRead, syncUnreadCountFromDB } = useContext(ServiceNotificationContext);
     const [isOpen, setIsOpen] = useState(false);
     const [highlightedContractId, setHighlightedContractId] = useState(null);
 
@@ -50,10 +50,12 @@ export const ServiceNotificationBell = ({ compact = false }) => {
             }, 300);
         } else if (notif.type === 'INSTALLATION_COMPLETED') {
             // Lắp đặt xong → hợp đồng active
-            navigate('/service/active-contracts');
-            setTimeout(() => {
-                highlightContractInPage(notif.contractId);
-            }, 300);
+            // Điều hướng kèm query param 'highlight' — trang đích sẽ scroll & highlight khi dữ liệu load xong
+            if (notif.contractId) {
+                navigate(`/service/active-contracts?highlight=${encodeURIComponent(notif.contractId)}`);
+            } else {
+                navigate('/service/active-contracts');
+            }
         }
         
         setIsOpen(false);
@@ -133,7 +135,7 @@ export const ServiceNotificationBell = ({ compact = false }) => {
             {compact ? (
                 <button
                     className="dropdown-item" // ✅ Class này đã có style chữ màu xanh/đen
-                    onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+                    onClick={(e) => { e.stopPropagation(); const next = !isOpen; setIsOpen(next); if (next) try { syncUnreadCountFromDB(); } catch(e){} }}
                     title="Thông báo"
                     // ❌ Bỏ style inline 'justifyContent'
                 >
@@ -149,7 +151,7 @@ export const ServiceNotificationBell = ({ compact = false }) => {
             ) : (
                 /* Default standalone bell trigger (dùng TRÊN HEADER) */
                 <button
-                    onClick={() => setIsOpen(!isOpen)}
+                    onClick={() => { const next = !isOpen; setIsOpen(next); if (next) try { syncUnreadCountFromDB(); } catch(e){} }}
                     // ✨ Chỉ dùng class, xóa bỏ TẤT CẢ style inline ✨
                     className="notification-bell-button" 
                     title="Thông báo"
@@ -187,7 +189,11 @@ export const ServiceNotificationBell = ({ compact = false }) => {
                         {notifications.length === 0 ? (
                             <div className="notification-empty">Không có thông báo</div>
                         ) : (
-                            [...notifications].reverse().map((notif) => {
+                            notifications && notifications.slice().sort((a,b) => {
+                                const ta = new Date(a.timestamp || 0).getTime();
+                                const tb = new Date(b.timestamp || 0).getTime();
+                                return tb - ta; // newest first
+                            }).map((notif) => {
                                 const style = getNotificationStyle(notif.type);
                                 const notifTime = new Date(notif.timestamp);
                                 const now = new Date();

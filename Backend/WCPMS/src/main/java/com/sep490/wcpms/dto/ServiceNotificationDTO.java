@@ -8,13 +8,13 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
- * DTO thông báo realtime gửi tới Service Staff qua SSE.
+ * DTO representing a service notification payload used for persistence and frontend display.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ServiceNotificationDTO {
-    // ID thông báo trong DB (có thể null nếu broadcast multi-receiver như CONTRACT_REQUEST_CREATED)
+    // ID thông báo trong DB (có thể null if not yet persisted)
     private Long id;
     /** Loại sự kiện, ví dụ: TECH_SURVEY_COMPLETED, CUSTOMER_SIGNED, INSTALLATION_SCHEDULED */
     private String type;

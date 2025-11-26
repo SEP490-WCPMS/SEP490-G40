@@ -9,11 +9,11 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "staff_notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Notification {
+public class StaffNotification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +24,12 @@ public class Notification {
     @JoinColumn(name = "receiver_account_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_notifications_accounts"))
     private Account receiverAccount;
+
+    // Actor: người thực hiện hành động (có thể null)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_account_id", nullable = true,
+            foreignKey = @ForeignKey(name = "fk_notifications_actor_account"))
+    private Account actorAccount;
 
     // Tiêu đề thông báo
     @Column(name = "title")
@@ -62,7 +68,7 @@ public class Notification {
     private LocalDateTime createdAt;
 
     public enum NotificationType {
-        SYSTEM, CONTRACT, INVOICE, MAINTENANCE, PAYMENT, SUPPORT
+        SYSTEM, CONTRACT, INVOICE, MAINTENANCE, PAYMENT, SUPPORT, TASK
     }
 
     public enum ReferenceType {

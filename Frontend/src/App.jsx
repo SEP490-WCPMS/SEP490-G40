@@ -4,7 +4,6 @@ import ScrollToTop from './components/common/ScrollToTop';
 import './App.css';
 import { useAuth } from './hooks/use-auth';
 import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
-import { ServiceNotificationListener } from './components/Notifications/ServiceNotificationListener';
 import { ServiceNotificationToast } from './components/Notifications/ServiceNotificationToast';
 import Login from './components/Authentication/Login';
 import Header from './components/Layouts/Header';
@@ -233,7 +232,6 @@ function App() {
 
 export default () => (
   <ServiceNotificationProvider>
-    <ServiceNotificationListener />
     <ServiceNotificationToast />
     <App />
   </ServiceNotificationProvider>

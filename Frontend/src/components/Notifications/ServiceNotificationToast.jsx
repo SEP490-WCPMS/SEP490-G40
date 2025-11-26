@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
  * Hiển thị thông báo ở góc dưới bên phải
  */
 export const ServiceNotificationToast = () => {
-    const { notifications, removeNotification } = useContext(ServiceNotificationContext);
+    const { notifications, removeNotification, transientToasts } = useContext(ServiceNotificationContext);
 
     const getNotificationStyle = (type) => {
         const styles = {
@@ -51,6 +51,30 @@ export const ServiceNotificationToast = () => {
             gap: '8px',
             maxWidth: '380px'
         }}>
+            {/* Render transient toasts first (self-actions) */}
+            {transientToasts && transientToasts.slice(0,5).map((notif) => {
+                const style = getNotificationStyle(notif.type);
+                return (
+                    <div key={notif.id} style={{
+                        backgroundColor: style.bgColor,
+                        border: `1px solid ${style.color}`,
+                        borderRadius: '4px',
+                        padding: '12px 16px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                        display: 'flex',
+                        gap: '12px',
+                        alignItems: 'flex-start',
+                        animation: 'slideInRight 0.3s ease-out'
+                    }}>
+                        <span style={{ fontSize: '18px', minWidth: '24px' }}>{style.icon}</span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: style.color, marginBottom: '4px' }}>{style.title}</div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>{notif.message}</div>
+                        </div>
+                    </div>
+                );
+            })}
+
             {notifications.slice(0, 5)
                 .filter(notif => notif.isVisible !== false) // Chỉ hiển thị popup nếu isVisible = true
                 .map((notif) => {

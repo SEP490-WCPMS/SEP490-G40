@@ -101,18 +101,13 @@ public class SecurityConfig {
                                 .requestMatchers("/api/water-prices/**").permitAll()
                                 .requestMatchers("/api/contract-request/**").permitAll()
                                 .requestMatchers("/api/reading-routes/**").permitAll()
-                                // Allow public GET access to accounting reading-routes (so frontend can call existing path)
+                                // Allow public GET access to accounting reading-routes
                                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/accounting/reading-routes/**").permitAll()
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
-                                // SSE endpoints - permitAll, controller tự validate JWT (header hoặc query param)
-                                .requestMatchers("/api/service/notifications/stream").permitAll()
-                                .requestMatchers("/api/service/notifications/stream-token").permitAll()
-                                .requestMatchers("/api/service/notifications/test").permitAll()
-                                // Polling endpoints (fallback khi SSE fail) - controller tự validate JWT từ header
-                                .requestMatchers(HttpMethod.GET, "/api/service/notifications").permitAll()
-                                .requestMatchers("/api/service/notifications/unread-count").permitAll()
+                                // WebSocket handshake endpoint (SockJS) - permit for handshake, we validate token in handshake interceptor
+                                .requestMatchers("/ws-notifications/**").permitAll()
                                 .requestMatchers("/api/payment/webhook/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---

@@ -2,7 +2,7 @@ package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.NotificationDTO;
 import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Notification;
+import com.sep490.wcpms.entity.StaffNotification;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.NotificationRepository;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
@@ -15,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -30,33 +32,39 @@ public class NotificationQueryServiceImpl implements NotificationQueryService {
             throw new IllegalStateException("User not authenticated");
         }
 
-        // ✅ Case 1: Principal là UserDetailsImpl (Spring Security tạo)
-        if (auth.getPrincipal() instanceof UserDetailsImpl user) {
-            Account acc = accountRepository.findById(user.getId())
-                    .orElseThrow(() -> new IllegalStateException("Account not found: " + user.getId()));
-            log.debug("[NOTI-QUERY] currentAccount id={}, username={}", acc.getId(), acc.getUsername());
-            return acc;
+        String username;
+        if (auth.getPrincipal() instanceof UserDetailsImpl userDetails) {
+            username = userDetails.getUsername();
+        } else {
+            // principal could be a String username
+            username = auth.getName();
         }
 
-        // ✅ Case 2: Principal là String username (Controller set)
-        String username = auth.getName(); // getName() lấy username từ principal
-        Account acc = accountRepository.findByUsername(username)
+        return accountRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalStateException("Account not found: " + username));
-        log.debug("[NOTI-QUERY] currentAccount id={}, username={}", acc.getId(), acc.getUsername());
-        return acc;
     }
 
-    private NotificationDTO map(Notification n) {
+    private NotificationDTO map(StaffNotification n) {
+        if (n == null) return null;
+        String type = n.getType() != null ? n.getType().name() : null;
+        String refType = n.getReferenceType() != null ? n.getReferenceType().name() : null;
+        Long refId = n.getReferenceId();
+        boolean read = n.isRead();
+        LocalDateTime createdAt = n.getCreatedAt();
+        LocalDateTime readAt = n.getReadAt();
+        Integer actorId = n.getActorAccount() != null ? n.getActorAccount().getId().intValue() : null;
+
         return new NotificationDTO(
                 n.getId(),
                 n.getTitle(),
                 n.getMessage(),
-                n.getType() != null ? n.getType().name() : null,
-                n.getReferenceId(),
-                n.getReferenceType() != null ? n.getReferenceType().name() : null,
-                n.isRead(),
-                n.getCreatedAt(),
-                n.getReadAt()
+                type,
+                refId,
+                refType,
+                read,
+                createdAt,
+                readAt,
+                actorId
         );
     }
 

@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
+import { ServiceNotificationContext } from '../../../contexts/ServiceNotificationContext';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract, updateServiceContract } from '../../Services/apiService';
@@ -15,6 +16,8 @@ const ContractCreate = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
     const location = useLocation();
+
+    const { showTransientToast } = useContext(ServiceNotificationContext);
 
     const [technicalStaff, setTechnicalStaff] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -113,6 +116,8 @@ const ContractCreate = () => {
             console.log('Sending contract data:', contractData);
 
             // Cập nhật các trường chi tiết cho hợp đồng từ form
+            // (Removed client-side `lastAction` fallback — backend now supplies actor info)
+
             await updateServiceContract(sourceContractId, {
                 installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
                 startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
@@ -124,8 +129,23 @@ const ContractCreate = () => {
                 serviceStaffId: currentUserId,
             });
             await approveServiceContract(sourceContractId);
-            message.success('Tạo hợp đồng thành công!');
-            navigate('/service/approved-contracts');
+            // Show a local transient toast to actor (backend will skip realtime to actor)
+            try {
+                // Show a single, accurate transient toast for the actor: contract approved/created
+                showTransientToast({
+                    id: `local_contract_${sourceContractId}`,
+                    type: 'SURVEY_APPROVED',
+                    title: 'Hợp đồng đã duyệt',
+                    message: `Hợp đồng #${sourceContractId} đã được duyệt`,
+                        contractId: sourceContractId,
+                        timestamp: new Date().toISOString()
+                    });
+                } catch (e) {
+                    // fallback to antd message
+                    message.success('Tạo hợp đồng thành công!');
+                }
+                message.success('Tạo hợp đồng thành công!');
+                navigate('/service/approved-contracts');
         } catch (error) {
             console.error('Approve contract error:', error);
             const errorMessage = error?.response?.data?.message || 'Không thể tạo hợp đồng!';
