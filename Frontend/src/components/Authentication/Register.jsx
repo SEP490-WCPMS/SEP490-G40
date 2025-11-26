@@ -5,9 +5,6 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import './Register.css';
 
-
-
-
 export default function Register() {
     const [formData, setFormData] = useState({
         username: '',
@@ -15,7 +12,7 @@ export default function Register() {
         email: '',
         phone: '',
         fullName: '',
-        address: '' // <-- THÊM TRƯỜNG MỚI
+        address: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -44,10 +41,10 @@ export default function Register() {
 
         try {
             await registerApi(formData);
+
+            // --- THAY ĐỔI: CHỈ SET SUCCESS, KHÔNG CHUYỂN TRANG TỰ ĐỘNG ---
             setSuccess(true);
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
+            // Không dùng setTimeout navigate('/login') nữa
 
         } catch (err) {
             setError(err.message || 'Đã xảy ra lỗi trong quá trình đăng ký.');
@@ -56,6 +53,50 @@ export default function Register() {
         }
     };
 
+    // --- THÊM: MÀN HÌNH THÔNG BÁO KHI ĐĂNG KÝ THÀNH CÔNG ---
+    if (success) {
+        return (
+            <div className="register-page">
+                <div className="register-inner">
+                    <aside className="brand-panel">
+                        <div className="brand-logo">
+                            <img
+                                src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
+                                alt="Cấp nước Phú Thọ"
+                                className="brand-logo-image"
+                            />
+                        </div>
+                        <h2 className="brand-title">Công ty Cổ phần cấp nước Phú Thọ</h2>
+                        <p className="brand-subtitle">Đăng ký để sử dụng dịch vụ cấp nước trực tuyến</p>
+                    </aside>
+
+                    <main className="form-panel">
+                        <div className="form-card" style={{ textAlign: 'center', justifyContent: 'center' }}>
+                            <h1 className="register-title" style={{ color: '#0A77E2', marginBottom: '20px' }}>Đăng Ký Thành Công!</h1>
+
+                            <div style={{ marginBottom: '30px', color: '#334155', fontSize: '1rem' }}>
+                                <p>Tài khoản của bạn đã được tạo.</p>
+                                <p style={{ marginTop: '10px' }}>Một email kích hoạt đã được gửi đến:</p>
+                                <p style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#000', margin: '10px 0' }}>
+                                    {formData.email}
+                                </p>
+                                <p>Vui lòng kiểm tra hòm thư (và cả mục Spam) để kích hoạt tài khoản trước khi đăng nhập.</p>
+                            </div>
+
+                            <Button
+                                onClick={() => navigate('/login')}
+                                className="register-button"
+                            >
+                                Quay lại trang Đăng nhập
+                            </Button>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        );
+    }
+
+    // --- MÀN HÌNH FORM ĐĂNG KÝ (GIỮ NGUYÊN) ---
     return (
         <div className="register-page">
             <div className="register-inner">
@@ -77,9 +118,6 @@ export default function Register() {
 
                         <form onSubmit={handleSubmit} className="register-form">
                             {error && <p className="error-message">{error}</p>}
-                            {success && (
-                                <p className="success-message">Đăng ký thành công! Đang chuyển hướng...</p>
-                            )}
 
                             <FormInput id="fullName" label="Họ và Tên" type="text" value={formData.fullName} onChange={handleChange} disabled={loading} />
                             <FormInput id="username" label="Tên đăng nhập" type="text" value={formData.username} onChange={handleChange} disabled={loading} />
@@ -90,7 +128,7 @@ export default function Register() {
 
                             <Button
                                 type="submit"
-                                disabled={loading || success}
+                                disabled={loading}
                                 className="register-button"
                             >
                                 {loading ? 'Đang xử lý...' : 'Đăng Ký'}

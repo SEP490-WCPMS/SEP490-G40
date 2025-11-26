@@ -119,7 +119,7 @@ export default function Login() {
 
               <div className="form-links">
                 <a href="/register" className="register">Đăng kí tài khoản</a>
-                <a href="/forgot" className="forgot-password">Quên mật khẩu?</a>
+                <a href="/forgot" className="forgot">Quên mật khẩu?</a>
               </div>
             </form>
           </div>
