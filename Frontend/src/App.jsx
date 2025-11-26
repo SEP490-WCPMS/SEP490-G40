@@ -7,6 +7,8 @@ import { ServiceNotificationProvider } from './contexts/ServiceNotificationConte
 import { ServiceNotificationListener } from './components/Notifications/ServiceNotificationListener';
 import { ServiceNotificationToast } from './components/Notifications/ServiceNotificationToast';
 import Login from './components/Authentication/Login';
+import ForgotPassword from './components/Authentication/ForgotPassword';
+import ResetPassword from './components/Authentication/ResetPassword';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
 import HomePage from './components/Pages/HomePage';
@@ -33,7 +35,6 @@ import ContractAnnulList from './components/PagesService/AnnulTransfer/ContractA
 import ContractCreatePage from './components/PagesService/ContractCreation/ContractCreatePage';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
-import CustomerNotificationList from './components/Customer/CustomerNotificationList';
 import ContractList from './components/Customer/ContractList';
 import ContractDetail from './components/Customer/ContractDetail';
 import PendingSignContract from './components/Customer/PendingSignContract';
@@ -64,8 +65,8 @@ import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
 import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
 import PendingReadingsList from './components/PagesAccounting/PendingReadingsList'; // Sửa đường dẫn
-import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; 
-import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; 
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList';
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail';
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
 import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
@@ -74,7 +75,11 @@ import CashierContractDetail from './components/PagesCashier/CashierContractDeta
 import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 import ContactPage from './components/Pages/ContactPage';
-
+import StaffAccountList from './components/Admin/StaffAccountList';
+import WaterMetersPage from './components/Admin/WaterMetersPage';
+import WaterPriceTypesPage from './components/Admin/WaterPriceTypesPage';
+import WaterPricesPage from './components/Admin/WaterPricesPage';
+import { VerifyAccountPage } from './components/Authentication/VerifyAccount';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -102,6 +107,27 @@ function App() {
         <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContactPage /></PublicLayout>} />
         <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
+        <Route path="/verify" element={<VerifyAccountPage />} />
+        <Route path="/forgot" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ForgotPassword />
+            </main>
+            <Footer />
+          </div>
+        } />
+
+        <Route path="/reset-password" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ResetPassword />
+            </main>
+            <Footer />
+          </div>
+        } />
+        {/* --- KẾT THÚC ĐOẠN THÊM --- */}
 
 
         {/* === CUSTOMER ROUTES (Cần đăng nhập, vai trò CUSTOMER) === */}
@@ -119,7 +145,7 @@ function App() {
           <Route path="/my-support-tickets/:ticketId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><SupportTicketDetail /></PublicLayout>} />
           <Route path="/my-invoices" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceListPage /></PublicLayout>} />
           <Route path="/my-invoices/:invoiceId" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><MyInvoiceDetail /></PublicLayout>} />
-          <Route path="/my-notifications" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerNotificationList /></PublicLayout>} />
+
         </Route>
 
 
@@ -148,22 +174,22 @@ function App() {
         </Route>
 
         {/* --- LUỒNG CỦA CASHIER STAFF --- */}
-          <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
-            <Route path="/cashier/*" element={<LayoutCashier />}>
-              
-              {/* --- SỬA LẠI ROUTE --- */}
-              <Route index element={<CashierDashboard />} /> {/* Trang index mới */}
-              <Route path="dashboard" element={<CashierDashboard />} /> {/* Thêm /dashboard */}
-              {/* --- */}
-              <Route path="scan" element={<MeterScan />} />
-              <Route path="submit-reading" element={<ReadingConfirmation />} />
-              <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
-              {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
-              <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
-              <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
-              {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
-              <Route path="route-list" element={<CashierRouteList />} />
-              <Route path="route-contract/:contractId" element={<CashierContractDetail />} />
+        <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
+          <Route path="/cashier/*" element={<LayoutCashier />}>
+
+            {/* --- SỬA LẠI ROUTE --- */}
+            <Route index element={<CashierDashboard />} /> {/* Trang index mới */}
+            <Route path="dashboard" element={<CashierDashboard />} /> {/* Thêm /dashboard */}
+            {/* --- */}
+            <Route path="scan" element={<MeterScan />} />
+            <Route path="submit-reading" element={<ReadingConfirmation />} />
+            <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
+            {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
+            <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
+            <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
+            {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
+            <Route path="route-list" element={<CashierRouteList />} />
+            <Route path="route-contract/:contractId" element={<CashierContractDetail />} />
 
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
@@ -222,6 +248,10 @@ function App() {
           <Route path="/admin/*" element={<LayoutAdmin />}>
 
             {/* (Thêm các trang khác của Admin ở đây) */}
+            <Route path="users" element={<StaffAccountList />} />
+            <Route path="water-meters" element={<WaterMetersPage />} />
+            <Route path="water-price-types" element={<WaterPriceTypesPage />} />
+            <Route path="water-prices" element={<WaterPricesPage />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>
