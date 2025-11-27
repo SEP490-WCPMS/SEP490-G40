@@ -39,7 +39,7 @@ const accountingMenuItems = [
     icon: ListChecks,
   },
   {
-    title: 'Chờ Hóa đơn Chính thức',
+    title: 'Lập Hóa đơn Chính thức',
     url: '/accounting/contracts/eligible-installation',
     icon: ClipboardPlus,
   },
