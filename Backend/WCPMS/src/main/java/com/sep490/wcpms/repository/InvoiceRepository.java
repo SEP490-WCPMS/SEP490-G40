@@ -174,6 +174,17 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     );
     // --- HẾT PHẦN THÊM ---
 
+    // --- THÊM HÀM TÌM HÓA ĐƠN QUÁ HẠN ---
+    /**
+     * Tìm các hóa đơn chưa thanh toán (PENDING) mà đã quá hạn (dueDate < today).
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.paymentStatus = 'PENDING' " +
+            "AND i.dueDate < :today " +
+            "AND (i.latePaymentFee IS NULL OR i.latePaymentFee = 0)") // Chỉ lấy những cái chưa phạt
+    List<Invoice> findOverdueInvoices(@Param("today") LocalDate today);
+    // ---
+
     List<Invoice> findTop4ByCustomerAndMeterReadingIsNotNullOrderByInvoiceDateDesc(Customer customer);
 
     /**
