@@ -421,7 +421,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         // 7. Tạo Hóa đơn (Bảng 17)
         Invoice invoice = new Invoice();
-        invoice.setInvoiceNumber("HD-" + meterReadingId + "-" + System.currentTimeMillis()); // (Nên có logic sinh số HĐ tốt hơn)
+        // Sinh mã HĐ không chứa ký tự '-' để tránh vấn đề khi quét QR/Thanh toán ngân hàng
+        invoice.setInvoiceNumber("HD" + meterReadingId + System.currentTimeMillis()); // (Nên có logic sinh số HĐ tốt hơn)
         invoice.setCustomer(customer);
         invoice.setContract(serviceContract.getSourceContract()); // Lấy HĐ Lắp đặt gốc
         invoice.setMeterReading(reading); // QUAN TRỌNG: Liên kết với bản ghi đọc số

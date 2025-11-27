@@ -61,7 +61,7 @@ import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
 import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
-import PendingReadingsList from './components/PagesAccounting/PendingReadingsList'; // Sửa đường dẫn
+import GenerateWaterInvoice from './components/PagesAccounting/GenerateWaterInvoice'; // Sửa đường dẫn
 import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; 
 import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; 
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
@@ -210,7 +210,7 @@ function App() {
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
             {/* ROUTE CHO HÓA ĐƠN TIỀN NƯỚC */}
-            <Route path="billing/pending-readings" element={<PendingReadingsList />} />
+            <Route path="billing/pending-readings" element={<GenerateWaterInvoice />} />
           </Route>
         </Route>
         {/* --- HẾT --- */}
