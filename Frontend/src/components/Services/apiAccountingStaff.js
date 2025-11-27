@@ -129,13 +129,32 @@ export const getAccountingDashboardStats = () => {
  * Lấy 5 khoản phí "treo" (chưa lập HĐ) MỚI NHẤT
  * (Dùng cho bảng "Việc cần làm" trên Dashboard)
  */
+// --- CÁC HÀM CHO DASHBOARD ---
+
+/**
+ * 1. Lấy danh sách Phí Kiểm định chờ lập HĐ (Mới nhất)
+ */
 export const getRecentUnbilledFees = (limit = 5) => {
-    const params = {
-        page: 0,
-        size: limit,
-        sort: 'calibrationDate,desc' // Lấy 5 cái MỚI NHẤT
-    };
+    const params = { page: 0, size: limit, sort: 'calibrationDate,desc' };
     return apiClient.get('/accounting/unbilled-calibrations', { params });
+};
+
+/**
+ * 2. Lấy danh sách HĐ Lắp đặt chờ lập HĐ (Mới nhất)
+ */
+export const getRecentInstallContracts = (limit = 5) => {
+    // SỬA: Đổi 'contractDate' thành 'id' để tránh lỗi 500 nếu entity không có field contractDate
+    const params = { page: 0, size: limit, sort: 'id,desc' }; 
+    return apiClient.get('/accounting/contracts/eligible-installation', { params });
+};
+
+/**
+ * 3. Lấy danh sách Chỉ số nước chờ lập HĐ (Mới nhất)
+ */
+export const getRecentPendingReadings = (limit = 5) => {
+    const params = { page: 0, size: limit, sort: 'readingDate,desc' };
+    // Gọi API bạn đã có trong controller: /billing/pending-readings
+    return apiClient.get('/accounting/billing/pending-readings', { params });
 };
 // --- HẾT PHẦN THÊM ---
 
