@@ -64,19 +64,6 @@ public class Account {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "password_reset_token")
-    private String passwordResetToken;
-
-    @Column(name = "reset_token_expiry")
-    private LocalDateTime resetTokenExpiry;
-
-    // --- THÊM 2 TRƯỜNG NÀY ---
-    @Column(name = "verification_token")
-    private String verificationToken;
-
-    @Column(name = "token_expiry_date")
-    private LocalDateTime tokenExpiryDate;
-
     // Staff relationships
     @OneToMany(mappedBy = "serviceStaff")
     private List<Contract> serviceContracts;

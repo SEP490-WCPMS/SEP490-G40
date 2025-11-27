@@ -17,7 +17,6 @@ import com.sep490.wcpms.security.jwt.JwtUtils; // <-- Import JwtUtils
 import com.sep490.wcpms.security.services.UserDetailsImpl; // <-- Import UserDetailsImpl
 // ---
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager; // <-- Import AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken; // <-- Import Token
 import org.springframework.security.core.Authentication; // <-- Import Authentication
@@ -28,9 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor // Tự động inject các biến final
@@ -43,10 +40,7 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final CustomerRepository customerRepository;
-    private final EmailService emailService;
     // ---
-
-
 
     /**
      * Xử lý đăng nhập bằng Spring Security AuthenticationManager và tạo JWT token.
@@ -84,9 +78,6 @@ public class AuthService {
         // --- BƯỚC 4: LẤY THÊM THÔNG TIN TỪ ACCOUNT (Nếu cần và UserDetails chưa có) ---
         // Optional: Lấy lại Account entity để lấy fullName, department nếu UserDetailsImpl không lưu
         Account account = accountRepository.findById(userDetails.getId()).orElse(null); // Tìm lại account
-        if (account.getStatus() == 0) {
-            throw new InvalidCredentialsException("Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email.");
-        }
         if (account == null) {
             // Trường hợp hiếm gặp, user tồn tại trong security context nhưng không có trong DB?
             throw new ResourceNotFoundException("Tài khoản không tìm thấy sau khi xác thực.");
@@ -152,12 +143,8 @@ public class AuthService {
         newAccount.setRole(customerRole);
         newAccount.setDepartment(null);
         newAccount.setCustomerCode(newCustomerCode);
-        newAccount.setStatus(0);
-
-        // Tạo Token
-        String token = UUID.randomUUID().toString();
-        newAccount.setVerificationToken(token);
-        newAccount.setTokenExpiryDate(LocalDateTime.now().plusHours(24)); // Hết hạn sau 24h
+        newAccount.setStatus(1); // 1 = Kích hoạt // Kích hoạt tài khoản
+        // createdAt tự động bởi @CreationTimestamp
 
         Account savedAccount = accountRepository.save(newAccount);
 
@@ -168,9 +155,6 @@ public class AuthService {
         newCustomer.setAddress(request.getAddress());
         // createdAt/updatedAt tự động
         customerRepository.save(newCustomer);
-
-        // Gửi Email
-        emailService.sendVerificationEmail(savedAccount.getEmail(), savedAccount.getFullName(), token);
 
         return RegisterResponse.builder()
                 .id(savedAccount.getId())
@@ -202,79 +186,5 @@ public class AuthService {
         }
         // Format với 3 chữ số (ví dụ: KH001, KH010, KH124)
         return String.format("KH%03d", nextId);
-    }
-
-
-
-    // --- 1. XỬ LÝ YÊU CẦU QUÊN MẬT KHẨU ---
-    public void forgotPassword(String email) {
-        // Tìm tài khoản theo email
-        Optional<Account> accountOptional = accountRepository.findByEmail(email);
-
-        // Nếu không tìm thấy, ta vẫn "giả vờ" thành công để bảo mật (tránh hacker dò email)
-        // Hoặc ném lỗi nếu bạn muốn thông báo rõ ràng. Ở đây tôi chọn ném lỗi cho dễ test.
-        if (accountOptional.isEmpty()) {
-            throw new ResourceNotFoundException("Không tìm thấy tài khoản với email này.");
-        }
-
-        Account account = accountOptional.get();
-
-        // Tạo token ngẫu nhiên
-        String token = UUID.randomUUID().toString();
-
-        // Lưu token vào DB (hết hạn sau 15 phút)
-        account.setPasswordResetToken(token);
-        account.setResetTokenExpiry(LocalDateTime.now().plus(15, ChronoUnit.MINUTES));
-        accountRepository.save(account);
-
-        // Tạo link (Frontend chạy ở cổng 5173)
-        String resetLink = "http://localhost:5173/reset-password?token=" + token;
-
-        // Gửi email
-        String subject = "Yêu cầu đặt lại mật khẩu - WCPMS";
-        String content = "Xin chào " + account.getFullName() + ",\n\n"
-                + "Bạn vừa yêu cầu đặt lại mật khẩu. Vui lòng nhấp vào link bên dưới để tiếp tục:\n"
-                + resetLink + "\n\n"
-                + "Link này sẽ hết hạn sau 15 phút.\n"
-                + "Nếu bạn không yêu cầu, vui lòng bỏ qua email này.";
-
-        emailService.sendEmail(account.getEmail(), subject, content);
-    }
-
-    // --- 2. XỬ LÝ ĐẶT LẠI MẬT KHẨU ---
-    public void resetPassword(String token, String newPassword) {
-        // Tìm tài khoản theo token
-        Account account = accountRepository.findByPasswordResetToken(token)
-                .orElseThrow(() -> new InvalidCredentialsException("Token không hợp lệ hoặc đã hết hạn."));
-
-        // Kiểm tra thời gian hết hạn
-        if (account.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new InvalidCredentialsException("Link đặt lại mật khẩu đã hết hạn.");
-        }
-
-        // Cập nhật mật khẩu mới
-        account.setPassword(passwordEncoder.encode(newPassword));
-
-        // Xóa token sau khi dùng xong
-        account.setPasswordResetToken(null);
-        account.setResetTokenExpiry(null);
-
-        accountRepository.save(account);
-    }
-
-    // --- THÊM HÀM XÁC THỰC MỚI ---
-    public void verifyAccount(String token) {
-        Account account = accountRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new ResourceNotFoundException("Token xác thực không hợp lệ."));
-
-        if (account.getTokenExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Token đã hết hạn. Vui lòng đăng ký lại.");
-        }
-
-        account.setStatus(1); // Kích hoạt
-        account.setVerificationToken(null); // Xóa token
-        account.setTokenExpiryDate(null);
-
-        accountRepository.save(account);
     }
 }
