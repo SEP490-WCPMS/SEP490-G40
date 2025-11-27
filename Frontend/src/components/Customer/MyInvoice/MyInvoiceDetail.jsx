@@ -35,9 +35,13 @@ function InvoiceDetail() {
     }, [invoiceId]);
 
 
-    // --- useEffect Mới: Tự động tạo QR PayOS khi vào trang ---
+    // --- useEffect: Tự động tạo QR PayOS ---
     useEffect(() => {
-        if (invoice && invoice.paymentStatus === 'PENDING') {
+        // SỬA LẠI ĐIỀU KIỆN TẠI ĐÂY:
+        // Cho phép tạo link nếu trạng thái LÀ: PENDING hoặc OVERDUE hoặc PARTIALLY_PAID
+        const allowedStatuses = ['PENDING', 'OVERDUE'];
+
+        if (invoice && allowedStatuses.includes(invoice.paymentStatus)) {
             createPayOSLink(invoice.id)
                 .then(res => setPayOSData(res.data))
                 .catch(err => console.error("Lỗi tạo PayOS link", err));
@@ -133,11 +137,38 @@ function InvoiceDetail() {
                             <span className="text-gray-600">VAT (Thuế):</span>
                             <span>{invoice.vatAmount.toLocaleString('vi-VN')} VNĐ</span>
                         </div>
+                        {/* --- THÊM ĐOẠN NÀY ĐỂ HIỆN PHÍ PHẠT 35K --- */}
+                        {invoice.latePaymentFee > 0 && (
+                            <div className="flex justify-between text-sm text-red-600 font-semibold bg-red-50 p-1 rounded">
+                                <span>Phí phạt nộp chậm:</span>
+                                <span>{invoice.latePaymentFee.toLocaleString('vi-VN')} VNĐ</span>
+                            </div>
+                        )}
+                        {/* ------------------------------------------- */}
                         {/* (Thêm các phí khác nếu có) */}
                         <hr className="my-1" />
-                        <div className="flex justify-between text-lg font-bold text-red-600">
-                            <span>TỔNG CỘNG:</span>
+
+                        {/* 1. Hiển thị Tổng giá trị gốc của Hợp đồng */}
+                        <div className="flex justify-between text-lg font-bold text-gray-800">
+                            <span>TỔNG GIÁ TRỊ HĐ:</span>
                             <span>{invoice.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                        </div>
+
+                        {/* 2. Nếu có trừ ví thì hiện dòng màu xanh */}
+                        {invoice.deductedAmount > 0 && (
+                            <div className="flex justify-between text-sm text-green-600 font-medium">
+                                <span>Đã trừ từ Ví tích lũy:</span>
+                                <span>- {invoice.deductedAmount.toLocaleString('vi-VN')} VNĐ</span>
+                            </div>
+                        )}
+
+                        {/* 3. Hiển thị số tiền THỰC TẾ cần quét mã (Màu đỏ to) */}
+                        <div className="flex justify-between text-xl font-bold text-red-600 mt-2 pt-2 border-t border-dashed">
+                            <span>CẦN THANH TOÁN:</span>
+                            <span>
+                                {/* Lấy Tổng - Đã Trừ. Nếu null thì coi như 0 */}
+                                {(invoice.totalAmount - (invoice.deductedAmount || 0)).toLocaleString('vi-VN')} VNĐ
+                            </span>
                         </div>
                     </div>
                 </div>

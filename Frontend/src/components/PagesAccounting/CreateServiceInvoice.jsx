@@ -48,7 +48,7 @@ function CreateServiceInvoice() {
 
                 // Pre-fill form
                 setFormData({
-                    invoiceNumber: `DVKĐ${calibrationId}${moment().format('MMYYYY')}`,
+                    invoiceNumber: `DVKD${calibrationId}${moment().format('MMYYYY')}`,
                     invoiceDate: moment().format('YYYY-MM-DD'),
                     dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
                     subtotalAmount: subtotal,

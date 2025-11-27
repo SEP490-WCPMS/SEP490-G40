@@ -142,6 +142,10 @@ function InvoiceList() {
                                             {!invoice.meterReadingId && (
                                                 <span className="block text-xs text-blue-600">(Phí Kiểm Định & Sửa Chữa, Thay Thế)</span>
                                             )}
+                                            {/* Phân biệt HĐ Dịch vụ (có readingId) */}
+                                            {invoice.meterReadingId && (
+                                                <span className="block text-xs text-blue-600">(Phí Sử Dụng Nước Trong Kì)</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 ...">{invoice.customerName}</td>
                                         <td className="px-6 py-4 ... font-medium text-red-600">
