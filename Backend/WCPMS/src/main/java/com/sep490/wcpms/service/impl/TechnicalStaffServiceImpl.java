@@ -159,7 +159,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // --- THÊM KIỂM TRA STATUS ---
         // Chỉ cho phép thao tác nếu đồng hồ chưa được lắp đặt
         if (meter.getMeterStatus() != WaterMeter.MeterStatus.IN_STOCK) {
-            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + meter.getMeterStatus());
+            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Trong Kho' (IN_STOCK). Trạng thái hiện tại: " + meter.getMeterStatus());
         }
         // --- HẾT PHẦN THÊM ---
 

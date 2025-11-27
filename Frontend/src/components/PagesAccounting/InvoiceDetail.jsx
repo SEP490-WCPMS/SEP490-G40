@@ -134,21 +134,67 @@ function InvoiceDetail() {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-                    {/* Tiền (chưa VAT) */}
-                    <div>
-                        <label className="block mb-1.5 text-sm font-medium text-gray-500">Tiền dịch vụ</label>
-                        <p className="text-sm text-gray-800 font-medium p-2">{invoiceDetail.subtotalAmount.toLocaleString('vi-VN')} VNĐ</p>
+                {/* --- CẬP NHẬT PHẦN HIỂN THỊ TIỀN (CHO KẾ TOÁN) --- */}
+                <div className="pt-4 border-t space-y-4">
+                    <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Chi tiết thanh toán</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        {/* Tiền gốc (Subtotal) */}
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                            <span className="text-sm text-gray-600">Tiền dịch vụ (chưa VAT):</span>
+                            <span className="font-medium">{invoiceDetail.subtotalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                        </div>
+
+                        {/* VAT */}
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                            <span className="text-sm text-gray-600">Tiền VAT:</span>
+                            <span className="font-medium">{invoiceDetail.vatAmount.toLocaleString('vi-VN')} VNĐ</span>
+                        </div>
+
+                        {/* Phí môi trường (nếu có) */}
+                        {invoiceDetail.environmentFeeAmount > 0 && (
+                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                                <span className="text-sm text-gray-600">Phí BVMT:</span>
+                                <span className="font-medium">{invoiceDetail.environmentFeeAmount.toLocaleString('vi-VN')} VNĐ</span>
+                            </div>
+                        )}
+
+                        {/* --- HIỂN THỊ PHÍ NỘP CHẬM --- */}
+                        {invoiceDetail.latePaymentFee > 0 && (
+                            <div className="flex justify-between items-center border-b border-red-100 pb-2 bg-red-50 px-2 rounded">
+                                <span className="text-sm text-red-600 font-semibold">Phí phạt nộp chậm:</span>
+                                <span className="font-bold text-red-600">{invoiceDetail.latePaymentFee.toLocaleString('vi-VN')} VNĐ</span>
+                            </div>
+                        )}
                     </div>
-                    {/* VAT */}
-                    <div>
-                        <label className="block mb-1.5 text-sm font-medium text-gray-500">Tiền VAT</label>
-                        <p className="text-sm text-gray-800 font-medium p-2">{invoiceDetail.vatAmount.toLocaleString('vi-VN')} VNĐ</p>
-                    </div>
-                    {/* Tổng cộng */}
-                    <div>
-                        <label className="block mb-1.5 text-sm font-medium text-gray-500">Tổng Tiền</label>
-                        <p className="text-lg text-red-600 font-bold p-2">{invoiceDetail.totalAmount.toLocaleString('vi-VN')} VNĐ</p>
+
+                    {/* --- TỔNG KẾT --- */}
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-3 mt-2">
+                        {/* Tổng giá trị hợp đồng */}
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-bold">TỔNG GIÁ TRỊ HÓA ĐƠN:</span>
+                            <span className="text-lg font-bold text-gray-800">{invoiceDetail.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                        </div>
+
+                        {/* Trừ Ví (Nếu có) */}
+                        {invoiceDetail.deductedAmount > 0 && (
+                            <div className="flex justify-between items-center text-green-600">
+                                <span className="text-sm font-medium flex items-center">
+                                    <DollarSign size={14} className="mr-1"/> Đã trừ từ Ví tích lũy:
+                                </span>
+                                <span className="font-medium">- {invoiceDetail.deductedAmount.toLocaleString('vi-VN')} VNĐ</span>
+                            </div>
+                        )}
+
+                        <div className="border-t border-gray-300 my-2"></div>
+
+                        {/* Số tiền thực thu */}
+                        <div className="flex justify-between items-center">
+                            <span className="text-red-600 font-extrabold text-lg">KHÁCH CẦN THANH TOÁN:</span>
+                            <span className="text-2xl font-extrabold text-red-600">
+                                {(invoiceDetail.totalAmount - (invoiceDetail.deductedAmount || 0)).toLocaleString('vi-VN')} VNĐ
+                            </span>
+                        </div>
                     </div>
                 </div>
                 

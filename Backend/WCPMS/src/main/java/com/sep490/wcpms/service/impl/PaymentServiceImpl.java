@@ -196,7 +196,7 @@ public class PaymentServiceImpl implements PaymentService {
         if (amountPaid < invoice.getTotalAmount().intValue()) {
             System.err.println(">>> LỖI: Khách trả thiếu tiền! Yêu cầu: " + invoice.getTotalAmount() + ", Trả: " + amountPaid);
             // Tùy bạn: Có thể return luôn hoặc vẫn update nhưng ghi chú là thiếu tiền
-            // return;
+            return;
         }
 
         // 6. Cập nhật trạng thái (Nếu chưa thanh toán)
