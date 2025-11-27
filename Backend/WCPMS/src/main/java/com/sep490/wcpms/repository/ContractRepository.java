@@ -130,4 +130,13 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             LocalDate from,
             LocalDate to
     );
+
+    // --- THÊM HÀM NÀY ---
+    /**
+     * Lấy các Hợp đồng đang ACTIVE và CHƯA có hóa đơn lắp đặt (kiểm tra bảng Invoice).
+     */
+    @Query("SELECT c FROM Contract c " +
+            "WHERE c.contractStatus = 'ACTIVE' " +
+            "AND c.id NOT IN (SELECT i.contract.id FROM Invoice i WHERE i.contract IS NOT NULL)")
+    Page<Contract> findActiveContractsWithoutInvoice(Pageable pageable);
 }

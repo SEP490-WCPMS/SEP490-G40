@@ -1,23 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// Sửa: Thêm 2 hàm mới
-import { getRevenueReport, getAccountingDashboardStats, getRecentUnbilledFees } from '../Services/apiAccountingStaff';
-import { RefreshCw, Calendar as CalendarIcon, DollarSign, FileWarning, Clock, FilePlus, Eye } from 'lucide-react';
+import { 
+    getRevenueReport, 
+    getAccountingDashboardStats, 
+    getRecentUnbilledFees, 
+    getRecentInstallContracts, 
+    getRecentPendingReadings,
+    generateWaterBill,       
+    getWaterBillCalculation  
+} from '../Services/apiAccountingStaff';
+import { 
+    RefreshCw, Calendar as CalendarIcon, Eye, 
+    Droplets, Hammer, ClipboardList, Calculator
+} from 'lucide-react';
 import { addDays, format } from 'date-fns';
 import moment from 'moment';
 
-// Import Biểu đồ (Cần: npm install recharts)
+// Import Biểu đồ
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-// Import Lịch (Từ shadcn/ui hoặc component của bạn)
+// Import UI
 import { Button } from "@/components/ui/button"; 
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils"; // (Đảm bảo bạn có file utils này)
-/**
- * Trang Dashboard Kế toán (Mới)
- */
+import { cn } from "@/lib/utils";
+import { Modal, Descriptions, Spin, message, Button as AntButton, Tag } from 'antd';
+
 function AccountingDashboard() {
-    // --- State cho 4 Thẻ Stats ---
+    // --- State Stats ---
     const [stats, setStats] = useState({
         unbilledFeesCount: 0,
         pendingInvoicesCount: 0,
@@ -25,24 +34,35 @@ function AccountingDashboard() {
         overdueInvoicesCount: 0,
     });
     
-    // --- State cho Biểu đồ Doanh thu ---
+    // --- State Chart ---
     const [chartData, setChartData] = useState([]);
     
-    // --- State cho Bảng "Việc cần làm" ---
-    const [recentFees, setRecentFees] = useState([]);
+    // --- State Danh sách (3 Tab) ---
+    const [recentData, setRecentData] = useState({
+        calibrations: [], 
+        contracts: [],    
+        readings: []      
+    });
+
+    const [activeTab, setActiveTab] = useState('WATER');
     
-    // State chung
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    // State cho Lịch (DateRangePicker)
+    // State Date
     const [date, setDate] = useState({
-        from: addDays(new Date(), -30), // 30 ngày trước
+        from: addDays(new Date(), -30), 
         to: new Date()
     });
 
-    // Hàm tải TẤT CẢ dữ liệu cho Dashboard
+    // === 1. THÊM STATE CHO MODAL TIỀN NƯỚC ===
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [modalData, setModalData] = useState(null);       
+    const [modalLoading, setModalLoading] = useState(false); 
+    const [submitting, setSubmitting] = useState(false);     
+    const [selectedReadingId, setSelectedReadingId] = useState(null);
+
     const fetchData = () => {
         if (!date || !date.from || !date.to) {
             setError("Vui lòng chọn khoảng thời gian hợp lệ.");
@@ -52,20 +72,19 @@ function AccountingDashboard() {
         setLoading(true);
         setError(null);
         
-        // Chạy song song 3 API
         Promise.all([
             getAccountingDashboardStats(),
             getRevenueReport(date.from, date.to),
-            getRecentUnbilledFees(5) // Lấy 5 phí mới nhất
+            getRecentUnbilledFees(5),       // Tab 3: Kiểm định
+            getRecentInstallContracts(5),   // Tab 2: Lắp đặt
+            getRecentPendingReadings(5)     // Tab 1: Tiền nước
         ])
-        .then(([statsResponse, revenueResponse, feesResponse]) => {
-            
-            // 1. Xử lý Stats
+        .then(([statsResponse, revenueResponse, calibRes, contractRes, readingRes]) => {
+            // 1. Stats
             setStats(statsResponse.data);
             
-            // 2. Xử lý Biểu đồ Doanh thu
+            // 2. Chart
             const total = revenueResponse.data.reduce((acc, item) => acc + item.totalRevenue, 0);
-            // (Cập nhật Stats với Doanh thu của kỳ đã chọn)
             setStats(prev => ({ ...prev, totalRevenue: total }));
             
             const formattedData = revenueResponse.data.map(item => ({
@@ -74,32 +93,228 @@ function AccountingDashboard() {
             }));
             setChartData(formattedData);
             
-            // 3. Xử lý Bảng "Việc cần làm"
-            setRecentFees(feesResponse.data?.content || []);
-
+            // 3. Lists - Sort lại cho chắc chắn
+            setRecentData({
+                calibrations: calibRes.data?.content || [],
+                contracts: (contractRes.data?.content || []).sort((a,b) => b.id - a.id),
+                readings: readingRes.data?.content || []
+            });
         })
         .catch(err => {
-            console.error("Lỗi tải dữ liệu Dashboard:", err);
-            setError("Không thể tải dữ liệu. Vui lòng thử lại.");
+            console.error("Lỗi tải Dashboard:", err);
+            // setError("Không thể tải dữ liệu."); // Có thể ẩn lỗi nếu muốn UI sạch
         })
         .finally(() => setLoading(false));
     };
 
-    // Tải dữ liệu khi component mount hoặc khi Date thay đổi
     useEffect(() => {
         fetchData();
-    }, [date]); // Tự động tải lại khi đổi ngày
+    }, [date]);
+
+
+    // === 2. CÁC HÀM XỬ LÝ MODAL ===
+    
+    // Format tiền tệ
+    const fmtMoney = (v) => (v != null ? `${Number(v).toLocaleString('vi-VN')} đ` : '0 đ');
+
+    // Mở Modal
+    const handleOpenCreateModal = (readingId) => {
+        setSelectedReadingId(readingId);
+        setModalData(null);
+        setIsModalVisible(true);
+        setModalLoading(true);
+
+        getWaterBillCalculation(readingId)
+            .then(res => {
+                setModalData(res.data);
+            })
+            .catch(err => {
+                message.error("Lỗi tính toán: " + (err.response?.data?.message || "Kiểm tra lại giá nước"));
+                setIsModalVisible(false);
+            })
+            .finally(() => setModalLoading(false));
+    };
+
+    // --- XÁC NHẬN TẠO HÓA ĐƠN (Phiên bản Async/Await chuẩn cho Dashboard) ---
+    const handleConfirmGenerate = async () => {
+        if (!selectedReadingId) return;
+        
+        // 1. Bắt đầu Loading
+        setSubmitting(true);
+
+        try {
+            // 2. Gọi API tạo hóa đơn
+            const response = await generateWaterBill(selectedReadingId);
+            
+            // 3. Thông báo thành công
+            // (Dùng optional chaining ?. để tránh lỗi nếu không có invoiceNumber)
+            const invoiceNum = response.data?.invoiceNumber || '';
+            message.success(`Thành công! Hóa đơn ${invoiceNum} đã được tạo.`);
+            
+            // 4. Đóng modal NGAY LẬP TỨC để tránh UI bị đơ
+            setIsModalVisible(false);
+            setModalData(null);
+            
+            // 5. Cập nhật lại dữ liệu Dashboard
+            // (Gọi cái này sau cùng để không ảnh hưởng việc đóng modal)
+            fetchData(); 
+
+        } catch (err) {
+            console.error("Lỗi khi tạo hóa đơn:", err);
+            message.error(err.response?.data?.message || "Tạo hóa đơn thất bại.");
+        } finally {
+            // 6. LUÔN LUÔN tắt loading dù thành công hay thất bại
+            setSubmitting(false);
+        }
+    };
+
+    // Đóng Modal
+    const handleCancelModal = () => {
+        setIsModalVisible(false);
+        setModalData(null);
+        setSelectedReadingId(null);
+    };
+
+
+    // --- HÀM RENDER NỘI DUNG BẢNG ---
+    const renderTableContent = () => {
+        switch (activeTab) {
+            case 'WATER': 
+                return (
+                    <>
+                        <thead className="bg-blue-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày Đọc</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách Hàng</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã Đồng Hồ</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tiêu Thụ</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {recentData.readings.length === 0 && <tr><td colSpan="5" className="p-4 text-center italic text-gray-500">Không có chỉ số chờ lập hóa đơn.</td></tr>}
+                            {recentData.readings.map(item => (
+                                <tr key={item.id || item.readingId} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-700">
+                                        {moment(item.readingDate).format('DD/MM/YYYY')}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm">
+                                        <div className="font-medium text-gray-900">{item.customerName}</div>
+                                        <div className="text-xs text-gray-500 truncate max-w-[150px]">{item.customerAddress}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700 font-mono">
+                                        {item.meterCode}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm font-bold text-blue-600 text-right">
+                                        {item.consumption} m³
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-center">
+                                        <button 
+                                            onClick={() => handleOpenCreateModal(item.readingId)} 
+                                            className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-xs border border-blue-200 bg-blue-50 px-2 py-1 rounded transition-colors hover:bg-blue-100"
+                                        >
+                                            <Calculator size={14} className="mr-1"/> Lập HĐ
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </>
+                );
+
+            case 'INSTALL': 
+                return (
+                    <>
+                        <thead className="bg-orange-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã HĐ</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách Hàng</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Giá Trị</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày Lắp Đặt</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {recentData.contracts.length === 0 && <tr><td colSpan="5" className="p-4 text-center italic text-gray-500">Không có HĐ chờ thanh toán phí lắp đặt.</td></tr>}
+                            {recentData.contracts.map(item => (
+                                <tr key={item.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm font-medium text-gray-800">
+                                        {item.contractNumber || `#${item.id}`}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm">
+                                        <div className="font-medium">{item.customerName || `KH #${item.customerId}`}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-right font-medium text-orange-700">
+                                        {(item.contractValue || 0).toLocaleString('vi-VN')} đ
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                        {item.installationDate ? moment(item.installationDate).format('DD/MM/YYYY') : '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-center">
+                                        <button 
+                                            onClick={() => navigate(
+                                                `/accounting/contracts/${item.id}/installation-invoice`, 
+                                                { state: { contract: item } } 
+                                            )} 
+                                            className="inline-flex items-center text-orange-600 hover:text-orange-800 font-medium text-xs border border-orange-200 bg-orange-50 px-2 py-1 rounded"
+                                        >
+                                            <Eye size={14} className="mr-1"/> Lập HĐ
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </>
+                );
+
+            case 'CALIB': 
+                return (
+                    <>
+                        <thead className="bg-purple-50">
+                            <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày KĐ</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách Hàng</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã ĐH</th>
+                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Chi Phí</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {recentData.calibrations.length === 0 && <tr><td colSpan="5" className="p-4 text-center italic text-gray-500">Không có phí kiểm định chờ.</td></tr>}
+                            {recentData.calibrations.map(item => (
+                                <tr key={item.calibrationId} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-700">
+                                        {moment(item.calibrationDate).format('DD/MM/YYYY')}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm font-medium">{item.customerName}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">{item.meterCode}</td>
+                                    <td className="px-4 py-3 text-sm font-medium text-purple-700 text-right">
+                                        {item.calibrationCost.toLocaleString('vi-VN')} đ
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-center">
+                                        <button 
+                                            onClick={() => navigate(`/accounting/unbilled-fees/${item.calibrationId}`)}
+                                            className="inline-flex items-center text-purple-600 hover:text-purple-800 font-medium text-xs border border-purple-200 bg-purple-50 px-2 py-1 rounded"
+                                        >
+                                            <Eye size={14} className="mr-1"/> Xem chi tiết
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </>
+                );
+            default: return null;
+        }
+    };
 
     return (
         <div className="space-y-6">
-            {/* Header: Tiêu đề và Lọc ngày */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Bảng điều khiển Kế Toán</h1>
                     <p className="text-sm text-gray-600">Tổng quan doanh thu và các khoản phí.</p>
                 </div>
-                
-                {/* Bộ lọc Ngày (DateRangePicker) */}
                 <div className="flex items-center gap-2">
                     <div className={cn("grid gap-2")}>
                         <Popover>
@@ -149,63 +364,41 @@ function AccountingDashboard() {
                 </div>
             </div>
 
-            {/* Thẻ Stats (KPIs) - ĐÃ CẬP NHẬT */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Thẻ 1: Tổng Doanh Thu (Theo kỳ) */}
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">Tổng Doanh Thu (theo kỳ)</h4>
-                    <p className="text-3xl font-bold text-green-600">
+                    <p className="text-2xl lg:text-3xl font-bold text-green-600">
                         {loading ? '...' : (stats.totalRevenue || 0).toLocaleString('vi-VN')} VNĐ
                     </p>
                 </div>
-                {/* Thẻ 2: Phí Chờ Lập HĐ (To-Do) */}
-                 <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">Phí chờ lập Hóa đơn</h4>
-                    <p className="text-3xl font-bold text-blue-600">
-                         {loading ? '...' : stats.unbilledFeesCount}
-                         <span className="text-lg ml-2">khoản</span>
+                    <p className="text-2xl lg:text-3xl font-bold text-blue-600">
+                         {loading ? '...' : stats.unbilledFeesCount} <span className="text-lg text-gray-400 font-normal">khoản</span>
                     </p>
                 </div>
-                {/* Thẻ 3: HĐ Chờ Thanh Toán (Công nợ) */}
-                 <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">HĐ chờ thanh toán</h4>
-                    <p className="text-3xl font-bold text-yellow-600">
-                         {loading ? '...' : stats.pendingInvoicesCount}
-                         <span className="text-lg ml-2">hóa đơn</span>
-                    </p>
-                     <p className="text-sm text-gray-500">
-                        Tổng tiền: {(stats.pendingInvoicesAmount || 0).toLocaleString('vi-VN')} VNĐ
+                    <p className="text-2xl lg:text-3xl font-bold text-yellow-600">
+                         {loading ? '...' : stats.pendingInvoicesCount} <span className="text-lg text-gray-400 font-normal">hóa đơn</span>
                     </p>
                 </div>
-                {/* Thẻ 4: HĐ Quá Hạn (Cần đòi nợ) */}
-                 <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">Hóa đơn QUÁ HẠN</h4>
-                    <p className="text-3xl font-bold text-red-600">
-                         {loading ? '...' : stats.overdueInvoicesCount}
-                         <span className="text-lg ml-2">hóa đơn</span>
+                    <p className="text-2xl lg:text-3xl font-bold text-red-600">
+                         {loading ? '...' : stats.overdueInvoicesCount} <span className="text-lg text-gray-400 font-normal">hóa đơn</span>
                     </p>
                 </div>
             </div>
 
-            {/* Biểu đồ Doanh thu (Chart) */}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-                 <h3 className="text-lg font-semibold text-gray-700 mb-4">
-                    Thống kê Doanh thu theo ngày
-                </h3>
-                {loading && <p>Đang tải dữ liệu biểu đồ...</p>}
-                {error && <p className="text-red-600">{error}</p>}
+                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Thống kê Doanh thu theo ngày</h3>
                 {!loading && !error && (      
                         <ResponsiveContainer width="100%" height={300}>
-                            <LineChart
-                                data={chartData}
-                                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                            >
+                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="name" fontSize={12} />
-                                <YAxis 
-                                    tickFormatter={(value) => new Intl.NumberFormat('vi-VN').format(value)}
-                                    fontSize={12}
-                                />
+                                <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN').format(value)} fontSize={12} />
                                 <Tooltip formatter={(value) => `${value.toLocaleString('vi-VN')} VNĐ`} />
                                 <Legend />
                                 <Line type="monotone" dataKey="Doanh thu" stroke="#16A34A" strokeWidth={2} activeDot={{ r: 8 }} />
@@ -214,60 +407,124 @@ function AccountingDashboard() {
                 )}
             </div>
             
-            {/* (Bạn có thể thêm bảng "Hóa đơn xử lý gần đây" ở đây) */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="border-b border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 pb-0 sm:pb-0">
+                        <h3 className="text-lg font-semibold text-gray-700 mb-4 sm:mb-0">
+                            Danh sách chờ Lập Hóa đơn
+                        </h3>
+                        <div className="flex space-x-1 bg-gray-100 p-1 rounded-t-lg">
+                            <button
+                                onClick={() => setActiveTab('WATER')}
+                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                                    activeTab === 'WATER' 
+                                    ? 'bg-white text-blue-600 shadow-sm border-t-2 border-blue-600' 
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                <Droplets size={16} className="mr-2" /> Tiền Nước
+                                <span className="ml-2 bg-blue-100 text-blue-600 py-0.5 px-2 rounded-full text-xs">{recentData.readings.length}</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('INSTALL')}
+                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                                    activeTab === 'INSTALL' 
+                                    ? 'bg-white text-orange-600 shadow-sm border-t-2 border-orange-600' 
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                <Hammer size={16} className="mr-2" /> Phí Lắp Đặt
+                                <span className="ml-2 bg-orange-100 text-orange-600 py-0.5 px-2 rounded-full text-xs">{recentData.contracts.length}</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('CALIB')}
+                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                                    activeTab === 'CALIB' 
+                                    ? 'bg-white text-purple-600 shadow-sm border-t-2 border-purple-600' 
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                <ClipboardList size={16} className="mr-2" /> Phí Kiểm Định
+                                <span className="ml-2 bg-purple-100 text-purple-600 py-0.5 px-2 rounded-full text-xs">{recentData.calibrations.length}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-            {/* Bảng "Việc cần làm": Phí chờ duyệt */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-                 <div className="flex justify-between items-center mb-4">
-                     <h3 className="text-lg font-semibold text-gray-700">
-                        Các khoản phí chờ lập Hóa đơn (Mới nhất)
-                    </h3>
-                    <Link to="/accounting/unbilled-fees" className="text-sm text-blue-600 hover:underline">
-                        Xem tất cả
-                    </Link>
-                 </div>
-                 <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-4 py-2 ...">Ngày KĐ</th>
-                                <th className="px-4 py-2 ...">Khách Hàng</th>
-                                <th className="px-4 py-2 ...">Mã Đồng Hồ</th>
-                                <th className="px-4 py-2 ...">Chi Phí (VNĐ)</th>
-                                <th className="px-4 py-2 ...">Thao Tác</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {!loading && recentFees.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" className="px-4 py-4 text-center italic text-gray-500">
-                                        Không có khoản phí nào đang chờ.
-                                    </td>
-                                </tr>
-                            )}
-                            {recentFees.map(fee => (
-                                <tr key={fee.calibrationId}>
-                                    <td className="px-4 py-3 ...">{moment(fee.calibrationDate).format('DD/MM/YYYY')}</td>
-                                    <td className="px-4 py-3 ...">{fee.customerName}</td>
-                                    <td className="px-4 py-3 ...">{fee.meterCode}</td>
-                                    <td className="px-4 py-3 ... font-medium text-red-600">
-                                        {fee.calibrationCost.toLocaleString('vi-VN')}
-                                    </td>
-                                    <td className="px-4 py-3 ...">
-                                        <button
-                                            onClick={() => navigate(`/accounting/unbilled-fees/${fee.calibrationId}`)}
-                                            className="inline-flex items-center px-3 py-1.5 ... text-xs ... text-white bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            <Eye size={14} className="mr-1.5" />
-                                            Xem & Tạo HĐ
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
+                        {renderTableContent()}
                     </table>
-                 </div>
+                </div>
+
+                <div className="bg-gray-50 p-3 text-right">
+                    {activeTab === 'WATER' && (
+                        <Link to="/accounting/billing/pending-readings" className="text-sm text-blue-600 hover:underline">Xem tất cả Tiền nước &rarr;</Link>
+                    )}
+                    {activeTab === 'INSTALL' && (
+                        <Link to="/accounting/contracts/eligible-installation" className="text-sm text-orange-600 hover:underline">Xem tất cả Hợp đồng mới &rarr;</Link>
+                    )}
+                    {activeTab === 'CALIB' && (
+                        <Link to="/accounting/unbilled-fees" className="text-sm text-purple-600 hover:underline">Xem tất cả Phí kiểm định &rarr;</Link>
+                    )}
+                </div>
             </div>
+
+            <Modal
+                title="Xác nhận Lập Hóa đơn Tiền nước"
+                open={isModalVisible}
+                onCancel={handleCancelModal}
+                footer={[
+                    <AntButton key="back" onClick={handleCancelModal}>Hủy bỏ</AntButton>,
+                    <AntButton 
+                        key="submit" 
+                        type="primary" 
+                        loading={submitting} 
+                        onClick={handleConfirmGenerate}
+                        className="bg-green-600 hover:bg-green-700"
+                        disabled={!modalData}
+                    >
+                        Xác nhận Phát hành
+                    </AntButton>,
+                ]}
+                width={700}
+            >
+                <Spin spinning={modalLoading} tip="Đang tính toán số tiền...">
+                    {modalData ? (
+                        <div className="space-y-4">
+                            <div className="bg-blue-50 p-3 rounded-md border border-blue-100 grid grid-cols-2 gap-2 text-sm">
+                                <div>Ngày đọc: <strong>{moment(modalData.readingDate).format('DD/MM/YYYY')}</strong></div>
+                                <div>Tiêu thụ: <strong>{modalData.consumption} m³</strong></div>
+                                <div>Chỉ số cũ: {modalData.previousReading}</div>
+                                <div>Chỉ số mới: {modalData.currentReading}</div>
+                            </div>
+
+                            <Descriptions title="Chi tiết tính tiền" bordered size="small" column={1}>
+                                <Descriptions.Item label="Loại giá áp dụng">
+                                    <Tag color="blue">{modalData.priceTypeName}</Tag>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Đơn giá">
+                                    {fmtMoney(modalData.unitPrice)} / m³
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Thành tiền (Trước thuế)">
+                                    {modalData.consumption} m³ x {fmtMoney(modalData.unitPrice)} = <strong>{fmtMoney(modalData.subtotalAmount)}</strong>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Phí Bảo vệ Môi trường">
+                                    {modalData.consumption} m³ x {fmtMoney(modalData.environmentFee)} = <strong>{fmtMoney(modalData.environmentFeeAmount)}</strong>
+                                </Descriptions.Item>
+                                <Descriptions.Item label={`Thuế VAT (${modalData.vatRate}%)`}>
+                                    {fmtMoney(modalData.subtotalAmount)} x {modalData.vatRate}% = <strong>{fmtMoney(modalData.vatAmount)}</strong>
+                                </Descriptions.Item>
+                                <Descriptions.Item label={<span className="text-lg font-bold text-red-600">TỔNG CỘNG</span>}>
+                                    <span className="text-lg font-bold text-red-600">{fmtMoney(modalData.totalAmount)}</span>
+                                </Descriptions.Item>
+                            </Descriptions>
+                        </div>
+                    ) : (
+                        <div className="py-10 text-center text-gray-500">Đang tải dữ liệu tính toán...</div>
+                    )}
+                </Spin>
+            </Modal>
         </div>
     );
 }
