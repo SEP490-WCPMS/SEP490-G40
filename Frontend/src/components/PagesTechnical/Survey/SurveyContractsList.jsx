@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw } from 'lucide-react'; // Icon làm mới
 
@@ -8,15 +8,18 @@ function SurveyContractsList() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Hàm fetch dữ liệu
-    const fetchData = () => {
+    const fetchData = (opts = {}) => {
         setLoading(true);
         setError(null); // Reset lỗi trước khi fetch
-        getAssignedSurveyContracts()
+        const params = { status: 'PENDING', ...opts };
+        getAssignedSurveyContracts(params)
             .then(response => {
-                // Đảm bảo contracts luôn là mảng, kể cả khi API trả về null/undefined
-                setContracts(response.data || []);
+                // Backend có thể trả về dạng paged `{ content: [...] }` hoặc mảng trực tiếp
+                const data = response?.data?.content || response?.data || [];
+                setContracts(Array.isArray(data) ? data : []);
             })
             .catch(err => {
                 console.error("Lỗi khi lấy danh sách hợp đồng khảo sát:", err);
@@ -28,10 +31,44 @@ function SurveyContractsList() {
             });
     };
 
-    // Gọi fetchData khi component mount lần đầu
+    // Gọi fetchData khi component mount lần đầu; nếu URL có ?highlight=... thì gửi keyword để backend ưu tiên trả về
     useEffect(() => {
-        fetchData();
+        const params = new URLSearchParams(location.search);
+        const highlightId = params.get('highlight');
+        if (highlightId) {
+            // nếu highlight giống mã hợp đồng (REQ-...), dùng làm keyword tìm kiếm
+            fetchData({ keyword: highlightId });
+        } else {
+            fetchData();
+        }
     }, []); // Mảng dependency rỗng đảm bảo chỉ chạy 1 lần
+
+    // Highlight logic: nếu URL có ?highlight=<id> thì cuộn tới hàng tương ứng sau khi dữ liệu load
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const highlightId = params.get('highlight');
+        if (!highlightId) return;
+
+        let attempts = 0;
+        const tryHighlight = () => {
+            attempts += 1;
+            const el = document.querySelector(`[data-contract-id="${highlightId}"]`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('notification-highlight');
+                const remove = (e) => {
+                    if (el.contains(e.target)) return;
+                    el.classList.remove('notification-highlight');
+                    document.removeEventListener('click', remove);
+                };
+                setTimeout(() => document.addEventListener('click', remove), 100);
+                return;
+            }
+            if (attempts < 10) setTimeout(tryHighlight, 300);
+        };
+
+        setTimeout(tryHighlight, 200);
+    }, [location.search, contracts]);
 
     // Hàm điều hướng đến trang chi tiết
     const handleViewDetails = (contractId) => {
@@ -99,7 +136,7 @@ function SurveyContractsList() {
                             {/* Render dữ liệu hoặc thông báo rỗng */}
                             {contracts.length > 0 ? (
                                 contracts.map(contract => (
-                                    <tr key={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                    <tr key={contract.id} data-contract-id={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
                                         {/* Dữ liệu từng dòng */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contract.contractNumber}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.customerName}</td>

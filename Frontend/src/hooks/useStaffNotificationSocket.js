@@ -30,20 +30,61 @@ export default function useStaffNotificationSocket(onMessage, enabled = true) {
       Authorization: `Bearer ${token}`
     };
 
+    // Determine topics to subscribe to based on user/token
+    const normalizeRoleToTopic = (r) => {
+      if (!r) return null;
+      return String(r).toLowerCase().replace(/^role_/, '').replace(/[^a-z0-9]+/g, '-');
+    };
+
+    const topics = new Set();
+    // keep legacy service-staff topic for compatibility
+    topics.add('service-staff');
+
+    try {
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+        const user = JSON.parse(userJson);
+        if (user?.roleName) {
+          const t = normalizeRoleToTopic(user.roleName);
+          if (t) topics.add(t);
+        }
+      }
+    } catch (e) {}
+
+    try {
+      // also inspect JWT roles claim if present
+      const parts = token.split('.');
+      if (parts.length > 1) {
+        const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const json = JSON.parse(decodeURIComponent(atob(payloadB64).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join('')));
+        const roles = json?.roles || json?.role || null;
+        if (Array.isArray(roles)) {
+          roles.forEach(r => { const t = normalizeRoleToTopic(r); if (t) topics.add(t); });
+        } else if (typeof roles === 'string') {
+          const t = normalizeRoleToTopic(roles); if (t) topics.add(t);
+        }
+      }
+    } catch (e) {}
+
     stompClient.onConnect = () => {
-      // Subscribe kênh cá nhân
+      // Subscribe personal queue
       stompClient.subscribe('/user/queue/notifications', (msg) => {
         try {
           const data = JSON.parse(msg.body);
           if (onMessage) onMessage(data);
-        } catch {}
+        } catch (err) { console.error('WS parse error', err); }
       });
-      // Subscribe kênh nhóm (service-staff)
-      stompClient.subscribe('/topic/service-staff', (msg) => {
+
+      // Subscribe to determined topics
+      topics.forEach(topic => {
         try {
-          const data = JSON.parse(msg.body);
-          if (onMessage) onMessage(data);
-        } catch {}
+          stompClient.subscribe(`/topic/${topic}`, (msg) => {
+            try {
+              const data = JSON.parse(msg.body);
+              if (onMessage) onMessage(data);
+            } catch (err) { console.error('WS parse error', err); }
+          });
+        } catch (e) {}
       });
     };
 

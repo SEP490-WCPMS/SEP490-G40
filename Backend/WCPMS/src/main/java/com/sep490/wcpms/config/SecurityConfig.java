@@ -111,6 +111,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/payment/webhook/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
+                                // Allow notifications endpoints for all staff roles (service/technical/accounting/cashier)
+                                .requestMatchers("/api/service/notifications/**").hasAnyAuthority("SERVICE_STAFF","TECHNICAL_STAFF","ACCOUNTING_STAFF","CASHIER_STAFF")
+
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
                                 .requestMatchers("/api/readings/**").hasAuthority("CASHIER_STAFF")
                                 .requestMatchers("/api/cashier/**").hasAuthority("CASHIER_STAFF")

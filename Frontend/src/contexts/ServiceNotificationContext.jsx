@@ -67,11 +67,30 @@ export const ServiceNotificationProvider = ({ children }) => {
             return null;
         };
 
+        // Helper: decode JWT payload (best-effort, no dependency)
+        const decodeJwtPayload = (token) => {
+            if (!token || typeof token !== 'string') return null;
+            try {
+                const parts = token.split('.');
+                if (parts.length < 2) return null;
+                const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                const json = decodeURIComponent(atob(payloadB64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(json);
+            } catch (e) {
+                return null;
+            }
+        };
+
         // (debug helpers removed)
 
         // Transient toasts (not persisted in list or unread count)
         const [transientToasts, setTransientToasts] = useState([]);
         const recentTransientIdsRef = React.useRef(new Set());
+        // Track recent local actions (type + contractId) to avoid treating server echo as new bell notification
+        // Key format: `${type}::${contractId || ''}` => timestamp(ms)
+        const recentLocalActionsRef = React.useRef(new Map());
         const showTransientToast = useCallback((notification) => {
             const id = notification.id || `toast_${Date.now()}_${Math.random().toString(36).substr(2,9)}`;
             const toast = { ...notification, id, timestamp: notification.timestamp || new Date().toISOString() };
@@ -86,6 +105,15 @@ export const ServiceNotificationProvider = ({ children }) => {
                 );
                 if (isDup) return prev;
                 if (toast.id) recentTransientIdsRef.current.add(String(toast.id));
+                // Record this as a recent local action so incoming WS echo can be ignored
+                try {
+                    const key = `${toast.type || ''}::${toast.contractId || ''}`;
+                    recentLocalActionsRef.current.set(key, Date.now());
+                    // schedule cleanup in 12s
+                    setTimeout(() => {
+                        try { recentLocalActionsRef.current.delete(key); } catch (e) {}
+                    }, 12000);
+                } catch (e) {}
                 return [toast, ...prev].slice(0, 5);
             });
 
@@ -127,6 +155,23 @@ export const ServiceNotificationProvider = ({ children }) => {
                     return;
                 }
 
+                // If backend DID NOT include actor info, but we recently performed a local action
+                // with the same type+contractId, treat this as self-echo and show transient toast only.
+                try {
+                    const key = `${data.type || data.title || ''}::${data.contractId || data.referenceId || ''}`;
+                    const ts = recentLocalActionsRef.current.get(key);
+                    if (!actor && ts && (Date.now() - ts) < 10000) {
+                        try {
+                            showTransientToast({
+                                ...data,
+                                id: data.id || `toast_${Date.now()}_${Math.random().toString(36).substr(2,9)}`,
+                                timestamp: data.timestamp || data.createdAt || new Date().toISOString()
+                            });
+                        } catch (e) {}
+                        return;
+                    }
+                } catch (e) {}
+
                 // Lightweight debug log for incoming notifications
                 try {
                     console.debug('[NOTIF WS] incoming payload:', data, 'extractedActor:', actor, 'currentUser:', currentUserId);
@@ -152,7 +197,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                     return prev;
                 });
             },
-            true // enabled
+            !!localStorage.getItem('token') // enabled when token present
         );
     // Load từ localStorage nếu có
     const [notifications, setNotifications] = useState(() => {
@@ -262,6 +307,11 @@ export const ServiceNotificationProvider = ({ children }) => {
         };
 
         // ✅ Step 1: Save to local state/localStorage immediately with de-dup logic
+        // Compute whether an unread SSE placeholder already exists for this type+contract
+        const existedUnreadPlaceholder = notifications.some(n => (
+            n.source === 'sse' && n.type === newNotif.type && String(n.contractId) === String(newNotif.contractId) && !n.isRead
+        ));
+
         setNotifications(prev => {
             // ✅ DEDUP: Skip if same notification already exists (regardless of source)
             // Match by: same type + same contractId + timestamp within 5 seconds
@@ -270,7 +320,6 @@ export const ServiceNotificationProvider = ({ children }) => {
                 n.contractId === newNotif.contractId &&
                 Math.abs(new Date(n.timestamp) - new Date(newNotif.timestamp)) < 5000
             );
-            
             if (isDuplicate) {
                 return prev;
             }
@@ -278,13 +327,18 @@ export const ServiceNotificationProvider = ({ children }) => {
             // Replace older SSE placeholder if DB item arrives (for persistence)
             let filtered = prev.filter(n => n.id !== id);
             if (newNotif.source === 'db') {
-                filtered = filtered.filter(n => !(n.source === 'sse' && n.type === newNotif.type && n.contractId === newNotif.contractId));
+                filtered = filtered.filter(n => !(n.source === 'sse' && n.type === newNotif.type && String(n.contractId) === String(newNotif.contractId)));
             }
 
             const updated = [newNotif, ...filtered].slice(0, 100);
             return updated;
         });
-        if (!newNotif.isRead) setUnreadCount(prev => prev + 1);
+
+        // Only increment unreadCount when the incoming notification is unread and
+        // it did not replace an existing unread placeholder from SSE.
+        if (!newNotif.isRead && !existedUnreadPlaceholder) {
+            setUnreadCount(prev => prev + 1);
+        }
 
         // ✅ Step 2: Async save to DB only for local-created notifications
         if (!newNotif.syncedToDb) {
@@ -299,7 +353,7 @@ export const ServiceNotificationProvider = ({ children }) => {
         setTimeout(() => {
             hidePopup(id);
         }, 5000);
-    }, [hidePopup, syncNotificationToDB, syncTimer]);
+    }, [hidePopup, syncNotificationToDB, syncTimer, notifications]);
 
     const markAsRead = useCallback((id) => {
         setNotifications(prev =>
@@ -313,14 +367,33 @@ export const ServiceNotificationProvider = ({ children }) => {
 
         try {
             apiClient.patch(`/service/notifications/${id}/read`)
-                .catch(err => logger.warn('[NOTIF DB SYNC] Failed to mark as read in DB:', err))
-                .finally(() => {
-                    // Fetch unread count directly to avoid depending on function order
-                    apiClient.get('/service/notifications/unread-count')
-                        .then(resp => {
-                            if (typeof resp?.data === 'number') setUnreadCount(resp.data);
-                        })
-                        .catch(() => {});
+                .then(() => {
+                    // After marking, refresh unread count from server
+                    return apiClient.get('/service/notifications/unread-count');
+                })
+                .then(resp => {
+                    if (typeof resp?.data === 'number') setUnreadCount(resp.data);
+                })
+                .catch(err => {
+                    // Handle 401 specifically with a transient toast to inform the user
+                    if (err?.response?.status === 401) {
+                        try {
+                            // Try to decode JWT payload for debugging
+                            const token = localStorage.getItem('token');
+                            const payload = decodeJwtPayload(token);
+                            logger.debug('[NOTIF AUTH DEBUG] markAsRead 401, tokenPresent=', !!token, 'decodedPayload=', payload);
+                        } catch (ee) {}
+                        try {
+                            showTransientToast({
+                                id: `unauth_${Date.now()}`,
+                                type: 'ERROR',
+                                message: 'Phiên đã hết hạn hoặc bạn không có quyền. Vui lòng đăng nhập lại.',
+                                timestamp: new Date().toISOString()
+                            });
+                        } catch (e) {}
+                        return;
+                    }
+                    logger.warn('[NOTIF DB SYNC] Failed to mark as read in DB:', err);
                 });
         } catch (e) {
             logger.warn('[NOTIF DB SYNC] Error:', e);
@@ -404,15 +477,30 @@ export const ServiceNotificationProvider = ({ children }) => {
 
     // ✅ Sync unread count from DB (periodic)
     const syncUnreadCountFromDB = useCallback(async () => {
+        // Do not attempt to sync if user is not authenticated (no token)
         try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // no token -> skip sync
+                return;
+            }
+
             const response = await apiClient.get('/service/notifications/unread-count');
             const dbUnreadCount = response.data;
-            
             // Update whenever different to reflect backend truth
             if (unreadCount !== dbUnreadCount) {
                 setUnreadCount(dbUnreadCount);
             }
         } catch (error) {
+            // If unauthorized, silently ignore (user likely logged out)
+            if (error?.response?.status === 401) {
+                try {
+                    const token = localStorage.getItem('token');
+                    const payload = decodeJwtPayload(token);
+                    logger.debug('[NOTIF DB SYNC] skipping unread-count: 401 unauthorized, tokenPresent=', !!token, 'decodedPayload=', payload);
+                } catch (e) {}
+                return;
+            }
             logger.warn('[NOTIF DB SYNC] Failed to get unread count:', error);
         }
     }, [unreadCount]);
@@ -420,8 +508,56 @@ export const ServiceNotificationProvider = ({ children }) => {
     // ✅ Load history from DB on mount
     useEffect(() => {
         const loadInitialHistory = async () => {
+            // Skip loading history if no token (user not authenticated)
             const token = localStorage.getItem('token');
-            if (!token) {
+            if (!token) return;
+
+            // Only load history for roles that should receive service notifications
+            // Accept role values coming from `user` object or from JWT `roles` claim.
+            const allowed = new Set([
+                'SERVICE_STAFF','TECHNICAL_STAFF','ACCOUNTING_STAFF','CASHIER_STAFF','ADMIN'
+            ]);
+
+            // Build role candidates from `user` and token claims
+            const roleNameFromUser = user?.roleName || user?.role || null;
+            let roleCandidates = [];
+            if (roleNameFromUser) roleCandidates.push(roleNameFromUser);
+            try {
+                const payload = decodeJwtPayload(token);
+                if (payload) {
+                    if (Array.isArray(payload.roles)) roleCandidates = roleCandidates.concat(payload.roles);
+                    if (payload.role) roleCandidates.push(payload.role);
+                }
+            } catch (e) {}
+
+            // Normalize by uppercasing and stripping common prefix 'ROLE_'
+            const normalize = (r) => {
+                if (!r) return null;
+                try { return String(r).toUpperCase().replace(/^ROLE_/, ''); } catch (e) { return null; }
+            };
+            const normAllowed = new Set(Array.from(allowed).map(a => String(a).toUpperCase().replace(/^ROLE_/, '')));
+            const normalizedCandidates = roleCandidates.map(normalize).filter(Boolean);
+            let isAllowed = normalizedCandidates.some(rc => normAllowed.has(rc));
+
+            // Debug: log role resolution
+            logger.debug('[NOTIF INIT] roleCandidates=', roleCandidates, 'normalized=', normalizedCandidates, 'isAllowed=', isAllowed);
+
+            // Fallback: if role detection failed but JWT payload contains hints (e.g. 'TECH' or 'TECHNICAL'), allow
+            if (!isAllowed) {
+                try {
+                    const payloadCheck = decodeJwtPayload(token);
+                    const payloadStr = payloadCheck ? JSON.stringify(payloadCheck).toUpperCase() : '';
+                    if (payloadStr.includes('TECH') || payloadStr.includes('TECHNICAL') || payloadStr.includes('SERVICE') || payloadStr.includes('CASHIER') || payloadStr.includes('ACCOUNTING')) {
+                        isAllowed = true;
+                        logger.debug('[NOTIF INIT] role detection fallback allowed based on JWT payload hint');
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            if (!isAllowed) {
+                // Not a role that subscribes to service notifications: skip
                 return;
             }
 
@@ -429,7 +565,7 @@ export const ServiceNotificationProvider = ({ children }) => {
                 const response = await apiClient.get('/service/notifications', {
                     params: { page: 0, size: 100, sort: 'createdAt,desc' }
                 });
-                
+
                 if (response.data?.content) {
                     const currentUserId = user?.id ? String(user.id) : null;
                     const dbNotifications = response.data.content
@@ -462,14 +598,19 @@ export const ServiceNotificationProvider = ({ children }) => {
                     setUnreadCount(mergedUnread);
                 }
             } catch (error) {
+                // Treat 401 as non-fatal when user is not properly authenticated
+                if (error?.response?.status === 401) {
+                    logger.debug('[NOTIF INIT] skipping load history: 401 unauthorized');
+                    return;
+                }
                 logger.warn('[NOTIF INIT] Failed to load history:', error);
             }
         };
 
-        // Load on mount with small delay to ensure DB is ready
+        // Load when user becomes available (or on mount if user already present)
         const timer = setTimeout(loadInitialHistory, 500);
         return () => clearTimeout(timer);
-    }, []);
+    }, [user]);
 
     // Cleaned up: Removed SSE and polling fallback logic. Only DB/history logic remains. Implement WebSocket logic here later.
 

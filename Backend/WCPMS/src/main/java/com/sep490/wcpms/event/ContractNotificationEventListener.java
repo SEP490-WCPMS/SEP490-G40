@@ -236,7 +236,7 @@ public class ContractNotificationEventListener {
         try {
             log.info("[EVENT LISTENER] Sending {} for contract {} (customer={})", type, contractId, customerName);
 
-            // Lấy serviceStaffId từ extra (có thể null)
+            // Determine explicit single receiver if provided in extra (serviceStaffId) - keep backward compat
             Integer serviceStaffId = null;
             if (extra != null && extra.containsKey("serviceStaffId")) {
                 Object staffIdObj = extra.get("serviceStaffId");
@@ -245,73 +245,63 @@ public class ContractNotificationEventListener {
                 }
             }
 
-            log.info("[EVENT LISTENER] DEBUG: serviceStaffId = {} (from extra)", serviceStaffId);
+            ServiceNotificationDTO dto = new ServiceNotificationDTO(
+                    null,
+                    type,
+                    buildMessage(type, customerName),
+                    java.time.LocalDateTime.now(),
+                    contractId,
+                    extra
+            );
 
-            // Nếu có serviceStaffId cụ thể → persist cho 1 người
+            // If a single serviceStaffId is provided, persist/send only for that user (existing behaviour)
             if (serviceStaffId != null) {
                 log.info("[EVENT LISTENER] Persisting for specific serviceStaffId={}", serviceStaffId);
-
-                ServiceNotificationDTO persistDto = new ServiceNotificationDTO(
-                        null,
-                        type,
-                        buildMessage(type, customerName),
-                        LocalDateTime.now(),
-                        contractId,
-                        extra
-                );
-
                 try {
-                    StaffNotification saved = notificationPersistenceService.saveForReceiver(serviceStaffId, persistDto);
+                    StaffNotification saved = notificationPersistenceService.saveForReceiver(serviceStaffId, dto);
                     if (saved != null) {
                         Integer receiverId = saved.getReceiverAccount() != null ? saved.getReceiverAccount().getId() : null;
-                        log.info("[EVENT LISTENER] Saved successfully! notificationId={}, receiverAccountId={}",
-                                saved.getId(), receiverId);
+                        log.info("[EVENT LISTENER] Saved successfully! notificationId={}, receiverAccountId={}", saved.getId(), receiverId);
 
-                        // send websocket to specific user (use username lookup)
                         String username = saved.getReceiverAccount() != null ? saved.getReceiverAccount().getUsername() : null;
                         if (username != null) {
-                            websocketService.sendToUser(username, buildPayload(saved, type, serviceStaffId));
+                            websocketService.sendToUser(username, buildPayload(saved, type, receiverId));
                         }
-                    } else {
-                        log.error("[EVENT LISTENER] ERROR: saveForReceiver returned NULL!");
                     }
-
-                    log.info("[EVENT LISTENER] Persist complete for type={} (single receiver)", type);
                 } catch (Exception e) {
                     log.error("[EVENT LISTENER] Failed to persist for staffId={}: {}", serviceStaffId, e.getMessage(), e);
                 }
                 return;
             }
 
-            // No serviceStaffId → persist for all service staff
-            log.warn("[EVENT LISTENER] No serviceStaffId; persisting for all service staff");
+            // No single receiver -> figure out target roles for this event type
+            java.util.Set<Role.RoleName> targetRoles = mapTypeToTargetRoles(type);
+            if (targetRoles == null || targetRoles.isEmpty()) {
+                // default to service staff
+                targetRoles = java.util.Set.of(Role.RoleName.SERVICE_STAFF);
+            }
 
-            ServiceNotificationDTO dto = new ServiceNotificationDTO(
-                    null,
-                    type,
-                    buildMessage(type, customerName),
-                    LocalDateTime.now(),
-                    contractId,
-                    extra
-            );
+            // For each target role: persist notifications for all accounts of that role
+            for (Role.RoleName roleName : targetRoles) {
+                try {
+                    java.util.List<Account> accounts = accountRepository.findByRole_RoleName(roleName);
+                    log.info("[EVENT LISTENER] Found {} accounts for role={}", accounts != null ? accounts.size() : 0, roleName);
 
-            try {
-                List<Account> serviceStaffList = accountRepository.findByRole_RoleName(Role.RoleName.SERVICE_STAFF);
-                log.info("[EVENT LISTENER] Found {} SERVICE_STAFF accounts", serviceStaffList != null ? serviceStaffList.size() : 0);
+                    int persisted = 0;
+                    java.util.List<StaffNotification> persistedNotifs = new java.util.ArrayList<>();
 
-                if (serviceStaffList != null && !serviceStaffList.isEmpty()) {
-                    int saved = 0;
-                    for (Account acc : serviceStaffList) {
-                        if (acc != null && acc.getId() != null) {
+                    if (accounts != null && !accounts.isEmpty()) {
+                        for (Account acc : accounts) {
+                            if (acc == null || acc.getId() == null) continue;
+
                             try {
-                                log.info("[EVENT LISTENER] Persisting for serviceStaff id={}, username={}", acc.getId(), acc.getUsername());
-                                StaffNotification result = notificationPersistenceService.saveForReceiver(acc.getId(), dto);
-                                if (result != null) {
-                                    saved++;
-                                    log.info("[EVENT LISTENER] Persisted for id={}, notificationId={}", acc.getId(), result.getId());
+                                StaffNotification saved = notificationPersistenceService.saveForReceiver(acc.getId(), dto);
+                                if (saved != null) {
+                                    persistedNotifs.add(saved);
+                                    persisted++;
+                                    log.info("[EVENT LISTENER] Persisted for accountId={}, notificationId={}", acc.getId(), saved.getId());
 
-                                    // send websocket broadcast for the group/topic and also to specific user if connected
-                                    // Skip realtime send when this account is the actor (if provided in extra as actorAccountId)
+                                    // send per-user realtime (skip if this account is actor)
                                     boolean skipRealtime = false;
                                     Object actorObj = extra != null ? extra.get("actorAccountId") : null;
                                     if (actorObj instanceof Integer) {
@@ -322,37 +312,73 @@ public class ContractNotificationEventListener {
                                         }
                                     }
 
-                                    if (!skipRealtime) {
-                                        websocketService.sendToTopic("service-staff", buildPayload(result, type, acc.getId()));
-
-                                        if (acc.getUsername() != null) {
-                                            websocketService.sendToUser(acc.getUsername(), buildPayload(result, type, acc.getId()));
-                                        }
-
-                                    } else {
-                                        // still persisted for history, but skip realtime
+                                    if (!skipRealtime && acc.getUsername() != null) {
+                                        websocketService.sendToUser(acc.getUsername(), buildPayload(saved, type, acc.getId()));
                                     }
-
-                                } else {
-                                    log.error("[EVENT LISTENER] saveForReceiver returned NULL for id={}", acc.getId());
                                 }
                             } catch (Exception e) {
                                 log.error("[EVENT LISTENER] Failed to persist for id={}: {}", acc.getId(), e.getMessage(), e);
                             }
                         }
+
+                        // Broadcast once to the role topic so connected clients subscribed to the role receive a copy
+                        try {
+                            String topic = roleToTopic(roleName);
+                            // build a generic payload for broadcast (without receiverId)
+                            Map<String, Object> broadcastPayload = new HashMap<>();
+                            broadcastPayload.put("type", type);
+                            broadcastPayload.put("title", buildTitleFromType(type));
+                            broadcastPayload.put("message", buildMessage(type, customerName));
+                            broadcastPayload.put("referenceId", contractId);
+                            broadcastPayload.put("referenceType", "CONTRACT");
+                            broadcastPayload.put("createdAt", java.time.LocalDateTime.now());
+
+                            websocketService.sendToTopic(topic, broadcastPayload);
+                            log.info("[EVENT LISTENER] Broadcasted to topic {} for role {} (persisted={})", topic, roleName, persisted);
+                        } catch (Exception ex) {
+                            log.error("[EVENT LISTENER] Failed to broadcast to role {}: {}", roleName, ex.getMessage(), ex);
+                        }
+
+                    } else {
+                        log.warn("[EVENT LISTENER] No accounts found for role {}", roleName);
                     }
-                    log.info("[EVENT LISTENER] Total persisted for {}/{} accounts", saved, serviceStaffList.size());
-                } else {
-                    log.error("[EVENT LISTENER] No SERVICE_STAFF found in database!");
+
+                } catch (Exception ex) {
+                    log.error("[EVENT LISTENER] Error processing role {}: {}", roleName, ex.getMessage(), ex);
                 }
-            } catch (Exception ex) {
-                log.error("[EVENT LISTENER] Error persisting for all: ", ex);
             }
 
         } catch (Exception ex) {
             log.error("[EVENT LISTENER] Sending notification failed: type={}, contractId={}, error={}",
                     type, contractId, ex.getMessage(), ex);
         }
+    }
+
+    private java.util.Set<Role.RoleName> mapTypeToTargetRoles(String type) {
+        if (type == null) return java.util.Set.of(Role.RoleName.SERVICE_STAFF);
+        return switch (type) {
+            case "CUSTOMER_SIGNED_CONTRACT" -> java.util.Set.of(Role.RoleName.SERVICE_STAFF, Role.RoleName.ACCOUNTING_STAFF);
+            case "SENT_TO_INSTALLATION" -> java.util.Set.of(Role.RoleName.SERVICE_STAFF, Role.RoleName.TECHNICAL_STAFF);
+            case "INSTALLATION_COMPLETED" -> java.util.Set.of(Role.RoleName.SERVICE_STAFF, Role.RoleName.ACCOUNTING_STAFF);
+            case "CONTRACT_REQUEST_CREATED" -> java.util.Set.of(Role.RoleName.SERVICE_STAFF);
+            case "TECH_SURVEY_COMPLETED", "SURVEY_APPROVED" -> java.util.Set.of(Role.RoleName.SERVICE_STAFF, Role.RoleName.TECHNICAL_STAFF);
+            default -> java.util.Set.of(Role.RoleName.SERVICE_STAFF);
+        };
+    }
+
+    private String roleToTopic(Role.RoleName roleName) {
+        return switch (roleName) {
+            case SERVICE_STAFF -> "service-staff";
+            case TECHNICAL_STAFF -> "technical-staff";
+            case ACCOUNTING_STAFF -> "accounting-staff";
+            case CASHIER_STAFF -> "cashier-staff";
+            default -> "service-staff";
+        };
+    }
+
+    private String buildTitleFromType(String type) {
+        if (type == null) return "NOTIFICATION";
+        return type;
     }
 
     private Map<String, Object> buildPayload(StaffNotification result, String defaultType, Integer receiverId) {
