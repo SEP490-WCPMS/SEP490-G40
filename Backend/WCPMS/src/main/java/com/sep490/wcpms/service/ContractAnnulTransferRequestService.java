@@ -171,7 +171,6 @@ public class ContractAnnulTransferRequestService {
 
         }
 
-        // Explicit save to ensure immediate persistence and to trigger any DB-level constraints
         entity = repository.save(entity);
 
         return mapper.toDTO(entity);
