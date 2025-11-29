@@ -41,5 +41,15 @@ public interface InvoiceNotificationService {
      * @param vatRate           thuế suất VAT hiển thị (ví dụ: "5%" hoặc "8%").
      */
     void sendServiceInvoiceIssued(Invoice invoice, String serviceDescription, String vatRate);
+
+    /**
+     * Gửi thông báo xác nhận THANH TOÁN THÀNH CÔNG cho một hóa đơn.
+     * Không tạo PDF mới, chỉ gửi email text.
+     *
+     * @param invoice            hóa đơn đã thanh toán (trạng thái PAID).
+     * @param paymentMethodLabel mô tả hình thức thanh toán
+     *                           (ví dụ: "Thanh toán tiền mặt tại quầy", "Thanh toán qua PayOS").
+     */
+    void sendInvoicePaymentSuccess(Invoice invoice, String paymentMethodLabel);
 }
 

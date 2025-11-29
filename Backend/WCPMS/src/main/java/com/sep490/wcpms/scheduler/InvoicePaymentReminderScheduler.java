@@ -62,8 +62,8 @@ public class InvoicePaymentReminderScheduler {
         return "Hóa đơn";
     }
 
-    // Chạy hằng ngày lúc 08:15 sáng
-    @Scheduled(cron = "0 15 8 * * *")
+    // Chạy hằng ngày lúc 08:00 sáng
+    @Scheduled(cron = "0 0 8 * * *")
     @Transactional
     public void sendInvoicePaymentReminders() {
         try {

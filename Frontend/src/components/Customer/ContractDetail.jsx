@@ -16,6 +16,16 @@ const ContractDetail = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const contractId = searchParams.get('id');
+    const fromPage = location.state?.from;
+
+    const pageContainerStyle = {
+        padding: '24px 32px 32px',
+        maxWidth: 1200,
+        margin: '0 auto',
+        background: '#ffffff',
+        borderRadius: 8,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+    };
 
     // Hàm format tiền tệ
     const formatCurrency = (value) => {
@@ -173,115 +183,133 @@ const ContractDetail = () => {
         fetchContractDetail();
     }, [contractId]);
 
-    // Quay lại trang danh sách
+    // Quay lại đúng màn gọi
     const handleBack = () => {
-        navigate('/contract-list');
+        if (fromPage === 'pending-sign') {
+            navigate('/pending-sign-contract');
+        } else if (fromPage === 'contract-list') {
+            navigate('/contract-list');
+        } else {
+            // fallback: quay lại history
+            navigate(-1);
+        }
     };
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Row gutter={16} align="middle" style={{ marginBottom: '24px' }}>
-                <Col>
-                    <Button
-                        icon={<ArrowLeftOutlined />}
-                        onClick={handleBack}
-                    >
-                        Quay lại
-                    </Button>
-                </Col>
-                <Col>
-                    <Title level={3} className="!mb-0">Chi tiết Hợp đồng</Title>
-                </Col>
-            </Row>
+        <div style={{ padding: '24px 0' }}>
+            <div style={pageContainerStyle}>
+                <Row gutter={16} align="middle" style={{ marginBottom: '24px' }}>
+                    <Col>
+                        <Button
+                            icon={<ArrowLeftOutlined />}
+                            onClick={handleBack}
+                        >
+                            Quay lại
+                        </Button>
+                    </Col>
+                    <Col>
+                        <Title level={3} className="!mb-0">Chi tiết Hợp đồng</Title>
+                    </Col>
+                </Row>
 
-            <Spin spinning={loading}>
-                {contract && (
-                    <Card>
-                        <Descriptions bordered column={2}>
-                            <Descriptions.Item label="Số Hợp đồng" span={2}>
-                                <strong>{contract.contractNumber}</strong>
-                            </Descriptions.Item>
+                <Spin spinning={loading}>
+                    {contract && (
+                        <Card>
+                            <Descriptions bordered column={2}>
+                                <Descriptions.Item label="Số Hợp đồng" span={2}>
+                                    <strong>{contract.contractNumber}</strong>
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Khách hàng">
-                                {customerName}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Khách hàng">
+                                    {customerName}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Trạng thái">
-                                {renderStatus(contract.contractStatus)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Trạng thái">
+                                    {renderStatus(contract.contractStatus)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ngày đăng ký">
-                                {formatDate(contract.applicationDate)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Ngày đăng ký">
+                                    {formatDate(contract.applicationDate)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ngày khảo sát">
-                                {formatDate(contract.surveyDate)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Ngày khảo sát">
+                                    {formatDate(contract.surveyDate)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Thiết kế Kỹ thuật" span={2}>
-                                {contract.technicalDesign || 'Chưa có'}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Thiết kế Kỹ thuật" span={2}>
+                                    {contract.technicalDesign || 'Chưa có'}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Chi phí Ước tính">
-                                {formatCurrency(contract.estimatedCost)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Chi phí Ước tính">
+                                    {formatCurrency(contract.estimatedCost)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ngày lắp đặt">
-                                {formatDate(contract.installationDate)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Ngày lắp đặt">
+                                    {formatDate(contract.installationDate)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ngày bắt đầu">
-                                {formatDate(contract.startDate)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Ngày bắt đầu">
+                                    {formatDate(contract.startDate)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ngày kết thúc">
-                                {formatDate(contract.endDate)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Ngày kết thúc">
+                                    {formatDate(contract.endDate)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Giá trị Hợp đồng">
-                                {formatCurrency(contract.contractValue)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Giá trị Hợp đồng">
+                                    {formatCurrency(contract.contractValue)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Phương thức Thanh toán">
-                                {renderPaymentMethod(contract.paymentMethod)}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Phương thức Thanh toán">
+                                    {renderPaymentMethod(contract.paymentMethod)}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Nhân viên Dịch vụ">
-                                {serviceStaffName}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Nhân viên Dịch vụ">
+                                    {serviceStaffName}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Nhân viên Kỹ thuật">
-                                {technicalStaffName}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Nhân viên Kỹ thuật">
+                                    {technicalStaffName}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Mã đồng hồ">
-                                {waterMeterData?.installedMeterCode || 'Chưa lắp đặt'}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Mã đồng hồ">
+                                    {waterMeterData?.installedMeterCode || 'Chưa lắp đặt'}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ảnh đồng hồ" span={2}>
-                                {waterMeterData?.installationImageBase64 ? (
-                                    <Image
-                                        src={`data:image/jpeg;base64,${waterMeterData.installationImageBase64}`}
-                                        alt="Ảnh lắp đặt đồng hồ"
-                                        style={{ maxWidth: '400px', maxHeight: '300px' }}
-                                        placeholder={
-                                            <div style={{ width: '400px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
-                                                Đang tải...
-                                            </div>
-                                        }
-                                    />
-                                ) : (
-                                    <span style={{ color: '#999' }}>Chưa có ảnh lắp đặt</span>
-                                )}
-                            </Descriptions.Item>
+                                <Descriptions.Item label="Ảnh đồng hồ" span={2}>
+                                    {waterMeterData?.installationImageBase64 ? (
+                                        <Image
+                                            src={`data:image/jpeg;base64,${waterMeterData.installationImageBase64}`}
+                                            alt="Ảnh lắp đặt đồng hồ"
+                                            style={{ maxWidth: '400px', maxHeight: '300px' }}
+                                            placeholder={
+                                                <div
+                                                    style={{
+                                                        width: '400px',
+                                                        height: '300px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        background: '#f5f5f5',
+                                                    }}
+                                                >
+                                                    Đang tải...
+                                                </div>
+                                            }
+                                        />
+                                    ) : (
+                                        <span style={{ color: '#999' }}>Chưa có ảnh lắp đặt</span>
+                                    )}
+                                </Descriptions.Item>
 
-                            <Descriptions.Item label="Ghi chú" span={2}>
-                                {contract.notes || 'Không có ghi chú'}
-                            </Descriptions.Item>
-                        </Descriptions>
-                    </Card>
-                )}
-            </Spin>
+                                <Descriptions.Item label="Ghi chú" span={2}>
+                                    {contract.notes || 'Không có ghi chú'}
+                                </Descriptions.Item>
+                            </Descriptions>
+                        </Card>
+                    )}
+                </Spin>
+            </div>
         </div>
     );
 };

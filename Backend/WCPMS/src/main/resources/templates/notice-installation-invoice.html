@@ -6,14 +6,14 @@
     <style>
         @page {
             size: A4;
-            margin: 15mm;
+            margin: 12mm;
         }
         body {
             font-family: 'Times New Roman', serif !important;
             margin: 0;
             padding: 0;
-            font-size: 12pt;
-            line-height: 1.4;
+            font-size: 11.5pt;
+            line-height: 1.33;
         }
         .page {
             box-sizing: border-box;
@@ -23,32 +23,32 @@
         table.header {
             width: 100%;
             border-collapse: collapse;
-            margin: 0 0 4mm 0;
+            margin: 0 0 2.5mm 0; /* giảm nhẹ */
         }
         table.header td {
             border: none !important;
             padding: 0;
         }
         .header-logo img {
-            max-width: 24mm;
-            max-height: 24mm;
+            max-width: 22mm;
+            max-height: 22mm;
             display: block;
         }
         .header-text div {
-            font-size: 12pt;
-            margin: 1.2mm 0;
+            font-size: 11.5pt;
+            margin: 1mm 0;
         }
 
         .title {
             text-align: center;
-            margin: 4mm 0 6mm 0;
+            margin: 2mm 0 2.5mm 0; /* bớt chút khoảng dưới */
             font-size: 14pt;
             font-weight: bold;
             font-family: 'Times New Roman', serif !important;
         }
 
         .info-row {
-            margin: 2mm 0;
+            margin: 1.5mm 0; /* trước 2mm */
         }
         .info-label {
             font-weight: bold;
@@ -57,11 +57,11 @@
         table {
             border-collapse: collapse;
             width: 100%;
-            margin-top: 4mm;
+            margin-top: 2.5mm; /* trước 4mm */
         }
         th, td {
             border: 1px solid #000;
-            padding: 4px 6px;
+            padding: 3px 5px; /* trước 4px 6px */
             font-size: 11pt;
         }
         th {
@@ -70,31 +70,31 @@
         }
 
         .note {
-            margin-top: 4mm;
+            margin-top: 2.5mm; /* trước 4mm */
         }
 
         .list {
-            margin-top: 2mm;
-            margin-bottom: 2mm;
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
             padding-left: 16pt;
         }
         .list li {
-            margin-bottom: 1mm;
+            margin-bottom: 0.8mm;
         }
 
         /* Bảng 1x2: thông tin ngân hàng + QR */
         .bank-qr-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 4mm;
+            margin-top: 3mm; /* trước 4mm */
         }
         .bank-qr-table td {
             vertical-align: top;
             padding: 0;
         }
         .bank-info .bank-line {
-            margin-bottom: 4mm;     /* dãn dòng — chỉnh 3–5mm tùy ý */
-            line-height: 1;       /* giúp text thoáng hơn */
+            margin-bottom: 2.5mm; /* trước 4mm */
+            line-height: 1;
             font-size: 11pt;
         }
         .qr-cell {
@@ -108,14 +108,14 @@
 
         /* Giảm margin mặc định của p để bớt khoảng trắng */
         p {
-            margin: 0 0 3mm 0;
+            margin: 0 0 2mm 0; /* trước 3mm */
         }
 
         /* Bảng 1x2: Lưu ý + chữ ký */
         .footer-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 4mm;
+            margin-top: 3mm; /* trước 4mm */
         }
         .footer-table td {
             border: none;
@@ -124,10 +124,12 @@
         }
         .footer-note {
             width: 60%;
+            font-size: 11pt; /* hơi nhỏ hơn thân bài một chút */
         }
         .footer-sign {
             width: 40%;
             text-align: center;
+            font-size: 11.5pt;
         }
         .footer-sign img {
             display: inline-block !important;
@@ -219,6 +221,11 @@
     <p class="note">
         <b>Thuế suất VAT áp dụng:</b>
         <span th:text="${vatRate}">10%</span>
+    </p>
+
+    <p class="note" th:if="${hasLatePaymentFee}">
+        <b>Phí nộp muộn:</b>
+        <span th:text="${latePaymentFee}">35.000</span>
     </p>
 
     <p class="note">

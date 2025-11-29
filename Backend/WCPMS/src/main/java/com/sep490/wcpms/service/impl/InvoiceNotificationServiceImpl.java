@@ -275,4 +275,106 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
         notificationRepository.save(n);
         emailService.sendEmail(n);
     }
+
+    // =========================
+    // 4. THÔNG BÁO THANH TOÁN THÀNH CÔNG
+    // =========================
+    @Override
+    public void sendInvoicePaymentSuccess(Invoice invoice, String paymentMethodLabel) {
+        if (invoice == null || invoice.getCustomer() == null) {
+            return;
+        }
+
+        // Tránh gửi trùng cho 1 hóa đơn
+        boolean exists = notificationRepository.existsByInvoiceAndMessageType(
+                invoice,
+                CustomerNotification.CustomerNotificationMessageType.INVOICE_PAYMENT_SUCCESS
+        );
+        if (exists) {
+            return;
+        }
+
+        Customer customer = invoice.getCustomer();
+
+        CustomerNotification n = new CustomerNotification();
+        n.setCustomer(customer);
+        n.setInvoice(invoice);
+
+        // Nếu đã có thông báo trước đó có PDF (water / install / service invoice),
+        // tận dụng lại attachment_url để khách mở cùng 1 file
+        CustomerNotification lastWithPdf =
+                notificationRepository.findTop1ByInvoiceAndAttachmentUrlIsNotNullOrderByCreatedAtDesc(invoice);
+        if (lastWithPdf != null) {
+            n.setAttachmentUrl(lastWithPdf.getAttachmentUrl());
+        }
+
+        n.setMessageType(CustomerNotification.CustomerNotificationMessageType.INVOICE_PAYMENT_SUCCESS);
+        n.setIssuerRole(CustomerNotification.CustomerNotificationIssuerRole.ACCOUNTANT);
+        n.setRelatedType(CustomerNotification.CustomerNotificationRelatedType.CONTRACT);
+        if (invoice.getContract() != null) {
+            n.setRelatedId(invoice.getContract().getId());
+        }
+
+        String invoiceTypeLabel = getInvoiceTypeLabel(invoice);
+
+        String subject = String.format(
+                "Xác nhận thanh toán %s số %s",
+                invoiceTypeLabel,
+                invoice.getInvoiceNumber()
+        );
+
+        String paidDateStr = invoice.getPaidDate() != null
+                ? invoice.getPaidDate().format(DATE_FMT)
+                : "không xác định";
+
+        String body = String.format(
+                "Kính gửi Quý khách %s,%n%n" +
+                        "Thanh toán cho %s số %s đã được ghi nhận thành công.%n" +
+                        "Số tiền thanh toán: %sđ%n" +
+                        "Ngày thanh toán: %s%n" +
+                        "Hình thức thanh toán: %s.%n%n" +
+                        "Xin cảm ơn Quý khách đã sử dụng dịch vụ của Công ty Cấp nước Phú Thọ.%n%n" +
+                        "Trân trọng,%n" +
+                        "Công ty Cấp nước Phú Thọ",
+                customer.getCustomerName(),
+                invoiceTypeLabel,
+                invoice.getInvoiceNumber(),
+                invoice.getTotalAmount().toPlainString(),
+                paidDateStr,
+                paymentMethodLabel != null ? paymentMethodLabel : "Thanh toán"
+        );
+
+        n.setMessageSubject(subject);
+        n.setMessageContent(body);
+
+        notificationRepository.save(n);
+        emailService.sendEmail(n);
+    }
+
+    // Helper nội bộ: dùng chung nhãn loại hóa đơn
+    private String getInvoiceTypeLabel(Invoice invoice) {
+        if (invoice == null) return "Hóa đơn";
+
+        boolean hasReading = invoice.getMeterReading() != null;
+        boolean hasCalibration = calibrationRepository.findByInvoice(invoice).isPresent();
+
+        // Hóa đơn tiền nước: có meterReading, không calibration
+        if (hasReading && !hasCalibration) {
+            return "Hóa đơn tiền nước";
+        }
+
+        // Hóa đơn dịch vụ phát sinh: có calibration
+        if (hasCalibration) {
+            return "Hóa đơn dịch vụ phát sinh";
+        }
+
+        // Hóa đơn lắp đặt: không meterReading, không calibration
+        if (!hasReading && !hasCalibration) {
+            return "Hóa đơn lắp đặt";
+        }
+
+        // fallback
+        return "Hóa đơn";
+    }
+
 }
