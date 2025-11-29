@@ -45,6 +45,13 @@ public class ContractAnnulTransferRequestService {
         Account requestedBy = accountRepository.findById(dto.getRequestedById())
                 .orElseThrow(() -> new ResourceNotFoundException("Account (requestedById) not found: " + dto.getRequestedById()));
 
+        // VALIDATE HỢP ĐỒNG ĐANG ACTIVE TẠO YÊU CẦU HỦY/CHUYỂN
+        if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Chỉ những hợp đồng đang ở trạng thái ACTIVE mới được tạo yêu cầu hủy/chuyển."
+            );
+        }
+
         // Không cho 2 request PENDING cùng loại trên 1 contract
         if (repository.existsByContractIdAndRequestTypeAndApprovalStatus(
                 contract.getId(),

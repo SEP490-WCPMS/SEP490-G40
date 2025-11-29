@@ -15,6 +15,16 @@ const PendingSignContract = () => {
     const [selectedContract, setSelectedContract] = useState(null);
     const navigate = useNavigate();
 
+    // style container để UI không bị tràn
+    const pageContainerStyle = {
+        padding: '24px 32px 32px',
+        maxWidth: 1200,
+        margin: '0 auto',
+        background: '#ffffff',
+        borderRadius: 8,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+    };
+
     // Lấy customerId từ localStorage
     const getCustomerId = () => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -205,9 +215,9 @@ const PendingSignContract = () => {
             title: 'Hành động',
             key: 'action',
             fixed: 'right',
-            width: 250,
+            width: 220,
             render: (_, record) => (
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                     <Button
                         type="default"
                         icon={<EyeOutlined />}
@@ -231,68 +241,74 @@ const PendingSignContract = () => {
     ];
 
     return (
-        <div className="space-y-6" style={{ padding: '24px' }}>
-            <Row gutter={16} align="middle">
-                <Col xs={24} sm={12}>
-                    <div>
-                        <Title level={3} className="!mb-2">Hợp đồng chờ ký</Title>
-                        <Paragraph className="!mb-0">Danh sách các hợp đồng đang chờ khách hàng xác nhận ký.</Paragraph>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={fetchPendingSignContracts}
-                        loading={loading}
-                    >
-                        Làm mới
-                    </Button>
-                </Col>
-            </Row>
+        <div style={{ padding: '24px 0' }}>
+            <div style={pageContainerStyle}>
+                <Row gutter={16} align="middle">
+                    <Col xs={24} sm={12}>
+                        <div>
+                            <Title level={3} className="!mb-2">Hợp đồng chờ ký</Title>
+                            <Paragraph className="!mb-0">
+                                Danh sách các hợp đồng đang chờ khách hàng xác nhận ký.
+                            </Paragraph>
+                        </div>
+                    </Col>
+                    <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={fetchPendingSignContracts}
+                            loading={loading}
+                        >
+                            Làm mới
+                        </Button>
+                    </Col>
+                </Row>
 
-            <Spin spinning={loading}>
-                <Table
-                    columns={columns}
-                    dataSource={contracts}
-                    rowKey="id"
-                    bordered
-                    pagination={{
-                        defaultPageSize: 10,
-                        showSizeChanger: true,
-                        showTotal: (total) => `Tổng ${total} hợp đồng`,
-                    }}
-                    locale={{
-                        emptyText: 'Không có hợp đồng nào chờ ký'
-                    }}
-                />
-            </Spin>
+                <Spin spinning={loading}>
+                    <Table
+                        size="middle"
+                        columns={columns}
+                        dataSource={contracts}
+                        rowKey="id"
+                        bordered
+                        scroll={{ x: 'max-content' }}
+                        pagination={{
+                            defaultPageSize: 10,
+                            showSizeChanger: true,
+                            showTotal: (total) => `Tổng ${total} hợp đồng`,
+                        }}
+                        locale={{
+                            emptyText: 'Không có hợp đồng nào chờ ký',
+                        }}
+                    />
+                </Spin>
 
-            {/* Modal xác nhận */}
-            <Modal
-                title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: '22px' }} />
-                        <span>Xác nhận ký hợp đồng</span>
-                    </div>
-                }
-                open={isModalVisible}
-                onOk={handleConfirmSign}
-                onCancel={handleCancel}
-                okText="Xác nhận"
-                cancelText="Hủy"
-                okButtonProps={{
-                    loading: signingContractId !== null,
-                    danger: false,
-                    type: 'primary'
-                }}
-                centered
-            >
-                <p>
-                    Bạn có chắc chắn muốn xác nhận ký hợp đồng{' '}
-                    <strong>{selectedContract?.contractNumber}</strong>?
-                </p>
-                <p>Sau khi xác nhận, hợp đồng sẽ được chuyển sang trạng thái chờ xử lý tiếp theo.</p>
-            </Modal>
+                {/* Modal xác nhận */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: '22px' }} />
+                            <span>Xác nhận ký hợp đồng</span>
+                        </div>
+                    }
+                    open={isModalVisible}
+                    onOk={handleConfirmSign}
+                    onCancel={handleCancel}
+                    okText="Xác nhận"
+                    cancelText="Hủy"
+                    okButtonProps={{
+                        loading: signingContractId !== null,
+                        danger: false,
+                        type: 'primary',
+                    }}
+                    centered
+                >
+                    <p>
+                        Bạn có chắc chắn muốn xác nhận ký hợp đồng{' '}
+                        <strong>{selectedContract?.contractNumber}</strong>?
+                    </p>
+                    <p>Sau khi xác nhận, hợp đồng sẽ được chuyển sang trạng thái chờ xử lý tiếp theo.</p>
+                </Modal>
+            </div>
         </div>
     );
 };

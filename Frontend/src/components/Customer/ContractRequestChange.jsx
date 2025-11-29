@@ -67,21 +67,25 @@ const ContractRequestChange = () => {
             const response = await getContractsByCustomerId(customerId);
             console.log("Contracts response:", response);
 
-            // Xử lý response dựa trên cấu trúc ApiResponse
+            let rawContracts = [];
+
             if (response.data) {
                 // Nếu backend trả về ApiResponse với structure: { success, message, data }
                 if (response.data.data && Array.isArray(response.data.data)) {
-                    setContracts(response.data.data);
+                    rawContracts = response.data.data;
                 }
                 // Nếu data trực tiếp là array
                 else if (Array.isArray(response.data)) {
-                    setContracts(response.data);
-                }
-                else {
-                    setContracts([]);
-                    message.info('Bạn chưa có hợp đồng nào.');
+                    rawContracts = response.data;
                 }
             }
+
+            // CHỈ LẤY HỢP ĐỒNG ĐANG ACTIVE
+            const activeContracts = rawContracts.filter(
+                (c) => c.contractStatus === 'ACTIVE'
+            );
+
+            setContracts(activeContracts);
         } catch (error) {
             console.error("Fetch contracts error:", error);
             message.error('Lỗi khi tải danh sách hợp đồng!');
