@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query; // <-- Import Query
 import org.springframework.data.repository.query.Param; // <-- Import Param
 
 import java.time.LocalDate; // <-- Import LocalDate
+import java.time.LocalDateTime; // <-- add
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -124,4 +125,15 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     List<Contract> findByCustomerIdAndContractStatus(Integer customerId, Contract.ContractStatus contractStatus);
 
     Page<Contract> findByContractStatus(Contract.ContractStatus contractStatus, Pageable pageable);
+
+    // Aggregate contracts by status between dates (createdAt)
+    @Query("SELECT c.contractStatus, COUNT(c) FROM Contract c WHERE c.createdAt BETWEEN :from AND :to GROUP BY c.contractStatus")
+    List<Object[]> countContractsGroupedByStatus(@Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);
+
+    // Aggregate contracts count grouped by created date (DATE portion) between datetimes
+    @Query("SELECT FUNCTION('DATE', c.createdAt), COUNT(c) FROM Contract c WHERE c.createdAt BETWEEN :from AND :to GROUP BY FUNCTION('DATE', c.createdAt) ORDER BY FUNCTION('DATE', c.createdAt)")
+    List<Object[]> countContractsGroupedByCreatedDate(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    // Direct count by status (simple and efficient)
+    long countByContractStatus(Contract.ContractStatus contractStatus);
 }

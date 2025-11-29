@@ -71,6 +71,7 @@ import CashierRouteList from './components/PagesCashier/CashierRouteList';
 import CashierContractDetail from './components/PagesCashier/CashierContractDetail';
 import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
+import AdminDashboard from './components/PagesAdmin/AdminDashboard';
 import ContactPage from './components/Pages/ContactPage';
 
 
@@ -218,7 +219,8 @@ function App() {
         {/* (Thêm luồng ADMIN ở đây nếu cần) */}
         <Route element={<PrivateRoute allowedRoles={['ADMIN']} />}>
           <Route path="/admin/*" element={<LayoutAdmin />}>
-
+            {/* Admin index/dashboard */}
+            <Route index element={<AdminDashboard />} />
             {/* (Thêm các trang khác của Admin ở đây) */}
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>

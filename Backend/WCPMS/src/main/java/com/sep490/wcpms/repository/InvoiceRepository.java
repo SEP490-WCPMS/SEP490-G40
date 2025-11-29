@@ -173,4 +173,17 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
             @Param("statuses") Collection<Invoice.PaymentStatus> statuses
     );
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI CHO RANGE TIỀN ---
+    /**
+     * Tính tổng tiền của các hóa đơn theo danh sách trạng thái trong khoảng ngày invoiceDate BETWEEN :from AND :to
+     */
+    @Query("SELECT SUM(i.totalAmount) FROM Invoice i WHERE i.paymentStatus IN :statuses AND i.invoiceDate BETWEEN :from AND :to")
+    BigDecimal sumTotalAmountByPaymentStatusInAndInvoiceDateBetween(@Param("statuses") Collection<PaymentStatus> statuses,
+                                                                     @Param("from") LocalDate from,
+                                                                     @Param("to") LocalDate to);
+
+    // --- Thêm query group by ngày ---
+    @Query("SELECT i.invoiceDate, SUM(i.totalAmount) FROM Invoice i WHERE i.invoiceDate BETWEEN :from AND :to GROUP BY i.invoiceDate ORDER BY i.invoiceDate")
+    List<Object[]> sumTotalGroupedByInvoiceDate(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }
