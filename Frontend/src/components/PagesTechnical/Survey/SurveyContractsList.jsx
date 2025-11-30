@@ -55,13 +55,6 @@ function SurveyContractsList() {
             const el = document.querySelector(`[data-contract-id="${highlightId}"]`);
             if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('notification-highlight');
-                const remove = (e) => {
-                    if (el.contains(e.target)) return;
-                    el.classList.remove('notification-highlight');
-                    document.removeEventListener('click', remove);
-                };
-                setTimeout(() => document.addEventListener('click', remove), 100);
                 return;
             }
             if (attempts < 10) setTimeout(tryHighlight, 300);

@@ -6,10 +6,6 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  define: {
-    // Định nghĩa biến global trỏ về window của trình duyệt
-    global: 'window',
-  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -17,12 +13,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/ws-notifications': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-        ws: true // quan trọng: proxy websocket
-      }
+      '/api': 'http://localhost:8080'
     }
   }
 })

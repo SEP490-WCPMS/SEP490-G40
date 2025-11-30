@@ -13,9 +13,7 @@ import com.sep490.wcpms.repository.CustomerRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import com.sep490.wcpms.event.CustomerSignedContractEvent;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
@@ -30,7 +28,6 @@ public class ContractCustomerService {
     private final ContractRepository contractRepository;
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     public List<ContractDTO> getAllContracts() {
         return contractRepository.findAll().stream()
@@ -97,17 +94,6 @@ public class ContractCustomerService {
 
         contract.setContractStatus(Contract.ContractStatus.PENDING_SIGN);
         Contract updated = contractRepository.save(contract);
-
-        // ✅ Publish event: Customer signed contract
-        eventPublisher.publishEvent(new CustomerSignedContractEvent(
-                this,
-                updated.getId(),
-                updated.getContractNumber(),
-                updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
-                updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
-                java.time.LocalDateTime.now(),
-                updated.getCustomer() != null && updated.getCustomer().getAccount() != null ? updated.getCustomer().getAccount().getId() : null
-        ));
 
         return convertToDTO(updated);
     }

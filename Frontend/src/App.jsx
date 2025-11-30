@@ -3,8 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ScrollToTop from './components/common/ScrollToTop';
 import './App.css';
 import { useAuth } from './hooks/use-auth';
-import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
-import { ServiceNotificationToast } from './components/Notifications/ServiceNotificationToast';
 import Login from './components/Authentication/Login';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
@@ -232,9 +230,4 @@ function App() {
   );
 }
 
-export default () => (
-  <ServiceNotificationProvider>
-    <ServiceNotificationToast />
-    <App />
-  </ServiceNotificationProvider>
-);
+export default App;

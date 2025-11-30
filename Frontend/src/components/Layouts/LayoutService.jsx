@@ -4,7 +4,6 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import { Home, LogOut } from 'lucide-react';
 import { ServiceSidebar } from './ServiceSidebar';
-import { ServiceNotificationBell } from '../Notifications/ServiceNotificationBell';
 import './LayoutService.css';
 
 const LayoutService = () => {
@@ -46,9 +45,6 @@ const LayoutService = () => {
           {/* User Menu bên phải */}
           <div className="ml-auto flex items-center gap-4 relative">
             <span className="text-gray-700">Xin chào, Dịch Vụ</span>
-            
-            {/* 🔔 SERVICE STAFF - Notification Bell */}
-            <ServiceNotificationBell />
             
             <button 
               className="menu-button"

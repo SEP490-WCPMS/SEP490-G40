@@ -106,13 +106,9 @@ public class SecurityConfig {
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
-                                // WebSocket handshake endpoint (SockJS) - permit for handshake, we validate token in handshake interceptor
-                                .requestMatchers("/ws-notifications/**").permitAll()
                                 .requestMatchers("/api/payment/webhook/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
-                                // Allow notifications endpoints for all staff roles (service/technical/accounting/cashier)
-                                .requestMatchers("/api/service/notifications/**").hasAnyAuthority("SERVICE_STAFF","TECHNICAL_STAFF","ACCOUNTING_STAFF","CASHIER_STAFF")
 
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
                                 .requestMatchers("/api/readings/**").hasAuthority("CASHIER_STAFF")

@@ -43,9 +43,6 @@ import java.time.LocalDateTime; // Thêm import
 
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.context.ApplicationEventPublisher; // Thêm import
-import com.sep490.wcpms.event.SurveyReportSubmittedEvent; // Event nộp báo cáo khảo sát
-import com.sep490.wcpms.event.InstallationCompletedEvent; // Event hoàn tất lắp đặt
 
 @Service
 // Bạn có thể đổi sang @RequiredArgsConstructor nếu muốn dùng 'final' thay vì @Autowired
@@ -73,8 +70,6 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private SupportTicketMapper supportTicketMapper;
     @Autowired
     private CustomerRepository customerRepository;
-    @Autowired
-    private ApplicationEventPublisher eventPublisher; // Publish domain events
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -119,15 +114,6 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         contract.setContractStatus(Contract.ContractStatus.PENDING_SURVEY_REVIEW);
         Contract savedContract = contractRepository.save(contract);
 
-        // Publish event sau commit
-        eventPublisher.publishEvent(new SurveyReportSubmittedEvent(
-                savedContract.getId(),
-                savedContract.getContractNumber(),
-                staffId,
-                savedContract.getServiceStaff() != null ? savedContract.getServiceStaff().getId() : null,
-                savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
-                LocalDateTime.now()
-        ));
         return contractMapper.toDto(savedContract);
     }
 
@@ -241,15 +227,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         ContractDetailsDTO dto = contractMapper.toDto(contract);
 
-        // Publish event hoàn tất lắp đặt
-        eventPublisher.publishEvent(new InstallationCompletedEvent(
-                contract.getId(),
-                contract.getContractNumber(),
-                staffId,
-                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null,
-                contract.getCustomer() != null ? contract.getCustomer().getCustomerName() : null,
-                LocalDateTime.now()
-        ));
+        // Notification logic removed
         return dto;
     }
 

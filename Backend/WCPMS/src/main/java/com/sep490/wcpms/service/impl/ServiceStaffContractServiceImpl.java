@@ -27,9 +27,7 @@ import java.util.stream.Collectors;
 // Import mới cho việc tạo hợp đồng dịch vụ nước
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
 import com.sep490.wcpms.repository.WaterPriceTypeRepository;
-import org.springframework.context.ApplicationEventPublisher; // publish domain events
-import com.sep490.wcpms.event.SurveyReportApprovedEvent;
-import com.sep490.wcpms.event.ContractSentToInstallationEvent;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
@@ -52,7 +50,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final WaterPriceTypeRepository waterPriceTypeRepository;
     private final MeterInstallationRepository meterInstallationRepository; // Thêm repository inject
-    private final ApplicationEventPublisher eventPublisher; // Inject publisher
     private final ContractAnnulTransferRequestRepository contractAnnulTransferRequestRepository; // Inject repository cho annul/transfer requests
     private final ContractAnnulTransferRequestService contractAnnulTransferRequestService; // delegate to central service
     // private final ContractMapper contractMapper;
@@ -195,14 +192,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         contract.setContractStatus(ContractStatus.APPROVED);
         Contract updated = contractRepository.save(contract);
-        // Phát hành sự kiện duyệt khảo sát
-        eventPublisher.publishEvent(new SurveyReportApprovedEvent(
-                updated.getId(),
-                updated.getContractNumber(),
-                updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
-                updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
-                java.time.LocalDateTime.now()
-        ));
+        // Notification logic removed
         return convertToDTO(updated);
     }
 
@@ -556,16 +546,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         }
         contract.setContractStatus(ContractStatus.SIGNED);
         Contract updated = contractRepository.save(contract);
-        // Publish event gửi lắp đặt để thông báo cho Service Staff
-        eventPublisher.publishEvent(new ContractSentToInstallationEvent(
-                this, // source object
-                updated.getId(),
-                updated.getContractNumber(),
-                updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
-                updated.getTechnicalStaff() != null ? updated.getTechnicalStaff().getId() : null,
-                updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
-                java.time.LocalDateTime.now()
-        ));
+        // Notification logic removed
         return convertToDTO(updated);
     }
 

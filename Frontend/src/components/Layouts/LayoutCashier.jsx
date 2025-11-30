@@ -4,7 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth'; // Import hook useAuth
 import { Home, LogOut } from 'lucide-react'; // Import icons cho dropdown
 import { CashierSidebar } from './CashierSidebar'; // Import Sidebar Thu Ngân
-import CashierNotificationBell from '../Notifications/CashierNotificationBell';
+
 import './LayoutCashier.css'; // File CSS cho dropdown (bạn cần tạo file này)
 
 const LayoutCashier = () => {
@@ -46,12 +46,6 @@ const LayoutCashier = () => {
           
           {/* --- User Menu bên phải (Giống LayoutService) --- */}
             <div className="ml-auto flex items-center gap-4 relative">
-            {/* Cashier-specific notification bell */}
-            <div style={{ marginRight: 8 }}>
-              <React.Suspense fallback={null}>
-                <CashierNotificationBell />
-              </React.Suspense>
-            </div>
             {/* Đổi tên chào */}
             Xin chào, {user ? user.fullName : 'Guest'}
             <button 

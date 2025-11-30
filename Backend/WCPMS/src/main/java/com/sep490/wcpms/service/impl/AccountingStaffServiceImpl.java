@@ -5,7 +5,6 @@ import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
-import com.sep490.wcpms.mapper.ContractMapper;
 import com.sep490.wcpms.mapper.InvoiceMapper; // <-- Cần tạo Mapper này
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.AccountingStaffService;
@@ -28,7 +27,6 @@ import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.repository.MeterReadingRepository;
 import com.sep490.wcpms.repository.WaterPriceRepository;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
 import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import com.sep490.wcpms.entity.Invoice.PaymentStatus;
@@ -57,8 +55,6 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final ReceiptRepository receiptRepository;
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
-    private final com.sep490.wcpms.service.NotificationStorageService notificationPersistenceService;
-    private final com.sep490.wcpms.service.NotificationWebSocketService websocketService;
 
     @Override
     @Transactional(readOnly = true)
@@ -112,86 +108,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
         invoice.setAccountingStaff(accountingStaff);
 
-        // (Không set invoice.notes vì Bảng 17 không có cột này)
-
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        // --- SEND NOTIFICATIONS (persist + realtime) to ACCOUNTING and CASHIER staff ---
-        try {
-            java.util.Map<String, Object> extras = new java.util.HashMap<>();
-            extras.put("invoiceId", savedInvoice.getId());
-            extras.put("actorAccountId", accountingStaffId);
-
-            com.sep490.wcpms.dto.ServiceNotificationDTO notiDto = new com.sep490.wcpms.dto.ServiceNotificationDTO(
-                    null,
-                    "WATER_BILL_ISSUED",
-                    "Hóa đơn tiền nước đã được lập cho khách " + (customer != null ? customer.getCustomerName() : "") ,
-                    java.time.LocalDateTime.now(),
-                    savedInvoice.getContract() != null ? savedInvoice.getContract().getId() : null,
-                    extras
-            );
-
-            // Roles to notify
-            java.util.List<com.sep490.wcpms.entity.Role.RoleName> rolesToNotify = java.util.List.of(
-                    com.sep490.wcpms.entity.Role.RoleName.ACCOUNTING_STAFF,
-                    com.sep490.wcpms.entity.Role.RoleName.CASHIER_STAFF
-            );
-
-            for (com.sep490.wcpms.entity.Role.RoleName roleName : rolesToNotify) {
-                java.util.List<com.sep490.wcpms.entity.Account> targetAccounts = accountRepository.findByRole_RoleName(roleName);
-                if (targetAccounts == null || targetAccounts.isEmpty()) continue;
-
-                // persist per account and send per-user websocket (skip actor realtime)
-                for (com.sep490.wcpms.entity.Account acc : targetAccounts) {
-                    try {
-                        com.sep490.wcpms.entity.StaffNotification savedNoti = notificationPersistenceService.saveForReceiver(acc.getId(), notiDto);
-                        if (savedNoti != null && acc.getUsername() != null) {
-                            // skip realtime for actor
-                            if (accountingStaffId != null && accountingStaffId.equals(acc.getId())) continue;
-
-                            java.util.Map<String, Object> payload = new java.util.HashMap<>();
-                            payload.put("id", savedNoti.getId());
-                            payload.put("type", savedNoti.getType() != null ? savedNoti.getType().name() : "INVOICE");
-                            payload.put("title", savedNoti.getTitle());
-                            payload.put("message", savedNoti.getMessage());
-                            payload.put("referenceId", savedNoti.getReferenceId());
-                            payload.put("referenceType", savedNoti.getReferenceType() != null ? savedNoti.getReferenceType().name() : "INVOICE");
-                            payload.put("createdAt", savedNoti.getCreatedAt());
-                            payload.put("receiverId", acc.getId());
-
-                            websocketService.sendToUser(acc.getUsername(), payload);
-                        }
-                    } catch (Exception ex) {
-                        // Log and continue
-                        org.slf4j.LoggerFactory.getLogger(AccountingStaffServiceImpl.class).error("[NOTI] Failed to persist/send notification for account {}: {}", acc.getId(), ex.getMessage(), ex);
-                    }
-                }
-
-                // Broadcast to topic once per role
-                try {
-                    java.util.Map<String, Object> broadcastPayload = new java.util.HashMap<>();
-                    broadcastPayload.put("type", "WATER_BILL_ISSUED");
-                    broadcastPayload.put("title", "WATER_BILL_ISSUED");
-                    broadcastPayload.put("message", "Hóa đơn tiền nước mới đã được tạo");
-                    broadcastPayload.put("referenceId", savedInvoice.getId());
-                    broadcastPayload.put("referenceType", "INVOICE");
-                    broadcastPayload.put("createdAt", java.time.LocalDateTime.now());
-
-                    String topic = switch (roleName) {
-                        case ACCOUNTING_STAFF -> "accounting-staff";
-                        case CASHIER_STAFF -> "cashier-staff";
-                        default -> "accounting-staff";
-                    };
-                    websocketService.sendToTopic(topic, broadcastPayload);
-                } catch (Exception ex) {
-                    org.slf4j.LoggerFactory.getLogger(AccountingStaffServiceImpl.class).error("[NOTI] Failed to broadcast for role {}: {}", roleName, ex.getMessage(), ex);
-                }
-            }
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AccountingStaffServiceImpl.class).error("[NOTI] Unexpected error while sending notifications: {}", e.getMessage(), e);
-        }
-
-        // 6. CẬP NHẬT BẢNG 14 (Đánh dấu đã lập hóa đơn)
+        // 5. Đánh dấu phí đã lập hóa đơn
         calibration.setInvoice(savedInvoice);
         calibrationRepository.save(calibration);
 
@@ -516,84 +435,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        // --- SEND NOTIFICATIONS (persist + realtime) to ACCOUNTING and CASHIER staff ---
-        try {
-            java.util.Map<String, Object> extras = new java.util.HashMap<>();
-            extras.put("invoiceId", savedInvoice.getId());
-            extras.put("actorAccountId", accountingStaffId);
-
-            com.sep490.wcpms.dto.ServiceNotificationDTO notiDto = new com.sep490.wcpms.dto.ServiceNotificationDTO(
-                    null,
-                    "WATER_BILL_ISSUED",
-                    "Hóa đơn tiền nước đã được lập cho khách " + (customer != null ? customer.getCustomerName() : "") ,
-                    java.time.LocalDateTime.now(),
-                    savedInvoice.getContract() != null ? savedInvoice.getContract().getId() : null,
-                    extras
-            );
-
-            // Roles to notify
-            java.util.List<com.sep490.wcpms.entity.Role.RoleName> rolesToNotify = java.util.List.of(
-                    com.sep490.wcpms.entity.Role.RoleName.ACCOUNTING_STAFF,
-                    com.sep490.wcpms.entity.Role.RoleName.CASHIER_STAFF
-            );
-
-            for (com.sep490.wcpms.entity.Role.RoleName roleName : rolesToNotify) {
-                java.util.List<com.sep490.wcpms.entity.Account> targetAccounts = accountRepository.findByRole_RoleName(roleName);
-                if (targetAccounts == null || targetAccounts.isEmpty()) continue;
-
-                // persist per account and send per-user websocket (skip actor realtime)
-                for (com.sep490.wcpms.entity.Account acc : targetAccounts) {
-                    try {
-                        com.sep490.wcpms.entity.StaffNotification savedNoti = notificationPersistenceService.saveForReceiver(acc.getId(), notiDto);
-                        if (savedNoti != null && acc.getUsername() != null) {
-                            // skip realtime for actor
-                            if (accountingStaffId != null && accountingStaffId.equals(acc.getId())) continue;
-
-                            java.util.Map<String, Object> payload = new java.util.HashMap<>();
-                            payload.put("id", savedNoti.getId());
-                            payload.put("type", savedNoti.getType() != null ? savedNoti.getType().name() : "INVOICE");
-                            payload.put("title", savedNoti.getTitle());
-                            payload.put("message", savedNoti.getMessage());
-                            payload.put("referenceId", savedNoti.getReferenceId());
-                            payload.put("referenceType", savedNoti.getReferenceType() != null ? savedNoti.getReferenceType().name() : "INVOICE");
-                            payload.put("createdAt", savedNoti.getCreatedAt());
-                            payload.put("receiverId", acc.getId());
-
-                            websocketService.sendToUser(acc.getUsername(), payload);
-                        }
-                    } catch (Exception ex) {
-                        // Log and continue
-                        org.slf4j.LoggerFactory.getLogger(AccountingStaffServiceImpl.class).error("[NOTI] Failed to persist/send notification for account {}: {}", acc.getId(), ex.getMessage(), ex);
-                    }
-                }
-
-                // Broadcast to topic once per role
-                try {
-                    java.util.Map<String, Object> broadcastPayload = new java.util.HashMap<>();
-                    broadcastPayload.put("type", "WATER_BILL_ISSUED");
-                    broadcastPayload.put("title", "WATER_BILL_ISSUED");
-                    broadcastPayload.put("message", "Hóa đơn tiền nước mới đã được tạo");
-                    broadcastPayload.put("referenceId", savedInvoice.getId());
-                    broadcastPayload.put("referenceType", "INVOICE");
-                    broadcastPayload.put("createdAt", java.time.LocalDateTime.now());
-
-                    String topic = switch (roleName) {
-                        case ACCOUNTING_STAFF -> "accounting-staff";
-                        case CASHIER_STAFF -> "cashier-staff";
-                        default -> "accounting-staff";
-                    };
-                    websocketService.sendToTopic(topic, broadcastPayload);
-                } catch (Exception ex) {
-                    org.slf4j.LoggerFactory.getLogger(AccountingStaffServiceImpl.class).error("[NOTI] Failed to broadcast for role {}: {}", roleName, ex.getMessage(), ex);
-                }
-            }
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(AccountingStaffServiceImpl.class).error("[NOTI] Unexpected error while sending notifications: {}", e.getMessage(), e);
-        }
-
-         // 8. Cập nhật trạng thái bản ghi đọc số
-         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
-         meterReadingRepository.save(reading);
+        // 8. Cập nhật trạng thái bản ghi đọc số
+        reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
+        meterReadingRepository.save(reading);
 
          // 9. Trả về DTO của Hóa đơn vừa tạo
          return invoiceMapper.toDto(savedInvoice);

@@ -1,7 +1,6 @@
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
-import { ServiceNotificationContext } from '../../../contexts/ServiceNotificationContext';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract, updateServiceContract } from '../../Services/apiService';
@@ -16,8 +15,6 @@ const ContractCreate = () => {
     const [form] = Form.useForm();
     const navigate = useNavigate();
     const location = useLocation();
-
-    const { showTransientToast } = useContext(ServiceNotificationContext);
 
     const [technicalStaff, setTechnicalStaff] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -129,21 +126,6 @@ const ContractCreate = () => {
                 serviceStaffId: currentUserId,
             });
             await approveServiceContract(sourceContractId);
-            // Show a local transient toast to actor (backend will skip realtime to actor)
-            try {
-                // Show a single, accurate transient toast for the actor: contract approved/created
-                showTransientToast({
-                    id: `local_contract_${sourceContractId}`,
-                    type: 'SURVEY_APPROVED',
-                    title: 'Hợp đồng đã duyệt',
-                    message: `Hợp đồng #${sourceContractId} đã được duyệt`,
-                        contractId: sourceContractId,
-                        timestamp: new Date().toISOString()
-                    });
-                } catch (e) {
-                    // fallback to antd message
-                    message.success('Tạo hợp đồng thành công!');
-                }
                 message.success('Tạo hợp đồng thành công!');
                 navigate('/service/approved-contracts');
         } catch (error) {

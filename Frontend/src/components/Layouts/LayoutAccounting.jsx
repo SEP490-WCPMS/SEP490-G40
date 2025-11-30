@@ -4,7 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth'; // Import hook useAuth
 import { Home, LogOut } from 'lucide-react'; // Import icons cho dropdown
 import { AccountingSidebar } from './AccountingSidebar'; // <-- SỬA: Import Sidebar Kế Toán
-import AccountingNotificationBell from '../Notifications/AccountingNotificationBell';
+
 import './LayoutAccounting.css'; // <-- SỬA: Import file CSS Kế Toán
 
 const LayoutAccounting = () => { // <-- SỬA: Tên component
@@ -42,13 +42,6 @@ const LayoutAccounting = () => { // <-- SỬA: Tên component
           
           {/* --- User Menu bên phải (Giữ nguyên logic) --- */}
           <div className="ml-auto flex items-center gap-4 relative">
-            {/* Accounting notification bell */}
-            <div style={{ marginRight: 8 }}>
-              {/* Lazy load to avoid circular imports */}
-              <React.Suspense fallback={null}>
-                <AccountingNotificationBell />
-              </React.Suspense>
-            </div>
             
             {/* Giữ nguyên logic lấy tên user */}
             <span className="text-gray-700">

@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getCashierInvoiceDetail, processCashPayment } from '../Services/apiCashierStaff';
-import { ServiceNotificationContext } from '../../contexts/ServiceNotificationContext';
 import { ArrowLeft, User, Home, Phone, Mail, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
 import moment from 'moment';
 
@@ -17,7 +16,6 @@ function RouteInvoiceDetail() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-    const { showTransientToast, syncUnreadCountFromDB } = useContext(ServiceNotificationContext);
 
     // 1. Tải chi tiết Hóa đơn
     useEffect(() => {
@@ -57,19 +55,6 @@ function RouteInvoiceDetail() {
             setSuccess(`Thanh toán thành công! Đã tạo Biên lai: ${receipt.data.receiptNumber}`);
             // Cập nhật trạng thái ngay trên UI
             setInvoice(prev => ({ ...prev, paymentStatus: 'PAID', paidDate: new Date() }));
-            // Show a transient toast for the actor and refresh unread badge from server
-            try {
-                showTransientToast({
-                    id: `payment_${invoice.id}_${Date.now()}`,
-                    type: 'PAYMENT_RECEIVED',
-                    message: `Thu tiền mặt: ${invoice.totalAmount.toLocaleString('vi-VN')} VNĐ cho HĐ ${invoice.invoiceNumber}`,
-                    timestamp: new Date().toISOString(),
-                    contractId: invoice.contractId || invoice.referenceId || null
-                });
-            } catch (e) {}
-
-            // Sync unread count to reflect server-authoritative badge
-            try { syncUnreadCountFromDB(); } catch (e) {}
         } catch (err) {
             console.error("Lỗi khi xác nhận thanh toán:", err);
             setError(err.response?.data?.message || "Xác nhận thanh toán thất bại.");
