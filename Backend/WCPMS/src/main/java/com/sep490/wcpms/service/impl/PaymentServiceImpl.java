@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sep490.wcpms.dto.PaymentLinkDTO;
 import com.sep490.wcpms.entity.Account;
+import com.sep490.wcpms.entity.ActivityLog;
 import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.Receipt;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.InvoiceRepository;
 import com.sep490.wcpms.repository.ReceiptRepository;
+import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +40,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PayOS payOS; // Vẫn giữ để dùng cho Webhook
     private final InvoiceRepository invoiceRepository;
     private final ReceiptRepository receiptRepository;
+    private final AccountRepository accountRepository; // Để lấy NV Thu ngân (nếu cần)
+    private final ActivityLogService activityLogService; // NEW
     private final AccountRepository accountRepository;
 
     @Value("${payos.client-id}")
@@ -224,5 +228,28 @@ public class PaymentServiceImpl implements PaymentService {
         receiptRepository.save(receipt);
 
         System.out.println(">>> CẬP NHẬT THÀNH CÔNG HÓA ĐƠN " + invoiceId);
+
+        // Persist activity log for automatic bank payment
+        try {
+            ActivityLog al = new ActivityLog();
+            al.setSubjectType("INVOICE");
+            al.setSubjectId(invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : String.valueOf(invoice.getId()));
+            al.setAction("PAYMENT_RECEIVED_BANK");
+            if (cashier != null) {
+                al.setActorType("STAFF");
+                al.setActorId(cashier.getId());
+                al.setActorName(cashier.getFullName());
+                al.setInitiatorType("SYSTEM");
+                al.setInitiatorName("BankWebhook");
+            } else {
+                al.setActorType("SYSTEM");
+                al.setInitiatorType("SYSTEM");
+                al.setInitiatorName("BankWebhook");
+            }
+            al.setPayload("bankTransactionId=" + bankTransactionId + ";amount=" + amountPaid.toString());
+            activityLogService.save(al);
+        } catch (Exception ex) {
+            // swallow
+        }
     }
 }

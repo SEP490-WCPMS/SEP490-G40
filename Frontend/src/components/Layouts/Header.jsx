@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import { Menu, X, LogOut, User, Bell, LayoutDashboard, ChevronDown } from 'lucide-react';
-import { ServiceNotificationBell } from '../Notifications/ServiceNotificationBell';
 import './Header.css';
 
 const Header = ({ isAuthenticated, user }) => {
@@ -148,12 +147,6 @@ const Header = ({ isAuthenticated, user }) => {
 
         {/* Avatar / Login Button */}
         <div className="header-right">
-          {isAuthenticated && user?.roleName === 'SERVICE_STAFF' && (
-            // Render bell outside avatar dropdown so dropdown panel is not clipped
-            <div className="notification-bell-header">
-              <ServiceNotificationBell />
-            </div>
-          )}
           {isAuthenticated ? (
             <div className="avatar-dropdown-container">
               <button
@@ -219,13 +212,6 @@ const Header = ({ isAuthenticated, user }) => {
                     >
                       <LogOut size={16} />
                       <span>Đổi mật khẩu</span>
-                    </button>
-                  )}
-                  {/* Nếu user là SERVICE_STAFF thì hiển thị notification bell tích hợp */}
-                  {user?.roleName === 'SERVICE_STAFF' ? null : (
-                    <button className="dropdown-item">
-                      <Bell size={16} />
-                      <span>Thông báo</span>
                     </button>
                   )}
                   <hr className="dropdown-divider" />

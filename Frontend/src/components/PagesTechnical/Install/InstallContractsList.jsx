@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getAssignedInstallationContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw } from 'lucide-react'; // Icon làm mới
 
@@ -9,12 +9,14 @@ function InstallContractsList() {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    const fetchData = () => {
+    const fetchData = (opts = {}) => {
         setLoading(true);
         setError(null);
-        getAssignedInstallationContracts()
+        const params = { status: 'SIGNED', ...opts };
+        getAssignedInstallationContracts(params)
             .then(response => {
-                setContracts(response.data || []); // Đảm bảo là mảng
+                const data = response?.data?.content || response?.data || [];
+                setContracts(Array.isArray(data) ? data : []); // Đảm bảo là mảng
             })
             .catch(err => {
                 console.error("Lỗi khi lấy danh sách hợp đồng lắp đặt:", err);
@@ -25,9 +27,37 @@ function InstallContractsList() {
             });
     };
 
+    const location = useLocation();
+
     useEffect(() => {
-        fetchData();
-    }, []); // Chỉ fetch khi mount
+        const params = new URLSearchParams(location.search);
+        const highlightId = params.get('highlight');
+        if (highlightId) {
+            fetchData({ keyword: highlightId });
+        } else {
+            fetchData();
+        }
+    }, [location.search]); // Chỉ fetch khi mount hoặc khi highlight thay đổi
+
+    // Highlight logic: nếu URL có ?highlight=<id> thì cuộn tới hàng tương ứng sau khi dữ liệu load
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const highlightId = params.get('highlight');
+        if (!highlightId) return;
+
+        let attempts = 0;
+        const tryHighlight = () => {
+            attempts += 1;
+            const el = document.querySelector(`[data-contract-id="${highlightId}"]`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            if (attempts < 10) setTimeout(tryHighlight, 300);
+        };
+
+        setTimeout(tryHighlight, 200);
+    }, [location.search, contracts]);
 
     const handleViewDetails = (contractId) => {
         // Điều hướng đến trang chi tiết lắp đặt, dùng đường dẫn tuyệt đối
@@ -86,7 +116,7 @@ function InstallContractsList() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {contracts.length > 0 ? (
                                 contracts.map(contract => (
-                                    <tr key={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                    <tr key={contract.id} data-contract-id={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contract.contractNumber}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.customerName}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{contract.customerAddress}</td>

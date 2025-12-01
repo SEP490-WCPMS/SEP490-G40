@@ -20,4 +20,6 @@ public class ContractAnnulTransferRequestUpdateDTO {
     private String notes;
 
     private String attachedEvidence;         // nếu muốn cập nhật file đính kèm
+
+    private String rejectionReason; // lý do từ chối, nếu có
 }

@@ -40,4 +40,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
             "FROM Customer c ORDER BY c.customerName ASC")
     List<CustomerSimpleDTO> findSimpleList();
     // --- HẾT PHẦN THÊM ---
+
+    // Count customers created between datetimes
+    long countByCreatedAtBetween(java.time.LocalDateTime from, java.time.LocalDateTime to);
 }

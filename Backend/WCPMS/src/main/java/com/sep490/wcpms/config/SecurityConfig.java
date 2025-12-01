@@ -106,14 +106,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
-                                // SSE endpoints - permitAll, controller tự validate JWT (header hoặc query param)
-                                .requestMatchers("/api/service/notifications/stream").permitAll()
-                                .requestMatchers("/api/service/notifications/stream-token").permitAll()
-                                .requestMatchers("/api/service/notifications/test").permitAll()
-                                // Polling endpoints (fallback khi SSE fail) - controller tự validate JWT từ header
-                                .requestMatchers(HttpMethod.GET, "/api/service/notifications").permitAll()
-                                .requestMatchers("/api/service/notifications/unread-count").permitAll()
-                                .requestMatchers("/api/payment/**").permitAll()
+                                .requestMatchers("/api/payment/webhook/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
