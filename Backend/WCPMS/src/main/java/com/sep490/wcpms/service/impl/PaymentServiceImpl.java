@@ -42,7 +42,6 @@ public class PaymentServiceImpl implements PaymentService {
     private final ReceiptRepository receiptRepository;
     private final AccountRepository accountRepository; // Để lấy NV Thu ngân (nếu cần)
     private final ActivityLogService activityLogService; // NEW
-    private final AccountRepository accountRepository;
 
     @Value("${payos.client-id}")
     private String clientId;
@@ -223,7 +222,10 @@ public class PaymentServiceImpl implements PaymentService {
         receipt.setNotes("PayOS Success. Ref: " + data.getReference() + ". Content: " + transferContent);
 
         // Gán NV thu ngân mặc định (Admin)
-        accountRepository.findById(1).ifPresent(receipt::setCashier);
+        Account cashier = accountRepository.findById(1).orElse(null);
+        if (cashier != null) {
+            receipt.setCashier(cashier);
+        }
 
         receiptRepository.save(receipt);
 
@@ -246,7 +248,8 @@ public class PaymentServiceImpl implements PaymentService {
                 al.setInitiatorType("SYSTEM");
                 al.setInitiatorName("BankWebhook");
             }
-            al.setPayload("bankTransactionId=" + bankTransactionId + ";amount=" + amountPaid.toString());
+            String bankTransactionId = data.getReference() != null ? data.getReference() : String.valueOf(orderCode);
+            al.setPayload("bankTransactionId=" + bankTransactionId + ";amount=" + amountPaid);
             activityLogService.save(al);
         } catch (Exception ex) {
             // swallow

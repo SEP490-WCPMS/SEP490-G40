@@ -43,8 +43,8 @@ const Footer = () => {
             </div>
             <div className="footer-item">
               <Mail size={16} />
-              <a href="mailto:contact@capnuocphutho.vn" className="footer-link">
-                contact@capnuocphutho.vn
+              <a href="mailto:congtycophancapnuocphutho@gmail.com" className="footer-link">
+                congtycophancapnuocphutho@gmail.com
               </a>
             </div>
             <div className="footer-item">
