@@ -136,8 +136,7 @@ const ContractAnnulList = () => {
         size: params.pageSize || pagination.pageSize
       });
       const data = response?.data;
-      // eslint-disable-next-line no-console
-      console.log('[AnnulList] payload', data);
+        
       // Tìm mảng items theo nhiều cấu trúc trả về khác nhau (kể cả lồng 1 cấp)
       const pickArray = (obj) => {
         if (Array.isArray(obj)) return obj;
@@ -153,40 +152,44 @@ const ContractAnnulList = () => {
         return [];
       };
       const rawItems = pickArray(data);
-      // eslint-disable-next-line no-console
-      console.log('[AnnulList] items.length', rawItems.length, 'first.keys', rawItems[0] && Object.keys(rawItems[0]));
+        
       const items = rawItems.map((it) => ({
-        ...it,
-        contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-        customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
-        requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
-        reason: it.reason || it.note || '—',
-        status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
-          || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
-          || (typeof it.status === 'string' ? it.status : null)
-          || 'PENDING',
-      }));
-      let finalItems = items;
+        ...it,
+        contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
+        customerName:
+          (it.fromCustomerName && it.fromCustomerName.trim() !== '') ? it.fromCustomerName :
+          (it.contract && it.contract.customerName && it.contract.customerName.trim() !== '' ? it.contract.customerName :
+          (it.customerId ? `KH #${it.customerId}` : '—')),
+        requestDate: it.requestDate ? new Date(it.requestDate).toLocaleDateString('vi-VN') : '—',
+        reason: it.reason || it.note || '—',
+        status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
+          || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
+          || (typeof it.status === 'string' ? it.status : null)
+          || 'PENDING',
+      }));
+      let finalItems = items;
       if (!items.length) {
         try {
           const alt = await apiClient.get('/service/requests', { params: { page: (params.current || pagination.current) - 1, size: params.pageSize || pagination.pageSize } });
           const altData = alt?.data;
-          // eslint-disable-next-line no-console
-          console.log('[AnnulList] alt payload', altData);
+                
           const altRaw = pickArray(altData);
           finalItems = altRaw
             .filter(it => (it.requestType || it.type || '').toString().toUpperCase() === 'ANNUL')
-            .map((it) => ({
-              ...it,
-              contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-              customerName: it.customerName || it.fromCustomerName || (it.customerId ? `KH #${it.customerId}` : '—'),
-              requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
-              reason: it.reason || it.note || '—',
-              status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
-                || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
-                || (typeof it.status === 'string' ? it.status : null)
-                || 'PENDING',
-            }));
+            .map((it) => ({
+              ...it,
+              contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
+              customerName:
+                (it.fromCustomerName && it.fromCustomerName.trim() !== '') ? it.fromCustomerName :
+                (it.contract && it.contract.customerName && it.contract.customerName.trim() !== '' ? it.contract.customerName :
+                (it.customerId ? `KH #${it.customerId}` : '—')),
+              requestDate: it.requestDate ? new Date(it.requestDate).toLocaleDateString('vi-VN') : '—',
+              reason: it.reason || it.note || '—',
+              status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
+                || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
+                || (typeof it.status === 'string' ? it.status : null)
+                || 'PENDING',
+            }));
         } catch (e) {
           // eslint-disable-next-line no-console
           console.warn('[AnnulList] alt fetch failed', e);

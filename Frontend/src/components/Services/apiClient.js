@@ -1,5 +1,4 @@
 import axios from 'axios';
-import logger from '../../lib/logger';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -17,31 +16,6 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Lightweight response trace for notification endpoints only
-apiClient.interceptors.response.use(
-  (response) => {
-    try {
-      const url = response?.config?.url || '';
-      if (url.includes('/service/notifications')) {
-        const method = (response.config.method || 'get').toUpperCase();
-        const count = response.data?.content ? response.data.content.length : undefined;
-        logger.debug('[API TRACE]', method, url, 'status', response.status, 'items', count);
-      }
-    } catch {}
-    return response;
-  },
-  (error) => {
-    try {
-      const url = error?.config?.url || '';
-      if (url.includes('/service/notifications')) {
-        const method = (error.config.method || 'get').toUpperCase();
-        logger.warn('[API TRACE ERROR]', method, url, 'status', error.response?.status, 'message', error.message);
-      }
-    } catch {}
     return Promise.reject(error);
   }
 );

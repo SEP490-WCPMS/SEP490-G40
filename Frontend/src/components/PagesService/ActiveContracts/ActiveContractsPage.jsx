@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, Input as FormInput, DatePicker, Descriptions, Select, Tag, Space } from 'antd';
 import { ReloadOutlined, PlayCircleOutlined, PauseCircleOutlined, StopOutlined, ClockCircleOutlined, EyeOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
 import { getServiceContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract, reactivateContract } from '../../Services/apiService';
@@ -69,6 +70,31 @@ const ActiveContractsPage = () => {
     useEffect(() => {
         fetchContracts(pagination.current, pagination.pageSize);
     }, [filters, pagination.current, pagination.pageSize]); // Thêm filters vào dependency
+
+    // Highlight logic: if URL includes ?highlight=<id>, scroll to that contract after contracts load
+    const location = useLocation();
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const highlightId = params.get('highlight');
+        if (!highlightId) return;
+
+        // Try to find the element after contracts loaded; retry a few times in case of async rendering
+        let attempts = 0;
+        const tryHighlight = () => {
+            attempts += 1;
+            const el = document.querySelector(`[data-contract-id="${highlightId}"]`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+            if (attempts < 10) {
+                setTimeout(tryHighlight, 300);
+            }
+        };
+
+        // Start after a short delay to allow table render
+        setTimeout(tryHighlight, 200);
+    }, [location.search, contracts]);
 
     const handleTableChange = (newPagination) => {
         setPagination(newPagination);
@@ -581,6 +607,7 @@ const ActiveContractsPage = () => {
                 <Table
                     columns={columns}
                     dataSource={contracts}
+                    onRow={(record) => ({ 'data-contract-id': record.id })}
                     pagination={pagination}
                     onChange={handleTableChange}
                     rowKey="id"

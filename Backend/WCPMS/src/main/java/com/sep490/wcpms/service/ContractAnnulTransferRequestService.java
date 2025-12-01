@@ -7,6 +7,7 @@ import com.sep490.wcpms.mapper.ContractAnnulTransferRequestMapper;
 import com.sep490.wcpms.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,6 +19,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ContractAnnulTransferRequestService {
 
     private final ContractAnnulTransferRequestRepository repository;
@@ -29,6 +31,8 @@ public class ContractAnnulTransferRequestService {
     // CREATE (annul/transfer)
     @Transactional
     public ContractAnnulTransferRequestDTO create(ContractAnnulTransferRequestCreateDTO dto) {
+
+        log.info("[REQUEST CREATE] incoming create DTO: {}", dto);
 
         String type = dto.getRequestType();
         if (type == null || (!type.equalsIgnoreCase("annul") && !type.equalsIgnoreCase("transfer"))) {
@@ -77,8 +81,14 @@ public class ContractAnnulTransferRequestService {
                     .orElseThrow(() -> new ResourceNotFoundException("To-customer not found: " + dto.getToCustomerId()));
         }
 
-        ContractAnnulTransferRequest entity =
-                mapper.toEntity(dto, contract, requestedBy, fromCustomer, toCustomer);
+        ContractAnnulTransferRequest entity;
+        try {
+            entity = mapper.toEntity(dto, contract, requestedBy, fromCustomer, toCustomer);
+        } catch (Exception ex) {
+            log.error("[MAPPER ERROR] failed to map CreateDTO -> Entity. dto={}, contractId={}, requestedById={}, fromCustomerId={}, toCustomerId={}",
+                    dto, dto.getContractId(), dto.getRequestedById(), dto.getFromCustomerId(), dto.getToCustomerId(), ex);
+            throw ex;
+        }
 
 // đảm bảo default
         entity.setRequestType(ContractAnnulTransferRequest.RequestType.valueOf(type.toUpperCase()));
@@ -87,22 +97,37 @@ public class ContractAnnulTransferRequestService {
         }
 
         entity = repository.save(entity);
-        return mapper.toDTO(entity);
-    }
 
-    public ContractAnnulTransferRequestDTO getById(Integer id) {
+        try {
+            // Use service-level converter which includes fallback to contract.customer when fromCustomer is null
+            ContractAnnulTransferRequestDTO out = convertToAnnulTransferDTO(entity);
+             log.info("[REQUEST CREATED] id={}, contractId={}, type={}, requestedById={}", out.getId(), out.getContractId(), out.getRequestType(), out.getRequestedById());
+             return out;
+         } catch (Exception ex) {
+             log.error("[MAPPER ERROR] failed to map Entity -> DTO after save. entityId={}", entity != null ? entity.getId() : null, ex);
+             throw ex;
+         }
+     }
+
+     public ContractAnnulTransferRequestDTO getById(Integer id) {
         ContractAnnulTransferRequest entity = repository.findWithRelationsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
-        return mapper.toDTO(entity);
-    }
+        try {
+            return convertToAnnulTransferDTO(entity);
+        } catch (Exception ex) {
+            log.error("[MAPPER ERROR] toDTO failed for entity id={}", id, ex);
+            throw ex;
+        }
+     }
 
+    @Transactional
     public Page<ContractAnnulTransferRequestDTO> search(Integer contractId,
-                                                        String requestType,
-                                                        String status,
-                                                        LocalDate from,
-                                                        LocalDate to,
-                                                        String q,
-                                                        Pageable pageable) {
+                                                         String requestType,
+                                                         String status,
+                                                         LocalDate from,
+                                                         LocalDate to,
+                                                         String q,
+                                                         Pageable pageable) {
         Specification<ContractAnnulTransferRequest> spec = Specification.allOf(
                 ContractAnnulTransferRequestSpecs.contractIdEq(contractId),
                 ContractAnnulTransferRequestSpecs.typeEq(requestType),
@@ -112,11 +137,20 @@ public class ContractAnnulTransferRequestService {
                 ContractAnnulTransferRequestSpecs.qLike(q)
         );
 
-        return repository.findAll(spec, pageable).map(mapper::toDTO);
+        // Use service-level converter so we apply fallback logic (e.g. use contract.customer when fromCustomer is null)
+        return repository.findAll(spec, pageable).map(entity -> {
+            try {
+                return convertToAnnulTransferDTO(entity);
+            } catch (Exception ex) {
+                log.error("[MAPPER ERROR] convertToAnnulTransferDTO failed during search mapping. entityId={}", entity != null ? entity.getId() : null, ex);
+                throw new RuntimeException("Failed to map ContractAnnulTransferRequest entity to DTO", ex);
+            }
+        });
     }
 
     @Transactional
     public ContractAnnulTransferRequestDTO updateApproval(Integer id, ContractAnnulTransferRequestUpdateDTO dto) {
+        log.info("[UPDATE APPROVAL] id={}, dto.approvalStatus={}, dto.approvedById={}", id, dto.getApprovalStatus(), dto.getApprovedById());
         ContractAnnulTransferRequest entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
 
@@ -153,8 +187,12 @@ public class ContractAnnulTransferRequestService {
             }
         }
 
-        // cập nhật entity (managed) - sẽ được flush khi transaction commit
-        mapper.updateApproval(entity, dto, approvedBy);
+        try {
+            mapper.updateApproval(entity, dto, approvedBy);
+        } catch (Exception ex) {
+            log.error("[MAPPER ERROR] updateApproval failed for id={}. dto={}", id, dto, ex);
+            throw ex;
+        }
 
         // Hệ quả khi APPROVED
         if (ContractAnnulTransferRequest.ApprovalStatus.APPROVED.equals(dto.getApprovalStatus())) {
@@ -166,6 +204,7 @@ public class ContractAnnulTransferRequestService {
                     contract.setEndDate(LocalDate.now());
                 }
                 contractRepository.save(contract);
+                log.info("[APPROVAL] Annul approved - contract {} terminated", contract.getId());
             }
 
             if (entity.getRequestType() == ContractAnnulTransferRequest.RequestType.TRANSFER) {
@@ -174,13 +213,20 @@ public class ContractAnnulTransferRequestService {
                 }
                 contract.setCustomer(entity.getToCustomer());
                 contractRepository.save(contract);
+                log.info("[APPROVAL] Transfer approved - contract {} customer updated to {}", contract.getId(), entity.getToCustomer().getId());
             }
 
         }
 
         entity = repository.save(entity);
 
-        return mapper.toDTO(entity);
+        try {
+            // Use converter with fallback for customer names
+            return convertToAnnulTransferDTO(entity);
+        } catch (Exception ex) {
+            log.error("[MAPPER ERROR] toDTO failed after approval save for id={}", entity != null ? entity.getId() : null, ex);
+            throw ex;
+        }
     }
 
     @Transactional
@@ -191,7 +237,12 @@ public class ContractAnnulTransferRequestService {
         if (dto.getAttachedEvidence() != null) entity.setAttachedEvidence(dto.getAttachedEvidence());
         if (dto.getNotes() != null) entity.setNotes(dto.getNotes());
 
-        return mapper.toDTO(entity);
+        try {
+            return convertToAnnulTransferDTO(entity);
+        } catch (Exception ex) {
+            log.error("[MAPPER ERROR] toDTO failed in updateMinor for id={}", id, ex);
+            throw ex;
+        }
     }
 
     @Transactional
@@ -199,5 +250,53 @@ public class ContractAnnulTransferRequestService {
         ContractAnnulTransferRequest entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract request not found: " + id));
         repository.delete(entity);
+        log.info("[DELETE] Contract annul/transfer request deleted: id={}", id);
+    }
+
+    public ContractAnnulTransferRequestDTO convertToAnnulTransferDTO(ContractAnnulTransferRequest request) {
+        ContractAnnulTransferRequestDTO dto = new ContractAnnulTransferRequestDTO();
+        dto.setId(request.getId());
+        // map request and contract identifiers
+        dto.setRequestNumber(request.getRequestNumber());
+        dto.setContractId(request.getContract() != null ? request.getContract().getId() : null);
+        dto.setContractNumber(request.getContract() != null ? request.getContract().getContractNumber() : null);
+        dto.setRequestType(request.getRequestType() != null ? request.getRequestType().name() : null);
+        dto.setApprovalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus().name() : null);
+        dto.setRequestedById(request.getRequestedBy() != null ? request.getRequestedBy().getId() : null);
+        dto.setRequestedByUsername(request.getRequestedBy() != null ? request.getRequestedBy().getUsername() : null);
+        dto.setRequestDate(request.getRequestDate());
+        dto.setApprovalDate(request.getApprovalDate());
+        dto.setReason(request.getReason());
+        dto.setNotes(request.getNotes());
+        dto.setAttachedEvidence(request.getAttachedEvidence());
+
+        dto.setCreatedAt(request.getCreatedAt());
+        dto.setUpdatedAt(request.getUpdatedAt());
+        dto.setRejectionReason(request.getRejectionReason());
+
+        if (request.getFromCustomer() != null) {
+            dto.setFromCustomerId(request.getFromCustomer().getId());
+            dto.setFromCustomerName(request.getFromCustomer().getCustomerName());
+        } else {
+            // Fallback: show current contract owner name when fromCustomer is not set (e.g. annul requests)
+            if (request.getContract() != null && request.getContract().getCustomer() != null) {
+                dto.setFromCustomerId(request.getContract().getCustomer().getId());
+                dto.setFromCustomerName(request.getContract().getCustomer().getCustomerName());
+            } else {
+                dto.setFromCustomerName(null);
+            }
+        }
+        if (request.getToCustomer() != null) {
+            dto.setToCustomerId(request.getToCustomer().getId());
+            dto.setToCustomerName(request.getToCustomer().getCustomerName());
+        } else {
+            dto.setToCustomerName(null);
+        }
+        // approvedBy info (if any)
+        if (request.getApprovedBy() != null) {
+            dto.setApprovedById(request.getApprovedBy().getId());
+            dto.setApprovedByUsername(request.getApprovedBy().getUsername());
+        }
+        return dto;
     }
 }

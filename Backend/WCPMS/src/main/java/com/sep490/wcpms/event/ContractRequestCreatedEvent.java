@@ -18,4 +18,3 @@ public class ContractRequestCreatedEvent {
     private final String contractNumber;
     private final LocalDateTime createdAt;
 }
-

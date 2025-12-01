@@ -33,6 +33,11 @@ public interface ContractAnnulTransferRequestMapper {
 
     @Mapping(source = "fromCustomer.id",         target = "fromCustomerId")
     @Mapping(source = "toCustomer.id",           target = "toCustomerId")
+    // map customer names when available so frontend can show human-readable names
+    @Mapping(source = "fromCustomer.customerName", target = "fromCustomerName")
+    @Mapping(source = "toCustomer.customerName",   target = "toCustomerName")
+    // map rejection reason
+    @Mapping(source = "rejectionReason", target = "rejectionReason")
 
     @Mapping(source = "notes",                   target = "notes")
     @Mapping(source = "createdAt",               target = "createdAt")
@@ -87,7 +92,8 @@ public interface ContractAnnulTransferRequestMapper {
             @Mapping(target = "approvalStatus",    source = "dto.approvalStatus"),
             @Mapping(target = "approvalDate",      source = "dto.approvalDate"),
             @Mapping(target = "notes",             source = "dto.notes"),
-            @Mapping(target = "attachedEvidence",  source = "dto.attachedEvidence")
+            @Mapping(target = "attachedEvidence",  source = "dto.attachedEvidence"),
+            @Mapping(target = "rejectionReason",   source = "dto.rejectionReason")
     })
     void updateApproval(@MappingTarget ContractAnnulTransferRequest entity,
                         ContractAnnulTransferRequestUpdateDTO dto,

@@ -15,4 +15,3 @@ public class SurveyReportSubmittedEvent {
     private final String customerName;
     private final LocalDateTime submittedAt;
 }
-

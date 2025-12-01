@@ -88,6 +88,18 @@ public class ContractAnnulTransferRequest {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    @Lob
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -107,4 +119,3 @@ public class ContractAnnulTransferRequest {
         REJECTED
     }
 }
-
