@@ -126,6 +126,21 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
 
     Page<Contract> findByContractStatus(Contract.ContractStatus contractStatus, Pageable pageable);
 
+    List<Contract> findByContractStatusAndEndDateBetween(
+            Contract.ContractStatus contractStatus,
+            LocalDate from,
+            LocalDate to
+    );
+
+    // --- THÊM HÀM NÀY ---
+    /**
+     * Lấy các Hợp đồng đang ACTIVE và CHƯA có hóa đơn lắp đặt (kiểm tra bảng Invoice).
+     */
+    @Query("SELECT c FROM Contract c " +
+            "WHERE c.contractStatus = 'ACTIVE' " +
+            "AND c.id NOT IN (SELECT i.contract.id FROM Invoice i WHERE i.contract IS NOT NULL)")
+    Page<Contract> findActiveContractsWithoutInvoice(Pageable pageable);
+
     // Aggregate contracts by status between dates (createdAt)
     @Query("SELECT c.contractStatus, COUNT(c) FROM Contract c WHERE c.createdAt BETWEEN :from AND :to GROUP BY c.contractStatus")
     List<Object[]> countContractsGroupedByStatus(@Param("from") java.time.LocalDateTime from, @Param("to") java.time.LocalDateTime to);

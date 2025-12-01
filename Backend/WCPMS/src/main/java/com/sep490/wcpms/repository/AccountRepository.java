@@ -27,6 +27,12 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
     //  Kiểm tra email đã tồn tại chưa
     boolean existsByEmail(String email);
 
+    // Tìm tài khoản dựa trên reset token
+    Optional<Account> findByPasswordResetToken(String token);
+
+    // Hàm tìm tài khoản dựa trên token xác thực
+    Optional<Account> findByVerificationToken(String token);
+
     //  Lấy tất cả tài khoản theo vai trò (Enum RoleName)
     List<Account> findByRole_RoleName(Role.RoleName roleName);
 

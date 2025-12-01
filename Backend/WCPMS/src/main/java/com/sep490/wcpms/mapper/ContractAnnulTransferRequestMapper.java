@@ -75,17 +75,25 @@ public interface ContractAnnulTransferRequestMapper {
     // ===== Update APPROVAL =====
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mappings({
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "contract", ignore = true),
-            @Mapping(target = "requestedBy", ignore = true),
-            @Mapping(target = "fromCustomer", ignore = true),
-            @Mapping(target = "toCustomer", ignore = true),
-            @Mapping(target = "approvedBy",     expression = "java(approvedBy)"),
-            @Mapping(target = "approvalStatus", source = "dto.approvalStatus"),
-            @Mapping(target = "approvalDate",   source = "dto.approvalDate"),
-            @Mapping(target = "notes",          source = "dto.notes"),
+            // Không bao giờ được đụng vào các field identity / relationship / meta
+            @Mapping(target = "id",             ignore = true),
+            @Mapping(target = "contract",       ignore = true),
+            @Mapping(target = "requestType",    ignore = true),
+            @Mapping(target = "requestNumber",  ignore = true),
+            @Mapping(target = "requestDate",    ignore = true),
+            @Mapping(target = "fromCustomer",   ignore = true),
+            @Mapping(target = "toCustomer",     ignore = true),
+            @Mapping(target = "requestedBy",    ignore = true),
+            @Mapping(target = "createdAt",      ignore = true),
+            @Mapping(target = "updatedAt",      ignore = true),
+
+            // Chỉ update các field liên quan duyệt
+            @Mapping(target = "approvedBy",        expression = "java(approvedBy)"),
+            @Mapping(target = "approvalStatus",    source = "dto.approvalStatus"),
+            @Mapping(target = "approvalDate",      source = "dto.approvalDate"),
+            @Mapping(target = "notes",             source = "dto.notes"),
             @Mapping(target = "attachedEvidence",  source = "dto.attachedEvidence"),
-            @Mapping(target = "rejectionReason", source = "dto.rejectionReason")
+            @Mapping(target = "rejectionReason",   source = "dto.rejectionReason")
     })
     void updateApproval(@MappingTarget ContractAnnulTransferRequest entity,
                         ContractAnnulTransferRequestUpdateDTO dto,

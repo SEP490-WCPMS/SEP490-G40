@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Thông báo tiền nước</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+        body {
+            font-family: 'Times New Roman', serif !important;
+            margin: 0;
+            padding: 0;
+            font-size: 11.5pt;
+            line-height: 1.33;
+        }
+        .page {
+            box-sizing: border-box;
+        }
+
+        /* HEADER dùng table, không dùng flex */
+        table.header {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 2.5mm 0; /* giảm nhẹ */
+        }
+        table.header td {
+            border: none !important;
+            padding: 0;
+        }
+        .header-logo img {
+            max-width: 22mm;
+            max-height: 22mm;
+            display: block;
+        }
+        .header-text div {
+            font-size: 11.5pt;
+            margin: 1mm 0;
+        }
+
+        .title {
+            text-align: center;
+            margin: 2mm 0 2.5mm 0; /* bớt chút khoảng dưới */
+            font-size: 14pt;
+            font-weight: bold;
+            font-family: 'Times New Roman', serif !important;
+        }
+
+        .info-row {
+            margin: 1.5mm 0; /* trước 2mm */
+        }
+        .info-label {
+            font-weight: bold;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 2.5mm; /* trước 4mm */
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 3px 5px; /* trước 4px 6px */
+            font-size: 11pt;
+        }
+        th {
+            background: #f0f0f0;
+            text-align: center;
+        }
+
+        .note {
+            margin-top: 2.5mm; /* trước 4mm */
+        }
+
+        .list {
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
+            padding-left: 16pt;
+        }
+        .list li {
+            margin-bottom: 0.8mm;
+        }
+
+        /* Bảng 1x2: thông tin ngân hàng + QR */
+        .bank-qr-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 3mm; /* trước 4mm */
+        }
+        .bank-qr-table td {
+            vertical-align: top;
+            padding: 0;
+        }
+        .bank-info .bank-line {
+            margin-bottom: 2.5mm; /* trước 4mm */
+            line-height: 1;
+            font-size: 11pt;
+        }
+        .qr-cell {
+            width: 35%;
+            text-align: center;
+        }
+        .qr-cell img {
+            max-width: 35mm;
+            max-height: 35mm;
+        }
+
+        /* Giảm margin mặc định của p để bớt khoảng trắng */
+        p {
+            margin: 0 0 2mm 0; /* trước 3mm */
+        }
+
+        /* Bảng 1x2: Lưu ý + chữ ký */
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 3mm; /* trước 4mm */
+        }
+        .footer-table td {
+            border: none;
+            vertical-align: top;
+            padding: 0;
+        }
+        .footer-note {
+            width: 60%;
+            font-size: 11pt; /* hơi nhỏ hơn thân bài một chút */
+        }
+        .footer-sign {
+            width: 40%;
+            text-align: center;
+            font-size: 11.5pt;
+        }
+        .footer-sign img {
+            display: inline-block !important;
+        }
+
+        /* Tất cả chữ đậm KHÔNG nghiêng */
+        b {
+            font-style: normal !important;
+        }
+        /* Riêng đoạn Lưu ý vẫn nghiêng */
+        .footer-note b i {
+            font-style: italic !important;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- HEADER -->
+    <table class="header">
+        <tr>
+            <td style="width: 28mm; vertical-align: top;">
+                <img src="logo.png" style="max-width: 26mm; max-height: 26mm;" alt="logo"/>
+            </td>
+
+            <td style="vertical-align: middle; text-align: center;">
+                <div style="font-size: 20pt; font-weight: bold;">
+                    CÔNG TY CỔ PHẦN CẤP NƯỚC PHÚ THỌ
+                </div>
+
+                <div style="font-size: 13pt; font-weight: bold;">
+                    Số 8, Trần Phú, Phường Tân Dân, TP Việt Trì, Phú Thọ
+                </div>
+
+                <div style="font-size: 13pt; font-weight: bold;">
+                    Điện thoại: 0210 6251998 / 0210 3992369
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="title">THÔNG BÁO TIỀN NƯỚC</div>
+
+    <div class="info-row">
+        <span class="info-label">Ngày thông báo:</span>
+        <span th:text="${noticeDate}">...</span>
+
+        <span style="margin-left: 20mm;" class="info-label">Mã khách hàng:</span>
+        <span th:text="${customerCode}">KH...</span>
+    </div>
+
+    <div class="info-row">
+        <span class="info-label">Địa chỉ dùng nước:</span>
+        <span th:text="${customerAddress}">...</span>
+    </div>
+
+    <div class="info-row">
+        <span class="info-label">Quý khách hàng:</span>
+        <span th:text="${customerName}">...</span>
+    </div>
+
+    <p>
+        Căn cứ số liệu ghi nhận chỉ số đồng hồ nước, Công ty Cổ phần Cấp Nước Phú Thọ
+        trân trọng thông báo:
+    </p>
+
+    <table>
+        <tr>
+            <th>Kỳ tính tiền<br/> (từ ngày – đến ngày)</th>
+            <th>Sản lượng sử dụng<br/> (m³)</th>
+            <th>Tiền nước chưa thuế<br/> (đồng)</th>
+            <th>Thuế VAT<br/> (đồng)</th>
+            <th>Phí BVMT<br/> (đồng)</th>
+            <th>Tổng tiền phải thanh toán<br/> (đồng)</th>
+        </tr>
+        <tr>
+            <td th:text="${period}">01/11/2025 - 30/11/2025</td>
+            <td th:text="${totalConsumption}">8</td>
+            <td th:text="${subtotalAmount}">74.476</td>
+            <td th:text="${vatAmount}">0</td>
+            <td th:text="${environmentFeeAmount}">0</td>
+            <td th:text="${totalAmount}">74.476</td>
+        </tr>
+    </table>
+
+    <p class="note">
+        <b>Thuế suất VAT áp dụng:</b>
+        <span th:text="${vatRate}">5%</span>
+    </p>
+
+    <p class="note" th:if="${hasLatePaymentFee}">
+        <b>Phí nộp muộn:</b>
+        <span th:text="${latePaymentFee}">35.000</span>
+    </p>
+
+    <p class="note">
+        <b>Bằng chữ:</b>
+        <span th:text="${amountInWords}">Bảy mươi tư nghìn bốn trăm bảy mươi sáu đồng</span>
+    </p>
+
+    <p><b>Quý khách có thể thanh toán:</b></p>
+    <ul class="list">
+        <li><b>Bằng tiền mặt (trực tiếp với người thu tiền hoặc tại điểm giao dịch của Công ty).</b></li>
+        <li><b>Hoặc chuyển khoản:</b></li>
+    </ul>
+
+    <!-- Bảng 1x2: thông tin ngân hàng + QR -->
+    <table class="bank-qr-table">
+        <tr>
+            <td class="bank-info">
+                <div class="bank-line">
+                    <b>Đơn vị thụ hưởng: CÔNG TY CỔ PHẦN CẤP NƯỚC PHÚ THỌ</b>
+                </div>
+
+                <div class="bank-line">
+                    <b>Số tài khoản: <span th:text="${bankAccount}">...</span></b>
+                </div>
+
+                <div class="bank-line">
+                    <b>Chủ tài khoản: <span th:text="${bankName}">...</span></b>
+                </div>
+
+                <div class="bank-line">
+                    <b>Nội dung CK: <span th:text="${transferNote}">...</span></b>
+                </div>
+            </td>
+            <td class="qr-cell">
+                <img th:if="${qrImage != null}" th:src="${qrImage}" alt="QR thanh toán"/>
+                <span th:if="${qrImage == null}">QR</span>
+            </td>
+        </tr>
+    </table>
+
+    <br/>
+
+    <p>
+        Trong trường hợp Quý khách đã thanh toán, vui lòng bỏ qua thông báo này.
+        Nếu có vướng mắc về chỉ số, sản lượng hoặc số tiền phải thanh toán,
+        xin liên hệ số điện thoại chăm sóc khách hàng để được hỗ trợ.
+    </p>
+
+    <!-- Bảng 1x2: Lưu ý + chữ ký -->
+    <table class="footer-table">
+        <tr>
+            <td class="footer-note">
+                <p>
+                    <b><i>Lưu ý: Quý khách vui lòng thanh toán trước ngày
+                        <span th:text="${dueDate}">...</span>.
+                        Nếu quá thời hạn trên, Công ty sẽ tạm ngừng cung cấp dịch vụ.
+                    </i></b>
+                </p>
+            </td>
+            <td class="footer-sign">
+                <div style="font-weight:bold; line-height:1.2;">
+                    ĐẠI DIỆN CÔNG TY CỔ PHẦN<br/>
+                    CẤP NƯỚC PHÚ THỌ
+                </div>
+                <img src="signature.png"
+                     style="max-height:30mm; margin-top:4mm; display:inline-block;" />
+            </td>
+        </tr>
+    </table>
+
+</div>
+</body>
+</html>

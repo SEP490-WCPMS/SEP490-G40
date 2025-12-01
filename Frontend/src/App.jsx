@@ -4,6 +4,8 @@ import ScrollToTop from './components/common/ScrollToTop';
 import './App.css';
 import { useAuth } from './hooks/use-auth';
 import Login from './components/Authentication/Login';
+import ForgotPassword from './components/Authentication/ForgotPassword';
+import ResetPassword from './components/Authentication/ResetPassword';
 import Header from './components/Layouts/Header';
 import Footer from './components/Layouts/Footer';
 import HomePage from './components/Pages/HomePage';
@@ -71,7 +73,11 @@ import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 import AdminDashboard from './components/PagesAdmin/AdminDashboard';
 import ContactPage from './components/Pages/ContactPage';
-
+import StaffAccountList from './components/Admin/StaffAccountList';
+import WaterMetersPage from './components/Admin/WaterMetersPage';
+import WaterPriceTypesPage from './components/Admin/WaterPriceTypesPage';
+import WaterPricesPage from './components/Admin/WaterPricesPage';
+import { VerifyAccountPage } from './components/Authentication/VerifyAccount';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -99,6 +105,27 @@ function App() {
         <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContactPage /></PublicLayout>} />
         <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
+        <Route path="/verify" element={<VerifyAccountPage />} />
+        <Route path="/forgot" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ForgotPassword />
+            </main>
+            <Footer />
+          </div>
+        } />
+
+        <Route path="/reset-password" element={
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <Header isAuthenticated={isAuthenticated} user={user} />
+            <main style={{ flex: 1 }}>
+              <ResetPassword />
+            </main>
+            <Footer />
+          </div>
+        } />
+        {/* --- KẾT THÚC ĐOẠN THÊM --- */}
 
 
         {/* === CUSTOMER ROUTES (Cần đăng nhập, vai trò CUSTOMER) === */}
@@ -145,22 +172,22 @@ function App() {
         </Route>
 
         {/* --- LUỒNG CỦA CASHIER STAFF --- */}
-          <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
-            <Route path="/cashier/*" element={<LayoutCashier />}>
-              
-              {/* --- SỬA LẠI ROUTE --- */}
-              <Route index element={<CashierDashboard />} /> {/* Trang index mới */}
-              <Route path="dashboard" element={<CashierDashboard />} /> {/* Thêm /dashboard */}
-              {/* --- */}
-              <Route path="scan" element={<MeterScan />} />
-              <Route path="submit-reading" element={<ReadingConfirmation />} />
-              <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
-              {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
-              <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
-              <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
-              {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
-              <Route path="route-list" element={<CashierRouteList />} />
-              <Route path="route-contract/:contractId" element={<CashierContractDetail />} />
+        <Route element={<PrivateRoute allowedRoles={['CASHIER_STAFF']} />}>
+          <Route path="/cashier/*" element={<LayoutCashier />}>
+
+            {/* --- SỬA LẠI ROUTE --- */}
+            <Route index element={<CashierDashboard />} /> {/* Trang index mới */}
+            <Route path="dashboard" element={<CashierDashboard />} /> {/* Thêm /dashboard */}
+            {/* --- */}
+            <Route path="scan" element={<MeterScan />} />
+            <Route path="submit-reading" element={<ReadingConfirmation />} />
+            <Route path="payment-counter" element={<CashPaymentForm />} /> {/* Thu tại quầy */}
+            {/* Trang xem HÓA ĐƠN theo tuyến (để thu tiền) */}
+            <Route path="my-route" element={<RouteInvoiceList />} /> {/* Mới: Thu tại nhà (List) */}
+            <Route path="invoice-detail/:invoiceId" element={<RouteInvoiceDetail />} /> {/* Mới: Thu tại nhà (Detail) */}
+            {/* Trang xem HỢP ĐỒNG theo tuyến (để ghi số) */}
+            <Route path="route-list" element={<CashierRouteList />} />
+            <Route path="route-contract/:contractId" element={<CashierContractDetail />} />
 
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
@@ -220,6 +247,10 @@ function App() {
             {/* Admin index/dashboard */}
             <Route index element={<AdminDashboard />} />
             {/* (Thêm các trang khác của Admin ở đây) */}
+            <Route path="users" element={<StaffAccountList />} />
+            <Route path="water-meters" element={<WaterMetersPage />} />
+            <Route path="water-price-types" element={<WaterPriceTypesPage />} />
+            <Route path="water-prices" element={<WaterPricesPage />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>

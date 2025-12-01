@@ -11,7 +11,6 @@ import java.time.LocalDate;
 @Builder
 public class ContractAnnulTransferRequestUpdateDTO {
 
-    @NotNull
     private ContractAnnulTransferRequest.ApprovalStatus approvalStatus; // PENDING/APPROVED/REJECTED
 
     private Integer approvedById;         // bắt buộc nếu APPROVED/REJECTED (validate ở service)

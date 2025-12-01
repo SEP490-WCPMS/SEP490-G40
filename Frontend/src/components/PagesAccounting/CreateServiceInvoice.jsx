@@ -48,7 +48,7 @@ function CreateServiceInvoice() {
 
                 // Pre-fill form
                 setFormData({
-                    invoiceNumber: `DVKĐ${calibrationId}${moment().format('MMYYYY')}`,
+                    invoiceNumber: `DVKD${calibrationId}${moment().format('MMYYYY')}`,
                     invoiceDate: moment().format('YYYY-MM-DD'),
                     dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
                     subtotalAmount: subtotal,
@@ -95,7 +95,7 @@ function CreateServiceInvoice() {
             const response = await createServiceInvoice(invoiceDto);
             alert(`Tạo Hóa đơn ${response.data.invoiceNumber} thành công!`);
             // Chuyển sang trang Quản lý Hóa đơn
-            navigate('/accounting/invoices');
+            navigate('/accounting/unbilled-fees');
         } catch (err) {
             console.error("Lỗi khi tạo hóa đơn:", err);
             setError(err.response?.data?.message || "Tạo hóa đơn thất bại.");

@@ -5,10 +5,12 @@ import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
+import com.sep490.wcpms.mapper.ContractMapper;
 import com.sep490.wcpms.mapper.InvoiceMapper; // <-- Cần tạo Mapper này
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.AccountingStaffService;
 import com.sep490.wcpms.service.ActivityLogService;
+import com.sep490.wcpms.service.InvoiceNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,7 @@ import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.repository.MeterReadingRepository;
 import com.sep490.wcpms.repository.WaterPriceRepository;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
 import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import com.sep490.wcpms.entity.Invoice.PaymentStatus;
@@ -56,6 +59,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final ReceiptRepository receiptRepository;
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
+    private final InvoiceNotificationService invoiceNotificationService;
 
     private final ActivityLogService activityLogService; // NEW: inject ActivityLogService
 
@@ -111,6 +115,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
         invoice.setAccountingStaff(accountingStaff);
 
+        // (Không set invoice.notes vì Bảng 17 không có cột này)
+
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
         // Persist activity log for created service invoice (actor = accounting staff)
@@ -134,9 +140,16 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             // swallow
         }
 
-        // 5. Đánh dấu phí đã lập hóa đơn
+        // 6. CẬP NHẬT BẢNG 14 (Đánh dấu đã lập hóa đơn)
         calibration.setInvoice(savedInvoice);
         calibrationRepository.save(calibration);
+
+        // 7. GỬI THÔNG BÁO + PDF HÓA ĐƠN DỊCH VỤ PHÁT SINH
+        invoiceNotificationService.sendServiceInvoiceIssued(
+                savedInvoice,
+                "Phí kiểm định đồng hồ nước", // mô tả dịch vụ, đang dùng phí kiểm định
+                "5%"                          // VAT hiển thị; chỉnh lại nếu bạn dùng % khác
+        );
 
         return invoiceMapper.toDto(savedInvoice);
     }
@@ -274,51 +287,29 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     // === THÊM 3 HÀM MỚI ===
 
     // --- THÊM MỚI: sinh số hóa đơn CN-YYYY-xxxx ---
-    private String generateContractInvoiceNumber(LocalDate invoiceDate) {
-        LocalDate startOfYear = invoiceDate.withDayOfYear(1);
-        LocalDate endOfYear = invoiceDate.withMonth(12).withDayOfMonth(31);
-
-        long countThisYear = invoiceRepository.countByInvoiceDateBetween(
-                startOfYear,
-                endOfYear
-        );
-
-        long next = countThisYear + 1;
-        return String.format("CN-%d-%04d", invoiceDate.getYear(), next);
+    private String generateContractInvoiceNumber(LocalDate invoiceDate, Integer contractId) {
+        String month = String.format("%02d", invoiceDate.getMonthValue());
+        int year = invoiceDate.getYear();
+        return "CN" + contractId + month + year;
     }
 
     @Override
     public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable) {
-        // 1. Lấy tất cả HĐ ACTIVE
-        Page<Contract> activeContracts =
-                contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
+        // 1. Gọi Repository đã viết query lọc sẵn (Thay vì findByContractStatus rồi filter thủ công)
+        Page<Contract> activeContracts = contractRepository.findActiveContractsWithoutInvoice(pageable);
 
-        // 2. Lọc bỏ HĐ đã có hóa đơn lắp đặt (CONTRACT)
-        List<ContractDTO> list = activeContracts.getContent().stream()
-                .filter(c -> !invoiceRepository.existsByContract_Id(
-                        c.getId()
-                ))
-                .map(contract -> {
-                    ContractDTO dto = new ContractDTO();
-                    // copy các field cơ bản
-                    BeanUtils.copyProperties(contract, dto);
+        // 2. Map sang DTO
+        return activeContracts.map(contract -> {
+            ContractDTO dto = new ContractDTO();
+            BeanUtils.copyProperties(contract, dto);
 
-                    // set thêm các id liên kết (đang dùng giống convertToDTO trong ContractCustomerService)
-                    dto.setCustomerId(
-                            contract.getCustomer() != null ? contract.getCustomer().getId() : null
-                    );
-                    dto.setServiceStaffId(
-                            contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
-                    );
-                    dto.setTechnicalStaffId(
-                            contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
-                    );
+            // Map các ID liên quan an toàn (tránh NullPointerException)
+            if (contract.getCustomer() != null) dto.setCustomerId(contract.getCustomer().getId());
+            if (contract.getServiceStaff() != null) dto.setServiceStaffId(contract.getServiceStaff().getId());
+            if (contract.getTechnicalStaff() != null) dto.setTechnicalStaffId(contract.getTechnicalStaff().getId());
 
-                    return dto;
-                })
-                .toList();
-
-        return new PageImpl<>(list, pageable, activeContracts.getTotalElements());
+            return dto;
+        });
     }
 
     @Override
@@ -353,7 +344,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         // 5. Số hóa đơn: nếu bạn muốn backend sinh, có thể override request.getInvoiceNumber()
         String invoiceNumber = request.getInvoiceNumber();
         if (invoiceNumber == null || invoiceNumber.isBlank()) {
-            invoiceNumber = generateContractInvoiceNumber(invoiceDate);
+            invoiceNumber = generateContractInvoiceNumber(invoiceDate, contract.getId());
         }
 
         // 6. Ngày kỳ tính: tạm dùng ngày lắp đặt nếu có, ngược lại dùng invoiceDate
@@ -390,6 +381,10 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         }
 
         Invoice saved = invoiceRepository.save(inv);
+
+        // Gửi thông báo + PDF hóa đơn LẮP ĐẶT
+        invoiceNotificationService.sendInstallationInvoiceIssued(saved, contract);
+
 
         // persist activity log for installation invoice creation
         try {
@@ -504,6 +499,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
+        // Gửi thông báo + PDF hóa đơn TIỀN NƯỚC
+        invoiceNotificationService.sendWaterBillIssued(savedInvoice, reading);
+
         // persist activity log for water bill generation
         try {
             ActivityLog al = new ActivityLog();
@@ -529,8 +527,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
         meterReadingRepository.save(reading);
 
-         // 9. Trả về DTO của Hóa đơn vừa tạo
-         return invoiceMapper.toDto(savedInvoice);
+        // 9. Trả về DTO của Hóa đơn vừa tạo
+        return invoiceMapper.toDto(savedInvoice);
     }
 
     @Override
@@ -682,4 +680,3 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
     // === HẾT PHẦN SỬA ===
 }
-
