@@ -35,6 +35,9 @@ import lombok.extern.slf4j.Slf4j;
 import com.sep490.wcpms.repository.ContractAnnulTransferRequestRepository;
 import com.sep490.wcpms.service.ContractAnnulTransferRequestService; // thêm import
 import com.sep490.wcpms.dto.ContractAnnulTransferRequestUpdateDTO; // thêm import
+import com.sep490.wcpms.service.ActivityLogService;
+import com.sep490.wcpms.entity.ActivityLog;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +56,9 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final ContractAnnulTransferRequestRepository contractAnnulTransferRequestRepository; // Inject repository cho annul/transfer requests
     private final ContractAnnulTransferRequestService contractAnnulTransferRequestService; // delegate to central service
     // private final ContractMapper contractMapper;
+
+    @Autowired
+    private ActivityLogService activityLogService; // NEW: persist activity logs for service actions
 
     @Override
     public Page<ServiceStaffContractDTO> findContractsForServiceStaff(String status, String keyword, Pageable pageable) {
@@ -546,7 +552,27 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         }
         contract.setContractStatus(ContractStatus.SIGNED);
         Contract updated = contractRepository.save(contract);
-        // Notification logic removed
+        // Persist activity log: service staff sent to installation
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            String subj = updated.getContractNumber() != null ? updated.getContractNumber() : String.valueOf(updated.getId());
+            log.setSubjectId(subj);
+            log.setAction("SENT_TO_INSTALLATION");
+            if (updated.getServiceStaff() != null) {
+                log.setActorType("STAFF");
+                log.setActorId(updated.getServiceStaff().getId());
+                log.setActorName(updated.getServiceStaff().getFullName());
+                log.setInitiatorType("STAFF");
+                log.setInitiatorId(updated.getServiceStaff().getId());
+                log.setInitiatorName(updated.getServiceStaff().getFullName());
+            } else {
+                log.setActorType("SYSTEM");
+            }
+            activityLogService.save(log);
+        } catch (Exception e) {
+            // swallow to not affect main flow
+        }
         return convertToDTO(updated);
     }
 

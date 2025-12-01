@@ -8,6 +8,7 @@ import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.InvoiceMapper; // <-- Cần tạo Mapper này
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.AccountingStaffService;
+import com.sep490.wcpms.service.ActivityLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -55,6 +56,8 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     private final ReceiptRepository receiptRepository;
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
+
+    private final ActivityLogService activityLogService; // NEW: inject ActivityLogService
 
     @Override
     @Transactional(readOnly = true)
@@ -109,6 +112,27 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setAccountingStaff(accountingStaff);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        // Persist activity log for created service invoice (actor = accounting staff)
+        try {
+            ActivityLog al = new ActivityLog();
+            al.setSubjectType("INVOICE");
+            al.setSubjectId(savedInvoice.getInvoiceNumber() != null ? savedInvoice.getInvoiceNumber() : String.valueOf(savedInvoice.getId()));
+            al.setAction("INVOICE_CREATED");
+            if (accountingStaff != null) {
+                al.setActorType("STAFF");
+                al.setActorId(accountingStaff.getId());
+                al.setActorName(accountingStaff.getFullName());
+                al.setInitiatorType("STAFF");
+                al.setInitiatorId(accountingStaff.getId());
+                al.setInitiatorName(accountingStaff.getFullName());
+            } else {
+                al.setActorType("SYSTEM");
+            }
+            activityLogService.save(al);
+        } catch (Exception ex) {
+            // swallow
+        }
 
         // 5. Đánh dấu phí đã lập hóa đơn
         calibration.setInvoice(savedInvoice);
@@ -211,6 +235,26 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setPaymentStatus(Invoice.PaymentStatus.CANCELLED);
         //invoice.setNotes(invoice.getNotes() + "\n [Hủy bởi " + staff.getFullName() + " ngày " + LocalDateTime.now() + "]");
         Invoice cancelledInvoice = invoiceRepository.save(invoice);
+
+        // persist activity log for cancellation
+        try {
+            ActivityLog al = new ActivityLog();
+            al.setSubjectType("INVOICE");
+            al.setSubjectId(cancelledInvoice.getInvoiceNumber() != null ? cancelledInvoice.getInvoiceNumber() : String.valueOf(cancelledInvoice.getId()));
+            al.setAction("INVOICE_CANCELLED");
+            if (staff != null) {
+                al.setActorType("STAFF");
+                al.setActorId(staff.getId());
+                al.setInitiatorType("STAFF");
+                al.setInitiatorId(staff.getId());
+                al.setInitiatorName(staff.getFullName());
+            } else {
+                al.setActorType("SYSTEM");
+            }
+            activityLogService.save(al);
+        } catch (Exception ex) {
+            // swallow
+        }
 
         // 5. QUAN TRỌNG: "Mở khóa" Phí Kiểm định (Bảng 14)
         // Tìm Phí (Bảng 14) đang liên kết với Hóa đơn này
@@ -346,6 +390,31 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         }
 
         Invoice saved = invoiceRepository.save(inv);
+
+        // persist activity log for installation invoice creation
+        try {
+            ActivityLog al = new ActivityLog();
+            al.setSubjectType("INVOICE");
+            al.setSubjectId(saved.getInvoiceNumber() != null ? saved.getInvoiceNumber() : String.valueOf(saved.getId()));
+            al.setAction("INSTALLATION_INVOICE_CREATED");
+            if (staffId != null) {
+                Account st = accountRepository.findById(staffId).orElse(null);
+                if (st != null) {
+                    al.setActorType("STAFF");
+                    al.setActorId(st.getId());
+                    al.setActorName(st.getFullName());
+                    al.setInitiatorType("STAFF");
+                    al.setInitiatorId(st.getId());
+                    al.setInitiatorName(st.getFullName());
+                }
+            } else {
+                al.setActorType("SYSTEM");
+            }
+            activityLogService.save(al);
+        } catch (Exception ex) {
+            // swallow
+        }
+
         return invoiceMapper.toDto(saved);
     }
 
@@ -434,6 +503,27 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setAccountingStaff(accountingStaff);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        // persist activity log for water bill generation
+        try {
+            ActivityLog al = new ActivityLog();
+            al.setSubjectType("INVOICE");
+            al.setSubjectId(savedInvoice.getInvoiceNumber() != null ? savedInvoice.getInvoiceNumber() : String.valueOf(savedInvoice.getId()));
+            al.setAction("WATER_INVOICE_GENERATED");
+            if (accountingStaff != null) {
+                al.setActorType("STAFF");
+                al.setActorId(accountingStaff.getId());
+                al.setActorName(accountingStaff.getFullName());
+                al.setInitiatorType("STAFF");
+                al.setInitiatorId(accountingStaff.getId());
+                al.setInitiatorName(accountingStaff.getFullName());
+            } else {
+                al.setActorType("SYSTEM");
+            }
+            activityLogService.save(al);
+        } catch (Exception ex) {
+            // swallow
+        }
 
         // 8. Cập nhật trạng thái bản ghi đọc số
         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);

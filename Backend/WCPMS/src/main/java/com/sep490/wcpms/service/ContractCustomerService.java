@@ -5,6 +5,7 @@ import com.sep490.wcpms.dto.ContractDTO;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.Customer;
+import com.sep490.wcpms.entity.ActivityLog;
 import com.sep490.wcpms.exception.DuplicateResourceException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.AccountRepository;
@@ -28,6 +29,7 @@ public class ContractCustomerService {
     private final ContractRepository contractRepository;
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
+    private final com.sep490.wcpms.service.ActivityLogService activityLogService; // injected service to persist activity logs
 
     public List<ContractDTO> getAllContracts() {
         return contractRepository.findAll().stream()
@@ -49,7 +51,7 @@ public class ContractCustomerService {
         }
 
         Optional<Customer> customer = customerRepository.findByAccount_Id(accountId);
-        if (!customer.isPresent()) {
+        if (customer.isEmpty()) {
             throw new ResourceNotFoundException("Customer not found with id: " + accountId);
         }
 
@@ -71,7 +73,7 @@ public class ContractCustomerService {
         }
 
         Optional<Customer> customer = customerRepository.findByAccount_Id(accountId);
-        if (!customer.isPresent()) {
+        if (customer.isEmpty()) {
             throw new ResourceNotFoundException("Customer not found with id: " + accountId);
         }
 
@@ -94,6 +96,29 @@ public class ContractCustomerService {
 
         contract.setContractStatus(Contract.ContractStatus.PENDING_SIGN);
         Contract updated = contractRepository.save(contract);
+
+        // Persist an activity_log entry: initiator = customer who signed
+        try {
+            Customer cust = updated.getCustomer();
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            String subj = updated.getContractNumber() != null ? updated.getContractNumber() : String.valueOf(updated.getId());
+            log.setSubjectId(subj);
+            log.setAction("CUSTOMER_SIGNED");
+            // actor = system (the server that applied the change)
+            log.setActorType("SYSTEM");
+            log.setActorId(null);
+            if (cust != null) {
+                log.setInitiatorType("CUSTOMER");
+                log.setInitiatorId(cust.getId());
+                log.setInitiatorName(cust.getCustomerName());
+            }
+            log.setPayload(null);
+            activityLogService.save(log);
+        } catch (Exception e) {
+            // swallow errors to not break business flow; optionally log
+            // e.printStackTrace();
+        }
 
         return convertToDTO(updated);
     }
@@ -133,6 +158,28 @@ public class ContractCustomerService {
         }
         savedContract.setContractNumber(contractNumber);
         savedContract = contractRepository.save(savedContract);
+
+        // Persist activity log: record that customer created contract (actor is CUSTOMER)
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            String subj = savedContract.getContractNumber() != null ? savedContract.getContractNumber() : String.valueOf(savedContract.getId());
+            log.setSubjectId(subj);
+            log.setAction("CONTRACT_CREATED_BY_CUSTOMER");
+            if (customer != null) {
+                log.setActorType("CUSTOMER");
+                log.setActorId(customer.getId());
+                log.setActorName(customer.getCustomerName());
+                log.setInitiatorType("CUSTOMER");
+                log.setInitiatorId(customer.getId());
+                log.setInitiatorName(customer.getCustomerName());
+            } else {
+                log.setActorType("SYSTEM");
+            }
+            activityLogService.save(log);
+        } catch (Exception e) {
+            // swallow errors to not break main flow
+        }
 
         return convertToDTO(savedContract);
     }

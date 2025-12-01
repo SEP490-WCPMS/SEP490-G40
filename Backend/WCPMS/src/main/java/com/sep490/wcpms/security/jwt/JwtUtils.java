@@ -23,6 +23,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.security.core.GrantedAuthority;
+import io.jsonwebtoken.security.InvalidKeyException;
+import java.security.SecureRandom;
 
 @Component
 public class JwtUtils {

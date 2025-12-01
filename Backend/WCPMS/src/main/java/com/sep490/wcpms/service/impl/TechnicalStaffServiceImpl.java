@@ -70,6 +70,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private SupportTicketMapper supportTicketMapper;
     @Autowired
     private CustomerRepository customerRepository;
+    @Autowired
+    private com.sep490.wcpms.service.ActivityLogService activityLogService;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -216,6 +218,27 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         installation.setInstallationImageBase64(installDTO.getInstallationImageBase64());
 
         meterInstallationRepository.save(installation); // Lưu Bảng 11
+
+        // Persist activity log: installation completed by technical staff
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT_INSTALLATION");
+            log.setSubjectId(contract.getContractNumber() != null ? contract.getContractNumber() : String.valueOf(contract.getId()));
+            log.setAction("INSTALLATION_COMPLETED");
+            if (staff != null) {
+                log.setActorType("STAFF");
+                log.setActorId(staff.getId());
+                log.setActorName(staff.getFullName());
+                log.setInitiatorType("STAFF");
+                log.setInitiatorId(staff.getId());
+                log.setInitiatorName(staff.getFullName());
+            } else {
+                log.setActorType("SYSTEM");
+            }
+            activityLogService.save(log);
+        } catch (Exception e) {
+            // swallow
+        }
 
         // 7. Cập nhật trạng thái Đồng hồ (Bảng 10)
         meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
