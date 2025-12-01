@@ -40,10 +40,10 @@ const ContactPage = () => {
         <div>
           <strong className="contact-label">Email</strong>
           <a 
-            href="mailto:contact@capnuocphutho.vn" 
+            href="mailto:congtycophancapnuocphutho@gmail.com" 
             className="contact-email-link" 
           >
-            contact@capnuocphutho.vn
+            congtycophancapnuocphutho@gmail.com
           </a>
         </div>
       </div>
