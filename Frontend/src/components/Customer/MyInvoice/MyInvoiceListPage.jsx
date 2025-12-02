@@ -5,13 +5,18 @@ import { RefreshCw, Eye, Filter } from 'lucide-react';
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
 
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 /**
- * Trang Danh sách Hóa đơn
+ * Trang Danh sách Hóa đơn (Khách hàng)
  */
 function MyInvoiceListPage({ title }) {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // const [error, setError] = useState(null); // Bỏ state error hiển thị UI cũ
+    
     const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
     const navigate = useNavigate();
 
@@ -20,8 +25,7 @@ function MyInvoiceListPage({ title }) {
 
     const fetchData = (params = {}) => {
         setLoading(true);
-        setError(null);
-
+        
         // 1. Xác định Page và Size
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
@@ -51,7 +55,8 @@ function MyInvoiceListPage({ title }) {
             })
             .catch(err => {
                 console.error(err);
-                setError("Không thể tải danh sách hóa đơn.");
+                // Thay setError bằng Toast
+                toast.error("Không thể tải danh sách hóa đơn. Vui lòng thử lại sau.");
                 setInvoices([]);
             })
             .finally(() => setLoading(false));
@@ -69,6 +74,8 @@ function MyInvoiceListPage({ title }) {
 
     const handleRefresh = () => {
         fetchData();
+        // Thông báo nhẹ khi làm mới
+        toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
     // Helper hiển thị màu sắc
@@ -95,6 +102,14 @@ function MyInvoiceListPage({ title }) {
 
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen">
+            
+            {/* 2. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
@@ -103,7 +118,7 @@ function MyInvoiceListPage({ title }) {
                 </div>
                 <button
                     onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition-colors"
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition-colors focus:outline-none"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -129,17 +144,11 @@ function MyInvoiceListPage({ title }) {
                 </div>
             </div>
 
-            {/* Error */}
-            {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-                    <p className="font-medium">Lỗi</p>
-                    <p>{error}</p>
-                </div>
-            )}
+            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
-                <div className="overflow-x-auto">
+                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -177,7 +186,7 @@ function MyInvoiceListPage({ title }) {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(invoice.invoiceDate).format('DD/MM/YYYY')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(invoice.dueDate).format('DD/MM/YYYY')}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
                                             {invoice.totalAmount.toLocaleString('vi-VN')} đ
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -188,10 +197,10 @@ function MyInvoiceListPage({ title }) {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <Link
                                                 to={`/my-invoices/${invoice.id}`}
-                                                className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
+                                                className="inline-flex items-center text-indigo-600 hover:text-indigo-900 transition-colors"
                                             >
                                                 <Eye size={16} className="mr-1" />
-                                                Xem
+                                                Xem chi tiết
                                             </Link>
                                         </td>
                                     </tr>
@@ -199,17 +208,17 @@ function MyInvoiceListPage({ title }) {
                             )}
                         </tbody>
                     </table>
-                </div>
-
-                {/* Phân trang */}
-                {!loading && invoices.length > 0 && (
-                    <Pagination
+                 </div>
+                 
+                 {/* Phân trang */}
+                 {!loading && invoices.length > 0 && (
+                    <Pagination 
                         currentPage={pagination.page}
                         totalElements={pagination.totalElements}
                         pageSize={pagination.size}
                         onPageChange={handlePageChange}
                     />
-                )}
+                 )}
             </div>
         </div>
     );

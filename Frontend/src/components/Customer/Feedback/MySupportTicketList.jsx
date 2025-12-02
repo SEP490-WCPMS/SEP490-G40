@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// import { getMySupportTickets } from '../../Services/apiCustomer'; // <-- KHÔNG DÙNG CÁI NÀY NỮA
-import apiClient from '../../Services/apiClient'; // <-- QUAN TRỌNG: Phải import cái này
+import apiClient from '../../Services/apiClient'; // Dùng trực tiếp để xử lý lỗi mảng
 import { RefreshCw, Eye, Filter } from 'lucide-react';
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
+
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 /**
  * Trang "Cách A": Khách hàng xem danh sách các Yêu cầu Hỗ trợ đã gửi.
@@ -12,17 +15,22 @@ import Pagination from '../../common/Pagination';
 function MySupportTicketList() {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
+    // const [error, setError] = useState(null); // Không dùng state error hiển thị UI nữa
+    
+    const [pagination, setPagination] = useState({ 
+        page: 0, 
+        size: 10, 
+        totalElements: 0 
+    });
+    
     const navigate = useNavigate();
 
-    // 1. State Filter
+    // State Filter
     const [statusFilter, setStatusFilter] = useState('ALL');
 
-    // 2. Hàm Fetch Data (Gọi trực tiếp apiClient để cấu hình paramsSerializer)
+    // 2. Cập nhật fetchData
     const fetchData = (params = {}) => {
         setLoading(true);
-        setError(null);
         
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
@@ -30,10 +38,9 @@ function MySupportTicketList() {
         // Xử lý logic Filter: Chuyển thành Mảng
         let paramStatus = null;
         if (statusFilter !== 'ALL') {
-            paramStatus = [statusFilter]; // Ví dụ: ['PENDING']
+            paramStatus = [statusFilter]; 
         }
 
-        // --- GỌI TRỰC TIẾP AXIOS ĐỂ SỬA LỖI LỌC ---
         apiClient.get('/feedback/customer/my-tickets', {
             params: {
                 page: currentPage,
@@ -41,7 +48,6 @@ function MySupportTicketList() {
                 sort: 'submittedDate,desc',
                 status: paramStatus 
             },
-            // Dòng này giúp Backend Java hiểu được mảng ['PENDING'] thành status=PENDING
             paramsSerializer: {
                 indexes: null 
             }
@@ -59,17 +65,19 @@ function MySupportTicketList() {
             })
             .catch(err => {
                 console.error("Lỗi khi tải danh sách ticket:", err);
-                setError("Không thể tải danh sách yêu cầu.");
+                // Thay setError bằng Toast
+                toast.error("Không thể tải danh sách yêu cầu. Vui lòng thử lại sau.");
                 setTickets([]);
             })
             .finally(() => setLoading(false));
     };
 
-    // 3. Effect: Khi đổi filter -> Reset về trang 0
+    // Effect: Khi đổi filter -> Reset về trang 0
     useEffect(() => {
         fetchData({ page: 0 });
     }, [statusFilter]); 
 
+    // Handlers
     const handlePageChange = (newPage) => {
         fetchData({ page: newPage });
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -77,6 +85,8 @@ function MySupportTicketList() {
 
     const handleRefresh = () => {
         fetchData(); 
+        // Thông báo nhẹ khi làm mới
+        toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
     const getStatusClass = (status) => {
@@ -99,6 +109,14 @@ function MySupportTicketList() {
 
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen">
+            
+            {/* 3. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
@@ -134,18 +152,13 @@ function MySupportTicketList() {
                 </div>
             </div>
 
-            {/* Hiển thị lỗi */}
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-                    <p>{error}</p>
-                </div>
-            )}
+            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Bảng Dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
                  <div className="overflow-x-auto">
                     {loading && tickets.length === 0 && (
-                         <p className="text-center p-6 text-gray-500">Đang tải dữ liệu...</p>
+                         <div className="text-center py-10 text-gray-500">Đang tải dữ liệu...</div>
                     )}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -161,7 +174,7 @@ function MySupportTicketList() {
                             {!loading && tickets.length === 0 ? (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        Không tìm thấy yêu cầu nào phù hợp.
+                                        Bạn chưa gửi yêu cầu hỗ trợ nào.
                                     </td>
                                 </tr>
                             ) : (
@@ -178,7 +191,7 @@ function MySupportTicketList() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <Link
                                                 to={`/my-support-tickets/${ticket.id}`}
-                                                className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
+                                                className="inline-flex items-center text-indigo-600 hover:text-indigo-900 transition-colors"
                                             >
                                                 <Eye size={16} className="mr-1.5" />
                                                 Xem chi tiết
