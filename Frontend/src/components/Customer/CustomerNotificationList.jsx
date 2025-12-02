@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { RefreshCw, Eye, ChevronDown, ChevronRight } from 'lucide-react';
+import Pagination from '../common/Pagination';
 import { getMyCustomerNotifications } from '../Services/apiCustomer';
 
 /**
@@ -13,6 +14,9 @@ function CustomerNotificationList() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [expandedIds, setExpandedIds] = useState({});
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageSize = 10;
+
 
     const fetchNotifications = () => {
         setLoading(true);
@@ -106,6 +110,9 @@ function CustomerNotificationList() {
         ].includes(messageType);
     };
 
+    const startIndex = currentPage * pageSize;
+    const currentNotifications = notifications.slice(startIndex, startIndex + pageSize);
+
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen">
             {/* Header */}
@@ -165,7 +172,7 @@ function CustomerNotificationList() {
                             </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
-                            {notifications.map((n) => {
+                            {currentNotifications.map((n) => {
                                 const expanded = !!expandedIds[n.id];
                                 return (
                                     <tr key={n.id} className="hover:bg-gray-50">
@@ -240,6 +247,12 @@ function CustomerNotificationList() {
                             </tbody>
                         </table>
                     )}
+                    <Pagination
+                        currentPage={currentPage}
+                        totalElements={notifications.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                    />
                 </div>
             </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { createInstallationInvoice } from '../Services/apiAccountingStaff';
 import { ArrowLeft, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
+import ConfirmModal from '../common/ConfirmModal';
 import moment from 'moment';
 
 function CreateInstallationInvoice() {
@@ -15,6 +16,7 @@ function CreateInstallationInvoice() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         invoiceNumber: '',
@@ -61,9 +63,7 @@ function CreateInstallationInvoice() {
         }));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
+    const handleSubmit = async () => {
         if (!contractId) {
             setError('Thiếu contractId trong URL.');
             return;
@@ -167,7 +167,13 @@ function CreateInstallationInvoice() {
 
                 {/* Form tạo Hóa đơn lắp đặt */}
                 <div className="lg:col-span-2">
-                    <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5">
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            setConfirmOpen(true);
+                        }}
+                        className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5"
+                    >
                         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-5">
                             Thông tin Hóa đơn lắp đặt
                         </h3>
@@ -341,6 +347,24 @@ function CreateInstallationInvoice() {
                     </form>
                 </div>
             </div>
+            <ConfirmModal
+                isOpen={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={handleSubmit}
+                title="Xác nhận phát hành Hóa đơn lắp đặt"
+                message={
+                    contract
+                        ? `Bạn có chắc chắn muốn phát hành Hóa đơn lắp đặt cho hợp đồng ${
+                            contract.contractNumber || `#${contract.id || contractId}`
+                        } với số tiền ${Number(
+                            formData.totalAmount || 0
+                        ).toLocaleString('vi-VN')} đ không?`
+                        : `Bạn có chắc chắn muốn phát hành Hóa đơn lắp đặt với số tiền ${Number(
+                            formData.totalAmount || 0
+                        ).toLocaleString('vi-VN')} đ không?`
+                }
+                isLoading={submitting}
+            />
         </div>
     );
 }

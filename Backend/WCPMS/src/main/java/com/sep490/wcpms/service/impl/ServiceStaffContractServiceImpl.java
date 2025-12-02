@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import com.sep490.wcpms.mapper.SupportTicketMapper;
 import com.sep490.wcpms.repository.CustomerFeedbackRepository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher; // publish domain events
+import com.sep490.wcpms.event.SurveyReportApprovedEvent;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
 import com.sep490.wcpms.repository.WaterMeterRepository;
@@ -55,6 +57,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final MeterInstallationRepository meterInstallationRepository; // Thêm repository inject
     private final ContractAnnulTransferRequestRepository contractAnnulTransferRequestRepository; // Inject repository cho annul/transfer requests
     private final ContractAnnulTransferRequestService contractAnnulTransferRequestService; // delegate to central service
+    private final ApplicationEventPublisher eventPublisher;
     // private final ContractMapper contractMapper;
 
     @Autowired
@@ -198,7 +201,16 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         contract.setContractStatus(ContractStatus.APPROVED);
         Contract updated = contractRepository.save(contract);
-        // Notification logic removed
+
+        // Phát hành sự kiện duyệt khảo sát
+        eventPublisher.publishEvent(new SurveyReportApprovedEvent(
+                updated.getId(),
+                updated.getContractNumber(),
+                updated.getServiceStaff() != null ? updated.getServiceStaff().getId() : null,
+                updated.getCustomer() != null ? updated.getCustomer().getCustomerName() : null,
+                java.time.LocalDateTime.now()
+        ));
+
         return convertToDTO(updated);
     }
 
