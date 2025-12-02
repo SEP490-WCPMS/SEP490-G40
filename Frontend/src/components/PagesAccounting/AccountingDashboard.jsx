@@ -23,7 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Modal, Descriptions, Spin, message, Button as AntButton, Tag } from 'antd';
+import { Modal, Descriptions, Spin, Tag, Button as AntButton } from 'antd';
+
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function AccountingDashboard() {
     // --- State Stats ---
@@ -37,7 +41,7 @@ function AccountingDashboard() {
     // --- State Chart ---
     const [chartData, setChartData] = useState([]);
     
-    // --- State Danh sách (3 Tab) ---
+    // --- State Danh sách ---
     const [recentData, setRecentData] = useState({
         calibrations: [], 
         contracts: [],    
@@ -45,9 +49,8 @@ function AccountingDashboard() {
     });
 
     const [activeTab, setActiveTab] = useState('WATER');
-    
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // const [error, setError] = useState(null); // Bỏ state error hiển thị tĩnh
     const navigate = useNavigate();
 
     // State Date
@@ -56,7 +59,7 @@ function AccountingDashboard() {
         to: new Date()
     });
 
-    // === 1. THÊM STATE CHO MODAL TIỀN NƯỚC ===
+    // State Modal Antd (Giữ nguyên vì cần hiện chi tiết tính toán)
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [modalData, setModalData] = useState(null);       
     const [modalLoading, setModalLoading] = useState(false); 
@@ -65,19 +68,18 @@ function AccountingDashboard() {
 
     const fetchData = () => {
         if (!date || !date.from || !date.to) {
-            setError("Vui lòng chọn khoảng thời gian hợp lệ.");
+            toast.warn("Vui lòng chọn khoảng thời gian hợp lệ.");
             return;
         }
         
         setLoading(true);
-        setError(null);
         
         Promise.all([
             getAccountingDashboardStats(),
             getRevenueReport(date.from, date.to),
-            getRecentUnbilledFees(5),       // Tab 3: Kiểm định
-            getRecentInstallContracts(5),   // Tab 2: Lắp đặt
-            getRecentPendingReadings(5)     // Tab 1: Tiền nước
+            getRecentUnbilledFees(5),       
+            getRecentInstallContracts(5),   
+            getRecentPendingReadings(5)     
         ])
         .then(([statsResponse, revenueResponse, calibRes, contractRes, readingRes]) => {
             // 1. Stats
@@ -93,7 +95,7 @@ function AccountingDashboard() {
             }));
             setChartData(formattedData);
             
-            // 3. Lists - Sort lại cho chắc chắn
+            // 3. Lists
             setRecentData({
                 calibrations: calibRes.data?.content || [],
                 contracts: (contractRes.data?.content || []).sort((a,b) => b.id - a.id),
@@ -102,7 +104,7 @@ function AccountingDashboard() {
         })
         .catch(err => {
             console.error("Lỗi tải Dashboard:", err);
-            // setError("Không thể tải dữ liệu."); // Có thể ẩn lỗi nếu muốn UI sạch
+            toast.error("Không thể tải dữ liệu bảng điều khiển.");
         })
         .finally(() => setLoading(false));
     };
@@ -111,13 +113,11 @@ function AccountingDashboard() {
         fetchData();
     }, [date]);
 
-
-    // === 2. CÁC HÀM XỬ LÝ MODAL ===
+    // === CÁC HÀM XỬ LÝ MODAL ===
     
-    // Format tiền tệ
     const fmtMoney = (v) => (v != null ? `${Number(v).toLocaleString('vi-VN')} đ` : '0 đ');
 
-    // Mở Modal
+    // Mở Modal xem trước tính toán
     const handleOpenCreateModal = (readingId) => {
         setSelectedReadingId(readingId);
         setModalData(null);
@@ -129,54 +129,55 @@ function AccountingDashboard() {
                 setModalData(res.data);
             })
             .catch(err => {
-                message.error("Lỗi tính toán: " + (err.response?.data?.message || "Kiểm tra lại giá nước"));
+                // Thay message.error bằng toast.error
+                toast.error("Lỗi tính toán: " + (err.response?.data?.message || "Kiểm tra lại giá nước"));
                 setIsModalVisible(false);
             })
             .finally(() => setModalLoading(false));
     };
 
-    // --- XÁC NHẬN TẠO HÓA ĐƠN (Phiên bản Async/Await chuẩn cho Dashboard) ---
+    // Xác nhận tạo hóa đơn (Trong Modal)
     const handleConfirmGenerate = async () => {
         if (!selectedReadingId) return;
         
-        // 1. Bắt đầu Loading
         setSubmitting(true);
 
         try {
-            // 2. Gọi API tạo hóa đơn
             const response = await generateWaterBill(selectedReadingId);
             
-            // 3. Thông báo thành công
-            // (Dùng optional chaining ?. để tránh lỗi nếu không có invoiceNumber)
             const invoiceNum = response.data?.invoiceNumber || '';
-            message.success(`Thành công! Hóa đơn ${invoiceNum} đã được tạo.`);
             
-            // 4. Đóng modal NGAY LẬP TỨC để tránh UI bị đơ
+            // Đóng modal trước
             setIsModalVisible(false);
             setModalData(null);
             
-            // 5. Cập nhật lại dữ liệu Dashboard
-            // (Gọi cái này sau cùng để không ảnh hưởng việc đóng modal)
+            // Hiện Toast thành công
+            toast.success(`Thành công! Hóa đơn ${invoiceNum} đã được tạo.`, {
+                position: "top-center",
+                autoClose: 3000
+            });
+            
+            // Cập nhật lại dữ liệu
             fetchData(); 
 
         } catch (err) {
             console.error("Lỗi khi tạo hóa đơn:", err);
-            message.error(err.response?.data?.message || "Tạo hóa đơn thất bại.");
+            // Hiện Toast lỗi
+            toast.error(err.response?.data?.message || "Tạo hóa đơn thất bại.", {
+                position: "top-center"
+            });
         } finally {
-            // 6. LUÔN LUÔN tắt loading dù thành công hay thất bại
             setSubmitting(false);
         }
     };
 
-    // Đóng Modal
     const handleCancelModal = () => {
         setIsModalVisible(false);
         setModalData(null);
         setSelectedReadingId(null);
     };
 
-
-    // --- HÀM RENDER NỘI DUNG BẢNG ---
+    // --- HÀM RENDER BẢNG (Giữ nguyên logic hiển thị) ---
     const renderTableContent = () => {
         switch (activeTab) {
             case 'WATER': 
@@ -310,6 +311,14 @@ function AccountingDashboard() {
 
     return (
         <div className="space-y-6">
+            
+            {/* 2. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Bảng điều khiển Kế Toán</h1>
@@ -365,6 +374,7 @@ function AccountingDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Stats Cards (Giữ nguyên) */}
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">Tổng Doanh Thu (theo kỳ)</h4>
                     <p className="text-2xl lg:text-3xl font-bold text-green-600">
@@ -393,7 +403,7 @@ function AccountingDashboard() {
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
                  <h3 className="text-lg font-semibold text-gray-700 mb-4">Thống kê Doanh thu theo ngày</h3>
-                {!loading && !error && (      
+                {!loading && (      
                         <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -413,6 +423,7 @@ function AccountingDashboard() {
                         <h3 className="text-lg font-semibold text-gray-700 mb-4 sm:mb-0">
                             Danh sách chờ Lập Hóa đơn
                         </h3>
+                        {/* Tab Switcher */}
                         <div className="flex space-x-1 bg-gray-100 p-1 rounded-t-lg">
                             <button
                                 onClick={() => setActiveTab('WATER')}
@@ -470,6 +481,7 @@ function AccountingDashboard() {
                 </div>
             </div>
 
+            {/* MODAL XÁC NHẬN LẬP HÓA ĐƠN NƯỚC */}
             <Modal
                 title="Xác nhận Lập Hóa đơn Tiền nước"
                 open={isModalVisible}
