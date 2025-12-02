@@ -23,3 +23,15 @@ spring:
           characterEncoding: UTF-8
           useUnicode: true
         globally_quoted_identifiers: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: congtycophancapnuocphutho@gmail.com
+    password: sdri scqr ohzz trsw
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
