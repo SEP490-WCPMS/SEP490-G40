@@ -4,6 +4,7 @@ import { getMyAssignedRoutes, getContractsByRoute } from '../Services/apiCashier
 import { RefreshCw, ListTodo, Loader2, Eye, MapPin } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox"; // <-- Import Checkbox
 import moment from 'moment';
+import Pagination from '../common/Pagination';
 
 /**
  * Trang "Hợp đồng theo Tuyến" (để Ghi Chỉ Số)
@@ -19,10 +20,33 @@ function CashierRouteList() {
     const [routes, setRoutes] = useState([]);
     const [loadingRoutes, setLoadingRoutes] = useState(true);
     const [selectedRouteId, setSelectedRouteId] = useState('');
+
+    // 2. Thêm State Pagination
+    const [pagination, setPagination] = useState({ 
+        page: 0, 
+        size: 10, 
+        totalElements: 0 
+    });
     
-    // --- State cho Checkbox (Req 4) ---
-    // Lưu ID của các HĐ đã hoàn thành (chỉ ở FE)
-    const [completedItems, setCompletedItems] = useState(new Set());
+    // --- State cho Checkbox (ĐÃ SỬA) ---
+    // 1. Khởi tạo state bằng cách đọc từ localStorage (nếu có)
+    const [completedItems, setCompletedItems] = useState(() => {
+        try {
+            const saved = localStorage.getItem('cashierCompletedContracts');
+            // Nếu có dữ liệu thì parse từ JSON Array -> Set, nếu không thì tạo Set rỗng
+            return saved ? new Set(JSON.parse(saved)) : new Set();
+        } catch (e) {
+            console.error("Lỗi đọc localStorage:", e);
+            return new Set();
+        }
+    });
+
+    // 2. useEffect để Lưu vào localStorage mỗi khi completedItems thay đổi
+    useEffect(() => {
+        // Chuyển Set thành Array để lưu được vào JSON
+        const arrayToSave = Array.from(completedItems);
+        localStorage.setItem('cashierCompletedContracts', JSON.stringify(arrayToSave));
+    }, [completedItems]);
 
     // 1. Tải danh sách Tuyến (Bảng 4)
     useEffect(() => {
@@ -35,32 +59,83 @@ function CashierRouteList() {
             .finally(() => setLoadingRoutes(false));
     }, []); // Chạy 1 lần
 
-    // 2. Tải danh sách HĐ (khi đổi Tuyến)
-    const fetchData = (routeId) => {
-        if (!routeId) {
+    // 3. Cập nhật fetchData (Hỗ trợ phân trang & Logic đa năng)
+    const fetchData = (params = {}) => {
+        // Xác định Route ID: Ưu tiên tham số truyền vào (khi đổi dropdown), 
+        // nếu không thì lấy từ state (khi bấm phân trang/refresh)
+        const currentRouteId = params.routeId !== undefined ? params.routeId : selectedRouteId;
+
+        if (!currentRouteId) {
             setContracts([]);
+            setPagination({ page: 0, size: 10, totalElements: 0 }); // Reset phân trang
             return;
         }
+
         setLoading(true);
         setError(null);
         
-        getContractsByRoute(routeId)
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+        
+        // Gọi API: Truyền thêm params phân trang
+        getContractsByRoute(currentRouteId, { page: currentPage, size: currentSize })
             .then(response => {
-                setContracts(response.data || []);
+                const data = response.data;
+
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG (List hoặc Page) ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    // TH1: API trả về Mảng (List) -> Chưa phân trang Backend
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10;
+                } else if (data && data.content) {
+                    // TH2: API trả về Page -> Có phân trang Backend
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+                // ---------------------------------------------
+
+                setContracts(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
-            .catch(err => setError("Không thể tải danh sách hợp đồng cho tuyến này."))
+            .catch(err => {
+                console.error("Lỗi fetch:", err);
+                setError("Không thể tải danh sách hợp đồng cho tuyến này.");
+            })
             .finally(() => setLoading(false));
     };
 
-    // 3. Xử lý khi đổi Dropdown
+    // 4. Xử lý khi đổi Dropdown
     const handleRouteChange = (e) => {
         const newRouteId = e.target.value;
         setSelectedRouteId(newRouteId);
-        setCompletedItems(new Set()); // Reset Checkbox khi đổi tuyến
-        fetchData(newRouteId);
+        // Khi đổi tuyến -> Reset về trang 0
+        fetchData({ routeId: newRouteId, page: 0 });
+    };
+
+    // 5. Handlers chuyển trang
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        // window.scrollTo({ top: 0, behavior: 'smooth' }); // Tùy chọn scroll
+    };
+
+    const handleRefresh = () => {
+        // Refresh trang hiện tại của tuyến hiện tại
+        fetchData();
     };
     
-    // 4. Xử lý Checkbox (Req 4)
     const toggleCompleted = (contractId) => {
         setCompletedItems(prev => {
             const newSet = new Set(prev);
@@ -82,9 +157,9 @@ function CashierRouteList() {
                     <p className="text-sm text-gray-600">Danh sách các hợp đồng (đã sắp xếp) thuộc tuyến bạn quản lý.</p>
                 </div>
                 <button
-                    onClick={fetchData}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700"
-                    disabled={loading}
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out disabled:opacity-50"
+                    disabled={loading || !selectedRouteId}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Làm mới
@@ -191,6 +266,15 @@ function CashierRouteList() {
                         </tbody>
                     </table>
                  </div>
+                 {/* 6. Gắn Component Phân trang */}
+                 {!loading && contracts.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
             </div>
         </div>
     );

@@ -295,21 +295,36 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
     @Override
     public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable) {
-        // 1. Gọi Repository đã viết query lọc sẵn (Thay vì findByContractStatus rồi filter thủ công)
-        Page<Contract> activeContracts = contractRepository.findActiveContractsWithoutInvoice(pageable);
+        // 1. Lấy tất cả HĐ ACTIVE
+        Page<Contract> activeContracts =
+                contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
 
-        // 2. Map sang DTO
-        return activeContracts.map(contract -> {
-            ContractDTO dto = new ContractDTO();
-            BeanUtils.copyProperties(contract, dto);
+        // 2. Lọc bỏ HĐ đã có hóa đơn lắp đặt (CONTRACT)
+        List<ContractDTO> list = activeContracts.getContent().stream()
+                .filter(c -> !invoiceRepository.existsByContract_Id(
+                        c.getId()
+                ))
+                .map(contract -> {
+                    ContractDTO dto = new ContractDTO();
+                    // copy các field cơ bản
+                    BeanUtils.copyProperties(contract, dto);
 
-            // Map các ID liên quan an toàn (tránh NullPointerException)
-            if (contract.getCustomer() != null) dto.setCustomerId(contract.getCustomer().getId());
-            if (contract.getServiceStaff() != null) dto.setServiceStaffId(contract.getServiceStaff().getId());
-            if (contract.getTechnicalStaff() != null) dto.setTechnicalStaffId(contract.getTechnicalStaff().getId());
+                    // set thêm các id liên kết (đang dùng giống convertToDTO trong ContractCustomerService)
+                    dto.setCustomerId(
+                            contract.getCustomer() != null ? contract.getCustomer().getId() : null
+                    );
+                    dto.setServiceStaffId(
+                            contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
+                    );
+                    dto.setTechnicalStaffId(
+                            contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
+                    );
 
-            return dto;
-        });
+                    return dto;
+                })
+                .toList();
+
+        return new PageImpl<>(list, pageable, activeContracts.getTotalElements());
     }
 
     @Override

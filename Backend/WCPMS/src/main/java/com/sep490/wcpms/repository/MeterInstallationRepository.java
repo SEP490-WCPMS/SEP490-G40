@@ -33,16 +33,26 @@ public interface MeterInstallationRepository extends JpaRepository<MeterInstalla
      * 2. Thuộc Hợp đồng Dịch vụ đang CÒN HOẠT ĐỘNG.
      * 3. Và KHÔNG CÓ bản ghi kiểm định nào (trong Bảng 14) được thực hiện TRONG VÒNG 5 NĂM qua.
      */
+//    @Query("SELECT mi FROM MeterInstallation mi " +
+//            "WHERE mi.installationDate <= :fiveYearsAgo " +
+//            "AND mi.waterServiceContract IS NOT NULL " +
+//            "AND mi.waterServiceContract.contractStatus = 'ACTIVE' " +
+//            "AND NOT EXISTS (" +
+//            "    SELECT cal FROM MeterCalibration cal " +
+//            "    WHERE cal.meter = mi.waterMeter " +
+//            "    AND cal.calibrationDate > :fiveYearsAgo" +
+//            ")")
+//    List<MeterInstallation> findOverdueInstallations(@Param("fiveYearsAgo") LocalDate fiveYearsAgo);
+    /**
+     * Cách Tối Ưu (Mới):
+     * Tìm các bản lắp đặt mà Đồng hồ gắn với nó có 'ngày hẹn bảo trì' đã đến (hoặc đã qua)
+     * VÀ hợp đồng vẫn đang ACTIVE.
+     */
     @Query("SELECT mi FROM MeterInstallation mi " +
-            "WHERE mi.installationDate <= :fiveYearsAgo " +
-            "AND mi.waterServiceContract IS NOT NULL " +
+            "WHERE mi.waterMeter.nextMaintenanceDate <= CURRENT_DATE " + // Chỉ cần check ngày hẹn
             "AND mi.waterServiceContract.contractStatus = 'ACTIVE' " +
-            "AND NOT EXISTS (" +
-            "    SELECT cal FROM MeterCalibration cal " +
-            "    WHERE cal.meter = mi.waterMeter " +
-            "    AND cal.calibrationDate > :fiveYearsAgo" +
-            ")")
-    List<MeterInstallation> findOverdueInstallations(@Param("fiveYearsAgo") LocalDate fiveYearsAgo);
+            "AND mi.waterMeter.meterStatus = 'INSTALLED'") // Chỉ quét đồng hồ đang sống
+    List<MeterInstallation> findOverdueInstallations();
 
     // --- THÊM HÀM MỚI ---
     /**

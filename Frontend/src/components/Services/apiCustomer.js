@@ -46,10 +46,13 @@ export const getCustomerActiveMeters = () => {
  * Path: GET /api/feedback/customer/my-tickets
  */
 export const getMySupportTickets = (params) => {
-    // params: { page?: number, size?: number, sort?: string }
-    return apiClient.get('/feedback/customer/my-tickets', { params });
+    return apiClient.get('/feedback/customer/my-tickets', { 
+        params,
+        paramsSerializer: {
+            indexes: null // Dòng này giúp chuyển status[]=... thành status=...
+        }
+    });
 };
-
 /**
  * Lấy chi tiết 1 ticket của khách hàng đang đăng nhập.
  * Path: GET /api/feedback/customer/my-tickets/{ticketId}

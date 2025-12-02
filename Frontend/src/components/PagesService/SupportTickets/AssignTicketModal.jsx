@@ -85,6 +85,14 @@ function AssignTicketModal({ open, ticket, onClose, onSuccess }) {
                     <div className="text-sm">
                         <p><strong>Mã Ticket:</strong> {ticket?.feedbackNumber}</p>
                         <p><strong>Khách hàng:</strong> {ticket?.customerName}</p>
+                        {/* --- THÊM PHẦN HIỂN THỊ ĐỒNG HỒ TẠI ĐÂY --- */}
+                        {ticket?.meterCode && (
+                            <p className="flex items-center text-blue-800 bg-blue-50 p-1.5 rounded-md w-fit mt-1 border border-blue-100">
+                                <strong className="mr-1">Đồng hồ báo hỏng:</strong> 
+                                <span className="font-bold">{ticket.meterCode}</span>
+                            </p>
+                        )}
+                        {/* ------------------------------------------ */}
                         <div className="bg-gray-50 p-3 rounded border border-gray-200 max-h-40 overflow-y-auto">
                              <p className="font-medium text-gray-600 mb-1">Nội dung góp ý:</p>
                              <p className="italic text-gray-800 whitespace-pre-wrap">{ticket?.description}</p>
