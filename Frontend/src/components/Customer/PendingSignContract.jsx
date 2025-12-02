@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Table, Typography, message, Spin, Button, Row, Col, Tag, Modal } from 'antd';
-import { EyeOutlined, ReloadOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Table, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
+import { EyeOutlined, ReloadOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import ConfirmModal from '../Common/ConfirmModal';
+import Pagination from '../Common/Pagination';
 import { getCustomerPendingSignContracts, confirmCustomerSign } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -13,6 +15,8 @@ const PendingSignContract = () => {
     const [signingContractId, setSigningContractId] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageSize = 10;
     const navigate = useNavigate();
 
     // style container để UI không bị tràn
@@ -182,6 +186,10 @@ const PendingSignContract = () => {
         return <Tag color={color}>{displayText}</Tag>;
     };
 
+    // Phân trang client-side
+    const startIndex = currentPage * pageSize;
+    const pageData = contracts.slice(startIndex, startIndex + pageSize);
+
     // Định nghĩa các cột cho bảng
     const columns = [
         {
@@ -267,7 +275,7 @@ const PendingSignContract = () => {
                     <Table
                         size="middle"
                         columns={columns}
-                        dataSource={contracts}
+                        dataSource={pageData}
                         rowKey="id"
                         bordered
                         scroll={{ x: 'max-content' }}
@@ -280,34 +288,27 @@ const PendingSignContract = () => {
                             emptyText: 'Không có hợp đồng nào chờ ký',
                         }}
                     />
+                    <Pagination
+                        currentPage={currentPage}
+                        totalElements={contracts.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                    />
                 </Spin>
 
                 {/* Modal xác nhận */}
-                <Modal
-                    title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: '22px' }} />
-                            <span>Xác nhận ký hợp đồng</span>
-                        </div>
+                <ConfirmModal
+                    isOpen={isModalVisible}
+                    onClose={handleCancel}
+                    onConfirm={handleConfirmSign}
+                    title="Xác nhận ký hợp đồng"
+                    message={
+                        selectedContract
+                            ? `Bạn có chắc chắn muốn xác nhận ký hợp đồng ${selectedContract.contractNumber}? Sau khi xác nhận, hợp đồng sẽ được chuyển sang trạng thái xử lý tiếp theo.`
+                            : 'Bạn có chắc chắn muốn xác nhận ký hợp đồng này?'
                     }
-                    open={isModalVisible}
-                    onOk={handleConfirmSign}
-                    onCancel={handleCancel}
-                    okText="Xác nhận"
-                    cancelText="Hủy"
-                    okButtonProps={{
-                        loading: signingContractId !== null,
-                        danger: false,
-                        type: 'primary',
-                    }}
-                    centered
-                >
-                    <p>
-                        Bạn có chắc chắn muốn xác nhận ký hợp đồng{' '}
-                        <strong>{selectedContract?.contractNumber}</strong>?
-                    </p>
-                    <p>Sau khi xác nhận, hợp đồng sẽ được chuyển sang trạng thái chờ xử lý tiếp theo.</p>
-                </Modal>
+                    isLoading={signingContractId !== null}
+                />
             </div>
         </div>
     );

@@ -23,6 +23,10 @@ import com.sep490.wcpms.repository.MeterInstallationRepository;
 import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
 import com.sep490.wcpms.entity.ContractUsageDetail;
+import org.springframework.context.ApplicationEventPublisher; // Publish domain events
+import com.sep490.wcpms.event.SurveyReportSubmittedEvent; // Event nộp báo cáo khảo sát
+import com.sep490.wcpms.event.InstallationCompletedEvent; // Event hoàn tất lắp đặt
+
 
 import com.sep490.wcpms.dto.MeterInfoDTO;
 import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
@@ -72,6 +76,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private CustomerRepository customerRepository;
     @Autowired
     private com.sep490.wcpms.service.ActivityLogService activityLogService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher; // Publish domain events
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -115,6 +121,16 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         contractMapper.updateContractFromSurveyDTO(contract, reportDTO);
         contract.setContractStatus(Contract.ContractStatus.PENDING_SURVEY_REVIEW);
         Contract savedContract = contractRepository.save(contract);
+
+        // Publish event sau commit
+        eventPublisher.publishEvent(new SurveyReportSubmittedEvent(
+                savedContract.getId(),
+                savedContract.getContractNumber(),
+                staffId,
+                savedContract.getServiceStaff() != null ? savedContract.getServiceStaff().getId() : null,
+                savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
 
         return contractMapper.toDto(savedContract);
     }
@@ -256,7 +272,16 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         ContractDetailsDTO dto = contractMapper.toDto(contract);
 
-        // Notification logic removed
+        // Publish event hoàn tất lắp đặt
+        eventPublisher.publishEvent(new InstallationCompletedEvent(
+                contract.getId(),
+                contract.getContractNumber(),
+                staffId,
+                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null,
+                contract.getCustomer() != null ? contract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
+
         return dto;
     }
 

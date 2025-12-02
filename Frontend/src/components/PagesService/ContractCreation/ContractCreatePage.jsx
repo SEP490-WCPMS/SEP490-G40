@@ -5,6 +5,7 @@ import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract, updateServiceContract } from '../../Services/apiService';
 import moment from 'moment';
+import ConfirmModal from '../../common/ConfirmModal';
 import './ContractCreatePage.css';
 
 const { Title, Text } = Typography;
@@ -20,6 +21,8 @@ const ContractCreate = () => {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [sourceContract, setSourceContract] = useState(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingValues, setPendingValues] = useState(null);
 
     // Lấy sourceContractId từ navigation state
     const sourceContractId = location.state?.sourceContractId;
@@ -137,6 +140,11 @@ const ContractCreate = () => {
         }
     };
 
+    const handleFinish = (values) => {
+        setPendingValues(values);
+        setConfirmOpen(true);
+    };
+
     // Quay lại trang trước
     const handleBack = () => {
         navigate(-1);
@@ -164,7 +172,7 @@ const ContractCreate = () => {
                     <Form
                         form={form}
                         layout="vertical"
-                        onFinish={handleSubmit}
+                        onFinish={handleFinish}
                         className="contract-create-form"
                         initialValues={{
                             applicationDate: moment(), // Ngày hiện tại
@@ -390,6 +398,23 @@ const ContractCreate = () => {
                     </Form>
                 </Spin>
             </Card>
+            <ConfirmModal
+                isOpen={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={() => {
+                    if (pendingValues) {
+                        handleSubmit(pendingValues);
+                    }
+                }}
+                title="Xác nhận tạo Hợp đồng chính thức"
+                message={
+                    sourceContract
+                        ? `Bạn có chắc chắn muốn tạo Hợp đồng chính thức cho yêu cầu ${sourceContract.requestNumber} của khách hàng ${sourceContract.customerName} không?`
+                        : 'Bạn có chắc chắn muốn tạo Hợp đồng chính thức từ thông tin hiện tại không?'
+                }
+                isLoading={submitting}
+            />
+
         </div>
     );
 };

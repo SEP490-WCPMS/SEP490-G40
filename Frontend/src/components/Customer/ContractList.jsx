@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
 import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '../Common/Pagination';
 import { getContractsByCustomerId } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -9,6 +10,8 @@ const { Title, Paragraph } = Typography;
 const ContractList = () => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageSize = 10;
     const navigate = useNavigate();
 
     const pageContainerStyle = {
@@ -119,6 +122,10 @@ const ContractList = () => {
         return <Tag color={color}>{displayText}</Tag>;
     };
 
+    // Xử lý phân trang client-side
+    const startIndex = currentPage * pageSize;
+    const pageData = contracts.slice(startIndex, startIndex + pageSize);
+
     // Định nghĩa các cột cho bảng
     const columns = [
         {
@@ -190,15 +197,17 @@ const ContractList = () => {
                     <Table
                         size="middle"
                         columns={columns}
-                        dataSource={contracts}
+                        dataSource={pageData}
                         rowKey="id"
                         bordered
                         scroll={{ x: 'max-content' }}
-                        pagination={{
-                            defaultPageSize: 10,
-                            showSizeChanger: true,
-                            showTotal: (total) => `Tổng ${total} hợp đồng`,
-                        }}
+                        pagination={false}
+                    />
+                    <Pagination
+                        currentPage={currentPage}
+                        totalElements={contracts.length}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
                     />
                 </Spin>
             </div>
