@@ -30,11 +30,6 @@ const adminMenuItems = [
     icon: Users,
   },
   {
-    title: 'Quản lý Phân quyền',
-    url: '/admin/roles',
-    icon: ShieldCheck,
-  },
-  {
     title: 'Quản lý Đồng hồ',
     url: '/admin/water-meters',
     icon: Users,

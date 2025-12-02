@@ -138,6 +138,17 @@ function SupportTicketDetail() {
                         {getStatusText(ticket.status)}
                     </span>
                 </div>
+
+                {/* --- HIỂN THỊ ĐỒNG HỒ NƯỚC (NẾU CÓ) --- */}
+                {ticket.meterCode && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md inline-block">
+                        <p className="text-sm text-blue-800 flex items-center">
+                            <strong>Đồng hồ báo hỏng:</strong> 
+                            <span className="ml-2 font-mono font-bold text-blue-900 text-base">{ticket.meterCode}</span>
+                        </p>
+                    </div>
+                )}
+                {/* --------------------------------------- */}
                 
                 {/* Nội dung Yêu cầu (Của bạn) */}
                 <div className="py-5">

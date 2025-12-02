@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMyMaintenanceRequests } from '../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw, ArrowRight, Eye } from 'lucide-react'; // <-- THÊM ICON "EYE"
 import moment from 'moment';
+import Pagination from '../common/Pagination';
 
 /**
  * Hàm helper để trích xuất Mã Đồng Hồ từ mô tả của ticket
@@ -32,22 +33,46 @@ function MaintenanceRequestList() {
         totalElements: 0,
     });
 
-    // Hàm fetch dữ liệu (gọi API Bước 3)
-    const fetchData = (page = 0, size = 10) => {
+    // 3. Hàm fetch dữ liệu (Cập nhật logic đa năng)
+    const fetchData = (params = {}) => {
         setLoading(true);
         setError(null);
         
-        getMyMaintenanceRequests({ page, size, sort: 'submittedDate,desc' })
+        // Ưu tiên lấy page từ params, nếu không lấy từ state hiện tại
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+
+        getMyMaintenanceRequests({ page: currentPage, size: currentSize, sort: 'submittedDate,desc' })
             .then(response => {
                 const data = response.data;
-                setTickets(data?.content || []);
-                setPagination(prev => ({
-                    ...prev,
-                    page: data.number,
-                    size: data.size,
-                    totalElements: data.totalElements,
-                    totalPages: data.totalPages,
-                }));
+                
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG (List hoặc Page) ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    // TH1: API trả về Mảng (List) -> Chưa phân trang
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10;
+                } else if (data && data.content) {
+                    // TH2: API trả về Page -> Có phân trang
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+                // ---------------------------------------------
+
+                setTickets(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => {
                 console.error("Lỗi khi tải Yêu cầu Bảo trì:", err);
@@ -60,30 +85,22 @@ function MaintenanceRequestList() {
 
     // Load dữ liệu khi component mount
     useEffect(() => {
-        fetchData(0, pagination.size);
+        fetchData({ page: 0 });
     }, []);
 
-    // --- HÀM MỚI: Xử lý khi nhấn "Xem chi tiết" ---
+    // 4. Handlers chuyển trang
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRefresh = () => {
+        fetchData();
+    };
+
     const handleViewDetails = (ticketId) => {
-        // Điều hướng đến trang chi tiết ticket (Route chúng ta đã tạo)
         navigate(`/technical/maintenance-requests/${ticketId}`);
     };
-    // ---
-
-    // Hàm xử lý khi nhấn "Thực hiện"
-    // const handleProcessTicket = (ticket) => {
-    //     const meterCode = extractMeterCode(ticket.description);
-        
-    //     if (meterCode) {
-    //         // Chuyển đến trang Thay thế và GỬI KÈM meterCode
-    //         navigate('/technical/replace-meter', { 
-    //             state: { prefillMeterCode: meterCode }
-    //         });
-    //     } else {
-    //         // Nếu là ticket hỏng (không có mã), chỉ chuyển trang
-    //         navigate('/technical/replace-meter');
-    //     }
-    // };
     
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
@@ -94,8 +111,8 @@ function MaintenanceRequestList() {
                     <p className="text-sm text-gray-600">Danh sách các công việc đã được gán cho bạn (Trạng thái: IN_PROGRESS).</p>
                 </div>
                 <button
-                    onClick={() => fetchData(0)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none"
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -149,19 +166,8 @@ function MaintenanceRequestList() {
                                             >
                                                 <Eye size={14} className="mr-1.5" />
                                                 Chi tiết
-                                            </button>
-                                            
-                                            {/* Nút 2: Thực Hiện */}
-                                            {/* <button
-                                                onClick={() => handleProcessTicket(ticket)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
-                                                title="Chuyển đến trang Thay thế/Kiểm định"
-                                            >
-                                                Thực hiện <ArrowRight size={14} className="ml-1.5" />
-                                            </button> */}
-                                        </td>
-                                        {/* --- HẾT PHẦN SỬA --- */}
-
+                                            </button>                                        
+                                        </td>                                      
                                     </tr>
                                 ))
                             ) : (
@@ -174,6 +180,15 @@ function MaintenanceRequestList() {
                         </tbody>
                     </table>
                  </div>
+                 {/* 5. Gắn Component Phân trang */}
+                 {!loading && tickets.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
                  {/* (Component Phân trang) */}
             </div>
         </div>

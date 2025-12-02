@@ -70,6 +70,15 @@ function OnSiteCalibrationForm() {
             return;
         }
 
+        // --- 2. THÊM VALIDATION LOGIC NGÀY THÁNG (MỚI) ---
+        // Kiểm tra: Ngày hẹn tiếp theo phải SAU ngày hiện tại
+        if (moment(formData.nextCalibrationDate).isSameOrBefore(moment(), 'day')) {
+             setError("Lỗi: Ngày hẹn kiểm định tiếp theo phải là ngày trong tương lai!");
+             setSuccess(null);
+             return; // Dừng lại ngay, không gửi API
+        }
+        // ------------------------------------------------
+
         setSubmitting(true);
         setError(null);
         setSuccess(null);

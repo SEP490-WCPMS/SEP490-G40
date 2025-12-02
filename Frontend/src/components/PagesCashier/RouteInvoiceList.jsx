@@ -3,37 +3,80 @@ import { useNavigate, Link } from 'react-router-dom';
 import { getMyRouteInvoices } from '../Services/apiCashierStaff';
 import { RefreshCw, Eye, Home } from 'lucide-react';
 import moment from 'moment';
+import Pagination from '../common/Pagination';
 // (Import component Phân trang của bạn)
 
 function RouteInvoiceList() {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [pagination, setPagination] = useState({ page: 0, size: 20, totalElements: 0 });
+    // 2. State Pagination
+    const [pagination, setPagination] = useState({ 
+        page: 0, 
+        size: 20, 
+        totalElements: 0 
+    });
     const navigate = useNavigate();
 
-    const fetchData = (page = 0, size = 20) => {
+    // 3. Cập nhật fetchData (Hỗ trợ phân trang & Logic đa năng)
+    const fetchData = (params = {}) => {
         setLoading(true);
         setError(null);
         
-        getMyRouteInvoices({ page, size, sort: 'dueDate,asc' }) // Sắp xếp theo hạn chót
+        // Ưu tiên lấy page từ params, nếu không lấy từ state hiện tại
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+        
+        getMyRouteInvoices({ page: currentPage, size: currentSize, sort: 'dueDate,asc' }) 
             .then(response => {
                 const data = response.data;
-                setInvoices(data?.content || []);
-                setPagination(prev => ({
-                    ...prev,
-                    page: data.number,
-                    size: data.size,
-                    totalElements: data.totalElements,
-                }));
+
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG (List hoặc Page) ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 20;
+
+                if (Array.isArray(data)) {
+                    // TH1: API trả về Mảng (List) -> Chưa phân trang Backend
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 20;
+                } else if (data && data.content) {
+                    // TH2: API trả về Page -> Có phân trang Backend
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 20;
+                }
+                // ---------------------------------------------
+
+                setInvoices(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => setError("Không thể tải danh sách hóa đơn theo tuyến."))
             .finally(() => setLoading(false));
     };
 
+    // Gọi fetchData khi mount
     useEffect(() => {
-        fetchData(0, pagination.size);
+        fetchData({ page: 0 });
     }, []);
+
+    // 4. Handlers chuyển trang
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRefresh = () => {
+        fetchData();
+    };
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
@@ -44,8 +87,8 @@ function RouteInvoiceList() {
                     <p className="text-sm text-gray-600">Danh sách các hóa đơn (Pending/Overdue) thuộc tuyến bạn quản lý.</p>
                 </div>
                 <button
-                    onClick={() => fetchData(0)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700"
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -114,6 +157,15 @@ function RouteInvoiceList() {
                         </tbody>
                     </table>
                  </div>
+                 {/* 5. Gắn Component Phân trang */}
+                 {!loading && invoices.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
                  {/* (Phân trang) */}
             </div>
         </div>

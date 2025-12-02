@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAssignedInstallationContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw } from 'lucide-react'; // Icon làm mới
+import Pagination from '../../common/Pagination';
 
 function InstallContractsList() {
     const [contracts, setContracts] = useState([]);
@@ -9,12 +10,53 @@ function InstallContractsList() {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
-    const fetchData = () => {
+    // 2. Thêm State Pagination
+    const [pagination, setPagination] = useState({
+        page: 0,
+        size: 10,
+        totalElements: 0,
+    });
+
+    // 3. Cập nhật fetchData (Hỗ trợ cả List và Page)
+    const fetchData = (params = {}) => {
         setLoading(true);
         setError(null);
-        getAssignedInstallationContracts()
+        
+        // Ưu tiên lấy page từ params, nếu không lấy từ state hiện tại
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+
+        getAssignedInstallationContracts({ page: currentPage, size: currentSize })
             .then(response => {
-                setContracts(response.data || []); // Đảm bảo là mảng
+                const data = response.data;
+                
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    // TH1: API trả về Mảng (List) -> Chưa phân trang
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10;
+                } else if (data && data.content) {
+                    // TH2: API trả về Page -> Có phân trang
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+                // -----------------------------
+
+                setContracts(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => {
                 console.error("Lỗi khi lấy danh sách hợp đồng lắp đặt:", err);
@@ -25,12 +67,22 @@ function InstallContractsList() {
             });
     };
 
+    // Gọi fetchData khi mount
     useEffect(() => {
+        fetchData({ page: 0 });
+    }, []); 
+
+    // 4. Handlers
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRefresh = () => {
         fetchData();
-    }, []); // Chỉ fetch khi mount
+    };
 
     const handleViewDetails = (contractId) => {
-        // Điều hướng đến trang chi tiết lắp đặt, dùng đường dẫn tuyệt đối
         navigate(`/technical/install/detail/${contractId}`);
     };
 
@@ -43,7 +95,7 @@ function InstallContractsList() {
                     <p className="text-sm text-gray-600">Danh sách các hợp đồng đã ký chờ lắp đặt (Trạng thái: SIGNED).</p>
                 </div>
                 <button
-                    onClick={fetchData} // Gọi lại hàm fetch khi nhấn
+                    onClick={handleRefresh} // Gọi lại hàm fetch khi nhấn
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
                     disabled={loading}
                 >
@@ -117,6 +169,15 @@ function InstallContractsList() {
                         </tbody>
                     </table>
                 </div>
+                {/* 5. Gắn Component Phân trang */}
+                 {!loading && contracts.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
             </div>
         </div>
     );

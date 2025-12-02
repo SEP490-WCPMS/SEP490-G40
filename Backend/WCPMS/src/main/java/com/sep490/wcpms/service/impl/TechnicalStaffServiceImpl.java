@@ -201,6 +201,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // --- HẾT PHẦN THÊM ---
 
         serviceContract.setServiceStartDate(LocalDate.now());
+        serviceContract.setServiceEndDate(contract.getEndDate());
         serviceContract.setContractSignedDate(LocalDate.now()); // Giả định ngày ký là hôm nay
         serviceContract.setContractStatus(WaterServiceContract.WaterServiceContractStatus.ACTIVE);
         serviceContract.setSourceContract(contract); // Liên kết ngược về HĐ Lắp đặt (Bảng 8)
@@ -233,6 +234,11 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         // 7. Cập nhật trạng thái Đồng hồ (Bảng 10)
         meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
+        // --- THÊM ĐOẠN NÀY (QUAN TRỌNG) ---
+        // Thiết lập ngày kiểm định lần đầu tiên: Tính từ hôm nay + 5 năm
+        LocalDate firstMaintenanceDate = LocalDate.now().plusYears(5);
+        meter.setNextMaintenanceDate(firstMaintenanceDate);
+        // ----------------------------------
         waterMeterRepository.save(meter); // Lưu Bảng 10
 
         // --- XÓA KHỐI LẶP Ở ĐÂY ---
@@ -405,6 +411,11 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         }
 
         newMeter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
+
+        // Thiết lập ngày kiểm định cho đồng hồ MỚI: Tính từ hôm nay + 5 năm
+        LocalDate newMeterNextDue = LocalDate.now().plusYears(5);
+        newMeter.setNextMaintenanceDate(newMeterNextDue);
+        // -------------------------------
 
         waterMeterRepository.save(oldMeter);
 
