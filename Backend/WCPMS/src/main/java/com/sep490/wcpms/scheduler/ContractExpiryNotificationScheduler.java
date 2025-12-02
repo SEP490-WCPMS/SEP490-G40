@@ -30,6 +30,7 @@ public class ContractExpiryNotificationScheduler {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final int REMIND_DAYS = 10;
 
+    // Chạy hằng ngày lúc 08:00 sáng
     @Scheduled(cron = "0 0 8 * * *")
     @Transactional
     public void sendContractExpiryReminders() {

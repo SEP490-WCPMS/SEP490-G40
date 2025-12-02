@@ -288,25 +288,19 @@ export const getAnnulRequests = (params) => {
 };
 
 export const approveTransferRequest = (requestId) => {
-    return apiClient.post(`/service/requests/${requestId}/approve`, {});
+    return apiClient.post(`/service/requests/${requestId}/approve`, { approvalStatus: 'APPROVED' });
 };
 
 export const rejectTransferRequest = (requestId, reason) => {
-    return apiClient.post(`/service/requests/${requestId}/reject`, { 
-        reason: reason,
-        approvalNote: reason
-    });
+    return apiClient.post(`/service/requests/${requestId}/reject`, { reason });
 };
 
 export const approveAnnulRequest = (requestId) => {
-    return apiClient.post(`/service/requests/${requestId}/approve`, {});
+    return apiClient.post(`/service/requests/${requestId}/approve`, { approvalStatus: 'APPROVED' });
 };
 
 export const rejectAnnulRequest = (requestId, reason) => {
-    return apiClient.post(`/service/requests/${requestId}/reject`, { 
-        reason: reason,
-        approvalNote: reason
-    });
+    return apiClient.post(`/service/requests/${requestId}/reject`, { reason });
 };
 
 /** Lấy chi tiết một yêu cầu hủy/chuyển nhượng cho Service */

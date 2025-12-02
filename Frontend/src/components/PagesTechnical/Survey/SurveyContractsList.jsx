@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw } from 'lucide-react'; // Icon làm mới
 import Pagination from '../../common/Pagination';
@@ -149,7 +149,7 @@ function SurveyContractsList() {
                             {/* Render dữ liệu hoặc thông báo rỗng */}
                             {contracts.length > 0 ? (
                                 contracts.map(contract => (
-                                    <tr key={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                    <tr key={contract.id} data-contract-id={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
                                         {/* Dữ liệu từng dòng */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contract.contractNumber}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.customerName}</td>

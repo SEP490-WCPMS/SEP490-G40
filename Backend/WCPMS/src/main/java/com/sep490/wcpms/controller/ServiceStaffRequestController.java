@@ -7,6 +7,7 @@ import com.sep490.wcpms.entity.ContractAnnulTransferRequest;
 import com.sep490.wcpms.service.ContractAnnulTransferRequestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ import com.sep490.wcpms.security.services.UserDetailsImpl;
 @RequiredArgsConstructor
 @RequestMapping("/api/service/requests")
 @CrossOrigin(origins = "http://localhost:5173")
+@Slf4j
 public class ServiceStaffRequestController {
 
     private final ContractAnnulTransferRequestService service;
@@ -149,6 +151,7 @@ public class ServiceStaffRequestController {
                     .build()
             );
         } catch (Exception e) {
+            log.error("Error while approving request id={}", id, e);
             return ResponseEntity
                     .badRequest()
                     .body(ApiResponse.<ContractAnnulTransferRequestDTO>builder()
@@ -167,14 +170,25 @@ public class ServiceStaffRequestController {
     @PostMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<ContractAnnulTransferRequestDTO>> rejectRequest(
             @PathVariable Integer id,
-            @Valid @RequestBody ContractAnnulTransferRequestUpdateDTO dto) {
+            @RequestBody(required = false) java.util.Map<String, String> body) {
 
         try {
+            // Accept simple payload { "reason": "..." } from frontend; also compatible if frontend sends full DTO
+            String reason = null;
+            if (body != null) {
+                reason = body.getOrDefault("reason", body.get("notes"));
+            }
+
             Integer staffId = getAuthenticatedStaffId();
-            // Set enum ApprovalStatus
-            dto.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED);
-            dto.setApprovedById(staffId);
-            dto.setApprovalDate(LocalDate.now());
+
+            ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
+                    .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED)
+                    .approvedById(staffId)
+                    .approvalDate(LocalDate.now())
+                    .notes(reason)
+                    .rejectionReason(reason)
+                    .build();
+
             ContractAnnulTransferRequestDTO result = service.updateApproval(id, dto);
 
             return ResponseEntity.ok(
@@ -187,6 +201,7 @@ public class ServiceStaffRequestController {
                     .build()
             );
         } catch (Exception e) {
+            log.error("Error while rejecting request id={}", id, e);
             return ResponseEntity
                     .badRequest()
                     .body(ApiResponse.<ContractAnnulTransferRequestDTO>builder()
@@ -207,54 +222,6 @@ public class ServiceStaffRequestController {
             @RequestParam(defaultValue = "10") int size) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        // Status: lowercase
-        Page<ContractAnnulTransferRequestDTO> result = service.search(
-                null, "annul", "pending", null, null, null, pageable);
-
-        return ResponseEntity.ok(
-            ApiResponse.<Page<ContractAnnulTransferRequestDTO>>builder()
-                .status(ApiResponse.Status.builder()
-                    .code(200)
-                    .message("Lấy danh sách yêu cầu hủy chờ duyệt thành công")
-                    .build())
-                .data(result)
-                .build()
-        );
-    }
-
-    /**
-     * Lấy danh sách yêu cầu CHUYỂN NHƯỢNG chờ duyệt
-     */
-    @GetMapping("/transfer/pending")
-    public ResponseEntity<ApiResponse<Page<ContractAnnulTransferRequestDTO>>> getPendingTransfers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        // Status: lowercase
-        Page<ContractAnnulTransferRequestDTO> result = service.search(
-                null, "transfer", "pending", null, null, null, pageable);
-
-        return ResponseEntity.ok(
-            ApiResponse.<Page<ContractAnnulTransferRequestDTO>>builder()
-                .status(ApiResponse.Status.builder()
-                    .code(200)
-                    .message("Lấy danh sách yêu cầu chuyển nhượng chờ duyệt thành công")
-                    .build())
-                .data(result)
-                .build()
-        );
-    }
-
-    /**
-     * Lấy danh sách yêu cầu HỦY đã được DUYỆT
-     */
-    @GetMapping("/annul/approved")
-    public ResponseEntity<ApiResponse<Page<ContractAnnulTransferRequestDTO>>> getApprovedCancellations(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "approvalDate"));
         // Status: lowercase
         Page<ContractAnnulTransferRequestDTO> result = service.search(
                 null, "annul", "approved", null, null, null, pageable);

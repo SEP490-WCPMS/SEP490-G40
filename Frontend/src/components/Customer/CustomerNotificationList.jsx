@@ -58,6 +58,10 @@ function CustomerNotificationList() {
                 return 'Nhắc sắp hết hạn hợp đồng';
             case 'LEAK_WARNING':
                 return 'Cảnh báo rò rỉ nước';
+            case 'INVOICE_PAYMENT_SUCCESS':
+                return 'Xác nhận thanh toán hóa đơn';
+            case 'LATE_PAYMENT_NOTICE':
+                return 'Thông báo quá hạn thanh toán';
             case 'GENERAL':
             default:
                 return 'Thông báo';
@@ -97,6 +101,8 @@ function CustomerNotificationList() {
             'WATER_BILL_ISSUED',
             'SERVICE_INVOICE_ISSUED',
             'PAYMENT_REMINDER',
+            'INVOICE_PAYMENT_SUCCESS',
+            'LATE_PAYMENT_NOTICE',
         ].includes(messageType);
     };
 

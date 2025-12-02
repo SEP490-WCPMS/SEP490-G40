@@ -1,6 +1,6 @@
 package com.sep490.wcpms.security.jwt;
 
-import com.sep490.wcpms.security.services.UserDetailsServiceImpl; // Your UserDetailsService
+import com.sep490.wcpms.security.services.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,25 +9,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component; // <-- Add @Component
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-@Component // <-- Make it a Spring bean
+@Component
 public class JwtAuthTokenFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthTokenFilter.class);
 
     @Autowired
     private JwtUtils jwtUtils;
 
     @Autowired
-    private UserDetailsServiceImpl userDetailsService; // Your UserDetailsService
-
-    private static final Logger logger = LoggerFactory.getLogger(JwtAuthTokenFilter.class);
+    private UserDetailsServiceImpl userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -37,35 +43,60 @@ public class JwtAuthTokenFilter extends OncePerRequestFilter {
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
                 String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
-                // Load UserDetails using the username from token
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = null;
+                try {
+                    userDetails = userDetailsService.loadUserByUsername(username);
+                } catch (Exception ex) {
+                    logger.debug("UserDetails not found for username {}: {}", username, ex.getMessage());
+                }
 
-                // Create Authentication object
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails,
-                                null, // Credentials (usually null for JWT)
-                                userDetails.getAuthorities()); // Roles/Authorities
+                UsernamePasswordAuthenticationToken authentication;
+
+                if (userDetails != null && userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
+                    authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                } else {
+                    // fallback: read roles from JWT claims and normalize into authorities
+                    List<String> roles = jwtUtils.getRolesFromJwtToken(jwt);
+                    Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+                    if (roles != null) {
+                        for (String r : roles) {
+                            if (r == null) continue;
+                            String val = r.trim();
+                            if (val.isEmpty()) continue;
+                            // keep original form and alternate ROLE_ form
+                            authorities.add(new SimpleGrantedAuthority(val));
+                            if (val.startsWith("ROLE_")) {
+                                String without = val.substring(5);
+                                if (!without.isEmpty()) authorities.add(new SimpleGrantedAuthority(without));
+                            } else {
+                                authorities.add(new SimpleGrantedAuthority("ROLE_" + val));
+                            }
+                        }
+                    }
+                    User principal = new User(username, "", authorities);
+                    authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                    logger.debug("Applied authorities from JWT for user {}: {}", username,
+                            authorities.stream().map(Object::toString).collect(Collectors.joining(",")));
+                }
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // Set Authentication in SecurityContext
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            } else {
+                logger.debug("No valid JWT token found for request {}", request.getRequestURI());
             }
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            logger.error("Cannot set user authentication: {}", e.getMessage(), e);
         }
 
-        filterChain.doFilter(request, response); // Continue filter chain
+        filterChain.doFilter(request, response);
     }
 
-    // Helper method to extract token from "Bearer <token>" header
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");
-
         if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7); // Extract token part
+            return headerAuth.substring(7);
         }
-
         return null;
     }
 }

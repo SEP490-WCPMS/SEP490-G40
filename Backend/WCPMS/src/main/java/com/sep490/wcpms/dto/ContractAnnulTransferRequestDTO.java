@@ -18,7 +18,8 @@ public class ContractAnnulTransferRequestDTO {
     private String requestType;
 
     private String requestNumber;
-    private LocalDate requestDate;
+    // Use LocalDateTime to match entity (request_date is LocalDateTime)
+    private LocalDateTime requestDate;
     private String reason;
     private String attachedEvidence;
 
@@ -28,15 +29,26 @@ public class ContractAnnulTransferRequestDTO {
     private Integer approvedById;
     private String approvedByUsername;
 
-    private LocalDate approvalDate;
+    // Use LocalDateTime to match entity (approval_date is LocalDateTime)
+    private LocalDateTime approvalDate;
     private String approvalStatus;
 
     //transfer only
     private Integer fromCustomerId;
     private Integer toCustomerId;
 
+    private String fromCustomerName;
+    private String toCustomerName;
+
     private String notes;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String rejectionReason;
+    private String status;
+    private LocalDateTime processedDate;
+    private Integer requesterId;
+    private String requesterName;
+    private LocalDateTime createdDate;
 }

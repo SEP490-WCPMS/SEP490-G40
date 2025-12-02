@@ -19,6 +19,13 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey; // Import Key từ javax.crypto
 import java.util.Date;
 
+// --- NEW IMPORTS ---
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.security.core.GrantedAuthority;
+import io.jsonwebtoken.security.InvalidKeyException;
+import java.security.SecureRandom;
+
 @Component
 public class JwtUtils {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
@@ -79,9 +86,16 @@ public class JwtUtils {
         // === SỬA LẠI TÊN UserDetailsImpl NẾU CẦN ===
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
 
+        // Build roles list from authorities
+        List<String> roles = userPrincipal.getAuthorities() == null ? List.of() :
+                userPrincipal.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.toList());
+
         return Jwts.builder()
                 .setSubject(userPrincipal.getUsername()) // Đặt username làm subject
                 .claim("userId", userPrincipal.getId()) // ✅ THÊM userId vào token
+                .claim("roles", roles) // ✅ THÊM roles claim
                 .setIssuedAt(new Date()) // Thời gian phát hành
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs)) // Thời gian hết hạn
                 .signWith(this.signingKey, SignatureAlgorithm.HS256) // Ký bằng key đã khởi tạo và thuật toán HS256
@@ -129,6 +143,21 @@ public class JwtUtils {
                 .parseClaimsJws(token)
                 .getBody()
                 .get("userId", Integer.class); // ✅ Lấy userId từ claim
+    }
+
+    /**
+     * Lấy roles list từ JWT token (nếu có)
+     */
+    public List<String> getRolesFromJwtToken(String token) {
+        try {
+            Object value = Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token).getBody().get("roles");
+            if (value instanceof List<?>) {
+                return ((List<?>) value).stream().map(Object::toString).collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to parse roles from token: {}", e.getMessage());
+        }
+        return List.of();
     }
 
     /**

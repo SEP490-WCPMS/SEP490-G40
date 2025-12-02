@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth'; // Import hook useAuth
 import { Home, LogOut } from 'lucide-react'; // Import icons cho dropdown
 import { AccountingSidebar } from './AccountingSidebar'; // <-- SỬA: Import Sidebar Kế Toán
+
 import './LayoutAccounting.css'; // <-- SỬA: Import file CSS Kế Toán
 
 const LayoutAccounting = () => { // <-- SỬA: Tên component

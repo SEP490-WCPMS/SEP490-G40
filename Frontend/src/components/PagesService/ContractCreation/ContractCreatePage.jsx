@@ -113,6 +113,8 @@ const ContractCreate = () => {
             console.log('Sending contract data:', contractData);
 
             // Cập nhật các trường chi tiết cho hợp đồng từ form
+            // (Removed client-side `lastAction` fallback — backend now supplies actor info)
+
             await updateServiceContract(sourceContractId, {
                 installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
                 startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
@@ -124,8 +126,8 @@ const ContractCreate = () => {
                 serviceStaffId: currentUserId,
             });
             await approveServiceContract(sourceContractId);
-            message.success('Tạo hợp đồng thành công!');
-            navigate('/service/approved-contracts');
+                message.success('Tạo hợp đồng thành công!');
+                navigate('/service/approved-contracts');
         } catch (error) {
             console.error('Approve contract error:', error);
             const errorMessage = error?.response?.data?.message || 'Không thể tạo hợp đồng!';

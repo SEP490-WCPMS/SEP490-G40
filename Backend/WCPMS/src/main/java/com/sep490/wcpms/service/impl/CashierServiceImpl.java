@@ -16,6 +16,7 @@ import com.sep490.wcpms.repository.InvoiceRepository;
 import com.sep490.wcpms.repository.ReceiptRepository;
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.CashierService;
+import com.sep490.wcpms.service.ActivityLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,6 +46,7 @@ public class CashierServiceImpl implements CashierService {
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final MeterReadingRepository meterReadingRepository;
+    private final ActivityLogService activityLogService; // NEW injection
 
     @Override
     @Transactional(readOnly = true)
@@ -103,6 +105,35 @@ public class CashierServiceImpl implements CashierService {
         receipt.setNotes("Thu tiền mặt tại quầy.");
 
         Receipt savedReceipt = receiptRepository.save(receipt);
+
+        // Persist activity log for payment (actor = cashier)
+        try {
+            ActivityLog paymentLog = new ActivityLog();
+            paymentLog.setSubjectType("INVOICE");
+            paymentLog.setSubjectId(invoice.getInvoiceNumber() != null ? invoice.getInvoiceNumber() : String.valueOf(invoice.getId()));
+            paymentLog.setAction("PAYMENT_RECEIVED");
+            paymentLog.setActorType("STAFF");
+            paymentLog.setActorId(cashier.getId());
+            paymentLog.setActorName(cashier.getFullName());
+            if (cashier.getFullName() != null) {
+                paymentLog.setInitiatorName(cashier.getFullName());
+                paymentLog.setInitiatorType("STAFF");
+                paymentLog.setInitiatorId(cashier.getId());
+            }
+            // If invoice linked to a customer, prefer to record initiator as CUSTOMER
+            if (invoice.getCustomer() != null) {
+                paymentLog.setInitiatorType("CUSTOMER");
+                paymentLog.setInitiatorId(invoice.getCustomer().getId());
+                paymentLog.setInitiatorName(invoice.getCustomer().getCustomerName());
+            }
+            // Optionally include payload with amount
+            paymentLog.setPayload("amount=" + (invoice.getTotalAmount() != null ? invoice.getTotalAmount().toString() : "0"));
+
+            // save via ActivityLogService
+            activityLogService.save(paymentLog);
+        } catch (Exception ex) {
+            // swallow
+        }
 
         return receiptMapper.toDto(savedReceipt);
     }

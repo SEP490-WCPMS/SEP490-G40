@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth'; // Import hook useAuth
 import { Home, LogOut } from 'lucide-react'; // Import icons cho dropdown
 import { CashierSidebar } from './CashierSidebar'; // Import Sidebar Thu Ngân
+
 import './LayoutCashier.css'; // File CSS cho dropdown (bạn cần tạo file này)
 
 const LayoutCashier = () => {
@@ -44,7 +45,7 @@ const LayoutCashier = () => {
           <h2 className="text-xl font-semibold text-gray-800">Nhân viên Thu Ngân</h2>
           
           {/* --- User Menu bên phải (Giống LayoutService) --- */}
-          <div className="ml-auto flex items-center gap-4 relative">
+            <div className="ml-auto flex items-center gap-4 relative">
             {/* Đổi tên chào */}
             Xin chào, {user ? user.fullName : 'Guest'}
             <button 

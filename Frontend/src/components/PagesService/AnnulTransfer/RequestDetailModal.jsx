@@ -36,7 +36,7 @@ const safeDate = (v) => {
   const s = asString(v);
   if (!s) return '';
   const d = new Date(s);
-  return isNaN(d) ? s : d.toLocaleString('vi-VN');
+  return isNaN(d) ? s : d.toLocaleDateString('vi-VN');
 };
 
 const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => {
@@ -75,6 +75,7 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
                   }
                   message.success('Duyệt yêu cầu thành công');
                   onSuccess && onSuccess();
+                  onCancel && onCancel(); // Đóng form chi tiết sau khi duyệt thành công
                 } catch (err) {
                   console.error('Approve action error:', err);
                   message.error('Duyệt yêu cầu thất bại');
@@ -150,7 +151,7 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
           </Descriptions.Item>
         )}
         {data.approvalNote && (
-          <Descriptions.Item label="Ghi chú duyệt">
+          <Descriptions.Item label="Lý do từ chối">
             <Text>{asString(data.approvalNote)}</Text>
           </Descriptions.Item>
         )}
@@ -170,9 +171,13 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
               await rejectAnnulRequest(id, rejectReason || 'Từ chối bởi nhân viên');
             }
             message.success('Từ chối yêu cầu thành công');
-            setRejectModalVisible(false);
+            setRejectModalVisible(false); // Đóng modal lý do trước
             setRejectReason('');
             onSuccess && onSuccess();
+            // Đảm bảo modal lý do đã đóng trước khi đóng modal chi tiết
+            setTimeout(() => {
+              onCancel && onCancel();
+            }, 0);
           } catch (err) {
             console.error('Reject action error:', err);
             message.error('Từ chối yêu cầu thất bại');

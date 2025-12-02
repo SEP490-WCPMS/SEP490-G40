@@ -43,9 +43,6 @@ import java.time.LocalDateTime; // Thêm import
 
 import java.time.LocalDate;
 import java.util.List;
-import org.springframework.context.ApplicationEventPublisher; // Thêm import
-import com.sep490.wcpms.event.SurveyReportSubmittedEvent; // Event nộp báo cáo khảo sát
-import com.sep490.wcpms.event.InstallationCompletedEvent; // Event hoàn tất lắp đặt
 
 @Service
 // Bạn có thể đổi sang @RequiredArgsConstructor nếu muốn dùng 'final' thay vì @Autowired
@@ -74,7 +71,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     @Autowired
     private CustomerRepository customerRepository;
     @Autowired
-    private ApplicationEventPublisher eventPublisher; // Publish domain events
+    private com.sep490.wcpms.service.ActivityLogService activityLogService;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -119,15 +116,6 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         contract.setContractStatus(Contract.ContractStatus.PENDING_SURVEY_REVIEW);
         Contract savedContract = contractRepository.save(contract);
 
-        // Publish event sau commit
-        eventPublisher.publishEvent(new SurveyReportSubmittedEvent(
-                savedContract.getId(),
-                savedContract.getContractNumber(),
-                staffId,
-                savedContract.getServiceStaff() != null ? savedContract.getServiceStaff().getId() : null,
-                savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
-                LocalDateTime.now()
-        ));
         return contractMapper.toDto(savedContract);
     }
 
@@ -232,6 +220,27 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         meterInstallationRepository.save(installation); // Lưu Bảng 11
 
+        // Persist activity log: installation completed by technical staff
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT_INSTALLATION");
+            log.setSubjectId(contract.getContractNumber() != null ? contract.getContractNumber() : String.valueOf(contract.getId()));
+            log.setAction("INSTALLATION_COMPLETED");
+            if (staff != null) {
+                log.setActorType("STAFF");
+                log.setActorId(staff.getId());
+                log.setActorName(staff.getFullName());
+                log.setInitiatorType("STAFF");
+                log.setInitiatorId(staff.getId());
+                log.setInitiatorName(staff.getFullName());
+            } else {
+                log.setActorType("SYSTEM");
+            }
+            activityLogService.save(log);
+        } catch (Exception e) {
+            // swallow
+        }
+
         // 7. Cập nhật trạng thái Đồng hồ (Bảng 10)
         meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
         // --- THÊM ĐOẠN NÀY (QUAN TRỌNG) ---
@@ -247,15 +256,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         ContractDetailsDTO dto = contractMapper.toDto(contract);
 
-        // Publish event hoàn tất lắp đặt
-        eventPublisher.publishEvent(new InstallationCompletedEvent(
-                contract.getId(),
-                contract.getContractNumber(),
-                staffId,
-                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null,
-                contract.getCustomer() != null ? contract.getCustomer().getCustomerName() : null,
-                LocalDateTime.now()
-        ));
+        // Notification logic removed
         return dto;
     }
 

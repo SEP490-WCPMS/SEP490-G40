@@ -137,8 +137,7 @@ const ContractTransferList = () => {
       // Chấp nhận nhiều dạng payload từ BE: Page, array, hoặc wrapper khác
       const data = response?.data;
       // Debug nhẹ để kiểm tra cấu trúc BE qua Console devtools
-      // eslint-disable-next-line no-console
-      console.log('[TransferList] payload', data);
+      
       // Tìm mảng items theo nhiều cấu trúc trả về khác nhau (kể cả lồng 1 cấp)
       const pickArray = (obj) => {
         if (Array.isArray(obj)) return obj;
@@ -154,42 +153,44 @@ const ContractTransferList = () => {
         return [];
       };
       const rawItems = pickArray(data);
-      // eslint-disable-next-line no-console
-      console.log('[TransferList] items.length', rawItems.length, 'first.keys', rawItems[0] && Object.keys(rawItems[0]));
+      
       // Chuẩn hóa field cho bảng (mapping field name theo BE)
       const items = rawItems.map((it) => ({
-        ...it,
-        contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-        currentCustomer: it.fromCustomerName || (it.fromCustomerId ? `KH #${it.fromCustomerId}` : '—'),
-        newCustomer: it.toCustomerName || (it.toCustomerId ? `KH #${it.toCustomerId}` : '—'),
-        requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
-        status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
-          || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
-          || (typeof it.status === 'string' ? it.status : null)
-          || 'PENDING',
-      }));
-      let finalItems = items;
+      ...it,
+      contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
+      currentCustomer: it.fromCustomerName && it.fromCustomerName.trim() !== ''
+        ? it.fromCustomerName
+        : (it.fromCustomerId ? `KH #${it.fromCustomerId}` : '—'),
+      newCustomer: it.toCustomerName && it.toCustomerName.trim() !== ''
+        ? it.toCustomerName
+        : (it.toCustomerId ? `KH #${it.toCustomerId}` : '—'),
+      requestDate: it.requestDate ? new Date(it.requestDate).toLocaleDateString('vi-VN') : '—',
+      status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
+        || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
+        || (typeof it.status === 'string' ? it.status : null)
+        || 'PENDING',
+    }));
+    let finalItems = items;
       // Fallback: nếu không có dữ liệu do filter BE khác casing/tên tham số, thử gọi không filter rồi lọc client
       if (!items.length) {
         try {
           const alt = await apiClient.get('/service/requests', { params: { page: (params.current || pagination.current) - 1, size: params.pageSize || pagination.pageSize } });
           const altData = alt?.data;
-          // eslint-disable-next-line no-console
-          console.log('[TransferList] alt payload', altData);
+          
           const altRaw = pickArray(altData);
           finalItems = altRaw
             .filter(it => (it.requestType || it.type || '').toString().toUpperCase() === 'TRANSFER')
-            .map((it) => ({
-              ...it,
-              contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
-              currentCustomer: it.fromCustomerName || (it.fromCustomerId ? `KH #${it.fromCustomerId}` : '—'),
-              newCustomer: it.toCustomerName || (it.toCustomerId ? `KH #${it.toCustomerId}` : '—'),
-              requestDate: it.requestDate ? new Date(it.requestDate).toLocaleString('vi-VN') : '—',
-              status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
-                || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
-                || (typeof it.status === 'string' ? it.status : null)
-                || 'PENDING',
-            }));
+          .map((it) => ({
+            ...it,
+            contractNumber: it.contractNumber || it.contract_no || it.contractNo || '—',
+            currentCustomer: it.fromCustomerName || (it.fromCustomerId ? `KH #${it.fromCustomerId}` : '—'),
+            newCustomer: it.toCustomerName || (it.toCustomerId ? `KH #${it.toCustomerId}` : '—'),
+            requestDate: it.requestDate ? new Date(it.requestDate).toLocaleDateString('vi-VN') : '—',
+            status: (typeof it.approvalStatus === 'string' ? it.approvalStatus : null)
+              || (typeof it.status === 'object' && it.status ? (it.status.code || it.status.name || it.status.value) : null)
+              || (typeof it.status === 'string' ? it.status : null)
+              || 'PENDING',
+          }));
         } catch (e) {
           // eslint-disable-next-line no-console
           console.warn('[TransferList] alt fetch failed', e);

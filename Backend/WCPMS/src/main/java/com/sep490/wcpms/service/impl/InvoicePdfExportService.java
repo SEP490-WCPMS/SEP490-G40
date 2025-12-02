@@ -359,6 +359,15 @@ public class InvoicePdfExportService {
         Customer c = invoice.getCustomer();
         Map<String, Object> model = new HashMap<>();
 
+        // --- THÊM XỬ LÝ PHÍ NỘP MUỘN ---
+        BigDecimal lateFee = invoice.getLatePaymentFee();
+        boolean hasLateFee = lateFee != null && lateFee.compareTo(BigDecimal.ZERO) > 0;
+        model.put("hasLatePaymentFee", hasLateFee);
+        if (hasLateFee) {
+            model.put("latePaymentFee", fmtMoney(lateFee));
+        }
+        // --------------------------------
+
         model.put("companyAddress", companyAddress);
         model.put("companyPhone", companyPhone);
         model.put("companyEmail", companyEmail);
@@ -413,6 +422,15 @@ public class InvoicePdfExportService {
         Customer c = invoice.getCustomer();
         Map<String, Object> model = new HashMap<>();
 
+        // --- THÊM XỬ LÝ PHÍ NỘP MUỘN ---
+        BigDecimal lateFee = invoice.getLatePaymentFee();
+        boolean hasLateFee = lateFee != null && lateFee.compareTo(BigDecimal.ZERO) > 0;
+        model.put("hasLatePaymentFee", hasLateFee);
+        if (hasLateFee) {
+            model.put("latePaymentFee", fmtMoney(lateFee));
+        }
+        // --------------------------------
+
         LocalDate today = LocalDate.now();
 
         model.put("companyAddress", companyAddress);
@@ -463,6 +481,15 @@ public class InvoicePdfExportService {
 
         Customer c = invoice.getCustomer();
         Map<String, Object> model = new HashMap<>();
+
+        // --- THÊM XỬ LÝ PHÍ NỘP MUỘN ---
+        BigDecimal lateFee = invoice.getLatePaymentFee();
+        boolean hasLateFee = lateFee != null && lateFee.compareTo(BigDecimal.ZERO) > 0;
+        model.put("hasLatePaymentFee", hasLateFee);
+        if (hasLateFee) {
+            model.put("latePaymentFee", fmtMoney(lateFee));
+        }
+        // --------------------------------
 
         LocalDate today = LocalDate.now();
 

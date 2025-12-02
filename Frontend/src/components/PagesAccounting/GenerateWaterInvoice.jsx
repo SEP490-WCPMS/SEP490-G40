@@ -5,7 +5,7 @@ import { RefreshCw, Calculator, AlertCircle } from 'lucide-react';
 import moment from 'moment';
 import { Modal, Descriptions, Spin, message, Button, Tag } from 'antd'; 
 
-function PendingReadingsList() {
+function GenerateWaterInvoice() {
     const [readings, setReadings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
@@ -211,4 +211,4 @@ function PendingReadingsList() {
     );
 }
 
-export default PendingReadingsList;
+export default GenerateWaterInvoice;

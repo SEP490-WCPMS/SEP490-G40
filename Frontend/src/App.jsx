@@ -3,9 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ScrollToTop from './components/common/ScrollToTop';
 import './App.css';
 import { useAuth } from './hooks/use-auth';
-import { ServiceNotificationProvider } from './contexts/ServiceNotificationContext';
-import { ServiceNotificationListener } from './components/Notifications/ServiceNotificationListener';
-import { ServiceNotificationToast } from './components/Notifications/ServiceNotificationToast';
 import Login from './components/Authentication/Login';
 import ForgotPassword from './components/Authentication/ForgotPassword';
 import ResetPassword from './components/Authentication/ResetPassword';
@@ -64,9 +61,9 @@ import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
 import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
-import PendingReadingsList from './components/PagesAccounting/PendingReadingsList'; // Sửa đường dẫn
-import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList';
-import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail';
+import GenerateWaterInvoice from './components/PagesAccounting/GenerateWaterInvoice'; // Sửa đường dẫn
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; 
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; 
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
 import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
@@ -74,6 +71,7 @@ import CashierRouteList from './components/PagesCashier/CashierRouteList';
 import CashierContractDetail from './components/PagesCashier/CashierContractDetail';
 import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
+import AdminDashboard from './components/PagesAdmin/AdminDashboard';
 import ContactPage from './components/Pages/ContactPage';
 import StaffAccountList from './components/Admin/StaffAccountList';
 import WaterMetersPage from './components/Admin/WaterMetersPage';
@@ -238,7 +236,7 @@ function App() {
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
             {/* ROUTE CHO HÓA ĐƠN TIỀN NƯỚC */}
-            <Route path="billing/pending-readings" element={<PendingReadingsList />} />
+            <Route path="billing/pending-readings" element={<GenerateWaterInvoice />} />
           </Route>
         </Route>
         {/* --- HẾT --- */}
@@ -246,7 +244,8 @@ function App() {
         {/* (Thêm luồng ADMIN ở đây nếu cần) */}
         <Route element={<PrivateRoute allowedRoles={['ADMIN']} />}>
           <Route path="/admin/*" element={<LayoutAdmin />}>
-
+            {/* Admin index/dashboard */}
+            <Route index element={<AdminDashboard />} />
             {/* (Thêm các trang khác của Admin ở đây) */}
             <Route path="users" element={<StaffAccountList />} />
             <Route path="water-meters" element={<WaterMetersPage />} />
@@ -262,10 +261,4 @@ function App() {
   );
 }
 
-export default () => (
-  <ServiceNotificationProvider>
-    <ServiceNotificationListener />
-    <ServiceNotificationToast />
-    <App />
-  </ServiceNotificationProvider>
-);
+export default App;
