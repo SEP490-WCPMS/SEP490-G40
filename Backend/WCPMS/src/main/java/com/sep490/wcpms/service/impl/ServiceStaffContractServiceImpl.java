@@ -393,14 +393,38 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     // === CẬP NHẬT HÀM NÀY (Bước 4) ===
     @Override
     @Transactional(readOnly = true)
-    public Page<SupportTicketDTO> getSupportTickets(Pageable pageable) {
-        // SỬA LẠI: Lấy TẤT CẢ các ticket (cả SUPPORT_REQUEST và FEEDBACK)
-        // đang ở trạng thái PENDING, bằng cách gọi hàm findByStatus.
-        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByStatus(
-                CustomerFeedback.Status.PENDING,
-                pageable
-        );
-        // Map kết quả sang DTO để trả về
+    public Page<SupportTicketDTO> getSupportTickets(List<String> feedbackTypes, Pageable pageable) {
+        Page<CustomerFeedback> tickets;
+
+        // 1. Mặc định: Luôn lấy ticket đang ở trạng thái PENDING (Chờ xử lý)
+        // Vì đây là màn hình "Việc cần làm" của nhân viên
+        CustomerFeedback.Status targetStatus = CustomerFeedback.Status.PENDING;
+
+        // 2. Logic Lọc theo Loại (Type):
+        if (feedbackTypes == null || feedbackTypes.isEmpty() || feedbackTypes.contains("ALL")) {
+            // Trường hợp A: Không chọn Type hoặc chọn ALL
+            // -> Lấy tất cả PENDING (bất kể là Góp ý hay Yêu cầu)
+            tickets = customerFeedbackRepository.findByStatus(targetStatus, pageable);
+        } else {
+            // Trường hợp B: Có chọn Type (ví dụ: ["FEEDBACK"] hoặc ["SUPPORT_REQUEST"])
+
+            // B1: Chuyển từ List<String> sang List<FeedbackType>
+            List<CustomerFeedback.FeedbackType> types = feedbackTypes.stream()
+                    .map(s -> {
+                        try {
+                            return CustomerFeedback.FeedbackType.valueOf(s.toUpperCase());
+                        } catch (IllegalArgumentException e) {
+                            // Nếu chuỗi không hợp lệ, mặc định coi là FEEDBACK (hoặc log lỗi)
+                            return CustomerFeedback.FeedbackType.FEEDBACK;
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            // B2: Gọi hàm repo mới: Lọc PENDING + Danh sách Type
+            tickets = customerFeedbackRepository.findByStatusAndFeedbackTypeIn(targetStatus, types, pageable);
+        }
+
+        // 3. Map kết quả sang DTO
         return tickets.map(supportTicketMapper::toDto);
     }
     // --- HẾT PHẦN CẬP NHẬT ---

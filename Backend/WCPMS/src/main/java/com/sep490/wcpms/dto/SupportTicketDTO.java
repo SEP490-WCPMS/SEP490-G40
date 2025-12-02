@@ -25,6 +25,10 @@ public class SupportTicketDTO {
     private CustomerFeedback.Status status; // Trạng thái (PENDING, IN_PROGRESS)
     private LocalDateTime submittedDate;
 
+    // --- Thông tin Đồng hồ (Từ Bảng 13 & 10) ---
+    private String meterCode; // Mã đồng hồ (M001)
+    private String meterSerialNumber; // Số serial
+
     // Thông tin người gán / người xử lý
     private Integer assignedToId; // ID của NV Kỹ thuật được gán
     private String assignedToName; // Tên NV Kỹ thuật

@@ -3,6 +3,7 @@ package com.sep490.wcpms.service;
 import com.sep490.wcpms.dto.AccountDTO; // <-- THÊM
 import com.sep490.wcpms.dto.ServiceStaffContractDTO;
 import com.sep490.wcpms.dto.ServiceStaffUpdateContractRequestDTO;
+import com.sep490.wcpms.entity.CustomerFeedback;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.sep490.wcpms.dto.SupportTicketDTO; // <-- THÊM IMPORT
@@ -84,7 +85,7 @@ public interface ServiceStaffContractService {
     List<AccountDTO> getAvailableTechStaff();
 
     /** Lấy danh sách Yêu cầu Hỗ trợ (PENDING) */
-    Page<SupportTicketDTO> getSupportTickets(Pageable pageable);
+    Page<SupportTicketDTO> getSupportTickets(List<String> feedbackTypes, Pageable pageable);
 
     /** Gán ticket cho NV Kỹ thuật và đổi status sang IN_PROGRESS */
     SupportTicketDTO assignTechToTicket(Integer ticketId, Integer technicalStaffId);

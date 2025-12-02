@@ -2,70 +2,90 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
 import { RefreshCw } from 'lucide-react'; // Icon làm mới
+import Pagination from '../../common/Pagination';
 
 function SurveyContractsList() {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-    const location = useLocation();
+
+    // 2. Thêm State Pagination
+    const [pagination, setPagination] = useState({ 
+        page: 0, 
+        size: 10, 
+        totalElements: 0 
+    });
 
     // Hàm fetch dữ liệu
-    const fetchData = (opts = {}) => {
+    const fetchData = (params = {}) => {
         setLoading(true);
-        setError(null); // Reset lỗi trước khi fetch
-        const params = { status: 'PENDING', ...opts };
-        getAssignedSurveyContracts(params)
+        setError(null);
+        
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+
+        getAssignedSurveyContracts({ page: currentPage, size: currentSize })
             .then(response => {
-                // Backend có thể trả về dạng paged `{ content: [...] }` hoặc mảng trực tiếp
-                const data = response?.data?.content || response?.data || [];
-                setContracts(Array.isArray(data) ? data : []);
+                const data = response.data;
+                
+                // --- SỬA LỖI TẠI ĐÂY: XỬ LÝ ĐA NĂNG ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    // TRƯỜNG HỢP 1: API trả về Mảng (List) -> Chưa phân trang
+                    console.log("API trả về List, hiển thị tất cả.");
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10; // Coi như 1 trang to
+                } else if (data && data.content) {
+                    // TRƯỜNG HỢP 2: API trả về Page (Chuẩn) -> Có phân trang
+                    console.log("API trả về Page, hiển thị phân trang.");
+                    loadedData = data.content;
+                    // Lấy thông tin page (hỗ trợ cả cấu trúc lồng nhau data.page)
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+                // ----------------------------------------
+
+                setContracts(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => {
-                console.error("Lỗi khi lấy danh sách hợp đồng khảo sát:", err);
-                // Cung cấp thông báo lỗi rõ ràng hơn
-                setError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối hoặc thử lại.");
+                console.error("Lỗi khi lấy danh sách:", err);
+                setError("Không thể tải dữ liệu.");
             })
             .finally(() => {
                 setLoading(false);
             });
     };
 
-    // Gọi fetchData khi component mount lần đầu; nếu URL có ?highlight=... thì gửi keyword để backend ưu tiên trả về
+    // Gọi fetchData khi component mount (Trang 0)
     useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const highlightId = params.get('highlight');
-        if (highlightId) {
-            // nếu highlight giống mã hợp đồng (REQ-...), dùng làm keyword tìm kiếm
-            fetchData({ keyword: highlightId });
-        } else {
-            fetchData();
-        }
-    }, []); // Mảng dependency rỗng đảm bảo chỉ chạy 1 lần
+        fetchData({ page: 0 });
+    }, []); 
 
-    // Highlight logic: nếu URL có ?highlight=<id> thì cuộn tới hàng tương ứng sau khi dữ liệu load
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const highlightId = params.get('highlight');
-        if (!highlightId) return;
+    // 4. Hàm xử lý chuyển trang
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-        let attempts = 0;
-        const tryHighlight = () => {
-            attempts += 1;
-            const el = document.querySelector(`[data-contract-id="${highlightId}"]`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return;
-            }
-            if (attempts < 10) setTimeout(tryHighlight, 300);
-        };
+    // Hàm làm mới (Giữ nguyên trang hiện tại)
+    const handleRefresh = () => {
+        fetchData();
+    };
 
-        setTimeout(tryHighlight, 200);
-    }, [location.search, contracts]);
-
-    // Hàm điều hướng đến trang chi tiết
     const handleViewDetails = (contractId) => {
-        // Sử dụng đường dẫn tuyệt đối để đảm bảo chính xác
         navigate(`/technical/survey/report/${contractId}`);
     };
 
@@ -80,7 +100,7 @@ function SurveyContractsList() {
                 </div>
                 {/* Nút Làm mới */}
                 <button
-                    onClick={fetchData}
+                    onClick={handleRefresh}
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
                     disabled={loading} // Vô hiệu hóa nút khi đang tải
                 >
@@ -164,6 +184,15 @@ function SurveyContractsList() {
                         </tbody>
                     </table>
                 </div>
+                {/* 5. Gắn Component Phân trang */}
+                 {!loading && contracts.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
             </div>
         </div>
     );

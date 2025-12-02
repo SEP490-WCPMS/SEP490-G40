@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getInvoices, cancelInvoice } from '../Services/apiAccountingStaff';
 import { RefreshCw, Filter, XCircle, CheckCircle, Eye } from 'lucide-react';
 import moment from 'moment';
+import Pagination from '../common/Pagination';
 // (Import component Phân trang của bạn)
 
 function InvoiceList() {
@@ -13,11 +14,17 @@ function InvoiceList() {
     // State cho Lọc (Req 4)
     const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, PENDING, PAID, CANCELLED
     
-    const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
+    // 2. State Pagination
+    const [pagination, setPagination] = useState({ 
+        page: 0, 
+        size: 10, 
+        totalElements: 0 
+    });
+
     const [processingId, setProcessingId] = useState(null); // ID của HĐ đang Hủy
     const navigate = useNavigate();
 
-    // Hàm fetch dữ liệu (Đã có lọc)
+    // 3. Cập nhật fetchData (Hỗ trợ phân trang & Logic đa năng)
     const fetchData = (page = 0, size = 10, status = statusFilter) => {
         setLoading(true);
         setError(null);
@@ -25,13 +32,34 @@ function InvoiceList() {
         getInvoices({ page, size, status, sort: 'invoiceDate,desc' })
             .then(response => {
                 const data = response.data;
-                setInvoices(data?.content || []);
-                setPagination(prev => ({
-                    ...prev,
-                    page: data.number,
-                    size: data.size,
-                    totalElements: data.totalElements,
-                }));
+
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG (List hoặc Page) ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    // TH1: API trả về Mảng (List)
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10;
+                } else if (data && data.content) {
+                    // TH2: API trả về Page (Chuẩn)
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+                // ---------------------------------------------
+
+                setInvoices(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => setError("Không thể tải danh sách hóa đơn."))
             .finally(() => setLoading(false));
@@ -42,7 +70,18 @@ function InvoiceList() {
         fetchData(0, pagination.size, statusFilter);
     }, [statusFilter]); // Tự động gọi lại khi filter thay đổi
 
-    // Hàm xử lý Hủy Hóa đơn (Req 5)
+    // 4. Handlers chuyển trang
+    const handlePageChange = (newPage) => {
+        fetchData(newPage, pagination.size, statusFilter);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRefresh = () => {
+        // Refresh giữ nguyên trang hiện tại
+        fetchData(pagination.page, pagination.size, statusFilter);
+    };
+
+    // Hàm xử lý Hủy Hóa đơn
     const handleCancelInvoice = (invoiceId) => {
         if (!window.confirm(`Bạn có chắc chắn muốn HỦY Hóa đơn này không? Khoản phí sẽ được trả lại hàng chờ.`)) {
             return;
@@ -54,8 +93,7 @@ function InvoiceList() {
         cancelInvoice(invoiceId)
             .then(response => {
                 alert(`Hủy Hóa đơn ${response.data.invoiceNumber} thành công!`);
-                // Tải lại danh sách
-                fetchData(pagination.page, pagination.size, statusFilter);
+                handleRefresh(); // Tải lại danh sách
             })
             .catch(err => {
                 console.error("Lỗi khi hủy hóa đơn:", err);
@@ -106,8 +144,8 @@ function InvoiceList() {
                     </select>
                 </div>
                 <button
-                    onClick={() => fetchData(0, pagination.size, statusFilter)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700"
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -199,6 +237,15 @@ function InvoiceList() {
                         </tbody>
                     </table>
                  </div>
+                 {/* 5. Gắn Component Phân trang */}
+                 {!loading && invoices.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
                  {/* (Phân trang) */}
             </div>
         </div>

@@ -55,6 +55,18 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
 
     // --- HẾT PHẦN THÊM ---
 
+    // --- THÊM HÀM MỚI NÀY (QUAN TRỌNG) ---
+    /**
+     * Tìm ticket của Customer VÀ nằm trong danh sách trạng thái cho trước.
+     * Tương tự: findByCustomerAndPaymentStatusIn bên InvoiceRepository
+     */
+    Page<CustomerFeedback> findByCustomer_IdAndStatusIn(
+            Integer customerId,
+            Collection<CustomerFeedback.Status> statuses,
+            Pageable pageable
+    );
+    // ------------------------------------
+
     // --- THÊM HÀM MỚI ---
     /**
      * Lấy TẤT CẢ các ticket (cả FEEDBACK và SUPPORT_REQUEST)
@@ -87,5 +99,17 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
             Collection<CustomerFeedback.Status> statuses
     );
     // --- HẾT PHẦN THÊM ---
+
+    // --- THÊM HÀM MỚI NÀY ĐỂ LỌC THEO STATUS VÀ TYPE ---
+    /**
+     * Tìm ticket theo một Trạng thái cố định (ví dụ: PENDING)
+     * VÀ nằm trong danh sách các Loại (FeedbackType) được truyền vào.
+     */
+    Page<CustomerFeedback> findByStatusAndFeedbackTypeIn(
+            CustomerFeedback.Status status,
+            Collection<CustomerFeedback.FeedbackType> feedbackTypes,
+            Pageable pageable
+    );
+    // ---------------------------------------------------
 
 }

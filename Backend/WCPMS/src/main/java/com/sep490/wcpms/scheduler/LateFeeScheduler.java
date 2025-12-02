@@ -52,7 +52,9 @@ public class LateFeeScheduler {
      * Chạy mỗi ngày vào lúc 8:00 sáng.
      * Cron expression: "giây phút giờ ngày tháng thứ"
      */
-    @Scheduled(cron = "0 0 8 * * ?")
+    @Scheduled(cron = "0 1 0 * * ?")
+    // Chạy mỗi phút 1 lần để test
+//    @Scheduled(cron = "0 * * * * ?")
     @Transactional
     public void calculateLateFees() {
         logger.info("Bắt đầu tác vụ tự động: Tính phí phạt trả chậm...");

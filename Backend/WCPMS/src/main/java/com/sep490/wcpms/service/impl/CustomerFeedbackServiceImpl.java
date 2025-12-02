@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable; // <-- THÊM IMPORT
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -136,15 +137,37 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
     /**
      * Lấy danh sách ticket của Khách hàng đang đăng nhập.
      */
+    /**
+     * Lấy danh sách ticket của Khách hàng đang đăng nhập.
+     * ĐÃ SỬA: Thêm logic lọc theo status
+     */
     @Override
     @Transactional(readOnly = true)
-    public Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, Pageable pageable) {
+    public Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, List<String> statusStrings, Pageable pageable) {
         // 1. Tìm hồ sơ Customer từ Account ID
         Customer customer = customerRepository.findByAccount_Id(customerAccountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng cho tài khoản: " + customerAccountId));
 
-        // 2. Lấy danh sách ticket của Customer đó
-        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByCustomer_Id(customer.getId(), pageable);
+        Page<CustomerFeedback> tickets;
+
+        // 2. Logic Lọc (Giống InvoiceServiceImpl)
+        if (statusStrings == null || statusStrings.isEmpty() || statusStrings.contains("ALL")) {
+            // Trường hợp 1: Không lọc -> Lấy hết
+            tickets = customerFeedbackRepository.findByCustomer_Id(customer.getId(), pageable);
+        } else {
+            // Trường hợp 2: Có lọc -> Chuyển String sang Enum -> Gọi hàm Repo mới
+            List<CustomerFeedback.Status> statuses = statusStrings.stream()
+                    .map(s -> {
+                        try {
+                            return CustomerFeedback.Status.valueOf(s.toUpperCase());
+                        } catch (IllegalArgumentException e) {
+                            return CustomerFeedback.Status.PENDING; // Fallback nếu chuỗi sai
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            tickets = customerFeedbackRepository.findByCustomer_IdAndStatusIn(customer.getId(), statuses, pageable);
+        }
 
         // 3. Map sang DTO
         return tickets.map(supportTicketMapper::toDto);
