@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getUnbilledFeeDetail, createServiceInvoice } from '../Services/apiAccountingStaff'; // Đảm bảo import đúng
+import { getUnbilledFeeDetail, createServiceInvoice } from '../Services/apiAccountingStaff';
 import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
 import moment from 'moment';
 
+// 1. IMPORT CÁC THÀNH PHẦN MỚI
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import ConfirmModal from '../common/ConfirmModal';
+
 /**
- * Trang "Tạo Hóa đơn Dịch vụ" (Req 2)
- * Kế toán xem, chỉnh sửa (nếu cần) và xác nhận tạo HĐ.
+ * Trang "Tạo Hóa đơn Dịch vụ"
  */
 function CreateServiceInvoice() {
     const { calibrationId } = useParams();
     const navigate = useNavigate();
     
     // State
-    const [feeDetail, setFeeDetail] = useState(null); // Dữ liệu gốc
-    const [formData, setFormData] = useState({ // Dữ liệu Kế toán có thể sửa
+    const [feeDetail, setFeeDetail] = useState(null);
+    const [formData, setFormData] = useState({
         invoiceNumber: '',
         invoiceDate: moment().format('YYYY-MM-DD'),
         dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
@@ -26,12 +30,15 @@ function CreateServiceInvoice() {
     
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
+    // const [error, setError] = useState(null); // Không dùng state error hiển thị nữa
+    
+    // State Modal
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    // 1. Tải dữ liệu gốc của khoản phí (để pre-fill)
+    // 1. Tải dữ liệu gốc
     useEffect(() => {
         if (!calibrationId) {
-            setError("Không tìm thấy ID Phí.");
+            toast.error("Không tìm thấy ID Phí.");
             setLoading(false);
             return;
         }
@@ -41,9 +48,9 @@ function CreateServiceInvoice() {
                 const fee = response.data;
                 setFeeDetail(fee);
                 
-                // Tính toán VAT (Giả sử 5%)
+                // Tính toán VAT (5%)
                 const subtotal = fee.calibrationCost;
-                const vat = Math.round(subtotal * 0.05); // Làm tròn
+                const vat = Math.round(subtotal * 0.05);
                 const total = subtotal + vat;
 
                 // Pre-fill form
@@ -57,11 +64,14 @@ function CreateServiceInvoice() {
                     notes: `Phí kiểm định/dịch vụ cho đồng hồ mã ${fee.meterCode}.`
                 });
             })
-            .catch(err => setError(err.response?.data?.message || "Lỗi tải chi tiết phí."))
+            .catch(err => {
+                console.error("Lỗi tải chi tiết:", err);
+                toast.error(err.response?.data?.message || "Không thể tải thông tin phí.");
+            })
             .finally(() => setLoading(false));
     }, [calibrationId]);
 
-    // 2. Hàm xử lý thay đổi input (cho phép Kế toán sửa)
+    // 2. Hàm xử lý thay đổi input
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -69,23 +79,22 @@ function CreateServiceInvoice() {
             [name]: value
         }));
     };
-    
-    // (Bạn có thể thêm hàm tính lại VAT/Total nếu Kế toán sửa Subtotal)
 
-    // 3. Hàm Submit
-    const handleSubmit = async (e) => {
+    // 3. Hàm Submit form (Chỉ mở Modal)
+    const handlePreSubmit = (e) => {
         e.preventDefault();
-        
-        setSubmitting(true);
-        setError(null);
+        setShowConfirmModal(true);
+    };
 
-        // Tạo DTO gửi đi (bao gồm cả ID gốc và dữ liệu đã sửa)
+    // 4. Hàm gọi API thật (Khi bấm Có trong Modal)
+    const handleConfirmSubmit = async () => {
+        setSubmitting(true);
+
         const invoiceDto = {
             calibrationId: parseInt(calibrationId),
             customerId: feeDetail.customerId,
             contractId: feeDetail.contractId,
-            ...formData, // Ghi đè bằng dữ liệu đã sửa
-            // Đảm bảo gửi đi là số
+            ...formData,
             subtotalAmount: parseFloat(formData.subtotalAmount) || 0,
             vatAmount: parseFloat(formData.vatAmount) || 0,
             totalAmount: parseFloat(formData.totalAmount) || 0,
@@ -93,42 +102,57 @@ function CreateServiceInvoice() {
 
         try {
             const response = await createServiceInvoice(invoiceDto);
-            alert(`Tạo Hóa đơn ${response.data.invoiceNumber} thành công!`);
-            // Chuyển sang trang Quản lý Hóa đơn
-            navigate('/accounting/unbilled-fees');
+            
+            // Đóng modal
+            setShowConfirmModal(false);
+
+            // Hiện thông báo thành công
+            toast.success(`Tạo Hóa đơn ${response.data.invoiceNumber} thành công!`, {
+                position: "top-center",
+                autoClose: 2000
+            });
+
+            // Chuyển hướng sau 2s
+            setTimeout(() => {
+                navigate('/accounting/unbilled-fees');
+            }, 2000);
+            
         } catch (err) {
             console.error("Lỗi khi tạo hóa đơn:", err);
-            setError(err.response?.data?.message || "Tạo hóa đơn thất bại.");
+            // Đóng modal để hiện toast lỗi
+            setShowConfirmModal(false);
+            toast.error(err.response?.data?.message || "Tạo hóa đơn thất bại.", {
+                position: "top-center"
+            });
         } finally {
             setSubmitting(false);
         }
     };
     
-    if (loading) return <div className="p-8 text-center">Đang tải dữ liệu...</div>;
-    
-    if (error && !feeDetail) {
-         return (
-             <div className="p-8 max-w-4xl mx-auto">
-                 <Link to="/accounting/unbilled-fees" className="inline-flex items-center text-blue-600 hover:underline mb-4">
-                     <ArrowLeft size={18} className="mr-1" /> Quay lại
-                 </Link>
-                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-                    <p className="font-bold">Đã xảy ra lỗi</p>
-                    <p>{error}</p>
-                </div>
-             </div>
-        );
-    }
+    if (loading) return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;
     
     if (!feeDetail) {
-        return <div className="p-8 text-center">Không tìm thấy dữ liệu.</div>;
+        return (
+            <div className="p-8 text-center">
+                <p className="text-gray-500 mb-4">Không tìm thấy dữ liệu.</p>
+                <button onClick={() => navigate(-1)} className="text-blue-600 hover:underline">Quay lại</button>
+            </div>
+        );
     }
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen max-w-4xl mx-auto">
+            
+            {/* 5. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
-                 <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
+                 <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
                      <ArrowLeft size={20} className="text-gray-600"/>
                  </button>
                  <div>
@@ -138,97 +162,107 @@ function CreateServiceInvoice() {
             </div>
 
             {/* Box Thông tin Gốc (Chỉ đọc) */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-3">
-                <h3 className="text-lg font-semibold text-gray-700 mb-3">Thông tin Gốc (Từ Kỹ thuật)</h3>
-                <p className="text-sm"><strong>Khách hàng:</strong> {feeDetail?.customerName} (Mã KH: {feeDetail?.customerCode})</p>
-                <p className="text-sm"><strong>Địa chỉ:</strong> {feeDetail?.customerAddress}</p>
-                <p className="text-sm"><strong>Đồng hồ:</strong> {feeDetail?.meterCode}</p>
-                <p className="text-sm"><strong>Phí kiểm định (gốc):</strong> {feeDetail?.calibrationCost.toLocaleString('vi-VN')} VNĐ</p>
-                <p className="text-sm"><strong>Ghi chú Kỹ thuật:</strong> {feeDetail?.notes || 'N/A'}</p>
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
+                <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2">Thông tin Gốc</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2">
+                    <p><strong className="text-gray-600">Khách hàng:</strong> {feeDetail?.customerName}</p>
+                    <p><strong className="text-gray-600">Mã KH:</strong> {feeDetail?.customerCode}</p>
+                    <p><strong className="text-gray-600">Địa chỉ:</strong> {feeDetail?.customerAddress}</p>
+                    <p><strong className="text-gray-600">Đồng hồ:</strong> <span className="font-mono">{feeDetail?.meterCode}</span></p>
+                    <p><strong className="text-gray-600">Phí gốc:</strong> <span className="text-red-600 font-medium">{feeDetail?.calibrationCost.toLocaleString('vi-VN')} VNĐ</span></p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded border border-gray-100 italic text-gray-600">
+                    "{feeDetail?.notes || 'Không có ghi chú'}"
+                </div>
             </div>
 
             {/* Form Chỉnh sửa Hóa đơn */}
-            <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5">
-                <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-5">
-                    Thông tin Hóa đơn (Có thể sửa)
+            <form onSubmit={handlePreSubmit} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
+                <h3 className="text-base font-bold text-gray-700 uppercase tracking-wide border-b pb-2">
+                    Thông tin Hóa đơn
                 </h3>
                 
-                {/* Lỗi Submit */}
-                {error && (
-                    <div className="p-3 bg-red-100 text-red-700 border border-red-300 rounded-md flex items-center">
-                        <AlertCircle size={16} className="mr-2" />
-                        <span>{error}</span>
-                    </div>
-                )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Số Hóa Đơn */}
                     <div>
-                        <label htmlFor="invoiceNumber" className="block mb-1.5 text-sm font-medium text-gray-700">Số Hóa Đơn *</label>
-                        <input type="text" id="invoiceNumber" name="invoiceNumber"
-                            value={formData.invoiceNumber} onChange={handleChange} required
-                            className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
-                        />
+                        <label htmlFor="invoiceNumber" className="block mb-1.5 text-sm font-medium text-gray-700">Số Hóa Đơn <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <FileText size={16} className="text-gray-400"/>
+                            </div>
+                            <input type="text" id="invoiceNumber" name="invoiceNumber"
+                                value={formData.invoiceNumber} onChange={handleChange} required
+                                className="pl-10 block w-full border border-gray-300 rounded-md py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                            />
+                        </div>
                     </div>
-                    {/* Ngày Lập Hóa Đơn */}
+                    {/* Ngày Lập & Hạn TT */}
                     <div>
-                        <label htmlFor="invoiceDate" className="block mb-1.5 text-sm font-medium text-gray-700">Ngày Lập HĐ *</label>
+                        <label htmlFor="invoiceDate" className="block mb-1.5 text-sm font-medium text-gray-700">Ngày Lập HĐ <span className="text-red-500">*</span></label>
                         <input type="date" id="invoiceDate" name="invoiceDate"
                             value={formData.invoiceDate} onChange={handleChange} required
-                            className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
-                    {/* Hạn Thanh Toán */}
                     <div>
-                        <label htmlFor="dueDate" className="block mb-1.5 text-sm font-medium text-gray-700">Hạn Thanh Toán *</label>
+                        <label htmlFor="dueDate" className="block mb-1.5 text-sm font-medium text-gray-700">Hạn Thanh Toán <span className="text-red-500">*</span></label>
                         <input type="date" id="dueDate" name="dueDate"
                             value={formData.dueDate} onChange={handleChange} required
-                            className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4 border-t border-gray-100 bg-gray-50 p-4 rounded-md">
                     {/* Tiền (chưa VAT) */}
                     <div>
-                        <label htmlFor="subtotalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền dịch vụ *</label>
+                        <label htmlFor="subtotalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền dịch vụ</label>
                         <input type="number" id="subtotalAmount" name="subtotalAmount"
                             value={formData.subtotalAmount} onChange={handleChange} required
-                            className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
                         />
                     </div>
                     {/* VAT */}
                     <div>
-                        {/* --- SỬA LỖI TẠI ĐÂY (</Labe> -> </label>) --- */}
-                        <label htmlFor="vatAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền VAT (5%) *</label>
+                        <label htmlFor="vatAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền VAT (5%)</label>
                         <input type="number" id="vatAmount" name="vatAmount"
                             value={formData.vatAmount} onChange={handleChange} required
-                            className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
                         />
                     </div>
                     {/* Tổng cộng */}
                     <div>
-                        <label htmlFor="totalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tổng Tiền *</label>
+                        <label htmlFor="totalAmount" className="block mb-1.5 text-sm font-bold text-gray-800">Tổng Tiền (VNĐ)</label>
                         <input type="number" id="totalAmount" name="totalAmount"
                             value={formData.totalAmount} onChange={handleChange} required
-                            className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-bold text-red-600"
+                            className="block w-full border border-blue-300 bg-white rounded-md py-2 px-3 text-base font-bold text-red-600 shadow-sm"
                         />
                     </div>
                 </div>
-               
                 
-                {/* Nút Submit */}
-                <div className="pt-4 border-t">
+                {/* Footer Button */}
+                <div className="flex justify-end pt-4">
                     <button
                         type="submit"
                         disabled={submitting}
-                        className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none ${submitting ? 'opacity-50' : ''}`}
+                        className={`inline-flex items-center justify-center px-8 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                         <Save size={18} className="mr-2" />
-                        {submitting ? 'Đang phát hành...' : 'Xác nhận & Phát hành Hóa đơn'}
+                        {submitting ? 'Đang xử lý...' : 'Xác nhận & Phát hành'}
                     </button>
                 </div>
             </form>
+
+            {/* 6. RENDER MODAL XÁC NHẬN */}
+            <ConfirmModal 
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                onConfirm={handleConfirmSubmit} // Gọi hàm xử lý API
+                title="Phát hành Hóa đơn"
+                message={`Bạn có chắc chắn muốn phát hành hóa đơn này với tổng số tiền là ${parseFloat(formData.totalAmount).toLocaleString('vi-VN')} VNĐ không? Hành động này sẽ gửi thông báo nợ đến khách hàng.`}
+                isLoading={submitting}
+            />
+
         </div>
     );
 }

@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../Services/apiClient'; // Dùng trực tiếp để xử lý params chuẩn
+import apiClient from '../../Services/apiClient'; 
 import { RefreshCw, UserCheck, MessageSquare, Filter } from 'lucide-react';
 import AssignTicketModal from './AssignTicketModal';
 import ReplyTicketModal from './ReplyTicketModal';
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
 
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 function SupportTicketList() {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // const [error, setError] = useState(null); // Không dùng state error hiển thị UI nữa
     const navigate = useNavigate();
     
     // State Phân trang
@@ -20,8 +24,7 @@ function SupportTicketList() {
         totalElements: 0,
     });
 
-    // --- STATE BỘ LỌC MỚI (Lọc theo Loại) ---
-    // Mặc định là ALL (Lấy cả Hỗ trợ & Góp ý)
+    // State Bộ lọc
     const [typeFilter, setTypeFilter] = useState('ALL');
 
     // State Modal
@@ -32,26 +35,24 @@ function SupportTicketList() {
     // --- FETCH DATA ---
     const fetchData = (params = {}) => {
         setLoading(true);
-        setError(null);
         
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
 
-        // Xử lý tham số Type (Gửi mảng List<String> lên Java)
+        // Xử lý tham số Type
         let paramType = null;
         if (typeFilter !== 'ALL') {
             paramType = [typeFilter]; 
         }
 
-        // Gọi API
         apiClient.get('/service/contracts/support-tickets', { 
             params: {
                 page: currentPage,
                 size: currentSize,
                 sort: 'submittedDate,desc',
-                type: paramType // <--- Gửi tham số 'type' thay vì 'status'
+                type: paramType 
             },
-            paramsSerializer: { indexes: null } // Fix lỗi gửi mảng cho Spring Boot
+            paramsSerializer: { indexes: null } 
         })
             .then(response => {
                 const data = response.data;
@@ -66,7 +67,8 @@ function SupportTicketList() {
             })
             .catch(err => {
                  console.error("Lỗi tải ticket:", err);
-                 setError("Không thể tải dữ liệu.");
+                 // Thay setError bằng Toast
+                 toast.error("Không thể tải danh sách yêu cầu. Vui lòng thử lại.");
                  setTickets([]);
             })
             .finally(() => {
@@ -87,6 +89,7 @@ function SupportTicketList() {
 
     const handleRefresh = () => {
         fetchData(); 
+        toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
     // Modal Handlers
@@ -94,16 +97,17 @@ function SupportTicketList() {
     const handleOpenReplyModal = (t) => { setSelectedTicket(t); setIsReplyModalOpen(true); };
     const handleCloseModals = () => { setIsAssignModalOpen(false); setIsReplyModalOpen(false); setSelectedTicket(null); };
     
+    // Xử lý thành công (Thay alert bằng Toast)
     const handleAssignSuccess = () => { 
         handleCloseModals(); 
-        fetchData(); // Load lại để ticket biến mất khỏi danh sách PENDING
-        alert("Gán việc thành công!"); 
+        fetchData(); 
+        toast.success("Gán việc thành công!", { position: "top-center" }); 
     };
     
     const handleReplySuccess = () => { 
         handleCloseModals(); 
-        fetchData(); // Load lại
-        alert("Đã gửi phản hồi thành công!"); 
+        fetchData(); 
+        toast.success("Đã gửi phản hồi thành công!", { position: "top-center" }); 
     };
     
     // Helpers Style
@@ -111,15 +115,23 @@ function SupportTicketList() {
     const getTypeText = (type) => type === 'SUPPORT_REQUEST' ? 'Yêu Cầu Hỗ Trợ' : 'Góp Ý';
     const getStatusClass = (status) => {
         switch (status) {
-            case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-            case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
-            case 'RESOLVED': return 'bg-green-100 text-green-800';
+            case 'PENDING': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+            case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800 border border-blue-200';
+            case 'RESOLVED': return 'bg-green-100 text-green-800 border border-green-200';
             default: return 'bg-gray-100 text-gray-800';
         }
     };
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+            
+            {/* 2. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
                 <div>
@@ -131,7 +143,7 @@ function SupportTicketList() {
                 </button>
             </div>
 
-            {/* --- BỘ LỌC THEO LOẠI (MỚI) --- */}
+            {/* Bộ lọc */}
             <div className="bg-white p-4 rounded-lg shadow-sm flex items-center border border-gray-200">
                 <div className="flex items-center gap-2">
                     <Filter size={16} className="text-gray-600" />
@@ -149,7 +161,7 @@ function SupportTicketList() {
                 </div>
             </div>
 
-            {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md"><p>{error}</p></div>}
+            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -168,7 +180,7 @@ function SupportTicketList() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {!loading && tickets.length === 0 ? (
-                                <tr><td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">Không tìm thấy yêu cầu nào.</td></tr>
+                                <tr><td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">Không tìm thấy yêu cầu nào phù hợp.</td></tr>
                             ) : (
                                 tickets.map(ticket => (
                                     <tr key={ticket.id} className="hover:bg-gray-50">
@@ -184,11 +196,11 @@ function SupportTicketList() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             {/* Logic hiển thị nút bấm dựa trên LOẠI */}
                                             {ticket.feedbackType === 'SUPPORT_REQUEST' ? (
-                                                <button onClick={() => handleOpenAssignModal(ticket)} className="text-indigo-600 hover:text-indigo-900 flex items-center font-medium">
+                                                <button onClick={() => handleOpenAssignModal(ticket)} className="text-indigo-600 hover:text-indigo-900 flex items-center font-medium transition-colors">
                                                     <UserCheck size={16} className="mr-1" /> Gán việc
                                                 </button>
                                             ) : (
-                                                <button onClick={() => handleOpenReplyModal(ticket)} className="text-green-600 hover:text-green-900 flex items-center font-medium">
+                                                <button onClick={() => handleOpenReplyModal(ticket)} className="text-green-600 hover:text-green-900 flex items-center font-medium transition-colors">
                                                     <MessageSquare size={16} className="mr-1" /> Trả lời
                                                 </button>
                                             )}
