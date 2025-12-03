@@ -62,8 +62,8 @@ import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
 import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
 import GenerateWaterInvoice from './components/PagesAccounting/GenerateWaterInvoice'; // Sửa đường dẫn
-import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; 
-import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; 
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList';
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail';
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
 import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
