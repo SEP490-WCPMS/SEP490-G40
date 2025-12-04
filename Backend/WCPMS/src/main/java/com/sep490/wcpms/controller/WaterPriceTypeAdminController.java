@@ -6,10 +6,10 @@ import com.sep490.wcpms.dto.WaterPriceTypeAdminResponseDTO;
 import com.sep490.wcpms.service.WaterPriceTypeAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page; // Import Page
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,10 +21,15 @@ public class WaterPriceTypeAdminController {
     private final WaterPriceTypeAdminService service;
 
     @GetMapping
-    public ResponseEntity<List<WaterPriceTypeAdminResponseDTO>> list(@RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive) {
-        return ResponseEntity.ok(service.listAll(includeInactive));
+    public ResponseEntity<Page<WaterPriceTypeAdminResponseDTO>> list(
+            @RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(service.listAll(includeInactive, page, size));
     }
 
+    // ... (Các API khác giữ nguyên) ...
     @GetMapping("/{id}")
     public ResponseEntity<WaterPriceTypeAdminResponseDTO> get(@PathVariable Integer id) {
         return ResponseEntity.ok(service.getById(id));
@@ -48,4 +53,3 @@ public class WaterPriceTypeAdminController {
         return ResponseEntity.ok().build();
     }
 }
-

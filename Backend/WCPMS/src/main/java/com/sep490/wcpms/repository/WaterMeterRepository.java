@@ -2,6 +2,8 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.WaterMeter;
 import com.sep490.wcpms.dto.CustomerMeterDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,11 +14,27 @@ import com.sep490.wcpms.entity.WaterServiceContract.WaterServiceContractStatus;
 import java.util.List;
 import java.util.Optional;
 
+
 @Repository
 public interface WaterMeterRepository extends JpaRepository<WaterMeter, Integer> {
     // Tự động có findById()
     /** THÊM HÀM NÀY: Tìm đồng hồ bằng mã (số serial) */
     Optional<WaterMeter> findByMeterCode(String meterCode);
+
+    // --- CHECK TRÙNG KHI TẠO MỚI ---
+    boolean existsByMeterCode(String meterCode);
+    boolean existsBySerialNumber(String serialNumber);
+
+    // --- CHECK TRÙNG KHI CẬP NHẬT (Trừ ID hiện tại ra) ---
+    boolean existsByMeterCodeAndIdNot(String meterCode, Integer id);
+    boolean existsBySerialNumberAndIdNot(String serialNumber, Integer id);
+
+    // --- PHÂN TRANG ---
+    // Lấy tất cả (kể cả Retired)
+    Page<WaterMeter> findAll(Pageable pageable);
+
+    // Lấy tất cả ngoại trừ trạng thái cụ thể (ví dụ RETIRED)
+    Page<WaterMeter> findByMeterStatusNot(WaterMeter.MeterStatus status, Pageable pageable);
 
     // --- SỬA LẠI HOÀN TOÀN CÂU QUERY NÀY ---
     /**
@@ -25,6 +43,8 @@ public interface WaterMeterRepository extends JpaRepository<WaterMeter, Integer>
      * @param customerId ID của Khách hàng (Bảng 7)
      * @return Danh sách DTO đồng hồ rút gọn
      */
+
+
     @Query("SELECT DISTINCT new com.sep490.wcpms.dto.CustomerMeterDTO(wm.id, wm.meterCode, c.address) " +
             "FROM MeterInstallation mi " + // 1. Bắt đầu từ Bảng Lắp đặt (Bảng 13)
             "JOIN mi.waterMeter wm " + // 2. Join sang Đồng hồ (Bảng 12)

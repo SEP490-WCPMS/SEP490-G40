@@ -2,6 +2,8 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.WaterPrice;
 import com.sep490.wcpms.entity.WaterPriceType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,6 +17,10 @@ import java.util.Optional;
 public interface WaterPriceRepository extends JpaRepository<WaterPrice, Integer> {
     // Tìm tất cả giá đang 'ACTIVE' (theo đúng Enum trong Entity)
     List<WaterPrice> findAllByStatus(WaterPrice.Status status);
+
+    // --- PHÂN TRANG ---
+    Page<WaterPrice> findAll(Pageable pageable);
+    Page<WaterPrice> findAllByStatus(WaterPrice.Status status, Pageable pageable);
     /**
      * Tìm biểu giá đang ACTIVE, theo đúng loại giá (priceType),
      * và có ngày hiệu lực (effectiveDate) gần nhất VÀ trước hoặc bằng ngày đọc số.

@@ -6,10 +6,10 @@ import com.sep490.wcpms.dto.WaterMeterAdminResponseDTO;
 import com.sep490.wcpms.service.WaterMeterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page; // Import Page
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,8 +21,12 @@ public class WaterMeterAdminController {
     private final WaterMeterService service;
 
     @GetMapping
-    public ResponseEntity<List<WaterMeterAdminResponseDTO>> list(@RequestParam(name = "includeRetired", required = false, defaultValue = "false") boolean includeRetired) {
-        return ResponseEntity.ok(service.listAll(includeRetired));
+    public ResponseEntity<Page<WaterMeterAdminResponseDTO>> list(
+            @RequestParam(name = "includeRetired", required = false, defaultValue = "false") boolean includeRetired,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(service.listAll(includeRetired, page, size));
     }
 
     @GetMapping("/{id}")
@@ -40,7 +44,6 @@ public class WaterMeterAdminController {
         return ResponseEntity.ok(service.update(id, req));
     }
 
-    // Soft delete / set status endpoint. Expect payload: {"status":"RETIRED"} or {"status":"IN_STOCK"}
     @PutMapping("/{id}/status")
     public ResponseEntity<WaterMeterAdminResponseDTO> setStatus(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
         String status = payload.get("status");
@@ -48,4 +51,3 @@ public class WaterMeterAdminController {
         return ResponseEntity.ok(service.setStatus(id, status));
     }
 }
-

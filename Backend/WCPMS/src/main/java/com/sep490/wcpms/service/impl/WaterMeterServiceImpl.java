@@ -8,11 +8,14 @@ import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.WaterMeterRepository;
 import com.sep490.wcpms.service.WaterMeterService;
 import lombok.RequiredArgsConstructor;
+// --- IMPORT ĐÚNG CHO PHÂN TRANG ---
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+// ----------------------------------
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,15 +24,22 @@ public class WaterMeterServiceImpl implements WaterMeterService {
     private final WaterMeterRepository repository;
 
     @Override
-    public List<WaterMeterAdminResponseDTO> listAll(boolean includeRetired) {
-        List<WaterMeter> list = repository.findAll();
-        if (!includeRetired) {
-            list = list.stream()
-                    .filter(w -> w.getMeterStatus() != null && !w.getMeterStatus().name().equalsIgnoreCase("RETIRED"))
-                    .collect(Collectors.toList());
+    public Page<WaterMeterAdminResponseDTO> listAll(boolean includeRetired, int page, int size) {
+        // Tạo Pageable từ Spring Data (không phải java.awt)
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        Page<WaterMeter> pageResult;
+        if (includeRetired) {
+            pageResult = repository.findAll(pageable);
+        } else {
+            pageResult = repository.findByMeterStatusNot(WaterMeter.MeterStatus.RETIRED, pageable);
         }
-        return list.stream().map(this::toDto).collect(Collectors.toList());
+
+        return pageResult.map(this::toDto);
     }
+
+    // ... (Các hàm getById, create, update, setStatus, toDto GIỮ NGUYÊN NHƯ CŨ) ...
+    // Copy lại phần thân các hàm đó từ code tôi gửi trước đó.
 
     @Override
     public WaterMeterAdminResponseDTO getById(Integer id) {
@@ -40,6 +50,13 @@ public class WaterMeterServiceImpl implements WaterMeterService {
     @Override
     @Transactional
     public WaterMeterAdminResponseDTO create(CreateWaterMeterRequestDTO req) {
+        if (repository.existsByMeterCode(req.getMeterCode())) {
+            throw new IllegalArgumentException("Mã đồng hồ '" + req.getMeterCode() + "' đã tồn tại.");
+        }
+        if (repository.existsBySerialNumber(req.getSerialNumber())) {
+            throw new IllegalArgumentException("Số Serial '" + req.getSerialNumber() + "' đã tồn tại.");
+        }
+
         WaterMeter w = new WaterMeter();
         w.setMeterCode(req.getMeterCode());
         w.setSerialNumber(req.getSerialNumber());
@@ -47,25 +64,28 @@ public class WaterMeterServiceImpl implements WaterMeterService {
         w.setMeterName(req.getMeterName());
         w.setSupplier(req.getSupplier());
         w.setSize(req.getSize());
-        w.setMultiplier(req.getMultiplier() == null ? w.getMultiplier() : req.getMultiplier());
+        if (req.getMultiplier() != null) w.setMultiplier(req.getMultiplier());
         w.setPurchasePrice(req.getPurchasePrice());
         w.setMaxReading(req.getMaxReading());
-        w.setInstallationDate(req.getInstallationDate());
         w.setNextMaintenanceDate(req.getNextMaintenanceDate());
-        // If provided parse enum, else default remains
         if (req.getMeterStatus() != null) {
-            try {
-                w.setMeterStatus(WaterMeter.MeterStatus.valueOf(req.getMeterStatus()));
-            } catch (Exception ignore) {}
+            try { w.setMeterStatus(WaterMeter.MeterStatus.valueOf(req.getMeterStatus())); } catch (Exception ignore) {}
         }
-        WaterMeter saved = repository.save(w);
-        return toDto(saved);
+        return toDto(repository.save(w));
     }
 
     @Override
     @Transactional
     public WaterMeterAdminResponseDTO update(Integer id, UpdateWaterMeterRequestDTO req) {
         WaterMeter w = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found: " + id));
+
+        if (req.getMeterCode() != null && repository.existsByMeterCodeAndIdNot(req.getMeterCode(), id)) {
+            throw new IllegalArgumentException("Mã đồng hồ đã tồn tại.");
+        }
+        if (req.getSerialNumber() != null && repository.existsBySerialNumberAndIdNot(req.getSerialNumber(), id)) {
+            throw new IllegalArgumentException("Số Serial đã tồn tại.");
+        }
+
         if (req.getMeterCode() != null) w.setMeterCode(req.getMeterCode());
         if (req.getSerialNumber() != null) w.setSerialNumber(req.getSerialNumber());
         if (req.getMeterType() != null) w.setMeterType(req.getMeterType());
@@ -75,13 +95,11 @@ public class WaterMeterServiceImpl implements WaterMeterService {
         if (req.getMultiplier() != null) w.setMultiplier(req.getMultiplier());
         if (req.getPurchasePrice() != null) w.setPurchasePrice(req.getPurchasePrice());
         if (req.getMaxReading() != null) w.setMaxReading(req.getMaxReading());
-        if (req.getInstallationDate() != null) w.setInstallationDate(req.getInstallationDate());
         if (req.getNextMaintenanceDate() != null) w.setNextMaintenanceDate(req.getNextMaintenanceDate());
         if (req.getMeterStatus() != null) {
             try { w.setMeterStatus(WaterMeter.MeterStatus.valueOf(req.getMeterStatus())); } catch (Exception ignore) {}
         }
-        WaterMeter saved = repository.save(w);
-        return toDto(saved);
+        return toDto(repository.save(w));
     }
 
     @Override
@@ -89,13 +107,11 @@ public class WaterMeterServiceImpl implements WaterMeterService {
     public WaterMeterAdminResponseDTO setStatus(Integer id, String status) {
         WaterMeter w = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found: " + id));
         try {
-            WaterMeter.MeterStatus ms = WaterMeter.MeterStatus.valueOf(status);
-            w.setMeterStatus(ms);
+            w.setMeterStatus(WaterMeter.MeterStatus.valueOf(status));
         } catch (Exception ex) {
             throw new IllegalArgumentException("Invalid meter status: " + status);
         }
-        WaterMeter saved = repository.save(w);
-        return toDto(saved);
+        return toDto(repository.save(w));
     }
 
     private WaterMeterAdminResponseDTO toDto(WaterMeter w) {
@@ -118,4 +134,3 @@ public class WaterMeterServiceImpl implements WaterMeterService {
                 .build();
     }
 }
-

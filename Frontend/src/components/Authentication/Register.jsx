@@ -125,7 +125,6 @@ export default function Register() {
                             <FormInput id="email" label="Email" type="email" value={formData.email} onChange={handleChange} disabled={loading} />
                             <FormInput id="phone" label="Số điện thoại" type="tel" value={formData.phone} onChange={handleChange} disabled={loading} />
                             <FormInput id="address" label="Địa chỉ" type="text" value={formData.address} onChange={handleChange} disabled={loading} />
-
                             <Button
                                 type="submit"
                                 disabled={loading}
