@@ -319,21 +319,6 @@ public class ServiceStaffContractController {
     }
 
     /**
-     * Từ chối báo cáo khảo sát: chuyển PENDING_SURVEY_REVIEW -> PENDING, lưu lý do.
-     * PUT /api/service/contracts/{id}/reject-survey
-     * Body: { "reason": "Bổ sung bản vẽ..." }
-     */
-    @PutMapping("/{id}/reject-survey")
-    public ResponseEntity<ServiceStaffContractDTO> rejectSurveyReport(
-            @PathVariable Integer id,
-            @RequestBody(required = false) Map<String, String> body
-    ) {
-        String reason = body != null ? body.getOrDefault("reason", null) : null;
-        ServiceStaffContractDTO dto = service.rejectSurveyReport(id, reason);
-        return ResponseEntity.ok(dto);
-    }
-
-    /**
      * Lấy danh sách hợp đồng PENDING_SIGN (Khách đã ký, chờ gửi tech lắp đặt)
      * GET /api/service/contracts/pending-sign?keyword=...&page=0&size=10
      */
