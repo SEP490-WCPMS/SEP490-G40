@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import { ReloadOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Pagination from '../../common/Pagination';
 import ContractTable from '../ContractTable';
 import ContractViewModal from '../ContractViewModal';
+import ConfirmModal from '../../common/ConfirmModal';
 import { getServiceContracts, getServiceContractDetail, sendContractToInstallation } from '../../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -14,6 +19,11 @@ const SignedContractsPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
+    
+    // Confirm modal cho Gửi lắp đặt
+    const [showSendToInstallConfirm, setShowSendToInstallConfirm] = useState(false);
+    const [installingContract, setInstallingContract] = useState(null);
+    const [installing, setInstalling] = useState(false);
 
     const [pagination, setPagination] = useState({
         current: 1,
@@ -30,41 +40,44 @@ const SignedContractsPage = () => {
     //       (Customer ký) → PENDING_SIGN → (Service gửi lắp) → SIGNED
     // Trang này hiển thị những hợp đồng ở trạng thái PENDING_SIGN
     // (sau khi khách ký xong, backend chuyển từ PENDING_CUSTOMER_SIGN → PENDING_SIGN)
-    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
+    const fetchContracts = async (params = {}) => {
         setLoading(true);
         try {
+            const currentPage = params.page !== undefined ? params.page : pagination.page;
+            const currentSize = params.size !== undefined ? params.size : pagination.size;
             const response = await getServiceContracts({
-                page: page - 1, // API sử dụng 0-based indexing
-                size: pageSize,
-                status: 'PENDING_SIGN', // Chỉ lấy những hợp đồng khách đã ký xong
+                page: currentPage,
+                size: currentSize,
+                status: 'PENDING_SIGN',
                 keyword: filters.keyword
             });
             
             if (response.data) {
                 const data = response.data.content || [];
                 setContracts(data);
+                const pageInfo = response.data.page || response.data || {};
                 setPagination({
-                    current: page,
-                    pageSize: pageSize,
-                    total: response.data.totalElements || 0,
+                    page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
+                    size: pageInfo.size || currentSize,
+                    totalElements: pageInfo.totalElements || 0,
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng đã ký!');
+            toast.error('Lỗi khi tải danh sách hợp đồng đã ký!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
-            setPagination(prev => ({ ...prev, total: 0 }));
+            setPagination(prev => ({ ...prev, totalElements: 0 }));
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchContracts(pagination.current, pagination.pageSize);
-    }, [filters.keyword, pagination.current, pagination.pageSize]);
+        fetchContracts();
+    }, []);
 
-    const handleTableChange = (paginationParams) => {
-        setPagination(paginationParams);
+    const handlePageChange = (newPage) => {
+        fetchContracts({ page: newPage });
     };
 
     const handleFilterChange = (filterName, value) => {
@@ -72,38 +85,54 @@ const SignedContractsPage = () => {
             ...prev,
             [filterName]: value
         }));
-        setPagination(prev => ({ ...prev, current: 1 }));
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchContracts({ page: 0 });
     };
 
-    // Gửi lắp đặt NGAY (không confirm)
-    const handleSendToInstallation = async (contract) => {
-        console.log('[SEND TO INSTALL] Starting for contract:', contract.id);
+    // Hiện confirm trước khi gửi lắp đặt
+    const handleSendToInstallation = (contract) => {
+        setInstallingContract(contract);
+        setShowSendToInstallConfirm(true);
+    };
+
+    // Xác nhận gửi lắp đặt
+    const handleConfirmSendToInstall = async () => {
+        if (!installingContract) return;
+        setInstalling(true);
+        console.log('[SEND TO INSTALL] Starting for contract:', installingContract.id);
         
         // Optimistic update: ẩn ngay dòng, nếu fail sẽ rollback
         const prevContracts = contracts;
         const prevTotal = pagination.total;
-        setContracts(prev => prev.filter(c => c.id !== contract.id));
+        setContracts(prev => prev.filter(c => c.id !== installingContract.id));
         setPagination(prev => ({ ...prev, total: Math.max(0, (prev.total || 1) - 1) }));
         setIsModalVisible(false);
         setSelectedContract(null);
+        setShowSendToInstallConfirm(false);
 
         try {
             console.log('[SEND TO INSTALL] Calling API...');
-            await sendContractToInstallation(contract.id);
+            await sendContractToInstallation(installingContract.id);
             console.log('[SEND TO INSTALL] API success!');
             
             // Show success message
-            alert('✅ Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".');
+            toast.success('Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".', {
+                position: "top-center",
+                autoClose: 3000,
+            });
             
             // Đồng bộ lại với server (phòng trường hợp còn bản ghi tràn trang)
             fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
             console.error('[SEND TO INSTALL] API error:', error);
+            setShowSendToInstallConfirm(false);
             // Rollback nếu thất bại
             setContracts(prevContracts);
             setPagination(prev => ({ ...prev, total: prevTotal }));
-            alert('❌ Gửi lắp đặt thất bại!');
+            toast.error('Gửi lắp đặt thất bại!');
             console.error(error);
+        } finally {
+            setInstalling(false);
         }
     };
 
@@ -120,7 +149,7 @@ const SignedContractsPage = () => {
             const response = await getServiceContractDetail(contract.id);
             setSelectedContract(response.data);
         } catch (error) {
-            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}!`);
+            toast.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}!`);
             console.error("Fetch contract detail error:", error);
             setIsModalVisible(false);
         } finally {
@@ -136,6 +165,19 @@ const SignedContractsPage = () => {
 
     return (
         <div className="space-y-6">
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
+            
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
@@ -169,11 +211,18 @@ const SignedContractsPage = () => {
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={pagination}
-                    onPageChange={handleTableChange}
+                    pagination={false}
                     onViewDetails={handleViewDetails}
                     showStatusFilter={false}
                 />
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                    <Pagination
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                </div>
             </Spin>
 
             {/* --- Modal chi tiết (đọc-only) --- */}
@@ -185,8 +234,20 @@ const SignedContractsPage = () => {
                     initialData={selectedContract}
                 />
             )}
+
+            {/* --- Modal xác nhận gửi lắp đặt --- */}
+            <ConfirmModal
+                isOpen={showSendToInstallConfirm}
+                onClose={() => setShowSendToInstallConfirm(false)}
+                onConfirm={handleConfirmSendToInstall}
+                title="Xác nhận gửi lắp đặt"
+                message={`Bạn có chắc chắn muốn gửi hợp đồng ${installingContract?.contractNumber} đến bộ phận lắp đặt không?`}
+                isLoading={installing}
+            />
         </div>
     );
 };
 
 export default SignedContractsPage;
+
+

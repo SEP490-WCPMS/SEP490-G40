@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Tag, Space, Button, message } from 'antd';
+import { Card, Table, Tag, Space, Button } from 'antd';
 import { EyeOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Pagination from '../../common/Pagination';
 import { getServiceContracts, updateContractStatus } from '../../Services/apiService';
 
 const PendingContractList = () => {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
+    page: 0,
+    size: 10,
+    totalElements: 0
   });
 
   const columns = [
@@ -107,10 +111,10 @@ const PendingContractList = () => {
   const handleApprove = async (record) => {
     try {
       await updateContractStatus(record.id, 'APPROVED', 'Duyệt hợp đồng');
-      message.success('Duyệt hợp đồng thành công!');
+      toast.success('Duyệt hợp đồng thành công!');
       fetchData();
     } catch (error) {
-      message.error('Duyệt hợp đồng thất bại!');
+      toast.error('Duyệt hợp đồng thất bại!');
       console.error('Approve error:', error);
     }
   };
@@ -118,10 +122,10 @@ const PendingContractList = () => {
   const handleReject = async (record) => {
     try {
       await updateContractStatus(record.id, 'REJECTED', 'Từ chối hợp đồng');
-      message.success('Từ chối hợp đồng thành công!');
+      toast.success('Từ chối hợp đồng thành công!');
       fetchData();
     } catch (error) {
-      message.error('Từ chối hợp đồng thất bại!');
+      toast.error('Từ chối hợp đồng thất bại!');
       console.error('Reject error:', error);
     }
   };
@@ -129,6 +133,8 @@ const PendingContractList = () => {
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
+      const currentPage = params.page !== undefined ? params.page : pagination.page;
+      const currentSize = params.size !== undefined ? params.size : pagination.size;
       const statuses = ['PENDING', 'PENDING_SURVEY_REVIEW', 'PENDING_SIGN'];
       const allContracts = [];
       
@@ -143,13 +149,12 @@ const PendingContractList = () => {
       
       setContracts(allContracts);
       setPagination({
-        ...pagination,
-        total: allContracts.length,
-        current: params.current || pagination.current,
-        pageSize: params.pageSize || pagination.pageSize
+        page: currentPage,
+        size: currentSize,
+        totalElements: allContracts.length
       });
     } catch (error) {
-      message.error('Không thể tải danh sách hợp đồng');
+      toast.error('Không thể tải danh sách hợp đồng');
       console.error('Fetch error:', error);
     } finally {
       setLoading(false);
@@ -160,14 +165,8 @@ const PendingContractList = () => {
     fetchData();
   }, []);
 
-  const handleTableChange = (newPagination, filters, sorter) => {
-    fetchData({
-      pageSize: newPagination.pageSize,
-      current: newPagination.current,
-      sortField: sorter.field,
-      sortOrder: sorter.order,
-      ...filters,
-    });
+  const handlePageChange = (newPage) => {
+    fetchData({ page: newPage });
   };
 
   return (
@@ -175,13 +174,21 @@ const PendingContractList = () => {
       <Table
         columns={columns}
         dataSource={contracts}
-        pagination={pagination}
+        pagination={false}
         loading={loading}
-        onChange={handleTableChange}
         rowKey="id"
       />
+      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+        <Pagination
+          currentPage={pagination.page}
+          totalElements={pagination.totalElements}
+          pageSize={pagination.size}
+          onPageChange={handlePageChange}
+        />
+      </div>
     </Card>
   );
 };
 
 export default PendingContractList;
+

@@ -104,6 +104,13 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             @Param("date") LocalDate date
     );
 
+    /** Đếm số hợp đồng gửi ký (PENDING_SIGN) vào một ngày cụ thể (Service view) */
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'PENDING_SIGN' AND CAST(c.updatedAt AS date) = :date")
+    long countPendingSignByDate(
+            @Param("staff") Account staff,
+            @Param("date") LocalDate date
+    );
+
     // --- BỔ SUNG: CÁC HÀM CHUẨN CHO BIỂU ĐỒ SERVICE STAFF ---
 
     /** Đếm số KHẢO SÁT HOÀN THÀNH (PENDING_SURVEY_REVIEW) theo ngày (Service view) */

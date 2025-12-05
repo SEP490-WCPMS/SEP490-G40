@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Table } from 'antd';
+import { Input, Row, Col, Typography, message, Spin, Button } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Pagination from '../../common/Pagination';
 import ContractTable from '../ContractTable';
 import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
@@ -18,22 +22,23 @@ const ContractRequestsPage = () => {
     const [modalLoading, setModalLoading] = useState(false);
 
     const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 10,
-        total: 0,
+        page: 0,
+        size: 10,
+        totalElements: 0,
     });
 
     const [filters, setFilters] = useState({
         keyword: null,
     });
 
-    // Hàm gọi API lấy danh sách yêu cầu (DRAFT)
-    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
+    const fetchContracts = async (params = {}) => {
         setLoading(true);
         try {
+            const currentPage = params.page !== undefined ? params.page : pagination.page;
+            const currentSize = params.size !== undefined ? params.size : pagination.size;
             const response = await getServiceContracts({
-                page: page - 1, // API sử dụng 0-based indexing
-                size: pageSize,
+                page: currentPage,
+                size: currentSize,
                 status: 'DRAFT',
                 keyword: filters.keyword
             });
@@ -41,28 +46,29 @@ const ContractRequestsPage = () => {
             if (response.data) {
                 const data = response.data.content || [];
                 setContracts(data);
+                const pageInfo = response.data.page || response.data || {};
                 setPagination({
-                    current: page,
-                    pageSize: pageSize,
-                    total: response.data.totalElements || 0,
+                    page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
+                    size: pageInfo.size || currentSize,
+                    totalElements: pageInfo.totalElements || 0,
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách yêu cầu!');
+            toast.error('Lỗi khi tải danh sách yêu cầu!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
-            setPagination(prev => ({ ...prev, total: 0 }));
+            setPagination(prev => ({ ...prev, totalElements: 0 }));
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchContracts(pagination.current, pagination.pageSize);
-    }, [filters.keyword, pagination.current, pagination.pageSize]);
+        fetchContracts();
+    }, []);
 
-    const handleTableChange = (paginationParams) => {
-        setPagination(paginationParams);
+    const handlePageChange = (newPage) => {
+        fetchContracts({ page: newPage });
     };
 
     const handleFilterChange = (filterName, value) => {
@@ -70,7 +76,8 @@ const ContractRequestsPage = () => {
             ...prev,
             [filterName]: value
         }));
-        setPagination(prev => ({ ...prev, current: 1 }));
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchContracts({ page: 0 });
     };
 
     // Mở Modal
@@ -82,7 +89,7 @@ const ContractRequestsPage = () => {
             setModalMode(action === 'submit' ? 'edit' : 'view');
             setIsModalVisible(true);
         } catch (error) {
-            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
+            toast.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
             console.error("Fetch contract detail error:", error);
             setIsModalVisible(false);
         } finally {
@@ -112,18 +119,13 @@ const ContractRequestsPage = () => {
             
             console.log('Submit survey response:', response);
             
-            alert('✅ Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
-            setIsModalVisible(false);
-            setSelectedContract(null);
-            setModalMode('view');
-            
+            // Không xử lý UI ở đây - để onSuccess callback xử lý
             // Refresh danh sách sau khi gửi thành công
-            setTimeout(() => {
-                fetchContracts(pagination.current, pagination.pageSize);
-            }, 500);
+            fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
             console.error('Error submitting survey:', error);
-            alert('❌ Gửi khảo sát thất bại!');
+            toast.error('Gửi khảo sát thất bại!');
+            throw error; // Ném lỗi để AssignSurveyModal biết không gọi onSuccess
         } finally {
             setModalLoading(false);
         }
@@ -131,6 +133,19 @@ const ContractRequestsPage = () => {
 
     return (
         <div className="space-y-6">
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
+            
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
@@ -164,10 +179,17 @@ const ContractRequestsPage = () => {
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={pagination}
-                    onPageChange={handleTableChange}
+                    pagination={false}
                     onViewDetails={handleViewDetails}
                 />
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                    <Pagination
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                </div>
             </Spin>
 
             {/* --- Modal chi tiết/cập nhật --- */}
@@ -186,6 +208,13 @@ const ContractRequestsPage = () => {
                         onSave={handleSaveModal}
                         loading={modalLoading}
                         initialData={selectedContract}
+                        onSuccess={() => {
+                            toast.success('Gửi khảo sát thành công!', {
+                                position: "top-center",
+                                autoClose: 3000,
+                            });
+                            fetchContracts(pagination.current, pagination.pageSize);
+                        }}
                     />
                 )
             )}
@@ -194,3 +223,5 @@ const ContractRequestsPage = () => {
 };
 
 export default ContractRequestsPage;
+
+

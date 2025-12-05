@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Input, Row, Col, Typography, message, Spin, Button, Table, Modal, Form, Input as FormInput, DatePicker, Descriptions, Select, Tag, Space } from 'antd';
+import { Input, Row, Col, Typography, Spin, Button, Modal, Form, Input as FormInput, DatePicker, Descriptions, Select, Tag, Space } from 'antd';
 import { ReloadOutlined, PlayCircleOutlined, PauseCircleOutlined, StopOutlined, ClockCircleOutlined, EyeOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Loader2 } from 'lucide-react';
+import Pagination from '../../common/Pagination';
 import { getServiceContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract, reactivateContract } from '../../Services/apiService';
 import dayjs from 'dayjs';
+
+// Toast notifications
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import ConfirmModal from '../../common/ConfirmModal';
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
@@ -25,10 +32,19 @@ const ActiveContractsPage = () => {
     const [confirmData, setConfirmData] = useState(null); // { reason, actionType }
     const [confirmLoading, setConfirmLoading] = useState(false);
 
+    // State cho reactivate confirmation
+    const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
+    const [reactivating, setReactivating] = useState(false);
+
+    // State cho renew confirmation
+    const [showRenewConfirm, setShowRenewConfirm] = useState(false);
+    const [renewData, setRenewData] = useState(null); // Store form values
+    const [renewing, setRenewing] = useState(false);
+
     const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 10,
-        total: 0,
+        page: 0,
+        size: 10,
+        totalElements: 0,
     });
 
     const [filters, setFilters] = useState({
@@ -36,40 +52,41 @@ const ActiveContractsPage = () => {
         status: 'ACTIVE', // Mặc định hiển thị Đang hoạt động
     });
 
-    // Lấy danh sách hợp đồng (Cập nhật để hỗ trợ lọc status)
-    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize) => {
+    const fetchContracts = async (params = {}) => {
         setLoading(true);
         try {
-            // Sử dụng getServiceContracts thay vì getActiveContracts để có thể lọc theo status SUSPENDED
+            const currentPage = params.page !== undefined ? params.page : pagination.page;
+            const currentSize = params.size !== undefined ? params.size : pagination.size;
             const response = await getServiceContracts({
-                page: page - 1,
-                size: pageSize,
+                page: currentPage,
+                size: currentSize,
                 keyword: filters.keyword,
-                status: filters.status, // Thêm tham số status vào API call
+                status: filters.status,
                 sort: 'updatedAt,desc'
             });
             
             if (response.data) {
                 setContracts(response.data.content || []);
+                const pageInfo = response.data.page || response.data || {};
                 setPagination({
-                    current: page,
-                    pageSize: pageSize,
-                    total: response.data.totalElements || 0,
+                    page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
+                    size: pageInfo.size || currentSize,
+                    totalElements: pageInfo.totalElements || 0,
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng!');
+            toast.error('Lỗi khi tải danh sách hợp đồng!');
             console.error("Fetch error:", error);
             setContracts([]);
-            setPagination(prev => ({ ...prev, total: 0 }));
+            setPagination(prev => ({ ...prev, totalElements: 0 }));
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchContracts(pagination.current, pagination.pageSize);
-    }, [filters, pagination.current, pagination.pageSize]); // Thêm filters vào dependency
+        fetchContracts();
+    }, []);
 
     // Highlight logic: if URL includes ?highlight=<id>, scroll to that contract after contracts load
     const location = useLocation();
@@ -96,13 +113,14 @@ const ActiveContractsPage = () => {
         setTimeout(tryHighlight, 200);
     }, [location.search, contracts]);
 
-    const handleTableChange = (newPagination) => {
-        setPagination(newPagination);
-    };
-
     const handleFilterChange = (value) => {
         setFilters(prev => ({ ...prev, keyword: value }));
-        setPagination(prev => ({ ...prev, current: 1 }));
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchContracts({ page: 0 });
+    };
+
+    const handlePageChange = (newPage) => {
+        fetchContracts({ page: newPage });
     };
 
     const handleOpenModal = async (record, type) => {
@@ -150,7 +168,7 @@ const ActiveContractsPage = () => {
             
             setIsModalVisible(true);
         } catch (error) {
-            message.error('Lỗi khi tải chi tiết hợp đồng!');
+            toast.error('Lỗi khi tải chi tiết hợp đồng!');
             console.error("Error:", error);
         } finally {
             setModalLoading(false);
@@ -166,27 +184,21 @@ const ActiveContractsPage = () => {
 
     const handleSubmit = async () => {
         try {
-            // Xử lý riêng cho Reactivate (Kích hoạt lại)
+            // Xử lý riêng cho Reactivate (Kích hoạt lại) - Show confirm modal
             if (modalType === 'reactivate') {
-                setModalLoading(true);
-                await reactivateContract(selectedContract.id);
-                message.success('Đã kích hoạt lại hợp đồng thành công!');
-                handleCloseModal();
-                fetchContracts();
+                setShowReactivateConfirm(true);
                 return;
             }
 
             const values = await form.validateFields();
             
             if (modalType === 'renew') {
-                setModalLoading(true);
-                await renewContract(selectedContract.id, {
+                // Store form data and show confirm modal
+                setRenewData({
                     endDate: values.newEndDate ? values.newEndDate.format('YYYY-MM-DD') : null,
                     notes: values.notes
                 });
-                message.success('Gia hạn hợp đồng thành công!');
-                handleCloseModal();
-                fetchContracts(pagination.current, pagination.pageSize);
+                setShowRenewConfirm(true);
             } else if (modalType === 'terminate' || modalType === 'suspend') {
                 // Mở confirmation modal thay vì submit ngay (Giữ nguyên logic cũ)
                 setConfirmData({
@@ -210,10 +222,10 @@ const ActiveContractsPage = () => {
             
             if (confirmAction === 'terminate') {
                 await terminateContract(selectedContract.id, confirmData.reason);
-                message.success('Chấm dứt hợp đồng thành công!');
+                toast.success('Chấm dứt hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
             } else if (confirmAction === 'suspend') {
                 await suspendContract(selectedContract.id, confirmData.reason);
-                message.success('Tạm ngưng hợp đồng thành công!');
+                toast.success('Tạm ngưng hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
             }
             
             setConfirmModalVisible(false);
@@ -221,9 +233,45 @@ const ActiveContractsPage = () => {
             fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
             console.error("Error:", error);
-            message.error(error.message || 'Có lỗi xảy ra!');
+            toast.error(error.message || 'Có lỗi xảy ra!');
         } finally {
             setConfirmLoading(false);
+        }
+    };
+
+    const handleConfirmReactivate = async () => {
+        if (!selectedContract) return;
+        setReactivating(true);
+        try {
+            await reactivateContract(selectedContract.id);
+            setShowReactivateConfirm(false);
+            toast.success('Đã kích hoạt lại hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
+            handleCloseModal();
+            fetchContracts();
+        } catch (error) {
+            setShowReactivateConfirm(false);
+            console.error("Error:", error);
+            toast.error(error.message || 'Kích hoạt lại thất bại!');
+        } finally {
+            setReactivating(false);
+        }
+    };
+
+    const handleConfirmRenew = async () => {
+        if (!selectedContract || !renewData) return;
+        setRenewing(true);
+        try {
+            await renewContract(selectedContract.id, renewData);
+            setShowRenewConfirm(false);
+            toast.success('Gia hạn hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
+            handleCloseModal();
+            fetchContracts(pagination.current, pagination.pageSize);
+        } catch (error) {
+            setShowRenewConfirm(false);
+            console.error("Error:", error);
+            toast.error(error.message || 'Gia hạn thất bại!');
+        } finally {
+            setRenewing(false);
         }
     };
 
@@ -345,7 +393,7 @@ const ActiveContractsPage = () => {
                 );
             },
         },
-    ];
+    ]; // columns definition no longer used - inline rendering in table now
 
     const statusBadge = (status) => {
         const s = (status || '').toUpperCase();
@@ -371,67 +419,118 @@ const ActiveContractsPage = () => {
             const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
             
             return (
-                <Descriptions bordered size="small" column={1}>
-                    <Descriptions.Item label={<span className="text-gray-700">Số Hợp đồng</span>}>
-                        <span className="text-gray-900">{c.contractNumber || '—'}</span>
-                    </Descriptions.Item>
-                    <Descriptions.Item label={<span className="text-gray-700">Trạng thái</span>}>
-                        {statusBadge(c.contractStatus)}
-                    </Descriptions.Item>
-                    <Descriptions.Item label={<span className="text-gray-700">Khách hàng</span>}>
-                        <span className="text-gray-900">{c.customerName || '—'}</span>
-                    </Descriptions.Item>
-                    {c.customerCode && (
-                        <Descriptions.Item label={<span className="text-gray-700">Mã Khách hàng</span>}>
-                            <span className="text-gray-900">{c.customerCode}</span>
-                        </Descriptions.Item>
-                    )}
-                    {c.startDate && (
-                        <Descriptions.Item label={<span className="text-gray-700">Ngày bắt đầu</span>}>
-                            <span className="text-gray-900">{fmtDate(c.startDate)}</span>
-                        </Descriptions.Item>
-                    )}
-                    {c.endDate && (
-                        <Descriptions.Item label={<span className="text-gray-700">Ngày kết thúc</span>}>
-                            <span className="text-gray-900">{fmtDate(c.endDate)}</span>
-                        </Descriptions.Item>
-                    )}
-                    {(c.contractValue != null || c.estimatedCost != null) && (
-                        <>
+                <div className="space-y-4 pt-2">
+                    {/* Header: Số HĐ và Trạng thái */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Số Hợp đồng</div>
+                                <div className="text-2xl font-bold text-blue-700">{c.contractNumber || '—'}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>
+                                {statusBadge(c.contractStatus)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Thông tin Khách hàng */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                            <FileTextOutlined className="mr-1" /> Thông tin khách hàng
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <div className="text-xs text-gray-500 mb-1">Tên khách hàng</div>
+                                <div className="font-semibold text-gray-800">{c.customerName || '—'}</div>
+                            </div>
+                            {c.customerCode && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Mã khách hàng</div>
+                                    <div className="font-medium text-gray-800">{c.customerCode}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Thông tin Hợp đồng */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                            <CalendarOutlined className="mr-1" /> Thông tin hợp đồng
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            {c.startDate && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Ngày bắt đầu</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <CalendarOutlined className="text-green-500" />
+                                        {fmtDate(c.startDate)}
+                                    </div>
+                                </div>
+                            )}
+                            {c.endDate && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <CalendarOutlined className="text-red-500" />
+                                        {fmtDate(c.endDate)}
+                                    </div>
+                                </div>
+                            )}
                             {c.contractValue != null && (
-                                <Descriptions.Item label={<span className="text-gray-700">Giá trị hợp đồng</span>}>
-                                    <span className="text-gray-900">{fmtMoney(c.contractValue)}</span>
-                                </Descriptions.Item>
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Giá trị hợp đồng</div>
+                                    <div className="font-bold text-lg text-green-600">{fmtMoney(c.contractValue)}</div>
+                                </div>
                             )}
                             {c.estimatedCost != null && (
-                                <Descriptions.Item label={<span className="text-gray-700">Giá trị dự kiến</span>}>
-                                    <span className="text-gray-900">{fmtMoney(c.estimatedCost)}</span>
-                                </Descriptions.Item>
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Giá trị dự kiến</div>
+                                    <div className="font-bold text-lg text-orange-600">{fmtMoney(c.estimatedCost)}</div>
+                                </div>
                             )}
-                        </>
-                    )}
-                    {c.paymentMethod && (
-                        <Descriptions.Item label={<span className="text-gray-700">Phương thức thanh toán</span>}>
-                            <span className="text-gray-900">{c.paymentMethod}</span>
-                        </Descriptions.Item>
-                    )}
+                            {c.paymentMethod && (
+                                <div className="col-span-2">
+                                    <div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div>
+                                    <div className="font-medium text-gray-800">
+                                        {c.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : 
+                                         c.paymentMethod === 'CASH' ? 'Tiền mặt' : 
+                                         c.paymentMethod === 'CREDIT_CARD' ? 'Thẻ tín dụng' : 
+                                         c.paymentMethod}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Ảnh lắp đặt */}
                     {c.installationImageBase64 && (
-                        <Descriptions.Item label={<span className="text-gray-700">Ảnh lắp đặt đồng hồ</span>} span={1}>
-                            <div className="mt-2">
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                                <FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ
+                            </div>
+                            <div className="flex justify-center">
                                 <img 
                                     src={`data:image/jpeg;base64,${c.installationImageBase64}`}
                                     alt="Installation" 
-                                    style={{maxWidth: '100%', maxHeight: '400px', borderRadius: '4px', border: '1px solid #d9d9d9'}}
+                                    className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md"
                                 />
                             </div>
-                        </Descriptions.Item>
+                        </div>
                     )}
+
+                    {/* Ghi chú */}
                     {(c.notes || c.customerNotes) && (
-                        <Descriptions.Item label={<span className="text-gray-700">Ghi chú</span>} span={1}>
-                            <div className="whitespace-pre-wrap text-gray-900">{c.notes || c.customerNotes || '—'}</div>
-                        </Descriptions.Item>
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2">
+                                <FileTextOutlined className="mr-1" /> Ghi chú
+                            </div>
+                            <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {c.notes || c.customerNotes || '—'}
+                            </div>
+                        </div>
                     )}
-                </Descriptions>
+                </div>
             );
         } else if (modalType === 'renew') {
             // --- ✨ GIAO DIỆN MỚI CHO FORM GIA HẠN ✨ ---
@@ -562,6 +661,20 @@ const ActiveContractsPage = () => {
 
     return (
         <div className="space-y-6">
+            {/* Toast Container */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
+            
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
@@ -603,20 +716,136 @@ const ActiveContractsPage = () => {
                 </Col>
             </Row>
 
-            <Spin spinning={loading}>
-                <Table
-                    columns={columns}
-                    dataSource={contracts}
-                    onRow={(record) => ({ 'data-contract-id': record.id })}
-                    pagination={pagination}
-                    onChange={handleTableChange}
-                    rowKey="id"
-                    scroll={{ x: 800 }}
-                    className="bg-white rounded-lg shadow overflow-hidden"
-                    // Hiển thị text trống tùy theo trạng thái đang lọc
-                    locale={{ emptyText: filters.status === 'ACTIVE' ? 'Không có hợp đồng đang hoạt động' : 'Không có hợp đồng đang tạm ngưng' }}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số Hợp đồng</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày bắt đầu</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày kết thúc</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="8" className="px-6 py-12 text-center">
+                                        <div className="flex justify-center items-center gap-2 text-gray-500">
+                                            <Loader2 className="animate-spin" size={20} />
+                                            <span>Đang tải...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : contracts && contracts.length > 0 ? (
+                                contracts.map((record) => {
+                                    const actions = [];
+                                    actions.push(
+                                        <button
+                                            key="detail"
+                                            onClick={() => handleOpenModal(record, 'view')}
+                                            className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+                                        >
+                                            Chi tiết
+                                        </button>
+                                    );
+
+                                    if (record.contractStatus === 'ACTIVE') {
+                                        actions.push(
+                                            <button
+                                                key="renew"
+                                                onClick={() => handleOpenModal(record, 'renew')}
+                                                className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+                                            >
+                                                Gia hạn
+                                            </button>
+                                        );
+                                        actions.push(
+                                            <button
+                                                key="suspend"
+                                                onClick={() => handleOpenModal(record, 'suspend')}
+                                                className="font-semibold text-gray-700 hover:text-gray-900 transition duration-150 ease-in-out"
+                                            >
+                                                Tạm ngưng
+                                            </button>
+                                        );
+                                        actions.push(
+                                            <button
+                                                key="terminate"
+                                                onClick={() => handleOpenModal(record, 'terminate')}
+                                                className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
+                                            >
+                                                Chấm dứt
+                                            </button>
+                                        );
+                                    }
+
+                                    if (record.contractStatus === 'SUSPENDED') {
+                                        actions.push(
+                                            <button
+                                                key="reactivate"
+                                                onClick={() => handleOpenModal(record, 'reactivate')}
+                                                className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out"
+                                            >
+                                                Kích hoạt lại
+                                            </button>
+                                        );
+                                    }
+
+                                    return (
+                                        <tr key={record.id} className="hover:bg-gray-50" data-contract-id={record.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.id}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.contractNumber}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{record.customerName}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {record.startDate ? dayjs(record.startDate).format('DD/MM/YYYY') : 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {record.endDate ? dayjs(record.endDate).format('DD/MM/YYYY') : 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {record.contractValue ? `${record.contractValue.toLocaleString()} đ` : 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                <Tag color={record.contractStatus === 'ACTIVE' ? 'green' : 'orange'}>
+                                                    {record.contractStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Đang tạm ngưng'}
+                                                </Tag>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm">
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    {actions.map((el, idx) => (
+                                                        <React.Fragment key={idx}>
+                                                            {idx > 0 && <span className="text-gray-300">|</span>}
+                                                            {el}
+                                                        </React.Fragment>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan="8" className="px-6 py-12 text-center text-sm text-gray-500">
+                                        {filters.status === 'ACTIVE' ? 'Không có hợp đồng đang hoạt động' : 'Không có hợp đồng đang tạm ngưng'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <Pagination
+                    currentPage={pagination.page}
+                    totalElements={pagination.totalElements}
+                    pageSize={pagination.size}
+                    onPageChange={handlePageChange}
                 />
-            </Spin>
+            </div>
 
             <Modal
                 title={getModalTitle()}
@@ -644,44 +873,60 @@ const ActiveContractsPage = () => {
                 {renderModalContent()}
             </Modal>
 
-            {/* Confirmation Modal cho Terminate/Suspend (Giữ nguyên logic cũ của bạn) */}
-            <Modal
-                title={confirmAction === 'terminate' ? '⚠️ Xác nhận chấm dứt hợp đồng' : '⏸️ Xác nhận tạm ngưng hợp đồng'}
-                open={confirmModalVisible}
-                onCancel={() => setConfirmModalVisible(false)}
-                onOk={handleConfirmAction}
-                confirmLoading={confirmLoading}
-                okText="Xác nhận"
-                okButtonProps={{ danger: confirmAction === 'terminate' }}
-                cancelText="Hủy"
-                destroyOnClose
-                width={600}
-            >
-                <div className="space-y-4">
-                    <div>
-                        <p className="text-sm font-semibold text-gray-600 mb-2">Thông tin hợp đồng:</p>
-                        <div className="bg-gray-50 p-3 rounded border border-gray-200">
-                            <p className="text-sm"><strong>Số Hợp đồng:</strong> {selectedContract?.contractNumber}</p>
-                            <p className="text-sm"><strong>Khách hàng:</strong> {selectedContract?.customerName}</p>
+            {/* ConfirmModal thống nhất cho Terminate/Suspend */}
+            <ConfirmModal
+                isOpen={confirmModalVisible}
+                onClose={() => setConfirmModalVisible(false)}
+                onConfirm={handleConfirmAction}
+                title={confirmAction === 'terminate' ? 'Xác nhận chấm dứt hợp đồng' : 'Xác nhận tạm ngưng hợp đồng'}
+                message={
+                    <div className="space-y-3">
+                        <div>
+                            <p className="text-sm font-semibold text-gray-600 mb-2">Thông tin hợp đồng:</p>
+                            <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                                <p className="text-sm"><strong>Số Hợp đồng:</strong> {selectedContract?.contractNumber}</p>
+                                <p className="text-sm"><strong>Khách hàng:</strong> {selectedContract?.customerName}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-gray-600 mb-2">
+                                {confirmAction === 'terminate' ? 'Lý do chấm dứt:' : 'Lý do tạm ngưng:'}
+                            </p>
+                            <div className="bg-blue-50 p-3 rounded border border-blue-200 max-h-32 overflow-y-auto">
+                                <p className="text-sm whitespace-pre-wrap">{confirmData?.reason || '—'}</p>
+                            </div>
+                        </div>
+                        <div className={`p-3 rounded ${confirmAction === 'terminate' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+                            <p className={`text-sm font-semibold ${confirmAction === 'terminate' ? 'text-red-900' : 'text-yellow-900'}`}>
+                                {confirmAction === 'terminate' ? 
+                                    '🔴 Hành động này sẽ chấm dứt hợp đồng vĩnh viễn. Hãy chắc chắn trước khi xác nhận.' : 
+                                    '🟡 Hợp đồng sẽ được tạm ngưng. Bạn có thể kích hoạt lại sau.'}
+                            </p>
                         </div>
                     </div>
-                    <div>
-                        <p className="text-sm font-semibold text-gray-600 mb-2">
-                            {confirmAction === 'terminate' ? 'Lý do chấm dứt:' : 'Lý do tạm ngưng:'}
-                        </p>
-                        <div className="bg-blue-50 p-3 rounded border border-blue-200 max-h-32 overflow-y-auto">
-                            <p className="text-sm whitespace-pre-wrap">{confirmData?.reason || '—'}</p>
-                        </div>
-                    </div>
-                    <div className={`p-3 rounded ${confirmAction === 'terminate' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-                        <p className={`text-sm font-semibold ${confirmAction === 'terminate' ? 'text-red-900' : 'text-yellow-900'}`}>
-                            {confirmAction === 'terminate' ? 
-                                '🔴 Hành động này sẽ chấm dứt hợp đồng vĩnh viễn. Hãy chắc chắn trước khi xác nhận.' : 
-                                '🟡 Hợp đồng sẽ được tạm ngưng. Bạn có thể kích hoạt lại sau.'}
-                        </p>
-                    </div>
-                </div>
-            </Modal>
+                }
+                isLoading={confirmLoading}
+            />
+
+            {/* ConfirmModal cho Reactivate (Kích hoạt lại) */}
+            <ConfirmModal
+                isOpen={showReactivateConfirm}
+                onClose={() => setShowReactivateConfirm(false)}
+                onConfirm={handleConfirmReactivate}
+                title="Xác nhận kích hoạt lại hợp đồng"
+                message={`Bạn có chắc chắn muốn kích hoạt lại hợp đồng ${selectedContract?.contractNumber} không?`}
+                isLoading={reactivating}
+            />
+
+            {/* ConfirmModal cho Renew (Gia hạn) */}
+            <ConfirmModal
+                isOpen={showRenewConfirm}
+                onClose={() => setShowRenewConfirm(false)}
+                onConfirm={handleConfirmRenew}
+                title="Xác nhận gia hạn hợp đồng"
+                message={`Bạn có chắc chắn muốn gia hạn hợp đồng ${selectedContract?.contractNumber} đến ngày ${renewData?.endDate ? dayjs(renewData.endDate).format('DD/MM/YYYY') : ''} không?`}
+                isLoading={renewing}
+            />
         </div>
     );
 };

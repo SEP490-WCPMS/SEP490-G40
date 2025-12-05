@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPendingReadings, generateWaterBill, getWaterBillCalculation } from '../Services/apiAccountingStaff';
-import { RefreshCw, Calculator, AlertCircle } from 'lucide-react';
+import { RefreshCw, Calculator, AlertCircle, FileText, DollarSign, Calendar } from 'lucide-react';
 import moment from 'moment';
-import { Modal, Descriptions, Spin, message, Button, Tag } from 'antd'; 
+import { Modal, Spin, Button } from 'antd';
+
+// Toast notifications
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import ConfirmModal from '../common/ConfirmModal'; 
 
 function GenerateWaterInvoice() {
     const [readings, setReadings] = useState([]);
@@ -16,6 +21,9 @@ function GenerateWaterInvoice() {
     const [modalLoading, setModalLoading] = useState(false); // Loading khi đang tính toán
     const [submitting, setSubmitting] = useState(false);     // Loading khi đang tạo HĐ
     const [selectedReadingId, setSelectedReadingId] = useState(null); // ID đang chọn
+    
+    // State cho ConfirmModal
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const fetchData = (page = 0, size = 10) => {
         setLoading(true);
@@ -51,25 +59,41 @@ function GenerateWaterInvoice() {
                 setModalData(res.data);
             })
             .catch(err => {
-                message.error("Không thể tính toán chi tiết. Vui lòng kiểm tra lại giá nước.");
+                toast.error("Không thể tính toán chi tiết. Vui lòng kiểm tra lại giá nước.", {
+                    position: "top-center",
+                    autoClose: 3000
+                });
                 setIsModalVisible(false); // Đóng nếu lỗi
             })
             .finally(() => setModalLoading(false));
     };
 
-    // --- 2. Khi nhấn "Xác nhận" trong Modal -> GỌI API TẠO THẬT ---
+    // --- 2. Khi nhấn "Xác nhận" trong Modal -> MỞ CONFIRM ---
+    const handlePreConfirm = () => {
+        setShowConfirm(true);
+    };
+
+    // --- 3. Khi xác nhận trong ConfirmModal -> GỌI API TẠO THẬT ---
     const handleConfirmGenerate = () => {
         if (!selectedReadingId) return;
         
         setSubmitting(true);
+        setShowConfirm(false);
+        
         generateWaterBill(selectedReadingId)
             .then(response => {
-                message.success(`Thành công! Hóa đơn ${response.data.invoiceNumber} đã được tạo.`);
+                toast.success(`Thành công! Hóa đơn ${response.data.invoiceNumber} đã được tạo.`, {
+                    position: "top-center",
+                    autoClose: 3000
+                });
                 setIsModalVisible(false);
                 fetchData(pagination.page, pagination.size); // Tải lại bảng (dòng đó sẽ biến mất)
             })
             .catch(err => {
-                message.error(err.response?.data?.message || "Tạo hóa đơn thất bại.");
+                toast.error(err.response?.data?.message || "Tạo hóa đơn thất bại.", {
+                    position: "top-center",
+                    autoClose: 3000
+                });
             })
             .finally(() => setSubmitting(false));
     };
@@ -151,62 +175,137 @@ function GenerateWaterInvoice() {
 
             {/* --- MODAL XEM TRƯỚC CHI TIẾT --- */}
             <Modal
-                title="Xác nhận Lập Hóa đơn"
+                title={
+                    <div className="flex items-center gap-2">
+                        <FileText size={20} className="text-blue-600" />
+                        <span>Xem trước Hóa đơn Tiền nước</span>
+                    </div>
+                }
                 open={isModalVisible}
                 onCancel={handleCancelModal}
                 footer={[
-                    <Button key="back" onClick={handleCancelModal}>Hủy bỏ</Button>,
+                    <Button key="back" onClick={handleCancelModal} size="large">Hủy bỏ</Button>,
                     <Button 
                         key="submit" 
                         type="primary" 
+                        size="large"
                         loading={submitting} 
-                        onClick={handleConfirmGenerate}
+                        onClick={handlePreConfirm}
                         className="bg-green-600 hover:bg-green-700"
                         disabled={!modalData} // Không cho bấm nếu chưa có dữ liệu tính toán
                     >
-                        Xác nhận Phát hành
+                        Phát hành Hóa đơn
                     </Button>,
                 ]}
-                width={700}
+                width={800}
             >
                 <Spin spinning={modalLoading} tip="Đang tính toán số tiền...">
                     {modalData ? (
-                        <div className="space-y-4">
-                            {/* Thông tin chung */}
-                            <div className="bg-blue-50 p-3 rounded-md border border-blue-100 grid grid-cols-2 gap-2 text-sm">
-                                <div>Ngày đọc: <strong>{moment(modalData.readingDate).format('DD/MM/YYYY')}</strong></div>
-                                <div>Tiêu thụ: <strong>{modalData.consumption} m³</strong></div>
-                                <div>Chỉ số cũ: {modalData.previousReading}</div>
-                                <div>Chỉ số mới: {modalData.currentReading}</div>
+                        <div className="space-y-4 mt-4">
+                            {/* Header Info Card */}
+                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-100">
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={16} className="text-blue-600" />
+                                        <span className="text-gray-600">Ngày đọc:</span>
+                                        <strong className="text-gray-800">{moment(modalData.readingDate).format('DD/MM/YYYY')}</strong>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <DollarSign size={16} className="text-green-600" />
+                                        <span className="text-gray-600">Tiêu thụ:</span>
+                                        <strong className="text-blue-600 text-base">{modalData.consumption} m³</strong>
+                                    </div>
+                                    <div className="text-gray-600">
+                                        Chỉ số cũ: <span className="font-semibold text-gray-800">{modalData.previousReading}</span>
+                                    </div>
+                                    <div className="text-gray-600">
+                                        Chỉ số mới: <span className="font-semibold text-gray-800">{modalData.currentReading}</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Chi tiết tính tiền */}
-                            <Descriptions title="Chi tiết tính tiền" bordered size="small" column={1}>
-                                <Descriptions.Item label="Loại giá áp dụng">
-                                    <Tag color="blue">{modalData.priceTypeName}</Tag>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Đơn giá">
-                                    {fmtMoney(modalData.unitPrice)} / m³
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Thành tiền (Trước thuế)">
-                                    {modalData.consumption} m³ x {fmtMoney(modalData.unitPrice)} = <strong>{fmtMoney(modalData.subtotalAmount)}</strong>
-                                </Descriptions.Item>
-                                <Descriptions.Item label="Phí Bảo vệ Môi trường">
-                                    {modalData.consumption} m³ x {fmtMoney(modalData.environmentFee)} = <strong>{fmtMoney(modalData.environmentFeeAmount)}</strong>
-                                </Descriptions.Item>
-                                <Descriptions.Item label={`Thuế VAT (${modalData.vatRate}%)`}>
-                                    {fmtMoney(modalData.subtotalAmount)} x {modalData.vatRate}% = <strong>{fmtMoney(modalData.vatAmount)}</strong>
-                                </Descriptions.Item>
-                                <Descriptions.Item label={<span className="text-lg font-bold text-red-600">TỔNG CỘNG</span>}>
-                                    <span className="text-lg font-bold text-red-600">{fmtMoney(modalData.totalAmount)}</span>
-                                </Descriptions.Item>
-                            </Descriptions>
+                            {/* Chi tiết tính tiền Card */}
+                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <h3 className="text-sm font-bold text-gray-700 uppercase mb-3 flex items-center gap-2">
+                                    <Calculator size={16} className="text-blue-600" />
+                                    Chi tiết tính tiền
+                                </h3>
+                                <div className="space-y-3">
+                                    {/* Loại giá */}
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600">Loại giá áp dụng</span>
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                            {modalData.priceTypeName}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Đơn giá */}
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600">Đơn giá</span>
+                                        <span className="font-semibold text-gray-800">{fmtMoney(modalData.unitPrice)} / m³</span>
+                                    </div>
+                                    
+                                    {/* Thành tiền */}
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600">Thành tiền (Trước thuế)</span>
+                                        <div className="text-right">
+                                            <div className="text-xs text-gray-500">{modalData.consumption} m³ × {fmtMoney(modalData.unitPrice)}</div>
+                                            <div className="font-bold text-blue-600">{fmtMoney(modalData.subtotalAmount)}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Phí môi trường */}
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600">Phí Bảo vệ Môi trường</span>
+                                        <div className="text-right">
+                                            <div className="text-xs text-gray-500">{modalData.consumption} m³ × {fmtMoney(modalData.environmentFee)}</div>
+                                            <div className="font-bold text-green-600">{fmtMoney(modalData.environmentFeeAmount)}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* VAT */}
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600">Thuế VAT ({modalData.vatRate}%)</span>
+                                        <div className="text-right">
+                                            <div className="text-xs text-gray-500">{fmtMoney(modalData.subtotalAmount)} × {modalData.vatRate}%</div>
+                                            <div className="font-bold text-orange-600">{fmtMoney(modalData.vatAmount)}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Tổng cộng */}
+                                    <div className="flex justify-between items-center pt-3 bg-red-50 -mx-4 px-4 py-3 rounded-lg mt-3">
+                                        <span className="text-base font-bold text-gray-800 uppercase">Tổng cộng</span>
+                                        <span className="text-xl font-bold text-red-600">{fmtMoney(modalData.totalAmount)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Info Box */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-3">
+                                <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-blue-800">
+                                    Sau khi phát hành, hóa đơn sẽ được tạo và gửi cho khách hàng. Vui lòng kiểm tra kỹ thông tin trước khi xác nhận.
+                                </p>
+                            </div>
                         </div>
                     ) : (
                         <div className="py-10 text-center text-gray-500">Đang tải dữ liệu tính toán...</div>
                     )}
                 </Spin>
             </Modal>
+            
+            {/* ConfirmModal */}
+            <ConfirmModal
+                isOpen={showConfirm}
+                onClose={() => setShowConfirm(false)}
+                onConfirm={handleConfirmGenerate}
+                title="Xác nhận Phát hành Hóa đơn"
+                message="Bạn có chắc chắn muốn phát hành hóa đơn tiền nước này? Sau khi phát hành, hóa đơn sẽ được gửi cho khách hàng và không thể hoàn tác."
+                isLoading={submitting}
+            />
+            
+            {/* Toast Container */}
+            <ToastContainer theme="colored" position="top-center" autoClose={3000} />
         </div>
     );
 }
