@@ -18,42 +18,55 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 import { getAllRoutes, getContractsByRoute, updateRouteOrder } from '../Services/apiAccountingStaff';
-import { GripVertical, Loader2, Save, MapPin } from 'lucide-react';
+import { GripVertical, Loader2, Save, MapPin, RefreshCw } from 'lucide-react';
+import Pagination from '../common/Pagination';
 
-// --- COMPONENT CON: Item Hợp đồng (SortableContractCard) ---
-// ... (Code của component SortableContractCard giữ nguyên)
-function SortableContractCard({ item }) {
+// --- 1. IMPORT CÁC THÀNH PHẦN MỚI ---
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // Nhớ dòng này để hiện style
+import ConfirmModal from '../common/ConfirmModal'; // Component Modal bạn vừa tạo ở Bước 2
+
+// --- COMPONENT CON: Item Hợp đồng ---
+function SortableContractCard({ item, index }) {
     const {
         attributes, listeners, setNodeRef, transform, transition, isDragging
-    } = useSortable({ id: item.contractId.toString() }); // Sửa: Dùng toString() cho ID
+    } = useSortable({ id: item.contractId.toString() });
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        zIndex: isDragging ? 10 : 'auto',
+        zIndex: isDragging ? 100 : 'auto',
         opacity: isDragging ? 0.9 : 1,
+        position: 'relative',
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} className={`p-3 mb-2 rounded border bg-white shadow-sm`}>
-            <div className="flex items-center">
-                <button {...listeners} className="p-1 cursor-grab active:cursor-grabbing">
-                    <GripVertical size={16} className="text-gray-400" />
-                </button>
-                <div className="flex-1 ml-2">
-                    <p className="text-sm font-medium text-gray-800">
-                        {item.customerName}
-                    </p>
-                    <p className="text-xs text-gray-500">Mã ĐH: {item.meterCode}</p>
-                    <p className="text-xs text-gray-500 truncate">{item.customerAddress}</p>
+        <div ref={setNodeRef} style={style} {...attributes} className={`p-3 mb-2 rounded border bg-white shadow-sm flex items-center ${isDragging ? 'ring-2 ring-blue-500' : ''}`}>
+            <div className="mr-3 font-bold text-gray-400 w-8 text-center bg-gray-50 rounded py-1">{index + 1}</div>
+            
+            <button {...listeners} className="p-2 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded touch-none">
+                <GripVertical size={20} className="text-gray-400" />
+            </button>
+            
+            <div className="flex-1 ml-3 overflow-hidden">
+                <p className="text-sm font-bold text-gray-800 truncate">
+                    {item.customerName}
+                </p>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                    <span className="flex items-center">
+                        <span className="font-semibold mr-1">Mã ĐH:</span> 
+                        <span className="font-mono text-gray-700 bg-gray-100 px-1 rounded">{item.meterCode}</span>
+                    </span>
+                    <span className="truncate max-w-full" title={item.customerAddress}>
+                        {item.customerAddress}
+                    </span>
                 </div>
             </div>
         </div>
     );
 }
-// ---
 
-// --- COMPONENT CHÍNH: Trang Quản lý Tuyến ---
+// --- COMPONENT CHÍNH ---
 function RouteManagementPage() {
     const [routes, setRoutes] = useState([]);
     const [selectedRouteId, setSelectedRouteId] = useState('');
@@ -62,129 +75,158 @@ function RouteManagementPage() {
     const [loadingRoutes, setLoadingRoutes] = useState(true);
     const [loadingContracts, setLoadingContracts] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
+    
+    // --- 2. THÊM STATE CHO MODAL ---
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+
     const navigate = useNavigate();
 
+    const [pagination, setPagination] = useState({
+        page: 0,
+        size: 50,
+        totalElements: 0,
+    });
+
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
 
-    // --- SỬA LỖI 1: useEffect Tải Tuyến (routes) ---
-    // ...
-    // --- SỬA LỖI 1: useEffect Tải Tuyến (routes) ---
     useEffect(() => {
         setLoadingRoutes(true);
         getAllRoutes()
             .then(res => {
                 let data = res.data;
                 let routesArray = [];
-                
-                // Nếu BE trả về JSON string (do Content-Type sai)
-                if (typeof data === 'string') {
-                    try { data = JSON.parse(data); } catch (e) { data = []; }
-                }
+                if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = []; } }
 
-                // Kịch bản 1: BE trả về Page (Object)
-                if (data && Array.isArray(data.content)) {
-                    routesArray = data.content;
-                } 
-                // Kịch bản 2: BE trả về List (Array)
-                else if (Array.isArray(data)) {
-                    routesArray = data;
-                }
-                // Kịch bản 3: Lỗi
-                else {
-                    console.warn("getAllRoutes API did not return an array or a Page object. Response data:", data);
-                }
+                if (data && Array.isArray(data.content)) routesArray = data.content;
+                else if (Array.isArray(data)) routesArray = data;
                 
-                setRoutes(routesArray); // Luôn set bằng một Array
+                setRoutes(routesArray);
             })
             .catch(err => {
-                setError("Lỗi tải danh sách Tuyến đọc.");
+                toast.error("Lỗi tải danh sách Tuyến đọc."); // Thay setError bằng toast
                 console.error("Lỗi tải Tuyến:", err);
             })
             .finally(() => setLoadingRoutes(false));
     }, []);
 
-    // --- SỬA LỖI 2: useEffect Tải Hợp đồng (assignedList) ---
-    useEffect(() => {
-        if (!selectedRouteId) {
+    const fetchContracts = (params = {}) => {
+        const routeId = params.routeId !== undefined ? params.routeId : selectedRouteId;
+        if (!routeId) {
             setAssignedList([]);
             return;
         }
+
         setLoadingContracts(true);
-        setError(null);
-        setSuccess(null);
         
-        getContractsByRoute(selectedRouteId)
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+
+        getContractsByRoute(routeId, { page: currentPage, size: currentSize })
             .then(res => {
-                let data = res.data;
-                let contractsArray = [];
+                const data = res.data;
                 
-                if (typeof data === 'string') {
-                    try { data = JSON.parse(data); } catch (e) { data = []; }
+                let contractsArray = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = currentSize;
+
+                if (Array.isArray(data)) {
+                    contractsArray = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : currentSize;
+                } else if (data && data.content) {
+                    contractsArray = data.content;
+                    const pageInfo = data.page || data;
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || currentSize;
                 }
 
-                if (data && Array.isArray(data.content)) {
-                    contractsArray = data.content;
-                } 
-                else if (Array.isArray(data)) {
-                    contractsArray = data;
-                }
-                else {
-                     console.warn("getContractsByRoute API did not return an array or a Page object. Response data:", data);
-                }
-                
-                setAssignedList(contractsArray); // Luôn set bằng Array
+                setAssignedList(contractsArray);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => {
-                setError("Lỗi tải HĐ đã gán của Tuyến này.");
-                 console.error("Lỗi tải HĐ:", err);
+                toast.error("Lỗi tải HĐ đã gán của Tuyến này."); // Thay setError bằng toast
+                console.error("Lỗi tải HĐ:", err);
             })
             .finally(() => setLoadingContracts(false));
-    }, [selectedRouteId]);
-    // --- HẾT SỬA LỖI ---
-    
-    // ... (code còn lại)
+    };
 
-    // --- SỬA LỖI 3: Hàm handleDragEnd (dùng .id thay vì .contractId) ---
+    useEffect(() => {
+        if (selectedRouteId) {
+            fetchContracts({ page: 0 });
+        } else {
+            setAssignedList([]);
+        }
+    }, [selectedRouteId]);
+
+    const handlePageChange = (newPage) => {
+        fetchContracts({ page: newPage });
+    };
+
+    const handleRefresh = () => {
+        fetchContracts();
+        toast.info("Đã làm mới dữ liệu.", { autoClose: 1000, hideProgressBar: true });
+    };
+
     function handleDragEnd(event) {
         const { active, over } = event;
-
         if (active.id !== over.id) {
             setAssignedList((items) => {
-                // Sửa: Dùng .id (từ DndContext)
                 const oldIndex = items.findIndex((item) => item.contractId.toString() === active.id);
                 const newIndex = items.findIndex((item) => item.contractId.toString() === over.id);
-                
-                setSuccess("Đã thay đổi thứ tự. Nhấn 'Lưu' để xác nhận.");
                 return arrayMove(items, oldIndex, newIndex);
             });
         }
     }
-    // ---
 
-    // Hàm Lưu (Giữ nguyên)
-    const handleSaveChanges = () => {
+    // --- 3. HÀM XỬ LÝ MỚI ---
+    
+    // Hàm 1: Khi bấm nút "Lưu Thay Đổi" -> Mở Modal hỏi
+    const handlePreSave = () => {
         if (!selectedRouteId) {
-            setError("Vui lòng chọn một Tuyến đọc trước khi lưu.");
+            toast.warn("Vui lòng chọn một Tuyến đọc trước khi lưu.");
             return;
         }
+        setShowConfirmModal(true); // Mở Modal Xác nhận
+    };
+
+    // Hàm 2: Khi chọn "Có" trong Modal -> Gọi API thật
+    const handleConfirmSave = () => {
         setSubmitting(true);
-        setError(null);
-        setSuccess(null);
         
         const orderedIds = assignedList.map(item => item.contractId);
         
         updateRouteOrder(selectedRouteId, orderedIds)
             .then(() => {
-                setSuccess("Lưu thứ tự tuyến thành công!");
+                // Đóng modal trước
+                setShowConfirmModal(false);
+                
+                // Hiện thông báo đẹp ở giữa trên cùng
+                toast.success("Lưu thứ tự tuyến thành công!", {
+                    position: "top-center",
+                    autoClose: 3000, // 3 giây tự tắt
+                });
             })
-            .catch(err => setError(err.response?.data?.message || "Lỗi khi lưu thay đổi."))
+            .catch(err => {
+                setShowConfirmModal(false);
+                toast.error(err.response?.data?.message || "Lỗi khi lưu thay đổi.", {
+                    position: "top-center"
+                });
+            })
             .finally(() => setSubmitting(false));
     };
 
@@ -194,89 +236,155 @@ function RouteManagementPage() {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
         >
-            <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+            <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen pb-32 relative">
+                
+                {/* --- 4. ĐẶT TOAST CONTAINER VÀO ĐÂY --- */}
+                <ToastContainer 
+                    position="top-center"
+                    autoClose={3000}
+                    hideProgressBar={false}
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="colored"
+                />
+
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800 mb-1">Sắp xếp Thứ tự Tuyến Đọc</h1>
-                        <p className="text-sm text-gray-600">Chọn một Tuyến, sau đó kéo thả Hợp đồng để sắp xếp thứ tự đi thu.</p>
+                        <p className="text-sm text-gray-600">Kéo thả để sắp xếp thứ tự đi thu tiền / ghi chỉ số.</p>
                     </div>
+                    <button
+                        onClick={handleRefresh}
+                        className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
+                        disabled={loadingContracts || !selectedRouteId}
+                    >
+                        <RefreshCw size={16} className={`mr-2 ${loadingContracts ? 'animate-spin' : ''}`} />
+                        Tải lại
+                    </button>
                 </div>
                 
-                {/* Lỗi/Thành công */}
-                {error && (
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-                        {error}
-                    </div>
-                )}
-                {success && (
-                    <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-                        {success}
-                    </div>
-                )}
+                {/* (Đã bỏ các div báo lỗi/thành công cũ) */}
 
                 {/* Body */}
-                <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-                    {/* Dropdown chọn tuyến */}
-                    <div className="flex items-center gap-2 mb-4">
-                         <MapPin size={16} className="text-gray-600" />
-                         <label htmlFor="routeSelect" className="text-sm font-medium text-gray-700">Chọn Tuyến đọc:</label>
+                <div className="bg-white p-4 sm:p-6 rounded-lg shadow border border-gray-200 flex-1">
+                    {/* Chọn tuyến */}
+                    <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                         <div className="flex items-center gap-2 w-full sm:w-auto">
+                             <div className="p-2 bg-blue-100 rounded-full text-blue-600">
+                                 <MapPin size={20} />
+                             </div>
+                             <label htmlFor="routeSelect" className="text-sm font-bold text-blue-900 whitespace-nowrap">Chọn Tuyến:</label>
+                         </div>
                          <select
                             id="routeSelect"
                             value={selectedRouteId}
                             onChange={(e) => setSelectedRouteId(e.target.value)}
                             disabled={loadingRoutes || submitting}
-                            className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white"
+                            className="w-full sm:flex-1 appearance-none border border-blue-300 rounded-md py-2 px-4 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-shadow"
                          >
-                            <option value="">{loadingRoutes ? "Đang tải Tuyến..." : "-- Chọn Tuyến --"}</option>
-                            {/* Dòng 219 (Gây lỗi) giờ đã an toàn */}
-                            {routes.map(route => ( 
+                            <option value="">{loadingRoutes ? "Đang tải dữ liệu..." : "-- Chọn một tuyến để sắp xếp --"}</option>
+                            {routes.map(route => (
                                 <option key={route.id} value={route.id}>
-                                    {route.routeName} ({route.routeCode})
+                                    {route.routeName} (Mã: {route.routeCode}) - NV: {route.assignedReaderName}
                                 </option>
                             ))}
                          </select>
                     </div>
                     
-                    {/* Cột Hợp đồng (Sắp xếp) */}
-                    <SortableContext
-                        // Cung cấp mảng ID (phải là string)
-                        items={assignedList.map(item => item.contractId.toString())}
-                        strategy={verticalListSortingStrategy}
-                    >
-                        <div className="p-4 rounded-lg min-h-[400px] bg-gray-100">
-                            <h3 className="font-semibold text-gray-700 mb-4">
-                                Thứ tự Hợp đồng ({assignedList.length})
-                            </h3>
-                            {loadingContracts ? (
-                                <div className="flex justify-center items-center h-40">
-                                    <Loader2 size={24} className="animate-spin text-gray-500" />
-                                </div>
-                            ) : (
-                                assignedList.map((item, index) => ( // <-- Thêm index
-                                    // Sửa: Truyền index vào Card
-                                    <SortableContractCard 
-                                        key={item.contractId} 
-                                        item={item} 
-                                        index={index} // (Mặc dù Card không dùng, nhưng map có)
+                    {/* Danh sách Sắp xếp */}
+                    {selectedRouteId && (
+                        <div className="border rounded-lg overflow-hidden bg-gray-50">
+                            <div className="bg-white p-3 border-b flex justify-between items-center sticky top-0 z-10">
+                                <h3 className="font-semibold text-gray-800 flex items-center">
+                                    Danh sách Hợp đồng
+                                    <span className="ml-2 text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border">
+                                        Trang {pagination.page + 1}
+                                    </span>
+                                </h3>
+                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                    Tổng: {pagination.totalElements}
+                                </span>
+                            </div>
+
+                            <div className="p-4 min-h-[300px]">
+                                {loadingContracts ? (
+                                    <div className="flex flex-col justify-center items-center h-60 text-gray-400">
+                                        <Loader2 size={40} className="animate-spin mb-2" />
+                                        <p className="text-sm">Đang tải danh sách...</p>
+                                    </div>
+                                ) : assignedList.length === 0 ? (
+                                    <div className="flex flex-col justify-center items-center h-60 text-gray-400 italic bg-white rounded border border-dashed">
+                                        <p>Chưa có hợp đồng nào trong tuyến này.</p>
+                                    </div>
+                                ) : (
+                                    <SortableContext
+                                        items={assignedList.map(item => item.contractId.toString())}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        <div className="space-y-2">
+                                            {assignedList.map((item, index) => (
+                                                <SortableContractCard 
+                                                    key={item.contractId} 
+                                                    item={item} 
+                                                    index={(pagination.page * pagination.size) + index} 
+                                                />
+                                            ))}
+                                        </div>
+                                    </SortableContext>
+                                )}
+                            </div>
+
+                            {!loadingContracts && assignedList.length > 0 && (
+                                <div className="bg-white p-2 border-t">
+                                    <Pagination 
+                                        currentPage={pagination.page}
+                                        totalElements={pagination.totalElements}
+                                        pageSize={pagination.size}
+                                        onPageChange={handlePageChange}
                                     />
-                                ))
+                                </div>
                             )}
                         </div>
-                    </SortableContext>
+                    )}
                 </div>
 
-                {/* Nút Lưu */}
-                <div className="bg-white p-4 rounded-lg shadow-sm mt-6 flex justify-end">
-                    <button
-                        onClick={handleSaveChanges}
-                        disabled={submitting || loadingContracts || !selectedRouteId}
-                        className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-                    >
-                        <Save size={18} className="mr-2" />
-                        {submitting ? 'Đang lưu...' : 'Lưu Thứ Tự Tuyến Này'}
-                    </button>
+                {/* Footer Sticky */}
+                <div className="sticky bottom-4 md:bottom-6 z-40">
+                    <div className="bg-white p-4 rounded-lg shadow-[0_0_15px_rgba(0,0,0,0.1)] border border-gray-200 flex justify-end gap-3 items-center">
+                        <div className="hidden sm:flex text-xs text-gray-500 items-center mr-auto bg-gray-50 px-3 py-2 rounded-md border border-gray-100">                         
+                            <span>Mẹo: Kéo thả các thẻ hợp đồng để thay đổi vị trí, sau đó bấm <strong>Lưu Thay Đổi</strong>.</span>
+                        </div>
+
+                        <button
+                            onClick={handlePreSave} // <-- GỌI HÀM MỞ MODAL
+                            disabled={submitting || loadingContracts || !selectedRouteId}
+                            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-green-600 text-white font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+                        >
+                            {submitting ? (
+                                <Loader2 size={18} className="animate-spin mr-2" />
+                            ) : (
+                                <Save size={18} className="mr-2" />
+                            )}
+                            {submitting ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                        </button>
+                    </div>
                 </div>
+
+                {/* --- 5. RENDER MODAL XÁC NHẬN --- */}
+                <ConfirmModal 
+                    isOpen={showConfirmModal}
+                    onClose={() => setShowConfirmModal(false)} // Đóng modal khi hủy
+                    onConfirm={handleConfirmSave} // Gọi API khi đồng ý
+                    title="Xác nhận lưu thay đổi"
+                    message="Bạn có chắc chắn muốn lưu lại thứ tự sắp xếp mới cho Tuyến này không?"
+                    isLoading={submitting}
+                />
+
             </div>
         </DndContext>
     );

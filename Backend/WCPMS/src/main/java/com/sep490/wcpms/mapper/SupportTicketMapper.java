@@ -44,6 +44,13 @@ public class SupportTicketMapper {
             dto.setAssignedToName(assignedTo.getFullName());
         }
 
+        // --- THÊM LOGIC LẤY ĐỒNG HỒ ---
+        WaterMeter meter = entity.getWaterMeter();
+        if (meter != null) {
+            dto.setMeterCode(meter.getMeterCode()); // Gán mã đồng hồ vào DTO
+        }
+        // -----------------------------
+
         // --- THÊM 2 DÒNG BỊ THIẾU ---
         dto.setResponse(entity.getResponse()); // Lấy nội dung phản hồi
         dto.setResolvedDate(entity.getResolvedDate()); // Lấy ngày giải quyết

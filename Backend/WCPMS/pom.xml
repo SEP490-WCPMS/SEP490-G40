@@ -56,19 +56,19 @@
         </dependency>
 
 
-        <!-- tess4j -->
-        <dependency>
-            <groupId>net.sourceforge.tess4j</groupId>
-            <artifactId>tess4j</artifactId>
-            <version>5.11.0</version>
-        </dependency>
+<!--        &lt;!&ndash; tess4j &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>net.sourceforge.tess4j</groupId>-->
+<!--            <artifactId>tess4j</artifactId>-->
+<!--            <version>5.11.0</version>-->
+<!--        </dependency>-->
 
-        <!-- opencv -->
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>opencv-platform</artifactId>
-            <version>4.9.0-1.5.10</version>
-        </dependency>
+<!--        &lt;!&ndash; opencv &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>org.bytedeco</groupId>-->
+<!--            <artifactId>opencv-platform</artifactId>-->
+<!--            <version>4.9.0-1.5.10</version>-->
+<!--        </dependency>-->
 
         <!-- Apache Commons Imaging (tùy chọn) -->
         <dependency>

@@ -69,7 +69,7 @@ const mainMenuItems = [
   // --- HẾT PHẦN THÊM ---
   // --- THÊM MENU MỚI (CHO CÁCH B) ---
   {
-    title: 'Tạo Ticket Mới', // (Form tạo hộ KH)
+    title: 'Tạo Yêu Cầu Hỗ Trợ Mới', // (Form tạo hộ KH)
     url: '/service/create-ticket',
     icon: PlusCircle,
   },

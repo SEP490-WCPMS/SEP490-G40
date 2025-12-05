@@ -12,3 +12,71 @@
 .wp-error{background:#ffecec;padding:8px;border-radius:4px;color:#b94a48;margin-bottom:8px}
 .wp-select{padding:8px;border:1px solid #ddd;border-radius:4px}
 .wp-list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+/* --- THÊM STYLE CHO MODAL --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+.modal-header h3 { margin: 0; color: #0A77E2; }
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+.btn-confirm {
+    background-color: #0A77E2;
+    color: white;
+}
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+}
+
+/* --- STYLE PHÂN TRANG --- */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 20px;
+    padding: 10px;
+}
+.page-info {
+    font-weight: 600;
+    color: #555;
+}
+
+/* --- STYLE LỖI --- */
+.wm-error {
+    background-color: #fee2e2;
+    color: #dc2626;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}

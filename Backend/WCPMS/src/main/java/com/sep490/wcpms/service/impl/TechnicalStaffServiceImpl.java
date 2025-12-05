@@ -23,6 +23,10 @@ import com.sep490.wcpms.repository.MeterInstallationRepository;
 import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.repository.WaterServiceContractRepository;
 import com.sep490.wcpms.entity.ContractUsageDetail;
+import org.springframework.context.ApplicationEventPublisher; // Publish domain events
+import com.sep490.wcpms.event.SurveyReportSubmittedEvent; // Event nộp báo cáo khảo sát
+import com.sep490.wcpms.event.InstallationCompletedEvent; // Event hoàn tất lắp đặt
+
 
 import com.sep490.wcpms.dto.MeterInfoDTO;
 import com.sep490.wcpms.dto.MeterReplacementRequestDTO;
@@ -72,6 +76,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private CustomerRepository customerRepository;
     @Autowired
     private com.sep490.wcpms.service.ActivityLogService activityLogService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher; // Publish domain events
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -115,6 +121,16 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         contractMapper.updateContractFromSurveyDTO(contract, reportDTO);
         contract.setContractStatus(Contract.ContractStatus.PENDING_SURVEY_REVIEW);
         Contract savedContract = contractRepository.save(contract);
+
+        // Publish event sau commit
+        eventPublisher.publishEvent(new SurveyReportSubmittedEvent(
+                savedContract.getId(),
+                savedContract.getContractNumber(),
+                staffId,
+                savedContract.getServiceStaff() != null ? savedContract.getServiceStaff().getId() : null,
+                savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
 
         return contractMapper.toDto(savedContract);
     }
@@ -189,6 +205,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // --- HẾT PHẦN THÊM ---
 
         serviceContract.setServiceStartDate(LocalDate.now());
+        serviceContract.setServiceEndDate(contract.getEndDate());
         serviceContract.setContractSignedDate(LocalDate.now()); // Giả định ngày ký là hôm nay
         serviceContract.setContractStatus(WaterServiceContract.WaterServiceContractStatus.ACTIVE);
         serviceContract.setSourceContract(contract); // Liên kết ngược về HĐ Lắp đặt (Bảng 8)
@@ -242,6 +259,11 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         // 7. Cập nhật trạng thái Đồng hồ (Bảng 10)
         meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
+        // --- THÊM ĐOẠN NÀY (QUAN TRỌNG) ---
+        // Thiết lập ngày kiểm định lần đầu tiên: Tính từ hôm nay + 5 năm
+        LocalDate firstMaintenanceDate = LocalDate.now().plusYears(5);
+        meter.setNextMaintenanceDate(firstMaintenanceDate);
+        // ----------------------------------
         waterMeterRepository.save(meter); // Lưu Bảng 10
 
         // --- XÓA KHỐI LẶP Ở ĐÂY ---
@@ -250,7 +272,16 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         ContractDetailsDTO dto = contractMapper.toDto(contract);
 
-        // Notification logic removed
+        // Publish event hoàn tất lắp đặt
+        eventPublisher.publishEvent(new InstallationCompletedEvent(
+                contract.getId(),
+                contract.getContractNumber(),
+                staffId,
+                contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null,
+                contract.getCustomer() != null ? contract.getCustomer().getCustomerName() : null,
+                LocalDateTime.now()
+        ));
+
         return dto;
     }
 
@@ -406,6 +437,11 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         }
 
         newMeter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED);
+
+        // Thiết lập ngày kiểm định cho đồng hồ MỚI: Tính từ hôm nay + 5 năm
+        LocalDate newMeterNextDue = LocalDate.now().plusYears(5);
+        newMeter.setNextMaintenanceDate(newMeterNextDue);
+        // -------------------------------
 
         waterMeterRepository.save(oldMeter);
 

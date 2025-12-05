@@ -42,7 +42,7 @@ public class MaintenanceService {
         System.out.println("SCHEDULER: Đang chạy tác vụ kiểm tra đồng hồ quá hạn 5 năm...");
 
         // 1. Lấy ngày cách đây 5 năm
-        LocalDate fiveYearsAgo = LocalDate.now().minusYears(5);
+//        LocalDate fiveYearsAgo = LocalDate.now().minusYears(5);
 
         // 2. Tìm một tài khoản SERVICE_STAFF để gán việc
         // (Lấy tài khoản 'dichvu' (ID 5) làm mặc định, hoặc tìm bất kỳ Service Staff nào)
@@ -54,7 +54,7 @@ public class MaintenanceService {
         Account defaultServiceStaff = serviceStaffAccount.get();
 
         // 3. Tìm tất cả các bản lắp đặt quá hạn 5 năm VÀ chưa được xử lý
-        List<MeterInstallation> overdueInstallations = meterInstallationRepository.findOverdueInstallations(fiveYearsAgo);
+        List<MeterInstallation> overdueInstallations = meterInstallationRepository.findOverdueInstallations();
 
         System.out.println("SCHEDULER: Tìm thấy " + overdueInstallations.size() + " đồng hồ quá hạn kiểm định.");
 
@@ -71,6 +71,7 @@ public class MaintenanceService {
                 CustomerFeedback request = new CustomerFeedback();
                 request.setFeedbackNumber(ticketNumber); // Mã ticket
                 request.setCustomer(installation.getCustomer()); // Khách hàng của bản lắp đặt đó
+                request.setWaterMeter(installation.getWaterMeter());
                 request.setFeedbackType(CustomerFeedback.FeedbackType.SUPPORT_REQUEST); // Loại: Yêu cầu
 
                 String description = String.format(

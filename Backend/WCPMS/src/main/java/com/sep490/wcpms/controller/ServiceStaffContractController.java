@@ -197,10 +197,11 @@ public class ServiceStaffContractController {
      */
     @GetMapping("/support-tickets")
     public ResponseEntity<Page<SupportTicketDTO>> getSupportTickets(
+            @RequestParam(required = false) List<String> type, // Nhận 1 hoặc nhiều type
             @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         // --- SỬA LỖI TẠI ĐÂY ---
-        Page<SupportTicketDTO> tickets = service.getSupportTickets(pageable); // Dùng 'service'
+        Page<SupportTicketDTO> tickets = service.getSupportTickets(type, pageable); // Dùng 'service'
         return ResponseEntity.ok(tickets);
     }
 

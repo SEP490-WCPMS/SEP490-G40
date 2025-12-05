@@ -68,10 +68,11 @@ public class CustomerFeedbackController {
      */
     @GetMapping("/customer/my-tickets")
     public ResponseEntity<Page<SupportTicketDTO>> getMyTickets(
+            @RequestParam(required = false) List<String> status, // Nhận 1 hoặc nhiều status
             @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Integer customerAccountId = getAuthenticatedUserId();
-        Page<SupportTicketDTO> tickets = customerFeedbackService.getMyTickets(customerAccountId, pageable);
+        Page<SupportTicketDTO> tickets = customerFeedbackService.getMyTickets(customerAccountId, status, pageable);
         return ResponseEntity.ok(tickets);
     }
 

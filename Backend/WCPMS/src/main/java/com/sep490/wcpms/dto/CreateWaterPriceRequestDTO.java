@@ -11,7 +11,7 @@ import java.time.LocalDate;
 public class CreateWaterPriceRequestDTO {
     @NotNull
     private Integer priceTypeId;
-    @NotBlank
+
     private String typeName;
     @NotNull
     private BigDecimal unitPrice;

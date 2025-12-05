@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyMaintenanceRequests } from '../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
-import { RefreshCw, ArrowRight, Eye } from 'lucide-react'; // <-- THÊM ICON "EYE"
+import { getMyMaintenanceRequests } from '../Services/apiTechnicalStaff'; 
+import { RefreshCw, ArrowRight, Eye } from 'lucide-react';
 import moment from 'moment';
+import Pagination from '../common/Pagination';
+
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 /**
  * Hàm helper để trích xuất Mã Đồng Hồ từ mô tả của ticket
@@ -22,7 +27,7 @@ const extractMeterCode = (description) => {
 function MaintenanceRequestList() {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // const [error, setError] = useState(null); // Không dùng state error hiển thị nữa
     const navigate = useNavigate();
 
     // State cho Phân trang
@@ -32,26 +37,47 @@ function MaintenanceRequestList() {
         totalElements: 0,
     });
 
-    // Hàm fetch dữ liệu (gọi API Bước 3)
-    const fetchData = (page = 0, size = 10) => {
+    // 3. Hàm fetch dữ liệu
+    const fetchData = (params = {}) => {
         setLoading(true);
-        setError(null);
         
-        getMyMaintenanceRequests({ page, size, sort: 'submittedDate,desc' })
+        // Ưu tiên lấy page từ params, nếu không lấy từ state hiện tại
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+
+        getMyMaintenanceRequests({ page: currentPage, size: currentSize, sort: 'submittedDate,desc' })
             .then(response => {
                 const data = response.data;
-                setTickets(data?.content || []);
-                setPagination(prev => ({
-                    ...prev,
-                    page: data.number,
-                    size: data.size,
-                    totalElements: data.totalElements,
-                    totalPages: data.totalPages,
-                }));
+                
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10;
+                } else if (data && data.content) {
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+
+                setTickets(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => {
                 console.error("Lỗi khi tải Yêu cầu Bảo trì:", err);
-                setError("Không thể tải danh sách công việc. Vui lòng thử lại.");
+                // Thay setError bằng Toast
+                toast.error("Không thể tải danh sách công việc. Vui lòng thử lại.");
             })
             .finally(() => {
                 setLoading(false);
@@ -60,33 +86,35 @@ function MaintenanceRequestList() {
 
     // Load dữ liệu khi component mount
     useEffect(() => {
-        fetchData(0, pagination.size);
+        fetchData({ page: 0 });
     }, []);
 
-    // --- HÀM MỚI: Xử lý khi nhấn "Xem chi tiết" ---
+    // Handlers
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRefresh = () => {
+        fetchData();
+        // Thông báo nhẹ khi làm mới
+        toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
+    };
+
     const handleViewDetails = (ticketId) => {
-        // Điều hướng đến trang chi tiết ticket (Route chúng ta đã tạo)
         navigate(`/technical/maintenance-requests/${ticketId}`);
     };
-    // ---
-
-    // Hàm xử lý khi nhấn "Thực hiện"
-    // const handleProcessTicket = (ticket) => {
-    //     const meterCode = extractMeterCode(ticket.description);
-        
-    //     if (meterCode) {
-    //         // Chuyển đến trang Thay thế và GỬI KÈM meterCode
-    //         navigate('/technical/replace-meter', { 
-    //             state: { prefillMeterCode: meterCode }
-    //         });
-    //     } else {
-    //         // Nếu là ticket hỏng (không có mã), chỉ chuyển trang
-    //         navigate('/technical/replace-meter');
-    //     }
-    // };
     
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+            
+            {/* 2. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
                 <div>
@@ -94,8 +122,8 @@ function MaintenanceRequestList() {
                     <p className="text-sm text-gray-600">Danh sách các công việc đã được gán cho bạn (Trạng thái: IN_PROGRESS).</p>
                 </div>
                 <button
-                    onClick={() => fetchData(0)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none"
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -103,82 +131,68 @@ function MaintenanceRequestList() {
                 </button>
             </div>
 
-            {/* Hiển thị lỗi */}
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
-                    <p className="font-bold">Đã xảy ra lỗi</p>
-                    <p>{error}</p>
-                </div>
-            )}
+            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Bảng Dữ liệu */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <div className="bg-white rounded-lg shadow border border-gray-200">
                  <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {loading && (
-                         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-lg">
-                             {/* ... (Spinner SVG) ... */}
-                             <span className="ml-3 text-gray-500 text-lg">Đang tải danh sách...</span>
-                         </div>
+                    {loading && tickets.length === 0 && (
+                         <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
                     )}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3 ...">Mã Ticket</th>
-                                <th scope="col" className="px-6 py-3 ...">Khách Hàng</th>
-                                <th scope="col" className="px-6 py-3 ...">Nội dung Yêu cầu</th>
-                                <th scope="col" className="px-6 py-3 ...">Ngày nhận</th>
-                                <th scope="col" className="px-6 py-3 ...">Thao Tác</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Ticket</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách Hàng</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nội dung Yêu cầu</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày nhận</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {tickets.length > 0 ? (
+                            {!loading && tickets.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500 italic">
+                                        Không có yêu cầu bảo trì nào được gán.
+                                    </td>
+                                </tr>
+                            ) : (
                                 tickets.map(ticket => (
-                                    <tr key={ticket.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 ...">{ticket.feedbackNumber}</td>
-                                        <td className="px-6 py-4 ...">{ticket.customerName}</td>
-                                        <td className="px-6 py-4 ... max-w-md truncate" title={ticket.description}>{ticket.description}</td>
-                                        <td className="px-6 py-4 ...">{moment(ticket.submittedDate).format('HH:mm DD/MM/YYYY')}</td>
+                                    <tr key={ticket.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.feedbackNumber}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.customerName}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title={ticket.description}>{ticket.description}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(ticket.submittedDate).format('HH:mm DD/MM/YYYY')}</td>
                                         
-                                        {/* --- SỬA LẠI CỘT THAO TÁC --- */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                            {/* Nút 1: Xem Chi Tiết */}
                                             <button
                                                 onClick={() => handleViewDetails(ticket.id)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out"
                                                 title="Xem chi tiết thông tin khách hàng, đồng hồ"
                                             >
                                                 <Eye size={14} className="mr-1.5" />
                                                 Chi tiết
                                             </button>
-                                            
-                                            {/* Nút 2: Thực Hiện */}
-                                            {/* <button
-                                                onClick={() => handleProcessTicket(ticket)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
-                                                title="Chuyển đến trang Thay thế/Kiểm định"
-                                            >
-                                                Thực hiện <ArrowRight size={14} className="ml-1.5" />
-                                            </button> */}
                                         </td>
-                                        {/* --- HẾT PHẦN SỬA --- */}
-
                                     </tr>
                                 ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500 italic">
-                                        {loading ? 'Đang tải...' : 'Không có yêu cầu bảo trì nào được gán.'}
-                                    </td>
-                                </tr>
                             )}
                         </tbody>
                     </table>
                  </div>
-                 {/* (Component Phân trang) */}
+
+                 {/* Component Phân trang */}
+                 {!loading && tickets.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
             </div>
         </div>
     );
 }
 
 export default MaintenanceRequestList;
-

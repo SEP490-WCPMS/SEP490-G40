@@ -1,122 +1,130 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; // Đảm bảo đường dẫn đúng
-import { RefreshCw } from 'lucide-react'; // Icon làm mới
+import { useNavigate } from 'react-router-dom';
+import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; 
+import { RefreshCw } from 'lucide-react'; 
+import Pagination from '../../common/Pagination';
+
+// 1. IMPORT TOASTIFY
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function SurveyContractsList() {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // const [error, setError] = useState(null); // Không dùng state error hiển thị UI nữa
     const navigate = useNavigate();
-    const location = useLocation();
 
-    // Hàm fetch dữ liệu
-    const fetchData = (opts = {}) => {
+    // State Pagination
+    const [pagination, setPagination] = useState({ 
+        page: 0, 
+        size: 10, 
+        totalElements: 0 
+    });
+
+    // 3. Cập nhật fetchData
+    const fetchData = (params = {}) => {
         setLoading(true);
-        setError(null); // Reset lỗi trước khi fetch
-        const params = { status: 'PENDING', ...opts };
-        getAssignedSurveyContracts(params)
+        
+        const currentPage = params.page !== undefined ? params.page : pagination.page;
+        const currentSize = params.size || pagination.size;
+
+        getAssignedSurveyContracts({ page: currentPage, size: currentSize })
             .then(response => {
-                // Backend có thể trả về dạng paged `{ content: [...] }` hoặc mảng trực tiếp
-                const data = response?.data?.content || response?.data || [];
-                setContracts(Array.isArray(data) ? data : []);
+                const data = response.data;
+                
+                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG ---
+                let loadedData = [];
+                let totalItems = 0;
+                let pageNum = 0;
+                let pageSizeRaw = 10;
+
+                if (Array.isArray(data)) {
+                    loadedData = data;
+                    totalItems = data.length;
+                    pageSizeRaw = data.length > 0 ? data.length : 10;
+                } else if (data && data.content) {
+                    loadedData = data.content;
+                    const pageInfo = data.page || data; 
+                    totalItems = pageInfo.totalElements || 0;
+                    pageNum = pageInfo.number || 0;
+                    pageSizeRaw = pageInfo.size || 10;
+                }
+
+                setContracts(loadedData || []);
+                setPagination({
+                    page: pageNum,
+                    size: pageSizeRaw,
+                    totalElements: totalItems,
+                });
             })
             .catch(err => {
                 console.error("Lỗi khi lấy danh sách hợp đồng khảo sát:", err);
-                // Cung cấp thông báo lỗi rõ ràng hơn
-                setError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối hoặc thử lại.");
+                // Thay setError bằng Toast
+                toast.error("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối hoặc thử lại.");
             })
             .finally(() => {
                 setLoading(false);
             });
     };
 
-    // Gọi fetchData khi component mount lần đầu; nếu URL có ?highlight=... thì gửi keyword để backend ưu tiên trả về
+    // Gọi fetchData khi mount
     useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const highlightId = params.get('highlight');
-        if (highlightId) {
-            // nếu highlight giống mã hợp đồng (REQ-...), dùng làm keyword tìm kiếm
-            fetchData({ keyword: highlightId });
-        } else {
-            fetchData();
-        }
-    }, []); // Mảng dependency rỗng đảm bảo chỉ chạy 1 lần
+        fetchData({ page: 0 });
+    }, []); 
 
-    // Highlight logic: nếu URL có ?highlight=<id> thì cuộn tới hàng tương ứng sau khi dữ liệu load
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const highlightId = params.get('highlight');
-        if (!highlightId) return;
+    // Handlers
+    const handlePageChange = (newPage) => {
+        fetchData({ page: newPage });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-        let attempts = 0;
-        const tryHighlight = () => {
-            attempts += 1;
-            const el = document.querySelector(`[data-contract-id="${highlightId}"]`);
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return;
-            }
-            if (attempts < 10) setTimeout(tryHighlight, 300);
-        };
+    const handleRefresh = () => {
+        fetchData();
+        // Thông báo nhẹ khi làm mới
+        toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
+    };
 
-        setTimeout(tryHighlight, 200);
-    }, [location.search, contracts]);
-
-    // Hàm điều hướng đến trang chi tiết
     const handleViewDetails = (contractId) => {
-        // Sử dụng đường dẫn tuyệt đối để đảm bảo chính xác
         navigate(`/technical/survey/report/${contractId}`);
     };
 
     return (
-        // Sử dụng bố cục nền và padding giống Dashboard
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            {/* Header của trang */}
+            
+            {/* 2. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
+            {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Khảo Sát</h1>
                     <p className="text-sm text-gray-600">Danh sách các hợp đồng đang chờ khảo sát (Trạng thái: PENDING).</p>
                 </div>
-                {/* Nút Làm mới */}
                 <button
-                    onClick={fetchData}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
-                    disabled={loading} // Vô hiệu hóa nút khi đang tải
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
+                    disabled={loading}
                 >
-                    <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} /> {/* Icon quay khi loading */}
+                    <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Làm mới
                 </button>
             </div>
 
-            {/* Hiển thị thông báo lỗi (nếu có) */}
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-sm" role="alert">
-                    <p className="font-bold">Đã xảy ra lỗi</p>
-                    <p>{error}</p>
-                </div>
-            )}
+            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Bảng dữ liệu */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-                 {/* Container cho bảng và spinner */}
-                 <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}> {/* Làm mờ khi loading */}
-                    {/* Spinner hiển thị khi đang tải */}
-                    {loading && (
-                         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-lg">
-                            {/* SVG Spinner */}
-                            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                             <span className="ml-3 text-gray-500 text-lg">Đang tải danh sách...</span>
-                         </div>
+            <div className="bg-white rounded-lg shadow border border-gray-200">
+                 <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {loading && contracts.length === 0 && (
+                         <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
                     )}
-                    {/* Bảng HTML với class Tailwind */}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                {/* Tiêu đề cột */}
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã HĐ</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách Hàng</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ</th>
@@ -126,44 +134,48 @@ function SurveyContractsList() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {/* Render dữ liệu hoặc thông báo rỗng */}
-                            {contracts.length > 0 ? (
+                            {!loading && contracts.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
+                                        Không có yêu cầu khảo sát nào cần xử lý.
+                                    </td>
+                                </tr>
+                            ) : (
                                 contracts.map(contract => (
-                                    <tr key={contract.id} data-contract-id={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
-                                        {/* Dữ liệu từng dòng */}
+                                    <tr key={contract.id} className="hover:bg-gray-50 transition duration-150 ease-in-out">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{contract.contractNumber}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.customerName}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{contract.customerAddress}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.applicationDate || '-'}</td> {/* Hiển thị '-' nếu null */}
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={contract.customerAddress}>{contract.customerAddress}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.applicationDate || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {/* Badge trạng thái PENDING */}
                                             <span className="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                                 Chờ Khảo Sát
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            {/* Nút xem chi tiết */}
                                             <button
                                                 onClick={() => handleViewDetails(contract.id)}
-                                                className="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:underline transition duration-150 ease-in-out"
+                                                className="text-indigo-600 hover:text-indigo-900 focus:outline-none hover:underline transition duration-150 ease-in-out"
                                             >
                                                 Khảo sát / Báo giá
                                             </button>
                                         </td>
                                     </tr>
                                 ))
-                            ) : (
-                                // Thông báo khi không có dữ liệu
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500 italic">
-                                        {/* Hiển thị thông báo phù hợp với trạng thái loading */}
-                                        {loading ? 'Đang tải...' : 'Không có yêu cầu khảo sát nào cần xử lý.'}
-                                    </td>
-                                </tr>
                             )}
                         </tbody>
                     </table>
-                </div>
+                 </div>
+
+                 {/* Component Phân trang */}
+                 {!loading && contracts.length > 0 && (
+                    <Pagination 
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                 )}
             </div>
         </div>
     );

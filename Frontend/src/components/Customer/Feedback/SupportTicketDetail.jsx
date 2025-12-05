@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSupportTicketDetail, getInstallationDetail } from '../../Services/apiCustomer'; // Đảm bảo đường dẫn đúng
-import { ArrowLeft, User, MessageSquare } from 'lucide-react';
+import { getSupportTicketDetail, getInstallationDetail } from '../../Services/apiCustomer'; 
+import { ArrowLeft, User, MessageSquare, AlertCircle } from 'lucide-react';
 import moment from 'moment';
+
+// 1. IMPORT TOAST
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 /**
  * Trang "Cách A": Khách hàng xem chi tiết Yêu cầu Hỗ trợ.
@@ -12,22 +16,20 @@ function SupportTicketDetail() {
     const navigate = useNavigate();
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    // --- SỬA LỖI TẠI ĐÂY ---
-    // Khai báo state cho ảnh và text
+    // const [error, setError] = useState(null); // Bỏ state error hiển thị UI cũ
+
+    // State cho ảnh và text phản hồi
     const [installationImage, setInstallationImage] = useState(null);
-    const [responseText, setResponseText] = useState(null); // Dùng const [var, setVar]
-    // --- HẾT PHẦN SỬA ---
+    const [responseText, setResponseText] = useState(null); 
 
     useEffect(() => {
         if (!ticketId) {
-            setError("Không tìm thấy mã Yêu cầu.");
+            toast.error("Không tìm thấy mã Yêu cầu.");
             setLoading(false);
             return;
         }
         
         setLoading(true);
-        setError(null);
         setInstallationImage(null);
         setResponseText(null);
         
@@ -41,10 +43,7 @@ function SupportTicketDetail() {
                 if (rawResponse.includes("---INSTALLATION_ID---")) {
                     const parts = rawResponse.split("---INSTALLATION_ID---");
                     
-                    // --- SỬA LỖI TẠI ĐÂY (Dòng 114 của bạn) ---
-                    // Dùng hàm setResponseText() để cập nhật
                     setResponseText(parts[0]); // Phần chữ
-                    // ---
                     
                     const installId = parseInt(parts[1]);
                     if (installId) {
@@ -53,15 +52,21 @@ function SupportTicketDetail() {
                             .then(imgRes => {
                                 setInstallationImage(imgRes.data.installationImageBase64);
                             })
-                            .catch(imgErr => console.error("Lỗi tải ảnh lắp đặt:", imgErr));
+                            .catch(imgErr => {
+                                console.error("Lỗi tải ảnh lắp đặt:", imgErr);
+                                // Không cần toast lỗi ảnh, chỉ log là được
+                            });
                     }
                 } else {
-                    // Nếu không có ID ảnh (ví dụ: trả lời FEEDBACK)
-                    // --- SỬA LỖI TẠI ĐÂY (Tương tự) ---
-                    setResponseText(rawResponse); // Dùng hàm set
+                    // Nếu không có ID ảnh
+                    setResponseText(rawResponse); 
                 }
             })
-            .catch(err => setError(err.response?.data?.message || "Lỗi tải chi tiết."))
+            .catch(err => {
+                console.error("Lỗi tải chi tiết:", err);
+                // Thay khung đỏ bằng Toast
+                toast.error(err.response?.data?.message || "Lỗi tải chi tiết yêu cầu. Vui lòng thử lại.");
+            })
             .finally(() => setLoading(false));
     }, [ticketId]);
 
@@ -85,51 +90,63 @@ function SupportTicketDetail() {
     };
 
     if (loading) {
-        return <div className="p-8 text-center">Đang tải...</div>;
-    }
-
-    if (error) {
         return (
-             <div className="p-8 max-w-4xl mx-auto">
-                 <button onClick={() => navigate(-1)} className="inline-flex items-center text-blue-600 hover:underline mb-4">
-                     <ArrowLeft size={18} className="mr-1" /> Quay lại
-                 </button>
-                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-                    <p className="font-bold">Đã xảy ra lỗi</p>
-                    <p>{error}</p>
-                </div>
+             <div className="flex justify-center items-center h-screen bg-gray-50">
+                 <div className="text-gray-500 flex items-center">
+                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                     Đang tải chi tiết...
+                 </div>
              </div>
         );
     }
-    
+
+    // Nếu không có dữ liệu (do lỗi)
     if (!ticket) {
-        return <div className="p-8 text-center">Không tìm thấy yêu cầu.</div>;
+        return (
+            <div className="p-8 text-center bg-gray-50 min-h-screen flex flex-col items-center pt-20">
+                <AlertCircle className="h-12 w-12 text-gray-300 mb-4" />
+                <p className="text-gray-500 mb-6">Không tìm thấy dữ liệu yêu cầu.</p>
+                <button 
+                    onClick={() => navigate('/my-support-tickets')}
+                    className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                    Quay lại danh sách
+                </button>
+                {/* Toast container cho trường hợp này */}
+                <ToastContainer position="top-center" theme="colored" />
+            </div>
+        );
     }
 
-    // --- LOGIC TÁCH CHUỖI PHẢN HỒI ---
-    // let responseText = ticket.response || null;
-    // let responseImageBase64 = null;
-    
-    if (responseText && responseText.includes("---IMAGE_SEPARATOR---")) {
-        const parts = responseText.split("---IMAGE_SEPARATOR---");
-        responseText = parts[0]; // Phần chữ
-        responseImageBase64 = parts[1]; // Phần ảnh Base64
-    }
+    // Logic tách chuỗi phản hồi cũ (để tương thích ngược nếu cần, dù đã xử lý ở trên)
+    // let displayResponseText = responseText;
+    // if (displayResponseText && displayResponseText.includes("---IMAGE_SEPARATOR---")) {
+    //    const parts = displayResponseText.split("---IMAGE_SEPARATOR---");
+    //    displayResponseText = parts[0];
+    // }
 
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-4xl mx-auto bg-gray-50 min-h-screen">
+            
+            {/* 2. TOAST CONTAINER */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
+
             {/* Nút Quay lại */}
-            <button onClick={() => navigate('/my-support-tickets')} className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800">
+            <button onClick={() => navigate('/my-support-tickets')} className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
                  <ArrowLeft size={18} className="mr-1" />
                  Quay lại danh sách
             </button>
 
             {/* Box Chi tiết Ticket */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow border border-gray-200">
                 {/* Header của Ticket */}
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-4 border-b border-gray-200">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-800">Mã Yêu Cầu: {ticket.feedbackNumber}</h1>
+                        <h1 className="text-xl font-bold text-gray-800 mb-1">Mã Yêu Cầu: {ticket.feedbackNumber}</h1>
                         <p className="text-sm text-gray-500">
                             Ngày gửi: {moment(ticket.submittedDate).format('HH:mm DD/MM/YYYY')}
                         </p>
@@ -138,16 +155,27 @@ function SupportTicketDetail() {
                         {getStatusText(ticket.status)}
                     </span>
                 </div>
+
+                {/* --- HIỂN THỊ ĐỒNG HỒ NƯỚC (NẾU CÓ) --- */}
+                {ticket.meterCode && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md inline-block">
+                        <p className="text-sm text-blue-800 flex items-center">                         
+                            <strong>Đồng hồ báo hỏng:</strong> 
+                            <span className="ml-2 font-mono font-bold text-blue-900 text-base">{ticket.meterCode}</span>
+                        </p>
+                    </div>
+                )}
+                {/* --------------------------------------- */}
                 
                 {/* Nội dung Yêu cầu (Của bạn) */}
                 <div className="py-5">
                     <h2 className="text-base font-semibold text-gray-700 mb-2">Nội dung yêu cầu của bạn:</h2>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded border whitespace-pre-wrap">
+                    <p className="text-sm text-gray-700 bg-gray-50 p-4 rounded border border-gray-200 whitespace-pre-wrap leading-relaxed">
                         {ticket.description}
                     </p>
                 </div>
 
-                {/* Phản hồi của nhân viên (ĐÃ SỬA LẠI HOÀN TOÀN) */}
+                {/* Phản hồi của nhân viên */}
                 {ticket.status !== 'PENDING' && (
                     <div className="py-5 border-t border-gray-200">
                         <h2 className="text-base font-semibold text-gray-700 mb-3">Phản hồi từ Bộ phận Dịch vụ:</h2>
@@ -169,9 +197,9 @@ function SupportTicketDetail() {
                         
                         {/* Nội dung phản hồi (Phần Text) */}
                         {responseText ? (
-                            <p className="text-sm text-gray-800 bg-blue-50 p-4 rounded border border-blue-200 whitespace-pre-wrap">
+                            <div className="text-sm text-gray-800 bg-blue-50 p-4 rounded border border-blue-200 whitespace-pre-wrap leading-relaxed">
                                 {responseText}
-                            </p>
+                            </div>
                         ) : (
                             <p className="text-sm text-gray-500 italic">
                                 {ticket.status === 'IN_PROGRESS' 
@@ -194,13 +222,12 @@ function SupportTicketDetail() {
                         
                         {/* Ngày giải quyết */}
                         {ticket.resolvedDate && (
-                             <p className="text-xs text-gray-500 mt-3 pt-3 border-t">
+                             <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-dashed border-gray-300 text-right">
                                  Đã giải quyết vào: {moment(ticket.resolvedDate).format('HH:mm DD/MM/YYYY')}
                              </p>
                         )}
                     </div>
                 )}
-                {/* --- HẾT PHẦN SỬA --- */}
             </div>
         </div>
     );
