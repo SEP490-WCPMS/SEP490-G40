@@ -3,16 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, Input, Spin, message, Divider, Row, Col, Tag } from 'antd';
 import { FileTextOutlined, UserOutlined, AppstoreOutlined, InfoCircleOutlined, TeamOutlined } from '@ant-design/icons';
+import { toast, ToastContainer } from 'react-toastify';
 import { getTechnicalStaff } from '../../Services/apiService';
+import ConfirmModal from '../../common/ConfirmModal';
 import './AssignSurveyModal.css'; // ✨ SỬA LỖI 1: Đổi tên file CSS import cho khớp
 
 const { TextArea } = Input;
 
 // ✨ SỬA LỖI 2: Đổi tên Component cho khớp với tên file
-const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialData }) => {
+const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialData, onSuccess }) => {
   const [form] = Form.useForm();
   const [technicalStaff, setTechnicalStaff] = useState([]);
   const [staffLoading, setStaffLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const isOpen = Boolean(typeof visible === 'undefined' ? open : visible);
 
   // Lấy danh sách nhân viên kỹ thuật từ API
@@ -28,7 +32,7 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
         })
         .catch((error) => {
           console.error('Error loading technical staff:', error);
-          message.error('Lỗi khi tải danh sách nhân viên kỹ thuật');
+          toast.error('Lỗi khi tải danh sách nhân viên kỹ thuật');
         })
         .finally(() => {
           setStaffLoading(false);
@@ -51,123 +55,160 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
     }
   }, [initialData, isOpen, form]);
 
-  const handleOk = () => {
+  const handleOk = async () => {
     form.validateFields(['technicalStaffId']).then(() => {
       const formValues = form.getFieldsValue(['technicalStaffId']);
       console.log('Form values:', formValues);
       
       if (!formValues.technicalStaffId) {
-        message.warning('Vui lòng chọn NV Kỹ thuật!');
+        toast.warning('Vui lòng chọn NV Kỹ thuật!');
         return;
       }
       
-      onSave({
+      // Hiện modal xác nhận
+      setShowConfirm(true);
+    }).catch(() => {
+      toast.warning('Vui lòng chọn NV Kỹ thuật!');
+    });
+  };
+
+  const handleConfirmSubmit = async () => {
+    const formValues = form.getFieldsValue(['technicalStaffId']);
+    
+    setSubmitLoading(true);
+    try {
+      await onSave({
         ...initialData,
         technicalStaffId: formValues.technicalStaffId,
       });
-    }).catch(() => {
-      message.warning('Vui lòng chọn NV Kỹ thuật!');
-    });
+      
+      // Đóng confirm modal
+      setShowConfirm(false);
+      
+      // Đóng modal chính
+      onCancel();
+      
+      // Gọi callback để parent xử lý toast + refresh
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Error in handleConfirmSubmit:', error);
+      setShowConfirm(false);
+      // Lỗi thì không đóng modal
+    } finally {
+      setSubmitLoading(false);
+    }
   };
 
   return (
     <Modal
       title={
-        <div className="contract-modal__title">
-          <span className="contract-modal__title-icon">📋</span>
-          <span>Gửi Khảo Sát</span>
+        <div className="flex items-center gap-2">
+          <FileTextOutlined className="text-blue-600 text-xl" />
+          <span className="text-xl font-bold text-gray-800">Gửi Khảo Sát</span>
         </div>
       }
       open={isOpen}
       onCancel={onCancel}
       onOk={handleOk}
-      confirmLoading={loading}
-      width={720}
+      confirmLoading={submitLoading || loading}
+      width={800}
       destroyOnClose
-      okText="Gửi"
+      okText="Gửi Khảo Sát"
       cancelText="Hủy"
     >
       <Spin spinning={loading}>
-        <div className="contract-modal">
-          {/* Summary header */}
-          <div className="contract-modal__summary">
-            <div className="summary-item">
-              <span className="summary-icon"><FileTextOutlined /></span>
+        <Form form={form} layout="vertical" className="pt-2">
+          {/* Box thông tin hợp đồng - Style giống Gia hạn */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+              <FileTextOutlined className="mr-1" /> Thông tin hợp đồng
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="summary-label">Số hợp đồng</div>
-                <div className="summary-value">{initialData?.contractNumber || 'N/A'}</div>
+                <div className="text-xs text-gray-500 mb-1">Số Hợp đồng</div>
+                <div className="font-semibold text-gray-800 text-base">{initialData?.contractNumber || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Khách hàng</div>
+                <div className="font-medium text-gray-800">{initialData?.customerName || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1">Loại giá</div>
+                <div className="font-medium text-gray-800">{initialData?.priceTypeName || 'N/A'}</div>
               </div>
             </div>
-            <div className="summary-item">
-              <span className="summary-icon"><UserOutlined /></span>
-              <div>
-                <div className="summary-label">Khách hàng</div>
-                <div className="summary-value">{initialData?.customerName || 'N/A'}</div>
+            
+            {/* Ghi chú khách hàng nếu có */}
+            {(initialData?.notes || initialData?.customerNotes) && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="text-xs text-gray-500 mb-1">Ghi chú của khách hàng</div>
+                <div className="bg-blue-50 p-3 rounded border border-blue-200 text-sm text-gray-800 whitespace-pre-wrap">
+                  {initialData?.notes || initialData?.customerNotes}
+                </div>
               </div>
-            </div>
-            <div className="summary-item">
-              <span className="summary-icon"><AppstoreOutlined /></span>
+            )}
+          </div>
+
+          {/* Phần chọn nhân viên - Input to, nổi bật */}
+          <Form.Item
+            name="technicalStaffId"
+            label={
+              <span className="font-semibold text-gray-700 text-base flex items-center gap-2">
+                <TeamOutlined className="text-green-600" />
+                Chọn nhân viên kỹ thuật <span className="text-red-500">*</span>
+              </span>
+            }
+            rules={[{ required: true, message: 'Vui lòng chọn NV Kỹ thuật!' }]}
+            className="mb-5"
+          >
+            <Select 
+              placeholder="Chọn nhân viên kỹ thuật để thực hiện khảo sát..." 
+              loading={staffLoading}
+              size="large"
+              showSearch
+              filterOption={(input, option) =>
+                (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {technicalStaff.map((staff) => (
+                <Select.Option key={staff.id} value={staff.id}>
+                  <div className="flex items-center gap-2">
+                    <UserOutlined className="text-blue-500" />
+                    <span>{staff.fullName || staff.username || staff.name || `NV #${staff.id}`}</span>
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          {/* Thông báo hệ thống */}
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+            <div className="flex items-start gap-3">
+              <InfoCircleOutlined className="text-blue-600 text-lg mt-0.5" />
               <div>
-                <div className="summary-label">Loại hợp đồng</div>
-                <div className="summary-value">{initialData?.priceTypeName || 'N/A'}</div>
+                <p className="font-semibold text-blue-900 text-sm mb-2">Sau khi gửi khảo sát, hệ thống sẽ:</p>
+                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Chuyển trạng thái hợp đồng sang <span className="font-semibold">"Chờ khảo sát"</span></li>
+                  <li>Thông báo cho nhân viên kỹ thuật được chọn</li>
+                  <li>NV kỹ thuật sẽ thực hiện khảo sát và báo giá chi phí lắp đặt</li>
+                </ul>
               </div>
             </div>
           </div>
-
-          <Divider className="contract-modal__divider">Thiết lập khảo sát</Divider>
-
-          <Form form={form} layout="vertical" className="contract-modal__form">
-            <Row gutter={16}>
-              <Col xs={24} sm={12}>
-                <Form.Item name="contractNumber" label="Số Hợp đồng">
-                  <Input disabled className="readonly" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Form.Item name="customerName" label="Tên Khách hàng">
-                  <Input disabled className="readonly" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col xs={24} sm={12}>
-                <Form.Item name="contractType" label="Loại hợp đồng">
-                  <Input disabled className="readonly" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={12}>
-                <Form.Item
-                  name="technicalStaffId"
-                  label="Gán NV Kỹ thuật"
-                  rules={[{ required: true, message: 'Vui lòng chọn NV Kỹ thuật!' }]}
-                >
-                  <Select placeholder="Chọn nhân viên kỹ thuật..." loading={staffLoading}>
-                    {technicalStaff.map((staff) => (
-                      <Select.Option key={staff.id} value={staff.id}>
-                        <TeamOutlined /> {staff.fullName || staff.username || staff.name || `NV #${staff.id}`}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item name="customerNotes" label="Ghi chú Khách hàng">
-              <TextArea disabled rows={3} className="readonly" placeholder="(Không có ghi chú)" />
-            </Form.Item>
-          </Form>
-
-          <div className="contract-modal__info">
-            <p className="info-title"><InfoCircleOutlined /> Hệ thống sẽ</p>
-            <ul>
-              <li>Chuyển trạng thái sang <Tag color="gold">Chờ khảo sát</Tag></li>
-              <li>Gửi thông tin cho NV Kỹ thuật được gán</li>
-              <li>NV Kỹ thuật cập nhật ngày khảo sát & lắp</li>
-            </ul>
-          </div>
-        </div>
+        </Form>
       </Spin>
+      
+      {/* Modal Xác nhận */}
+      <ConfirmModal 
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmSubmit}
+        title="Xác nhận gửi khảo sát"
+        message={`Bạn có chắc chắn muốn gửi yêu cầu khảo sát cho hợp đồng ${initialData?.contractNumber || ''}?`}
+        isLoading={submitLoading}
+      />
     </Modal>
   );
 };
