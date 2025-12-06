@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { getReadingRoutes, deleteReadingRoute } from '@/components/Services/apiAccountingReadingRoutes';
+import { getReadingRoutes } from '@/components/Services/apiAccountingReadingRoutes';
 import ReadingRouteForm from './ReadingRouteForm';
 import './ReadingRoutesList.css';
 
@@ -42,18 +42,6 @@ const ReadingRoutesList = () => {
         setIsFormOpen(true);
     };
 
-    const handleDelete = async (r) => {
-        if (!window.confirm(`Bạn có chắc muốn xóa (vô hiệu hóa) tuyến ${r.routeCode}?`)) return;
-        try {
-            await deleteReadingRoute(r.id);
-            // Update list in-place: set status to INACTIVE if returned 204
-            refreshList();
-        } catch (err) {
-            console.error('Delete failed', err);
-            alert(err.response?.data?.message || err.message || 'Xóa thất bại');
-        }
-    };
-
     if (loading) return <div>Đang tải...</div>;
     if (error) return <div className="error">{error}</div>;
 
@@ -62,10 +50,6 @@ const ReadingRoutesList = () => {
             <div className="list-header">
                 <h2>Quản lý Tuyến đọc</h2>
                 <div>
-                    <label style={{ marginRight: 12 }}>
-                        <input type="checkbox" checked={includeInactive} onChange={e => setIncludeInactive(e.target.checked)} />
-                        {' '}Hiển thị cả INACTIVE
-                    </label>
                     <button onClick={handleCreate} className="btn-create"><PlusCircle /> Tạo mới</button>
                 </div>
             </div>
@@ -91,7 +75,6 @@ const ReadingRoutesList = () => {
                             <td>{r.status}</td>
                             <td>
                                 <button onClick={() => handleEdit(r)} disabled={r.status === 'INACTIVE'} title="Chỉnh sửa"><Edit /></button>
-                                <button onClick={() => handleDelete(r)} disabled={r.status === 'INACTIVE'} title="Xóa"><Trash2 /></button>
                             </td>
                         </tr>
                     ))}
