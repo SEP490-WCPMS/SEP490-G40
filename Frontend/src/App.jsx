@@ -231,7 +231,6 @@ function App() {
             {/* --- HẾT --- */}
             <Route path="route-management" element={<RouteManagementPage />} />
             {/* (Thêm các trang khác của Kế toán ở đây) */}
-            <Route path="reading-routes" element={<ReadingRoutesList />} />
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
@@ -251,6 +250,7 @@ function App() {
             <Route path="water-meters" element={<WaterMetersPage />} />
             <Route path="water-price-types" element={<WaterPriceTypesPage />} />
             <Route path="water-prices" element={<WaterPricesPage />} />
+            <Route path="reading-routes" element={<ReadingRoutesList />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>

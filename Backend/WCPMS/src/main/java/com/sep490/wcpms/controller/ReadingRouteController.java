@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/accounting/reading-routes")
+@RequestMapping("/api/admin/reading-routes")
 @RequiredArgsConstructor
 @CrossOrigin("*")
 public class ReadingRouteController {
@@ -38,9 +38,5 @@ public class ReadingRouteController {
         return ResponseEntity.ok(service.update(id, req));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> softDelete(@PathVariable Integer id) {
-        service.softDelete(id);
-        return ResponseEntity.noContent().build();
-    }
+
 }
