@@ -10,5 +10,6 @@ public class ServiceStaffStatsDTO {
     private Long approvedCount;           // Số đã duyệt (APPROVED)
     private Long pendingSignCount;        // Số chờ ký (PENDING_SIGN)
     private Long signedCount;             // Số đã ký (SIGNED)
+    private Long activeCount;             // Số đã lắp đặt (ACTIVE)
 }
 

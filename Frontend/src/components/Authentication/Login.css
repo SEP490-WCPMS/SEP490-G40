@@ -1,182 +1,272 @@
-/* src/components/Authentication/Login.css */
-
-/* Định nghĩa màu sắc */
+/* Reset cơ bản cho trang login */
 :root {
-    --primary-blue: #007bff; /* Xanh nước biển đậm */
-    --light-blue: #e9f5ff; /* Xanh nhạt cho nền/hover */
-    --white: #ffffff;
-    --text-color: #333333;
-    --error-color: #dc3545;
-    --border-color: #ced4da;
-}
-/* Layout for branded two-column login like corporate site */
-
-:root {
-    --primary-blue: #0077b6; /* a water blue tuned */
-    --accent: #00a6fb;
-    --light-blue: #e9f7ff;
-    --white: #ffffff;
-    --text-color: #1f2937;
-    --muted: #6b7280;
-    --error-color: #dc3545;
-    --border-color: #d1d5db;
+  --water-primary: #0077b6;   /* Màu xanh nước biển đậm */
+  --water-light: #48cae4;     /* Màu xanh nước biển sáng */
+  --water-bg: #caf0f8;        /* Màu nền nhạt */
+  --text-dark: #333;
+  --text-light: #666;
+  --white: #ffffff;
 }
 
-.login-page {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(180deg, #f6fbff 0%, #eaf9ff 100%);
-    padding: 24px;
+.water-login-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  /* --- THAY ĐỔI 2: Căn phải --- */
+  justify-content: flex-end; /* Đẩy khung login sang phải */
+  /* --- THAY ĐỔI 2: Padding phải --- */
+  padding-right: 10%; /* Tạo khoảng cách với lề phải */
+  
+  /* --- THAY ĐỔI 1: Hình nền mới --- */
+  /* Sử dụng ảnh bạn đã cung cấp làm nền */
+  background: url('/nuoc_sach.jpg') no-repeat center center/cover;
 }
 
-.login-inner {
-    width: 100%;
-    max-width: 1000px;
-    display: grid;
-    grid-template-columns: 420px 1fr;
-    gap: 32px;
-    align-items: stretch;
+/* Lớp phủ mờ nhẹ lên background */
+.water-login-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 50, 100, 0.2); /* Tăng độ tối một chút để làm nổi bật khung */
+  z-index: 0;
 }
 
-.brand-panel {
-    background: linear-gradient(135deg, var(--primary-blue), var(--accent));
-    color: var(--white);
-    border-radius: 12px;
-    padding: 36px 28px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    box-shadow: 0 10px 30px rgba(3, 37, 65, 0.08);
+/* Logo góc trái trên cùng */
+.page-logo {
+  position: absolute;
+  top: 30px;
+  left: 40px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Thêm nền nhẹ cho logo để dễ đọc trên nền mới */
+  background: rgba(255, 255, 255, 0.8);
+  padding: 8px 15px;
+  border-radius: 30px;
+  backdrop-filter: blur(5px);
 }
 
-.brand-logo .logo-circle {
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.12);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    font-size: 0.95rem;
+.page-logo img {
+  height: 50px;
+  width: auto;
 }
 
-.logo-small {
-    display: block;
-    font-size: 0.7rem;
-    opacity: 0.95;
+.page-logo span {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #023e8a;
+  letter-spacing: 1px;
 }
 
-/* Company logo image (from Homepage/Header) */
-.brand-logo-image {
-    width: 88px;
-    height: 88px;
-    object-fit: contain;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.06);
+/* --- FORM CARD CHÍNH --- */
+.login-card-wrapper {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px); /* Tăng độ mờ */
+  /* --- THAY ĐỔI 3: Kích thước khung to hơn --- */
+  padding: 50px; /* Tăng padding bên trong */
+  width: 100%;
+  max-width: 550px; /* Tăng chiều rộng tối đa (từ 450px lên 550px) */
+  border-radius: 20px; /* Bo góc mềm mại hơn */
+  box-shadow: 0 25px 50px rgba(0, 50, 100, 0.25); /* Bóng đổ sâu hơn */
+  animation: slideRight 0.7s ease-out; /* Đổi hiệu ứng xuất hiện từ phải sang */
 }
 
-.brand-title {
-    margin-top: 18px;
-    font-size: 1.2rem;
-    font-weight: 700;
+/* Hiệu ứng trượt từ phải sang */
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-.brand-subtitle {
-    margin-top: 8px;
-    color: rgba(255,255,255,0.92);
-    font-size: 0.95rem;
-    line-height: 1.4;
+.login-card-header {
+  margin-bottom: 35px;
+  text-align: center; /* Căn giữa tiêu đề cho cân đối */
 }
 
-.form-panel {
-    display: flex;
-    align-items: center;
+.login-card-header h3 {
+  font-size: 2rem; /* Tăng kích thước font tiêu đề */
+  color: var(--water-primary);
+  margin-bottom: 10px;
+  font-weight: 700;
 }
 
-.form-card {
-    width: 100%;
-    background: var(--white);
-    padding: 36px;
-    border-radius: 12px;
-    box-shadow: 0 6px 24px rgba(16,24,40,0.06);
+.login-card-header p {
+  color: var(--text-light);
+  font-size: 1.05rem;
 }
 
-.login-title {
-    color: var(--text-color);
-    font-size: 1.5rem;
-    margin-bottom: 20px;
-    font-weight: 700;
+/* Input Styles */
+.input-group {
+  margin-bottom: 25px;
 }
 
-.login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+.water-input {
+  width: 100%;
+  padding: 16px 18px; /* Tăng padding cho input */
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  transition: all 0.3s ease;
+  background: #f8fbff;
 }
 
-.form-group {
-    text-align: left;
+.water-input:focus {
+  border-color: var(--water-light);
+box-shadow: 0 0 0 4px rgba(72, 202, 228, 0.2);
+  outline: none;
+  background: #fff;
 }
 
-.form-group label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 600;
-    color: var(--text-color);
-    font-size: 0.95rem;
+/* Options: Remember & Forgot */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  font-size: 0.95rem;
 }
 
-.login-input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-light);
+  cursor: pointer;
 }
 
-.login-input:focus {
-    border-color: var(--primary-blue);
-    box-shadow: 0 6px 18px rgba(0,138,255,0.08);
-    outline: none;
+.remember-me input[type="checkbox"] {
+    transform: scale(1.2); /* Làm checkbox to hơn một chút */
 }
 
-.login-button {
-    background-color: var(--primary-blue);
-    color: var(--white);
-    padding: 12px 16px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 700;
+.forgot-link {
+  color: var(--water-primary);
+  text-decoration: none;
+  font-weight: 600;
 }
 
-.login-button:disabled { opacity: 0.7; cursor: not-allowed; }
-
-.error-message {
-    color: var(--error-color);
-    background-color: #fff1f2;
-    border: 1px solid rgba(220,53,69,0.12);
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 4px;
-    font-size: 0.95rem;
+/* Button Submit */
+.water-btn-submit {
+  width: 100%;
+  padding: 16px; /* Tăng padding nút */
+  background: linear-gradient(135deg, var(--water-primary), #0096c7);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.2rem; /* Tăng font chữ nút */
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.form-links {
-    margin-top: 8px;
-    display: flex;
-    gap: 12px;
-    justify-content: flex-start;
+.water-btn-submit:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 119, 182, 0.35);
 }
 
-.form-links a { color: var(--primary-blue); font-weight: 600; font-size: 0.95rem; text-decoration: none; }
+.water-btn-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
 
-@media (max-width: 900px) {
-    .login-inner { grid-template-columns: 1fr; padding: 12px; }
-    .brand-panel { display: none; }
+/* Error Message */
+.error-alert {
+  background-color: #ffeaea;
+  color: #d63031;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  font-size: 0.95rem;
+  border-left: 5px solid #d63031;
+}
+
+/* Divider & Social */
+.divider {
+  text-align: center;
+  margin: 30px 0;
+  position: relative;
+}
+
+.divider span {
+  background: #fff;
+  padding: 0 15px;
+  color: #999;
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 1;
+  font-weight: 500;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #eee;
+  z-index: 0;
+}
+
+.social-login {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.social-btn {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  color: #555;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 1rem;
+}
+
+.social-btn:hover {
+  background: #f8f9fa;
+  border-color: #d0d0d0;
+}
+
+/* Register Redirect */
+.register-redirect {
+  text-align: center;
+  font-size: 1rem;
+  color: var(--text-light);
+}
+
+.register-redirect a {
+  color: var(--water-primary);
+  font-weight: 700;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .water-login-container {
+    padding: 30px;
+    justify-content: center; /* Trên màn hình nhỏ hơn thì căn giữa */
+  }
+  
+  .login-card-wrapper {
+    max-width: 100%; /* Full width trên mobile */
+    padding: 35px;
+  }
+    
+  .page-logo {
+    top: 20px;
+    left: 20px;
+  }
 }

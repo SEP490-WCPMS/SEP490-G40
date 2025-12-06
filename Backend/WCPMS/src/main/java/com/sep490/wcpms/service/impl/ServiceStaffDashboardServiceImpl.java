@@ -50,10 +50,11 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
             long approvedCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.APPROVED);
             long pendingSignCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.PENDING_SIGN);
             long signedCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.SIGNED);
+            long activeCount = contractRepository.countByServiceStaffAndContractStatus(staff, Contract.ContractStatus.ACTIVE);
 
             // Debug: in log để kiểm tra
             System.out.println("Staff ID: " + staff.getId() + ", Staff Name: " + staff.getFullName());
-            System.out.println("Counts - DRAFT: " + draftCount + ", PENDING: " + pendingCount + ", PENDING_SURVEY: " + pendingSurveyCount + ", APPROVED: " + approvedCount + ", PENDING_SIGN: " + pendingSignCount + ", SIGNED: " + signedCount);
+            System.out.println("Counts - DRAFT: " + draftCount + ", PENDING: " + pendingCount + ", PENDING_SURVEY: " + pendingSurveyCount + ", APPROVED: " + approvedCount + ", PENDING_SIGN: " + pendingSignCount + ", SIGNED: " + signedCount + ", ACTIVE: " + activeCount);
 
             stats.setDraftCount(draftCount);
             stats.setPendingTechnicalCount(pendingCount);
@@ -61,6 +62,7 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
             stats.setApprovedCount(approvedCount);
             stats.setPendingSignCount(pendingSignCount);
             stats.setSignedCount(signedCount);
+            stats.setActiveCount(activeCount);
         } catch (Exception e) {
             System.err.println("Error fetching stats for staff " + staffId + ": " + e.getMessage());
             // Fallback: trả 0 nếu error
@@ -70,6 +72,7 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
             stats.setApprovedCount(0L);
             stats.setPendingSignCount(0L);
             stats.setSignedCount(0L);
+            stats.setActiveCount(0L);
         }
 
         return stats;
@@ -83,16 +86,22 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         List<String> labels = new ArrayList<>();
         List<Long> sentCounts = new ArrayList<>();
         List<Long> approvedCounts = new ArrayList<>();
+        List<Long> pendingSignCounts = new ArrayList<>();
+        List<Long> activeCounts = new ArrayList<>();
 
         try {
             // Lặp qua từng ngày từ startDate đến endDate
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
                 labels.add(date.toString());
-                // Hướng C: hành động của Service Staff
-                // - Gửi khảo sát: status PENDING theo createdAt
+                // 4 metrics theo yêu cầu frontend:
+                // 1. Gửi khảo sát: status PENDING theo createdAt
                 sentCounts.add(contractRepository.countSentToTechnicalByDate(staff, date));
-                // - Đã duyệt: status APPROVED theo updatedAt
+                // 2. Đã duyệt: status APPROVED theo updatedAt
                 approvedCounts.add(contractRepository.countApprovedByDate(staff, date));
+                // 3. Gửi ký: status PENDING_SIGN theo updatedAt
+                pendingSignCounts.add(contractRepository.countPendingSignByDate(staff, date));
+                // 4. Đã lắp đặt: status ACTIVE theo installationDate
+                activeCounts.add(contractRepository.countInstallationCompletedByDate(staff, date));
             }
         } catch (Exception e) {
             // Fallback: trả về list rỗng
@@ -100,9 +109,10 @@ public class ServiceStaffDashboardServiceImpl implements ServiceStaffDashboardSe
         }
 
         chartData.setLabels(labels);
-        // Map vào các field hiện có của DTO để FE dùng chung cấu trúc
         chartData.setSurveyCompletedCounts(sentCounts);
         chartData.setInstallationCompletedCounts(approvedCounts);
+        chartData.setPendingSignCounts(pendingSignCounts);
+        chartData.setActiveCounts(activeCounts);
         return chartData;
     }
 

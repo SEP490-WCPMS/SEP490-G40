@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Row, Col, Typography, message, Spin, Button, Tabs, Modal, Form } from 'antd';
+import { Input, Row, Col, Typography, message, Spin, Button, Modal, Form } from 'antd';
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import Pagination from '../../common/Pagination';
 import ContractTable from '../ContractTable';
 import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
+import ConfirmModal from '../../common/ConfirmModal';
 import { getServiceContracts, getServiceContractDetail, submitContractForSurvey, approveServiceContract, rejectSurveyReport } from '../../Services/apiService';
 
 const { Title, Paragraph } = Typography;
@@ -18,114 +23,83 @@ const SurveyReviewPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
-    // Nếu URL có tab parameter, dùng nó; không thì mặc định 'pending'
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'pending');
     const [stats, setStats] = useState({
-        pendingTechnicalCount: 0,
         pendingSurveyReviewCount: 0
     });
     const [rejectModalOpen, setRejectModalOpen] = useState(false);
     const [rejectingContract, setRejectingContract] = useState(null);
     const [rejectForm] = Form.useForm();
+    
+    const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+    const [approvingContract, setApprovingContract] = useState(null);
+    const [approving, setApproving] = useState(false);
 
     const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 10,
-        total: 0,
+        page: 0,
+        size: 10,
+        totalElements: 0,
     });
 
     const [filters, setFilters] = useState({
         keyword: null,
     });
 
-    // Map status từ tab
-    const getStatusFromTab = (tab) => {
-        return tab === 'pending' ? 'PENDING' : 'PENDING_SURVEY_REVIEW';
-    };
-
-    // Hàm gọi API lấy danh sách
-    const fetchContracts = async (page = pagination.current, pageSize = pagination.pageSize, tabKey = activeTab) => {
+    const fetchContracts = async (params = {}) => {
         setLoading(true);
         try {
+            const currentPage = params.page !== undefined ? params.page : pagination.page;
+            const currentSize = params.size !== undefined ? params.size : pagination.size;
             const response = await getServiceContracts({
-                page: page - 1, // API dùng 0-based indexing
-                size: pageSize,
-                status: getStatusFromTab(tabKey),
+                page: currentPage,
+                size: currentSize,
+                status: 'PENDING_SURVEY_REVIEW',
                 keyword: filters.keyword
             });
             
             if (response.data) {
                 const data = response.data.content || [];
                 setContracts(data);
+                const pageInfo = response.data.page || response.data || {};
                 setPagination({
-                    current: page,
-                    pageSize: pageSize,
-                    total: response.data.totalElements || 0,
+                    page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
+                    size: pageInfo.size || currentSize,
+                    totalElements: pageInfo.totalElements || 0,
                 });
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng!');
+            toast.error('Lỗi khi tải danh sách hợp đồng!');
             console.error("Fetch contracts error:", error);
             setContracts([]);
-            setPagination(prev => ({ ...prev, total: 0 }));
+            setPagination(prev => ({ ...prev, totalElements: 0 }));
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchContracts(pagination.current, pagination.pageSize, activeTab);
-    }, [filters.keyword, activeTab]);
-
-    useEffect(() => {
-        // Lấy thống kê sử dụng cùng axios client để tránh vấn đề env
-        const fetchStats = async () => {
-            try {
-                const [pendingRes, reviewRes] = await Promise.all([
-                    getServiceContracts({ page: 0, size: 1, status: 'PENDING' }),
-                    getServiceContracts({ page: 0, size: 1, status: 'PENDING_SURVEY_REVIEW' })
-                ]);
-                setStats({
-                    pendingTechnicalCount: pendingRes?.data?.totalElements || 0,
-                    pendingSurveyReviewCount: reviewRes?.data?.totalElements || 0
-                });
-            } catch (error) {
-                console.error('Fetch stats error:', error);
-            }
-        };
-        fetchStats();
+        fetchContracts();
     }, []);
 
-    const handleTableChange = (paginationParams) => {
-        setPagination(paginationParams);
-        fetchContracts(paginationParams.current, paginationParams.pageSize, activeTab);
+    const handlePageChange = (newPage) => {
+        fetchContracts({ page: newPage });
     };
 
-    const handleFilterChange = (filterName, value) => {
+    const handleFilter = (filterName, value) => {
         setFilters(prev => ({
             ...prev,
             [filterName]: value
         }));
-        setPagination(prev => ({ ...prev, current: 1 }));
-    };
-
-    const handleTabChange = (tabKey) => {
-        setActiveTab(tabKey);
-        setPagination(prev => ({ ...prev, current: 1 }));
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchContracts({ page: 0 });
     };
 
     // Mở Modal
     const handleViewDetails = async (contract, actionType) => {
         // Các action không cần mở modal
         if (actionType === 'approveSurvey') {
-            try {
-                await approveServiceContract(contract.id);
-                alert('✅ Đã duyệt báo cáo khảo sát.');
-                fetchContracts(pagination.current, pagination.pageSize, activeTab);
-            } catch (err) {
-                alert('❌ Duyệt báo cáo thất bại.');
-                console.error(err);
-            }
+            // Hiện confirm trước khi duyệt
+            setApprovingContract(contract);
+            setShowApproveConfirm(true);
             return;
         }
         if (actionType === 'rejectSurvey') {
@@ -151,7 +125,7 @@ const SurveyReviewPage = () => {
                 actionType: actionType || 'view'
             });
         } catch (error) {
-            message.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
+            toast.error(`Lỗi khi tải chi tiết hợp đồng #${contract.id}! Vui lòng thử lại.`);
             console.error("Fetch contract detail error:", error);
             setIsModalVisible(false);
         } finally {
@@ -165,29 +139,43 @@ const SurveyReviewPage = () => {
         setSelectedContract(null);
     };
 
-    // Lưu thay đổi từ Modal
+    // Xác nhận duyệt
+    const handleConfirmApprove = async () => {
+        if (!approvingContract) return;
+        setApproving(true);
+        try {
+            await approveServiceContract(approvingContract.id);
+            setShowApproveConfirm(false);
+            toast.success('Đã duyệt báo cáo khảo sát.', {
+                position: "top-center",
+                autoClose: 3000,
+            });
+            fetchContracts(pagination.current, pagination.pageSize);
+        } catch (err) {
+            setShowApproveConfirm(false);
+            toast.error('Duyệt báo cáo thất bại.');
+            console.error(err);
+        } finally {
+            setApproving(false);
+        }
+    };
+
+    // Lưu thay đổi từ Modal (không còn dùng vì đã bỏ tab pending)
     const handleSaveModal = async (formData) => {
         if (!selectedContract) return;
         setModalLoading(true);
         try {
-            // Nếu status là PENDING (Chờ khảo sát), call submit endpoint
-            if (activeTab === 'pending') {
-                await submitContractForSurvey(selectedContract.id, {
-                    technicalStaffId: formData.technicalStaffId,
-                    notes: formData.notes
-                });
-            } else {
-                // Không dùng modal để duyệt trong tab review
-                await approveServiceContract(selectedContract.id);
-            }
+            await submitContractForSurvey(selectedContract.id, {
+                technicalStaffId: formData.technicalStaffId,
+                notes: formData.notes
+            });
             
-            alert('✅ Cập nhật thành công!');
-            setIsModalVisible(false);
-            setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, activeTab);
+            // Không xử lý UI ở đây - để onSuccess callback xử lý
+            fetchContracts(pagination.current, pagination.pageSize);
         } catch (error) {
-            alert('❌ Cập nhật thất bại!');
+            toast.error('Cập nhật thất bại!');
             console.error("Update contract error:", error);
+            throw error; // Ném lỗi để AssignSurveyModal biết không gọi onSuccess
         } finally {
             setModalLoading(false);
         }
@@ -195,6 +183,19 @@ const SurveyReviewPage = () => {
 
     return (
         <div className="space-y-6">
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
+            
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
@@ -204,7 +205,7 @@ const SurveyReviewPage = () => {
                 </Col>
                 <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
                     <Button
-                        onClick={() => fetchContracts(pagination.current, pagination.pageSize, activeTab)}
+                        onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
                         loading={loading}
                     >
                         Làm mới
@@ -223,45 +224,31 @@ const SurveyReviewPage = () => {
                 </Col>
             </Row>
 
-            {/* --- Tabs cho PENDING và PENDING_SURVEY_REVIEW --- */}
-            <Tabs 
-                activeKey={activeTab} 
-                onChange={handleTabChange}
-                items={[
-                    {
-                        key: 'pending',
-                        label: `Hợp đồng đang chờ khảo sát (${stats?.pendingTechnicalCount || 0})`,
-                        children: (
-                            <Spin spinning={loading}>
-                                <ContractTable
-                                    data={contracts}
-                                    loading={loading}
-                                    pagination={pagination}
-                                    onPageChange={handleTableChange}
-                                    onViewDetails={handleViewDetails}
-                                    showStatusFilter={false}
-                                />
-                            </Spin>
-                        )
-                    },
-                    {
-                        key: 'pending-survey-review',
-                        label: `Hợp đồng đã khảo sát (${stats?.pendingSurveyReviewCount || 0})`,
-                        children: (
-                            <Spin spinning={loading}>
-                                <ContractTable
-                                    data={contracts}
-                                    loading={loading}
-                                    pagination={pagination}
-                                    onPageChange={handleTableChange}
-                                    onViewDetails={handleViewDetails}
-                                    showStatusFilter={false}
-                                />
-                            </Spin>
-                        )
-                    }
-                ]}
-            />
+            {/* Tiêu đề */}
+            <div className="mb-4">
+                <span className="text-lg font-semibold text-gray-700">
+                    Hợp đồng đã khảo sát
+                </span>
+            </div>
+
+            {/* Bảng danh sách */}
+            <Spin spinning={loading}>
+                <ContractTable
+                    data={contracts}
+                    loading={loading}
+                    pagination={false}
+                    onViewDetails={handleViewDetails}
+                    showStatusFilter={false}
+                />
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                    <Pagination
+                        currentPage={pagination.page}
+                        totalElements={pagination.totalElements}
+                        pageSize={pagination.size}
+                        onPageChange={handlePageChange}
+                    />
+                </div>
+            </Spin>
 
             {/* --- Modal chi tiết/cập nhật --- */}
             {isModalVisible && selectedContract && (
@@ -279,6 +266,13 @@ const SurveyReviewPage = () => {
                         onSave={handleSaveModal}
                         loading={modalLoading}
                         initialData={selectedContract}
+                        onSuccess={() => {
+                            toast.success('Gửi khảo sát thành công!', {
+                                position: "top-center",
+                                autoClose: 3000,
+                            });
+                            fetchContracts(pagination.current, pagination.pageSize);
+                        }}
                     />
                 )
             )}
@@ -296,13 +290,13 @@ const SurveyReviewPage = () => {
                     try {
                         const values = await rejectForm.validateFields();
                         await rejectSurveyReport(rejectingContract.id, values.reason);
-                        message.success('Đã từ chối báo cáo khảo sát.');
+                        toast.success('Đã từ chối báo cáo khảo sát.');
                         setRejectModalOpen(false);
                         setRejectingContract(null);
-                        fetchContracts(pagination.current, pagination.pageSize, activeTab);
+                        fetchContracts(pagination.current, pagination.pageSize);
                     } catch (err) {
                         if (err?.errorFields) return; // validation error -> keep modal open
-                        message.error('Từ chối báo cáo thất bại.');
+                        toast.error('Từ chối báo cáo thất bại.');
                         console.error(err);
                     }
                 }}
@@ -343,8 +337,20 @@ const SurveyReviewPage = () => {
                     </div>
                 </Form>
             </Modal>
+
+            {/* Modal xác nhận Duyệt */}
+            <ConfirmModal 
+                isOpen={showApproveConfirm}
+                onClose={() => setShowApproveConfirm(false)}
+                onConfirm={handleConfirmApprove}
+                title="Xác nhận duyệt báo cáo khảo sát"
+                message={`Bạn có chắc chắn muốn duyệt báo cáo khảo sát cho hợp đồng ${approvingContract?.contractNumber || ''}?`}
+                isLoading={approving}
+            />
         </div>
     );
 };
 
 export default SurveyReviewPage;
+
+
