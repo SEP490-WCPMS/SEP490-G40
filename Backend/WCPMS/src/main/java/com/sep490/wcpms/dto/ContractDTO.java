@@ -16,7 +16,8 @@ import java.time.LocalDate;
 public class ContractDTO {
     private Integer id;
     private String contractNumber;
-    private Integer customerId;
+    private Integer customerId; // Có thể null cho guest
+    private String contactPhone; // Quan trọng cho guest (khi customerId = null)
     private LocalDate applicationDate;
     private LocalDate surveyDate;
     private String technicalDesign;
