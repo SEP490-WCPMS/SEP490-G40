@@ -177,6 +177,14 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         contract.setContractStatus(Contract.ContractStatus.ACTIVE);
         // (Sẽ save ở bước 5)
 
+        // Phân công kế toán xử lý hóa đơn lắp đặt (ít việc nhất)
+        Account assignedAccountant = accountRepository
+                .findLeastBusyAccountingStaffForInstallationTask()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Không tìm thấy nhân viên kế toán active để phân công."
+                ));
+        contract.setAccountingStaff(assignedAccountant);
+
         // 4. TẠO MỚI HỢP ĐỒNG DỊCH VỤ (Bảng 9)
         WaterServiceContract serviceContract = new WaterServiceContract();
         serviceContract.setContractNumber("DV-" + contract.getContractNumber()); // Tạo số HĐ Dịch vụ (ví dụ)

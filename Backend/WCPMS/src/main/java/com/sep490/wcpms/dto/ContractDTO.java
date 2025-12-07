@@ -30,5 +30,6 @@ public class ContractDTO {
     private Contract.ContractStatus contractStatus;
     private Integer serviceStaffId;
     private Integer technicalStaffId;
+    private Integer accountingStaffId;
     private String notes;
 }

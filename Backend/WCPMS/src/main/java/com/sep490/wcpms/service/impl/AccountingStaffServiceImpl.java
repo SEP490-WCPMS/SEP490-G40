@@ -294,22 +294,24 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
 
     @Override
-    public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable) {
-        // 1. Lấy tất cả HĐ ACTIVE
+    public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable,
+                                                                          Integer accountingStaffId) {
         Page<Contract> activeContracts =
                 contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
 
-        // 2. Lọc bỏ HĐ đã có hóa đơn lắp đặt (CONTRACT)
         List<ContractDTO> list = activeContracts.getContent().stream()
-                .filter(c -> !invoiceRepository.existsByContract_Id(
-                        c.getId()
-                ))
+                // chỉ HĐ được assign cho kế toán hiện tại
+                .filter(c -> c.getAccountingStaff() != null
+                        && c.getAccountingStaff().getId().equals(accountingStaffId))
+                // chưa có hóa đơn lắp đặt (CN*, meterReading null)
+                .filter(c -> !invoiceRepository
+                        .existsByContract_IdAndMeterReadingIsNullAndInvoiceNumberStartingWith(
+                                c.getId(), "CN"
+                        ))
                 .map(contract -> {
                     ContractDTO dto = new ContractDTO();
-                    // copy các field cơ bản
                     BeanUtils.copyProperties(contract, dto);
 
-                    // set thêm các id liên kết (đang dùng giống convertToDTO trong ContractCustomerService)
                     dto.setCustomerId(
                             contract.getCustomer() != null ? contract.getCustomer().getId() : null
                     );
@@ -319,13 +321,19 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
                     dto.setTechnicalStaffId(
                             contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
                     );
+                    dto.setAccountingStaffId(
+                            contract.getAccountingStaff() != null
+                                    ? contract.getAccountingStaff().getId()
+                                    : null
+                    );
 
                     return dto;
                 })
                 .toList();
 
-        return new PageImpl<>(list, pageable, activeContracts.getTotalElements());
+        return new PageImpl<>(list, pageable, list.size());
     }
+
 
     @Override
     @Transactional
@@ -388,11 +396,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         inv.setDueDate(dueDate);
         inv.setPaymentStatus(Invoice.PaymentStatus.PENDING);
 
-        // Kế toán lập HĐ
-        if (staffId != null) {
-            Account staff = accountRepository.findById(staffId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Staff not found: " + staffId));
-            inv.setAccountingStaff(staff);
+        // Kế toán phụ trách = người đã được phân công trong hợp đồng
+        if (contract.getAccountingStaff() != null) {
+            inv.setAccountingStaff(contract.getAccountingStaff());
         }
 
         Invoice saved = invoiceRepository.save(inv);
