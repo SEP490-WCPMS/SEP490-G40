@@ -9,6 +9,9 @@ import lombok.Data;
 
 @Data
 public class CreateStaffRequestDTO {
+    @NotBlank(message = "Mã nhân viên không được để trống")
+    private String staffCode;
+
     @NotBlank
     private String username;
 

@@ -48,6 +48,8 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
      */
     List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
 
+    boolean existsByStaffCode(String staffCode);
+
     // Tìm 1 tài khoản thu ngân (department = CASHIER) có status = 1 (active)
     Optional<Account> findFirstByDepartmentAndStatus(Account.Department department, Integer status);
 
