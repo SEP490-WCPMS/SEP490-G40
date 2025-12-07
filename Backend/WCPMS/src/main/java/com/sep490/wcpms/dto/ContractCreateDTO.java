@@ -20,8 +20,12 @@ public class ContractCreateDTO {
     @Size(max = 50, message = "Contract number cannot exceed 50 characters")
     private String contractNumber;
 
-    @NotNull(message = "Customer ID is required")
+    // customerId có thể null (cho guest), nhưng khi null thì PHẢI có contactPhone
     private Integer customerId;
+
+    // Số điện thoại liên hệ - BẮT BUỘC khi customerId = null (guest)
+    @Size(max = 20, message = "Contact phone cannot exceed 20 characters")
+    private String contactPhone;
 
     private LocalDate applicationDate;
     private LocalDate surveyDate;

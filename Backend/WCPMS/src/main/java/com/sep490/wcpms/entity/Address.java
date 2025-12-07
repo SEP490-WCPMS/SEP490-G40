@@ -26,12 +26,11 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Liên kết với customer
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false,
+    // Liên kết với customer (NULLABLE cho guest)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "customer_id", nullable = true,
             foreignKey = @ForeignKey(name = "fk_addresses_customers"))
-    private Customer customer;
+    private Customer customer; // NULL nếu là địa chỉ tạm thời của guest
 
     // Địa chỉ chi tiết
     @NotNull
