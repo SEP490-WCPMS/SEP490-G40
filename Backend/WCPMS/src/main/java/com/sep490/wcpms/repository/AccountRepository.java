@@ -50,4 +50,19 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
 
     // Tìm 1 tài khoản thu ngân (department = CASHIER) có status = 1 (active)
     Optional<Account> findFirstByDepartmentAndStatus(Account.Department department, Integer status);
+
+    // --- THÊM QUERY NÀY ---
+    /**
+     * Thống kê workload nhân viên Service.
+     * Trả về: [Account, Số lượng hợp đồng]
+     * Sắp xếp: Tăng dần (Ít việc nhất lên đầu)
+     */
+    @Query("SELECT a, COUNT(c) " +
+            "FROM Account a " +
+            "LEFT JOIN a.serviceContracts c " +
+            "WHERE a.role.roleName = 'SERVICE_STAFF' " +
+            "AND a.status = 1 " +
+            "GROUP BY a " +
+            "ORDER BY COUNT(c) ASC")
+    List<Object[]> findServiceStaffWorkloads();
 }
