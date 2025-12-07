@@ -37,6 +37,12 @@ public class WaterServiceContract {
             foreignKey = @ForeignKey(name = "fk_water_service_contracts_customers"))
     private Customer customer;
 
+    // MỚI: Địa chỉ sử dụng dịch vụ
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id",
+            foreignKey = @ForeignKey(name = "fk_wsc_address"))
+    private Address address;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "price_type_id", nullable = false,

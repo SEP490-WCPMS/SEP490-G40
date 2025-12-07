@@ -50,6 +50,10 @@ public class Account {
     @Column(name = "customer_code", length = 50)
     private String customerCode;
 
+    // MỚI: Mã nhân viên - chỉ có với role nhân viên
+    @Column(name = "staff_code", length = 50, unique = true)
+    private String staffCode;
+
     @Column(name = "status")
     private Integer status = 1;  // 1=Active, 0=Inactive
 
