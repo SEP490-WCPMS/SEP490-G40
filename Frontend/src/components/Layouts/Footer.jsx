@@ -78,18 +78,6 @@ const Footer = () => {
             </li>
           </ul>
         </div>
-
-        {/* Information Section */}
-        <div className="footer-section">
-          <h3 className="footer-title">THÔNG TIN</h3>
-          <ul className="footer-links">
-            <li><a href="/about">Giới thiệu công ty</a></li>
-            <li><a href="#news">Tin tức & thông báo</a></li>
-            <li><a href="#policy">Chính sách bảo mật</a></li>
-            <li><a href="#quality">Chất lượng nước</a></li>
-            <li><a href="#faq">Câu hỏi thường gặp</a></li>
-          </ul>
-        </div>
       </div>
 
       {/* Footer Bottom */}
