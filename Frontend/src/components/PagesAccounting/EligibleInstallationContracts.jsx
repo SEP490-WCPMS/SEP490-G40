@@ -75,7 +75,8 @@ function EligibleInstallationContracts() {
                         Danh sách HĐ Chính thức chờ lập Hóa đơn
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        Các Hợp đồng đã hoàn tất lắp đặt nhưng chưa phát hành Hóa đơn lắp đặt.
+                        Các Hợp đồng đã hoàn tất lắp đặt, chưa phát hành Hóa đơn lắp đặt
+                        và đã được phân công cho tài khoản kế toán hiện tại.
                     </p>
                 </div>
                 <button
@@ -95,58 +96,64 @@ function EligibleInstallationContracts() {
             )}
 
             {/* Card danh sách */}
-            <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+            <div className="bg-white shadow rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                         <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                #
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Mã Hợp đồng
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                ID Khách hàng
-                            </th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Giá trị HĐ
-                            </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Ngày lắp đặt
-                            </th>
-                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Thao tác
-                            </th>
+                            <th className="px-4 py-2 text-left">Mã HĐ</th>
+                            <th className="px-4 py-2 text-left">Khách hàng</th>
+                            <th className="px-4 py-2 text-left">Địa chỉ</th>
+                            <th className="px-4 py-2 text-right">Giá trị HĐ</th>
+                            <th className="px-4 py-2 text-left">Ngày ký</th>
+                            <th className="px-4 py-2 text-left">Trạng thái</th>
+                            <th className="px-4 py-2 text-center">Thao tác</th>
                         </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-100">
-                        {contracts.length > 0 ? (
-                            contracts.map((c, idx) => (
-                                <tr
-                                    key={c.id}
-                                    className="hover:bg-gray-50 transition-colors duration-100"
+                        <tbody className="divide-y divide-gray-100">
+                        {contracts.length === 0 ? (
+                            <tr>
+                                <td
+                                    colSpan={7}
+                                    className="px-4 py-6 text-center text-gray-500 italic"
                                 >
-                                    <td className="px-4 py-2 text-sm text-gray-700">
-                                        {pagination.page * pagination.size + idx + 1}
+                                    {loading
+                                        ? 'Đang tải...'
+                                        : 'Không có Hợp đồng nào được phân công cho bạn đang chờ lập Hóa đơn lắp đặt.'}
+                                </td>
+                            </tr>
+                        ) : (
+                            contracts.map((c) => (
+                                <tr key={c.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-2 text-blue-700 font-medium">
+                                        {c.contractNumber || `HĐ#${c.id}`}
                                     </td>
-                                    <td className="px-4 py-2 text-sm font-medium text-gray-800">
-                                        {c.contractNumber || `#${c.id}`}
+                                    <td className="px-4 py-2">
+                                        <div className="font-medium text-gray-800">
+                                            {c.customerName || c.customerFullName || '---'}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {c.customerPhone || ''}
+                                        </div>
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-gray-700">
-                                        {c.customerId ?? '-'}
+                                    <td className="px-4 py-2 text-gray-700">
+                                        {c.customerAddress || c.installationAddress || '---'}
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-right text-gray-800">
-                                        {formatMoney(c.contractValue)}{' '}
-                                        <span className="text-xs text-gray-500">đ</span>
+                                    <td className="px-4 py-2 text-right font-medium text-gray-800">
+                                        {formatMoney(c.contractValue)}
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-gray-700">
-                                        {formatDate(c.installationDate)}
+                                    <td className="px-4 py-2">
+                                        {formatDate(c.signingDate || c.createdAt)}
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-center">
+                                    <td className="px-4 py-2">
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
+                                                {c.contractStatus || 'ACTIVE'}
+                                            </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-center">
                                         <button
                                             onClick={() => handleCreateInvoice(c)}
-                                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700"
+                                            className="inline-flex items-center px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-md hover:bg-emerald-700"
                                         >
                                             <FileText size={14} className="mr-1" />
                                             Tạo HĐ lắp đặt
@@ -154,17 +161,6 @@ function EligibleInstallationContracts() {
                                     </td>
                                 </tr>
                             ))
-                        ) : (
-                            <tr>
-                                <td
-                                    colSpan={6}
-                                    className="px-4 py-4 text-center text-sm text-gray-500 italic"
-                                >
-                                    {loading
-                                        ? 'Đang tải...'
-                                        : 'Không có Hợp đồng nào đang chờ lập Hóa đơn lắp đặt.'}
-                                </td>
-                            </tr>
                         )}
                         </tbody>
                     </table>

@@ -142,7 +142,8 @@ public class AccountingStaffController {
     public ResponseEntity<Page<ContractDTO>> getEligibleInstallationContracts(
             @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        Page<ContractDTO> result = accountingService.getActiveContractsWithoutInstallationInvoice(pageable);
+        Integer accountingStaffId = getAuthenticatedStaffId();
+        Page<ContractDTO> result = accountingService.getActiveContractsWithoutInstallationInvoice(pageable, accountingStaffId);
         return ResponseEntity.ok(result);
     }
 

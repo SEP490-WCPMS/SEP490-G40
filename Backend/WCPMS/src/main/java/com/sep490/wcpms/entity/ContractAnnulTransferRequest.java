@@ -25,6 +25,12 @@ public class ContractAnnulTransferRequest {
             foreignKey = @ForeignKey(name = "fk_annul_contract"))
     private Contract contract;
 
+    // MỚI: Địa chỉ (quan trọng khi chuyển nhượng)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id",
+            foreignKey = @ForeignKey(name = "fk_transfer_address"))
+    private Address address;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "request_type", nullable = false, length = 20)
     private RequestType requestType;
