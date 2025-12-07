@@ -141,6 +141,10 @@ public class Customer {
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CustomerFeedback> customerFeedbacks;
 
+    // MỚI: Một customer có thể có nhiều địa chỉ
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Address> addresses;
+
     public enum ConnectionType { RESIDENTIAL, COMMERCIAL, ADMINISTRATIVE }
     public enum ConnectionStatus { ACTIVE, INACTIVE, SUSPENDED, TERMINATED }
     public enum MeterStatus { WORKING, BROKEN, STOLEN, UNDER_MAINTENANCE }

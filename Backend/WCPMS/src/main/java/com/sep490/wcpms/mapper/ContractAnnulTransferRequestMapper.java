@@ -23,7 +23,6 @@ public interface ContractAnnulTransferRequestMapper {
     @Mapping(source = "attachedEvidence",        target = "attachedEvidence")
 
     @Mapping(source = "requestedBy.id",          target = "requestedById")
-    // đổi 'username' thành field có thật (email/fullName/username) trong Account
     @Mapping(source = "requestedBy.username",    target = "requestedByUsername")
     @Mapping(source = "approvedBy.id",           target = "approvedById")
     @Mapping(source = "approvedBy.username",     target = "approvedByUsername")
@@ -33,10 +32,9 @@ public interface ContractAnnulTransferRequestMapper {
 
     @Mapping(source = "fromCustomer.id",         target = "fromCustomerId")
     @Mapping(source = "toCustomer.id",           target = "toCustomerId")
-    // map customer names when available so frontend can show human-readable names
     @Mapping(source = "fromCustomer.customerName", target = "fromCustomerName")
     @Mapping(source = "toCustomer.customerName",   target = "toCustomerName")
-    // map rejection reason
+
     @Mapping(source = "rejectionReason", target = "rejectionReason")
 
     @Mapping(source = "notes",                   target = "notes")
@@ -50,6 +48,7 @@ public interface ContractAnnulTransferRequestMapper {
     @Mapping(target = "requestedBy",    expression = "java(requestedBy)")
     @Mapping(target = "fromCustomer",   expression = "java(fromCustomer)")
     @Mapping(target = "toCustomer",     expression = "java(toCustomer)")
+    @Mapping(target = "address",        ignore = true)
 
     @Mapping(
             target = "requestType",
@@ -78,6 +77,7 @@ public interface ContractAnnulTransferRequestMapper {
             // Không bao giờ được đụng vào các field identity / relationship / meta
             @Mapping(target = "id",             ignore = true),
             @Mapping(target = "contract",       ignore = true),
+            @Mapping(target = "address",        ignore = true),
             @Mapping(target = "requestType",    ignore = true),
             @Mapping(target = "requestNumber",  ignore = true),
             @Mapping(target = "requestDate",    ignore = true),
