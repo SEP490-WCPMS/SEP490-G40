@@ -1,49 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getMyInvoices } from '../../Services/apiCustomer';
-import { RefreshCw, Eye, Filter } from 'lucide-react';
+// Thêm icon Search
+import { RefreshCw, Eye, Filter, Search } from 'lucide-react'; 
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
-
-// 1. IMPORT TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 /**
- * Trang Danh sách Hóa đơn (Khách hàng)
+ * Trang Danh sách Hóa đơn (Khách hàng) - Có Search & Filter
  */
 function MyInvoiceListPage({ title }) {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
-    // const [error, setError] = useState(null); // Bỏ state error hiển thị UI cũ
     
+    // 1. Thêm State cho tìm kiếm
+    const [searchTerm, setSearchTerm] = useState('');
+
     const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
     const navigate = useNavigate();
-
-    // Mặc định là "Tất cả"
     const [statusFilter, setStatusFilter] = useState('ALL');
 
+    // 2. Cập nhật fetchData nhận keyword
     const fetchData = (params = {}) => {
         setLoading(true);
         
-        // 1. Xác định Page và Size
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
+        // Lấy keyword từ tham số truyền vào hoặc state hiện tại
+        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
 
-        // 2. Xử lý logic Filter
+        // Xử lý logic Filter Status
         let statusesToSend = [];
         if (statusFilter === 'PENDING') statusesToSend = ['PENDING', 'OVERDUE'];
         else if (statusFilter === 'PAID') statusesToSend = ['PAID'];
 
-        // 3. Gọi API
+        // Gọi API
         getMyInvoices({
             page: currentPage,
             size: currentSize,
-            status: statusesToSend
+            status: statusesToSend,
+            keyword: currentKeyword || null // Gửi keyword lên server
         })
             .then(response => {
                 const data = response.data;
-                // Xử lý cấu trúc dữ liệu lồng nhau (data.page)
                 const pageInfo = data.page || {};
 
                 setInvoices(data?.content || []);
@@ -55,17 +56,29 @@ function MyInvoiceListPage({ title }) {
             })
             .catch(err => {
                 console.error(err);
-                // Thay setError bằng Toast
-                toast.error("Không thể tải danh sách hóa đơn. Vui lòng thử lại sau.");
+                toast.error("Không thể tải danh sách hóa đơn.");
                 setInvoices([]);
             })
             .finally(() => setLoading(false));
     };
 
+    // Khi đổi filter status -> reset trang và giữ keyword
     useEffect(() => {
-        // Khi đổi filter, reset về trang 0
         fetchData({ page: 0 });
     }, [statusFilter]);
+
+    // 3. Xử lý sự kiện Tìm kiếm
+    const handleSearch = () => {
+        fetchData({ page: 0, keyword: searchTerm });
+    };
+
+    const handleSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value === '') {
+            fetchData({ page: 0, keyword: '' }); // Tự động load lại khi xóa trắng
+        }
+    };
 
     const handlePageChange = (newPage) => {
         fetchData({ page: newPage });
@@ -73,12 +86,12 @@ function MyInvoiceListPage({ title }) {
     };
 
     const handleRefresh = () => {
-        fetchData();
-        // Thông báo nhẹ khi làm mới
+        setSearchTerm(''); // Reset ô tìm kiếm
+        setStatusFilter('ALL'); // Reset filter (tùy chọn)
+        fetchData({ page: 0, keyword: '', status: [] }); 
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
-    // Helper hiển thị màu sắc
     const getStatusClass = (status) => {
         switch (status) {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
@@ -89,7 +102,6 @@ function MyInvoiceListPage({ title }) {
         }
     };
 
-    // Helper hiển thị Tiếng Việt
     const getStatusLabel = (status) => {
         switch (status) {
             case 'PENDING': return 'Chờ thanh toán';
@@ -103,18 +115,13 @@ function MyInvoiceListPage({ title }) {
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-6xl mx-auto bg-gray-50 min-h-screen">
             
-            {/* 2. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">{title || "Hóa Đơn Của Tôi"}</h1>
-                    <p className="text-sm text-gray-600">Danh sách hóa đơn và lịch sử thanh toán.</p>
+                    <p className="text-sm text-gray-600">Tra cứu và thanh toán hóa đơn tiền nước.</p>
                 </div>
                 <button
                     onClick={handleRefresh}
@@ -126,25 +133,46 @@ function MyInvoiceListPage({ title }) {
                 </button>
             </div>
 
-            {/* Filter Box */}
-            <div className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center border border-gray-200">
-                <div className="flex items-center gap-2">
+            {/* 4. THANH CÔNG CỤ (SEARCH & FILTER) */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                
+                {/* Search Box */}
+                <div className="relative w-full md:w-1/2">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Nhập số hóa đơn (VD: DVKD..., HD..., CN...)"
+                        value={searchTerm}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                     <button 
+                        onClick={handleSearch}
+                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
+                    >
+                        Tìm
+                    </button>
+                </div>
+
+                {/* Filter Dropdown */}
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                     <Filter size={16} className="text-gray-600" />
-                    <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700">Trạng thái:</label>
+                    <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700 whitespace-nowrap">Trạng thái:</label>
                     <select
                         id="statusFilter"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full md:w-auto"
                     >
-                        <option value="ALL">Tất cả Hóa đơn</option>
-                        <option value="PENDING">Hóa đơn Chờ Thanh Toán</option>
-                        <option value="PAID">Lịch sử (Đã Thanh Toán)</option>
+                        <option value="ALL">Tất cả</option>
+                        <option value="PENDING">Chờ thanh toán / Quá hạn</option>
+                        <option value="PAID">Lịch sử (Đã trả)</option>
                     </select>
                 </div>
             </div>
-
-            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -163,14 +191,12 @@ function MyInvoiceListPage({ title }) {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {loading && invoices.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                                        Đang tải dữ liệu...
-                                    </td>
+                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">Đang tải dữ liệu...</td>
                                 </tr>
                             ) : !loading && invoices.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        Không tìm thấy hóa đơn nào.
+                                        {searchTerm ? 'Không tìm thấy hóa đơn nào khớp với từ khóa.' : 'Không có hóa đơn nào.'}
                                     </td>
                                 </tr>
                             ) : (

@@ -83,6 +83,23 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         dto.setCustomerAddress(customer.getAddress());
         dto.setMeterInstallationId(installation.getId());
         dto.setPreviousReading(previousReading);
+        // --- BỔ SUNG CÁC TRƯỜNG MỚI ĐỂ HIỂN THỊ CHI TIẾT ---
+        dto.setCustomerCode(customer.getCustomerCode()); // Mã KH
+
+        if (customer.getAccount() != null) {
+            dto.setCustomerPhone(customer.getAccount().getPhone()); // SĐT
+        }
+
+        if (serviceContract.getPriceType() != null) {
+            dto.setPriceType(serviceContract.getPriceType().getTypeName()); // Loại giá (Sinh hoạt, KD...)
+        }
+
+        dto.setMeterSerial(meter.getSerialNumber()); // Số seri đồng hồ
+
+        if (serviceContract.getReadingRoute() != null) {
+            dto.setRouteName(serviceContract.getReadingRoute().getRouteName()); // Tên tuyến
+        }
+        // ---------------------------------------------------
 
         return dto;
     }
@@ -96,6 +113,17 @@ public class MeterReadingServiceImpl implements MeterReadingService {
 
         MeterInstallation installation = meterInstallationRepository.findById(dto.getMeterInstallationId())
                 .orElseThrow(() -> new ResourceNotFoundException("MeterInstallation not found: " + dto.getMeterInstallationId()));
+
+
+        // --- VALIDATION LOGIC MỚI (THÊM VÀO ĐÂY) ---
+        // Kiểm tra logic: Chỉ số mới KHÔNG ĐƯỢC nhỏ hơn chỉ số cũ
+        // Lưu ý: Dùng compareTo của BigDecimal. (a.compareTo(b) < 0 nghĩa là a < b)
+        if (dto.getCurrentReading().compareTo(dto.getPreviousReading()) < 0) {
+            throw new IllegalArgumentException("Lỗi Logic: Chỉ số mới (" + dto.getCurrentReading() +
+                    ") không được nhỏ hơn chỉ số cũ (" + dto.getPreviousReading() + ").");
+        }
+        // ------------------------------------------
+
 
         // --- BƯỚC 1: LƯU NGHIỆP VỤ CHÍNH (Bảng 12 MeterReadings) ---
         // 2. Tạo bản ghi MeterReading mới (Bảng 12)

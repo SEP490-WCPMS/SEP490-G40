@@ -15,13 +15,13 @@ import ConfirmModal from '../common/ConfirmModal';
 function InvoiceDetail() {
     const { invoiceId } = useParams();
     const navigate = useNavigate();
-    
+
     const [invoiceDetail, setInvoiceDetail] = useState(null);
     const [feeDetail, setFeeDetail] = useState(null);
-    
+
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false); // State xử lý hủy
-    
+
     // State Modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -63,7 +63,7 @@ function InvoiceDetail() {
 
         try {
             await cancelInvoice(invoiceId);
-            
+
             toast.success("Hủy hóa đơn thành công!", {
                 position: "top-center",
                 autoClose: 2000
@@ -102,26 +102,26 @@ function InvoiceDetail() {
             default: return status;
         }
     };
-    
+
     if (loading) return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;
-    
+
     // Nếu không có dữ liệu sau khi load xong
     if (!invoiceDetail) {
         return (
             <div className="p-8 text-center">
-                 <p className="text-gray-500 mb-4">Không tìm thấy dữ liệu hóa đơn.</p>
-                 <button onClick={() => navigate('/accounting/invoices')} className="text-blue-600 hover:underline">
-                     Quay lại danh sách
-                 </button>
+                <p className="text-gray-500 mb-4">Không tìm thấy dữ liệu hóa đơn.</p>
+                <button onClick={() => navigate('/accounting/invoices')} className="text-blue-600 hover:underline">
+                    Quay lại danh sách
+                </button>
             </div>
         );
     }
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen max-w-4xl mx-auto">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -130,10 +130,10 @@ function InvoiceDetail() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div className="flex items-center gap-4">
-                     <button onClick={() => navigate('/accounting/invoices')} className="p-2 rounded-full hover:bg-gray-200 transition-colors focus:outline-none">
-                         <ArrowLeft size={20} className="text-gray-600"/>
-                     </button>
-                     <div>
+                    <button onClick={() => navigate('/accounting/invoices')} className="p-2 rounded-full hover:bg-gray-200 transition-colors focus:outline-none">
+                        <ArrowLeft size={20} className="text-gray-600" />
+                    </button>
+                    <div>
                         <h1 className="text-2xl font-bold text-gray-800">Chi Tiết Hóa Đơn</h1>
                         <p className="text-sm text-gray-600">Số HĐ: <span className="font-mono font-bold">{invoiceDetail.invoiceNumber}</span></p>
                     </div>
@@ -163,6 +163,8 @@ function InvoiceDetail() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 text-gray-600">
                         <p><strong className="text-gray-700">Khách hàng:</strong> {feeDetail.customerName} (Mã: {feeDetail.customerCode})</p>
                         <p><strong className="text-gray-700">Địa chỉ:</strong> {feeDetail.customerAddress}</p>
+                        <p><strong className="text-gray-700">Điện thoại:</strong> {feeDetail.customerPhone}</p>
+                        <p><strong className="text-gray-700">Email:</strong> {feeDetail.customerEmail}</p>
                         <p><strong className="text-gray-700">Đồng hồ:</strong> <span className="font-mono bg-gray-100 px-1 rounded">{feeDetail.meterCode}</span></p>
                         <p><strong className="text-gray-700">Phí gốc:</strong> {feeDetail.calibrationCost.toLocaleString('vi-VN')} VNĐ</p>
                     </div>
@@ -171,14 +173,45 @@ function InvoiceDetail() {
                     </p>
                 </div>
             )}
-            
+
             {/* Box Hóa đơn Nước (Nếu có) */}
             {!feeDetail && invoiceDetail.meterReadingId && (
-                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
-                     <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2">Thông tin Sử Dụng Nước</h3>
-                     <p className="text-gray-600"><strong>Khách hàng:</strong> {invoiceDetail.customerName}</p>
-                     <p className="text-gray-600"><strong>Tổng tiêu thụ:</strong> {invoiceDetail.totalConsumption} m³</p>
-                 </div>
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
+                    <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2">Thông tin Sử Dụng Nước</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 text-gray-600">
+                        <p className="text-gray-600"><strong>Khách hàng:</strong> {invoiceDetail.customerName} (Mã: {invoiceDetail.customerCode})</p>
+                        <p className="text-gray-600"><strong>Địa chỉ:</strong> {invoiceDetail.customerAddress}</p>
+                        <p className="text-gray-600"><strong>Điện thoại:</strong> {invoiceDetail.customerPhone}</p>
+                        <p className="text-gray-600"><strong>Email:</strong> {invoiceDetail.customerEmail}</p>
+                        <p><strong className="ext-gray-600">Đồng hồ:</strong> <span className="font-mono bg-gray-100 px-1 rounded">{invoiceDetail.meterCode}</span></p>
+                        <p className="text-gray-600"><strong>Tổng tiêu thụ:</strong> {invoiceDetail.totalConsumption} m³</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Trường hợp 3: Hóa đơn Lắp Đặt (MỚI THÊM) */}
+            {!feeDetail && !invoiceDetail.meterReadingId && invoiceDetail.contractId && (
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
+                    <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2 flex items-center gap-2">
+                        <FileText size={18} className="text-blue-600" /> Thông tin Hợp Đồng Lắp Đặt
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 text-gray-600">
+                        <p><strong className="text-gray-700">Khách hàng:</strong> {invoiceDetail.customerName} (Mã: {invoiceDetail.customerCode || '---'})</p>
+                        <p><strong className="text-gray-700">Mã Hợp Đồng:</strong> <span className="font-bold text-blue-600">{invoiceDetail.contractNumber || `#${invoiceDetail.contractId}`}</span></p>
+
+                        <p><strong className="text-gray-700">Địa chỉ lắp đặt:</strong> {invoiceDetail.customerAddress}</p>
+                        <p><strong className="text-gray-700">Điện thoại:</strong> {invoiceDetail.customerPhone || '---'}</p>
+
+                        <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-blue-50 rounded border border-blue-100">
+                            <p className="text-blue-800 font-medium mb-1">Chi tiết khoản thu:</p>
+                            <ul className="list-disc list-inside pl-2 space-y-1">
+                                <li>Phí khảo sát & thiết kế</li>
+                                <li>Vật tư & Nhân công lắp đặt</li>
+                                <li>Đồng hồ nước (Cấp mới)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Box Chi tiết Hóa đơn */}
@@ -193,7 +226,7 @@ function InvoiceDetail() {
                         {getStatusLabel(invoiceDetail.paymentStatus)}
                     </span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
                     <div className="bg-gray-50 p-3 rounded border border-gray-100">
                         <label className="block mb-1 text-xs font-medium text-gray-500 uppercase">Số Hóa Đơn</label>
@@ -202,15 +235,15 @@ function InvoiceDetail() {
                     <div className="bg-gray-50 p-3 rounded border border-gray-100">
                         <label className="block mb-1 text-xs font-medium text-gray-500 uppercase">Ngày Lập</label>
                         <p className="text-base text-gray-800 flex items-center gap-2">
-                            <Calendar size={16} className="text-gray-400"/> 
+                            <Calendar size={16} className="text-gray-400" />
                             {moment(invoiceDetail.invoiceDate).format('DD/MM/YYYY')}
                         </p>
                     </div>
                     <div className="bg-gray-50 p-3 rounded border border-gray-100">
                         <label className="block mb-1 text-xs font-medium text-gray-500 uppercase">Hạn Thanh Toán</label>
                         <p className={`text-base font-bold flex items-center gap-2 ${moment(invoiceDetail.dueDate).isBefore(moment(), 'day') && invoiceDetail.paymentStatus === 'PENDING' ? 'text-red-600' : 'text-gray-800'}`}>
-                             <AlertCircle size={16} className={moment(invoiceDetail.dueDate).isBefore(moment(), 'day') ? "text-red-500" : "text-gray-400"}/>
-                             {moment(invoiceDetail.dueDate).format('DD/MM/YYYY')}
+                            <AlertCircle size={16} className={moment(invoiceDetail.dueDate).isBefore(moment(), 'day') ? "text-red-500" : "text-gray-400"} />
+                            {moment(invoiceDetail.dueDate).format('DD/MM/YYYY')}
                         </p>
                     </div>
                 </div>
@@ -244,7 +277,7 @@ function InvoiceDetail() {
                             <span className="font-bold">{invoiceDetail.latePaymentFee.toLocaleString('vi-VN')} VNĐ</span>
                         </div>
                     )}
-                    
+
                     <div className="border-t border-dashed border-gray-300 my-2"></div>
 
                     <div className="flex justify-between items-center">
@@ -253,8 +286,8 @@ function InvoiceDetail() {
                     </div>
 
                     {invoiceDetail.deductedAmount > 0 && (
-                         <div className="flex justify-between items-center text-green-600 text-sm">
-                            <span className="flex items-center"><DollarSign size={14} className="mr-1"/> Trừ ví tích lũy:</span>
+                        <div className="flex justify-between items-center text-green-600 text-sm">
+                            <span className="flex items-center"><DollarSign size={14} className="mr-1" /> Trừ ví tích lũy:</span>
                             <span className="font-bold">- {invoiceDetail.deductedAmount.toLocaleString('vi-VN')} VNĐ</span>
                         </div>
                     )}
@@ -266,7 +299,7 @@ function InvoiceDetail() {
                         </span>
                     </div>
                 </div>
-                
+
                 {invoiceDetail.notes && (
                     <div className="text-sm text-gray-500 border-t pt-4">
                         <span className="font-medium text-gray-700">Ghi chú:</span> {invoiceDetail.notes}
@@ -275,7 +308,7 @@ function InvoiceDetail() {
             </div>
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmCancel}

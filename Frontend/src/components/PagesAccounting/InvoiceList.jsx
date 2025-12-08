@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getInvoices, cancelInvoice } from '../Services/apiAccountingStaff';
-import { RefreshCw, Filter, XCircle, CheckCircle, Eye, AlertCircle } from 'lucide-react';
+// Thêm icon Search
+import { RefreshCw, Filter, XCircle, CheckCircle, Eye, AlertCircle, Search } from 'lucide-react';
 import moment from 'moment';
 import Pagination from '../common/Pagination';
-
-// 1. IMPORT CÁC THÀNH PHẦN GIAO DIỆN MỚI
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmModal from '../common/ConfirmModal';
@@ -14,10 +13,10 @@ function InvoiceList() {
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
     
-    // State cho Lọc
+    // State Lọc & Tìm kiếm
     const [statusFilter, setStatusFilter] = useState('ALL'); 
-    
-    // State Pagination
+    const [searchTerm, setSearchTerm] = useState(''); // <--- MỚI
+
     const [pagination, setPagination] = useState({ 
         page: 0, 
         size: 10, 
@@ -25,18 +24,23 @@ function InvoiceList() {
     });
 
     const [processingId, setProcessingId] = useState(null); 
-    
-    // State cho Modal Hủy
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [invoiceToCancel, setInvoiceToCancel] = useState(null); 
 
     const navigate = useNavigate();
 
     // --- FETCH DATA ---
-    const fetchData = (page = 0, size = 10, status = statusFilter) => {
+    // Nhận thêm tham số keyword
+    const fetchData = (page = 0, size = 10, status = statusFilter, keyword = searchTerm) => {
         setLoading(true);
         
-        getInvoices({ page, size, status, sort: 'invoiceDate,desc' })
+        getInvoices({ 
+            page, 
+            size, 
+            status, 
+            sort: 'invoiceDate,desc',
+            keyword: keyword || null // <--- MỚI
+        })
             .then(response => {
                 const data = response.data;
                 let loadedData = [];
@@ -70,56 +74,59 @@ function InvoiceList() {
             .finally(() => setLoading(false));
     };
 
+    // Effect: Khi đổi filter status -> Reset về trang 0
     useEffect(() => {
-        fetchData(0, pagination.size, statusFilter);
+        fetchData(0, pagination.size, statusFilter, searchTerm);
     }, [statusFilter]); 
 
+    // --- HANDLERS MỚI CHO TÌM KIẾM ---
+    const handleSearch = () => {
+        fetchData(0, pagination.size, statusFilter, searchTerm);
+    };
+
+    const handleSearchInputChange = (e) => {
+        setSearchTerm(e.target.value);
+        if (e.target.value === '') {
+            fetchData(0, pagination.size, statusFilter, '');
+        }
+    };
+    // ----------------------------------
+
     const handlePageChange = (newPage) => {
-        fetchData(newPage, pagination.size, statusFilter);
+        fetchData(newPage, pagination.size, statusFilter, searchTerm);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleRefresh = () => {
-        fetchData(pagination.page, pagination.size, statusFilter);
+        setSearchTerm(''); // Reset ô tìm kiếm
+        setStatusFilter('ALL'); // Reset filter
+        fetchData(0, pagination.size, 'ALL', '');
         toast.info("Đã làm mới dữ liệu.", { autoClose: 1000, hideProgressBar: true });
     };
 
-    // --- CÁC HÀM XỬ LÝ HỦY HÓA ĐƠN ---
-
-    // 1. Mở Modal
+    // ... (Giữ nguyên các hàm xử lý Hủy hóa đơn & Helper status) ...
     const handlePreCancel = (invoiceId) => {
         setInvoiceToCancel(invoiceId);
         setShowConfirmModal(true);
     };
 
-    // 2. Xác nhận Hủy
     const handleConfirmCancel = () => {
         if (!invoiceToCancel) return;
-
         setProcessingId(invoiceToCancel);
         setShowConfirmModal(false);
 
         cancelInvoice(invoiceToCancel)
             .then(response => {
-                toast.success(`Hủy Hóa đơn ${response.data.invoiceNumber} thành công!`, {
-                    position: "top-center",
-                    autoClose: 3000
-                });
+                toast.success(`Hủy Hóa đơn ${response.data.invoiceNumber} thành công!`);
                 handleRefresh();
             })
-            .catch(err => {
-                console.error("Lỗi khi hủy hóa đơn:", err);
-                toast.error(err.response?.data?.message || "Hủy hóa đơn thất bại.", {
-                    position: "top-center"
-                });
-            })
+            .catch(err => toast.error("Hủy hóa đơn thất bại."))
             .finally(() => {
                 setProcessingId(null);
                 setInvoiceToCancel(null);
             });
     };
 
-    // Helper style trạng thái
     const getStatusClass = (status) => {
         switch (status) {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
@@ -130,7 +137,6 @@ function InvoiceList() {
         }
     };
 
-    // --- HÀM MỚI: Dịch trạng thái sang Tiếng Việt ---
     const getStatusLabel = (status) => {
         switch (status) {
             case 'PENDING': return 'Chờ thanh toán';
@@ -143,32 +149,57 @@ function InvoiceList() {
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
-            {/* 2. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Quản lý Hóa đơn</h1>
-                    <p className="text-sm text-gray-600">Danh sách tất cả hóa đơn (tiền nước, dịch vụ) đã được tạo.</p>
+                    <p className="text-sm text-gray-600">Danh sách tất cả hóa đơn đã được tạo.</p>
                 </div>
+                <button
+                    onClick={handleRefresh}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out focus:outline-none"
+                    disabled={loading}
+                >
+                    <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Tải lại
+                </button>
             </div>
 
-            {/* Box Lọc và Tải lại */}
-            <div className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center border border-gray-200">
-                <div className="flex items-center gap-2">
+            {/* --- THANH CÔNG CỤ (SEARCH & FILTER) --- */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                
+                {/* Search Box */}
+                <div className="relative w-full md:w-1/2">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Tìm Số HĐ, Tên KH, Mã KH..."
+                        value={searchTerm}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                     <button 
+                        onClick={handleSearch}
+                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
+                    >
+                        Tìm
+                    </button>
+                </div>
+
+                {/* Filter Box */}
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                     <Filter size={16} className="text-gray-600" />
-                    <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700">Lọc theo Trạng thái:</label>
+                    <label htmlFor="statusFilter" className="text-sm font-medium text-gray-700 whitespace-nowrap">Trạng thái:</label>
                     <select
                         id="statusFilter"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48"
                     >
                         <option value="ALL">Tất cả</option>
                         <option value="PENDING">Đang chờ (PENDING)</option>
@@ -177,14 +208,6 @@ function InvoiceList() {
                         <option value="CANCELLED">Đã hủy (CANCELLED)</option>
                     </select>
                 </div>
-                <button
-                    onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out focus:outline-none disabled:opacity-50"
-                    disabled={loading}
-                >
-                    <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Tải lại
-                </button>
             </div>
 
             {/* Bảng Dữ liệu */}
@@ -201,7 +224,6 @@ function InvoiceList() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng Tiền (VNĐ)</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày lập</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                                {/* Căn giữa tiêu đề cột Thao tác */}
                                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao Tác</th>
                             </tr>
                         </thead>
@@ -209,12 +231,15 @@ function InvoiceList() {
                             {!loading && invoices.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        Không tìm thấy hóa đơn nào phù hợp.
+                                        {searchTerm 
+                                            ? 'Không tìm thấy hóa đơn nào phù hợp với từ khóa.' 
+                                            : 'Không có hóa đơn nào.'}
                                     </td>
                                 </tr>
                             ) : (
                                 invoices.map(invoice => (
                                     <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                                        {/* ... (Các cột dữ liệu giữ nguyên) ... */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</div>
                                             {!invoice.meterReadingId ? (
@@ -233,8 +258,6 @@ function InvoiceList() {
                                                 {getStatusLabel(invoice.paymentStatus)}
                                             </span>
                                         </td>
-                                        
-                                        {/* CĂN CHỈNH CỘT THAO TÁC RA GIỮA */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center align-middle">
                                             <div className="flex items-center justify-center space-x-2">
                                                 <button
@@ -245,7 +268,7 @@ function InvoiceList() {
                                                     <Eye size={14} className="mr-1" /> Xem
                                                 </button>
 
-                                                {/* Nút Hủy */}
+                                                {/* Nút Hủy (Chỉ hiện nếu PENDING) */}
                                                 {/* {invoice.paymentStatus === 'PENDING' && (
                                                     <>
                                                         <span className="text-gray-300">|</span>
@@ -269,7 +292,6 @@ function InvoiceList() {
                     </table>
                  </div>
 
-                 {/* 5. Gắn Component Phân trang */}
                  {!loading && invoices.length > 0 && (
                     <Pagination 
                         currentPage={pagination.page}
@@ -280,7 +302,7 @@ function InvoiceList() {
                  )}
             </div>
 
-            {/* 4. RENDER MODAL XÁC NHẬN */}
+            {/* Modal Xác nhận */}
             <ConfirmModal 
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
@@ -289,7 +311,6 @@ function InvoiceList() {
                 message={`Bạn có chắc chắn muốn hủy hóa đơn này không? Khoản phí liên quan sẽ được trả về hàng chờ để xử lý lại.`}
                 isLoading={processingId !== null}
             />
-
         </div>
     );
 }

@@ -1,10 +1,10 @@
-// src/components/Authentication/Login.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import './Login.css'; // Import CSS
+//import { FaFacebookF, FaGoogle } from 'react-icons/fa'; // Cần cài react-icons nếu chưa có, hoặc dùng thẻ <i>
+import './Login.css';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -23,107 +23,108 @@ export default function Login() {
     }
 
     try {
-      // 1. Gọi login (giả định hàm này LƯU token + user vào localStorage)
+      // 1. Gọi login
       const loginResponse = await login(username, password);
 
-      // 2. Lấy roleName từ response (an toàn hơn là đọc lại từ localStorage)
+      // 2. Lấy roleName
       const roleName = loginResponse?.user?.roleName || JSON.parse(localStorage.getItem('user'))?.roleName;
 
       // 3. Quyết định đường dẫn
-      let targetPath = '/'; // Mặc định
+      let targetPath = '/';
       if (roleName) {
-        if (roleName === 'CASHIER_STAFF') {
-          targetPath = '/cashier';
-        } else if (roleName === 'TECHNICAL_STAFF') {
-          targetPath = '/technical';
-        } else if (roleName === 'SERVICE_STAFF') {
-          targetPath = '/service';
-        } else if (roleName === 'ADMIN') {
-          targetPath = '/admin';
-        } else if (roleName === 'ACCOUNTING_STAFF') {
-          targetPath = '/accounting';
-        }
+        if (roleName === 'CASHIER_STAFF') targetPath = '/cashier';
+        else if (roleName === 'TECHNICAL_STAFF') targetPath = '/technical';
+        else if (roleName === 'SERVICE_STAFF') targetPath = '/service';
+        else if (roleName === 'ADMIN') targetPath = '/admin';
+        else if (roleName === 'ACCOUNTING_STAFF') targetPath = '/accounting';
       }
 
-      // 4. Navigate VÀ TẢI LẠI TRANG
-      // navigate(targetPath); // <-- CÁCH CŨ (GÂY LỖI)
-
-      // --- SỬA LẠI THÀNH CÁCH NÀY ---
-      // Gán thẳng URL và tải lại trang.
-      // Điều này đảm bảo toàn bộ ứng dụng (bao gồm apiService.js)
-      // được khởi tạo lại và Interceptor sẽ đọc token mới nhất.
+      // 4. Navigate và tải lại trang để refresh state
       window.location.href = targetPath;
-      // --- HẾT PHẦN SỬA ---
 
     } catch (err) {
-      // Hiển thị lỗi từ API (ví dụ: "Mật khẩu không đúng." )
       setError(err.message || 'Lỗi đăng nhập không xác định. Vui lòng thử lại.');
     }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-inner">
-        <aside className="brand-panel">
-          <div className="brand-logo">
-            <img
-              src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
-              alt="Cấp nước Phú Thọ"
-              className="brand-logo-image"
+    <div className="water-login-container">
+      {/* Logo góc trái màn hình (giống chữ Fastkart ở ảnh mẫu) */}
+      <div className="page-logo">
+        <img 
+          src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png" 
+          alt="Logo" 
+        />
+        <span>PHUTHO WATER</span>
+      </div>
+
+      {/* Card đăng nhập nổi */}
+      <div className="login-card-wrapper">
+        <div className="login-card-header">
+          <h3>Chào mừng trở lại</h3>
+          <p>Đăng nhập vào hệ thống quản lý cấp nước</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="login-card-form">
+          {error && <div className="error-alert">{error}</div>}
+
+          <div className="input-group">
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Tên đăng nhập"
+              disabled={loading}
+              className="water-input"
             />
           </div>
-          <h2 className="brand-title">Công ty Cổ phần cấp nước Phú Thọ</h2>
-          <p className="brand-subtitle">Dịch vụ cấp nước sạch — Tin cậy, bền vững và thân thiện</p>
-        </aside>
 
-        <main className="form-panel">
-          <div className="form-card">
-            <h1 className="login-title">Đăng Nhập</h1>
-
-            <form onSubmit={handleSubmit} className="login-form">
-              {error && <p className="error-message">{error}</p>}
-
-              <div className="form-group">
-                <label htmlFor="username">Tên đăng nhập</label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Nhập tên đăng nhập"
-                  disabled={loading}
-                  className="login-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="password">Mật khẩu</label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu"
-                  disabled={loading}
-                  className="login-input"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="login-button"
-              >
-                {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
-              </Button>
-
-              <div className="form-links">
-                <a href="/register" className="register">Đăng kí tài khoản</a>
-                <a href="/forgot" className="forgot">Quên mật khẩu?</a>
-              </div>
-            </form>
+          <div className="input-group">
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mật khẩu"
+              disabled={loading}
+              className="water-input"
+            />
           </div>
-        </main>
+
+          <div className="form-options">
+            <label className="remember-me">
+              <input type="checkbox" />
+              <span>Ghi nhớ tôi</span>
+            </label>
+            <a href="/forgot" className="forgot-link">Quên mật khẩu?</a>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="water-btn-submit"
+          >
+            {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
+          </Button>
+
+          <div className="divider">
+            <span>HOẶC</span>
+          </div>
+
+          <div className="social-login">
+            <button type="button" className="social-btn google">
+               <span>Google</span>
+            </button>
+            <button type="button" className="social-btn facebook">
+               <span>Facebook</span>
+            </button>
+          </div>
+          
+          <div className="register-redirect">
+            Chưa có tài khoản? <a href="/register">Đăng ký ngay</a>
+          </div>
+        </form>
       </div>
     </div>
   );

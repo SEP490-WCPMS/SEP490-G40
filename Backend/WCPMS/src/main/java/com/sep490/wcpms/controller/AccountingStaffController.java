@@ -1,6 +1,7 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.*;
+import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.dto.CalibrationFeeDTO;
 import com.sep490.wcpms.dto.InvoiceDTO;
@@ -54,11 +55,13 @@ public class AccountingStaffController {
      * Path: GET /api/accounting/unbilled-calibrations
      */
     @GetMapping("/unbilled-calibrations")
-    public ResponseEntity<Page<CalibrationFeeDTO>> getUnbilledCalibrationFees(
+    public ResponseEntity<Page<CalibrationFeeDTO>> getMyCalibrationFees(
+            @RequestParam(required = false) String keyword, // <--- THÊM
             @PageableDefault(size = 10, sort = "calibrationDate", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        Page<CalibrationFeeDTO> fees = accountingService.getUnbilledCalibrationFees(pageable);
-        return ResponseEntity.ok(fees);
+        Integer currentStaffId = getAuthenticatedStaffId();
+        Page<CalibrationFeeDTO> result = accountingService.getMyUnbilledCalibrationFees(currentStaffId, keyword, pageable);
+        return ResponseEntity.ok(result);
     }
 
     // --- THÊM API MỚI (Req 1) ---
@@ -97,12 +100,19 @@ public class AccountingStaffController {
      * API Lấy danh sách Hóa đơn (Đã tạo), có lọc.
      * Path: GET /api/accounting/invoices?status=PENDING&page=0
      */
+    /**
+     * API Lấy danh sách Hóa đơn được phân công cho nhân viên hiện tại.
+     * Path: GET /api/accounting/invoices
+     */
     @GetMapping("/invoices")
     public ResponseEntity<Page<InvoiceDTO>> getInvoices(
             @RequestParam(required = false, defaultValue = "ALL") String status,
+            @RequestParam(required = false) String keyword, // <--- THÊM
             @PageableDefault(size = 10, sort = "invoiceDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        Page<InvoiceDTO> invoices = accountingService.getInvoices(status, pageable);
+        Integer currentStaffId = getAuthenticatedStaffId();
+        // Gọi service mới
+        Page<InvoiceDTO> invoices = accountingService.getInvoices(status, currentStaffId, keyword, pageable);
         return ResponseEntity.ok(invoices);
     }
 
@@ -214,7 +224,11 @@ public class AccountingStaffController {
      */
     @GetMapping("/dashboard/stats")
     public ResponseEntity<AccountingStatsDTO> getDashboardStats() {
-        AccountingStatsDTO stats = accountingService.getDashboardStats();
+        // 1. Lấy ID nhân viên đang đăng nhập
+        Integer currentStaffId = getAuthenticatedStaffId();
+        // 2. Truyền ID vào Service
+        AccountingStatsDTO stats = accountingService.getDashboardStats(currentStaffId);
+
         return ResponseEntity.ok(stats);
     }
     // ---

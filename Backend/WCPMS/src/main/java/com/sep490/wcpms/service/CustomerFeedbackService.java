@@ -30,7 +30,7 @@ public interface CustomerFeedbackService {
     /**
      * Lấy danh sách ticket (phân trang) của Khách hàng đang đăng nhập.
      */
-    Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, List<String> statuses, Pageable pageable);
+    Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, List<String> statuses, String keyword, Pageable pageable);
 
     /**
      * Lấy chi tiết 1 ticket, xác thực đúng là của Khách hàng đang đăng nhập.

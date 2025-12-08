@@ -12,7 +12,8 @@ import {
 import {
   LayoutDashboard,
   Users,
-  ShieldCheck
+  ShieldCheck,
+  Map
 } from 'lucide-react'; // Import icons (Ví dụ: Dashboard, Users, Roles)
 import { Link, useLocation } from 'react-router-dom';
 
@@ -45,6 +46,13 @@ const adminMenuItems = [
     url: '/admin/water-prices',
     icon: Users,
   },
+  // --- THÊM MENU MỚI ---
+  {
+    title: 'Quản lý Thứ tự Tuyến đọc',
+    url: '/admin/route-management',
+    icon: Map,
+  },
+  // --- HẾT ---
 ];
 // --- Hết Menu Items ---
 

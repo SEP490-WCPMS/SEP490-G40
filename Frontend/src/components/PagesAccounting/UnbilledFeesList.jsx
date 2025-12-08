@@ -1,38 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUnbilledFees } from '../Services/apiAccountingStaff'; 
-import { RefreshCw, Eye } from 'lucide-react';
+import { getMyCalibrationFees } from '../Services/apiAccountingStaff'; 
+// Thêm icon Search
+import { RefreshCw, Eye, Search } from 'lucide-react';
 import moment from 'moment';
 import Pagination from '../common/Pagination';
-
-// 1. IMPORT TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function UnbilledFeesList() {
     const [fees, setFees] = useState([]);
     const [loading, setLoading] = useState(true);
-    // const [error, setError] = useState(null); // Không dùng state error để hiện UI nữa
-    
+    const navigate = useNavigate();
+
+    // 1. Thêm State Search
+    const [searchTerm, setSearchTerm] = useState('');
+
     const [pagination, setPagination] = useState({ 
         page: 0, 
         size: 10, 
         totalElements: 0 
     });
-    
-    const navigate = useNavigate();
 
-    // 3. Cập nhật fetchData
+    // 2. Cập nhật fetchData
     const fetchData = (params = {}) => {
         setLoading(true);
         
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
+        // Lấy keyword
+        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
 
-        getUnbilledFees({ page: currentPage, size: currentSize, sort: 'calibrationDate,asc' })
+        getMyCalibrationFees({ 
+            page: currentPage, 
+            size: currentSize, 
+            sort: 'calibrationDate,asc',
+            keyword: currentKeyword || null // Gửi keyword
+        })
             .then(response => {
                 const data = response.data;
-                
                 let loadedData = [];
                 let totalItems = 0;
                 let pageNum = 0;
@@ -59,8 +65,7 @@ function UnbilledFeesList() {
             })
             .catch(err => {
                 console.error("Lỗi fetch phí:", err);
-                // Thay setError bằng toast.error
-                toast.error("Không thể tải danh sách phí. Vui lòng thử lại sau.");
+                toast.error("Không thể tải danh sách phí.");
             })
             .finally(() => setLoading(false));
     };
@@ -69,39 +74,39 @@ function UnbilledFeesList() {
         fetchData({ page: 0 });
     }, []);
 
+    // 3. Handlers Search
+    const handleSearch = () => {
+        fetchData({ page: 0, keyword: searchTerm });
+    };
+
+    const handleSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value === '') {
+            fetchData({ page: 0, keyword: '' });
+        }
+    };
+
     const handlePageChange = (newPage) => {
         fetchData({ page: newPage });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleRefresh = () => {
-        fetchData();
-        // Thêm thông báo nhẹ khi làm mới
+        setSearchTerm(''); // Reset ô tìm kiếm
+        fetchData({ page: 0, keyword: '' });
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
-            {/* 2. THÊM TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Duyệt Phí Dịch Vụ Phát Sinh</h1>
-                    <p className="text-sm text-gray-600">Các khoản phí kiểm định/sửa chữa (Bảng 14) chưa được lập hóa đơn.</p>
+                    <p className="text-sm text-gray-600">Các khoản phí kiểm định/sửa chữa chưa được lập hóa đơn.</p>
                 </div>
                 <button
                     onClick={handleRefresh}
@@ -113,7 +118,28 @@ function UnbilledFeesList() {
                 </button>
             </div>
 
-            {/* Đã XÓA phần hiển thị lỗi (div bg-red-100) cũ */}
+            {/* 4. Thanh Tìm Kiếm */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                 <div className="relative w-full md:w-1/2">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Tìm theo Mã đồng hồ, Tên KH..."
+                        value={searchTerm}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                     <button 
+                        onClick={handleSearch}
+                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
+                    >
+                        Tìm
+                    </button>
+                </div>
+            </div>
 
             {/* Bảng Dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -136,7 +162,7 @@ function UnbilledFeesList() {
                             {!loading && fees.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        Không có khoản phí nào đang chờ lập hóa đơn.
+                                        {searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không có khoản phí nào đang chờ lập hóa đơn.'}
                                     </td>
                                 </tr>
                             ) : (

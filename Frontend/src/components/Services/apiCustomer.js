@@ -73,6 +73,7 @@ export const getMyInvoices = (params) => {
     // API của Spring Boot nhận List<String> qua RequestParam
     return apiClient.get('/customer/invoices', { 
         params: {
+            keyword: params.keyword,
             status: params.status, // Gửi mảng status
             page: params.page || 0,
             size: params.size || 10

@@ -1,33 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../Services/apiClient'; 
-import { RefreshCw, UserCheck, MessageSquare, Filter } from 'lucide-react';
+// Thêm icon Search
+import { RefreshCw, UserCheck, MessageSquare, Filter, Search } from 'lucide-react';
 import AssignTicketModal from './AssignTicketModal';
 import ReplyTicketModal from './ReplyTicketModal';
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
-
-// 1. IMPORT TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function SupportTicketList() {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    // const [error, setError] = useState(null); // Không dùng state error hiển thị UI nữa
-    const navigate = useNavigate();
     
-    // State Phân trang
+    // 1. Thêm State Search
+    const [searchTerm, setSearchTerm] = useState('');
+
     const [pagination, setPagination] = useState({
         page: 0,
         size: 10,
         totalElements: 0,
     });
 
-    // State Bộ lọc
     const [typeFilter, setTypeFilter] = useState('ALL');
 
-    // State Modal
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
@@ -38,8 +35,9 @@ function SupportTicketList() {
         
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
+        // 2. Lấy keyword
+        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
 
-        // Xử lý tham số Type
         let paramType = null;
         if (typeFilter !== 'ALL') {
             paramType = [typeFilter]; 
@@ -50,7 +48,8 @@ function SupportTicketList() {
                 page: currentPage,
                 size: currentSize,
                 sort: 'submittedDate,desc',
-                type: paramType 
+                type: paramType,
+                keyword: currentKeyword || null // 3. Gửi keyword lên server
             },
             paramsSerializer: { indexes: null } 
         })
@@ -67,8 +66,7 @@ function SupportTicketList() {
             })
             .catch(err => {
                  console.error("Lỗi tải ticket:", err);
-                 // Thay setError bằng Toast
-                 toast.error("Không thể tải danh sách yêu cầu. Vui lòng thử lại.");
+                 toast.error("Không thể tải danh sách yêu cầu.");
                  setTickets([]);
             })
             .finally(() => {
@@ -76,64 +74,53 @@ function SupportTicketList() {
             });
     };
 
-    // Effect: Gọi lại khi đổi loại lọc
     useEffect(() => {
         fetchData({ page: 0 });
     }, [typeFilter]); 
 
-    // Handlers
+    // 4. Xử lý Search
+    const handleSearch = () => {
+        fetchData({ page: 0, keyword: searchTerm });
+    };
+
+    const handleSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value === '') {
+            fetchData({ page: 0, keyword: '' });
+        }
+    };
+
     const handlePageChange = (newPage) => {
         fetchData({ page: newPage });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleRefresh = () => {
-        fetchData(); 
+        setSearchTerm('');
+        setTypeFilter('ALL');
+        fetchData({ page: 0, keyword: '', type: [] }); 
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
-    // Modal Handlers
+    // Modal Handlers (Giữ nguyên)
     const handleOpenAssignModal = (t) => { setSelectedTicket(t); setIsAssignModalOpen(true); };
     const handleOpenReplyModal = (t) => { setSelectedTicket(t); setIsReplyModalOpen(true); };
     const handleCloseModals = () => { setIsAssignModalOpen(false); setIsReplyModalOpen(false); setSelectedTicket(null); };
+    const handleAssignSuccess = () => { handleCloseModals(); fetchData(); toast.success("Gán việc thành công!"); };
+    const handleReplySuccess = () => { handleCloseModals(); fetchData(); toast.success("Đã gửi phản hồi thành công!"); };
     
-    // Xử lý thành công (Thay alert bằng Toast)
-    const handleAssignSuccess = () => { 
-        handleCloseModals(); 
-        fetchData(); 
-        toast.success("Gán việc thành công!", { position: "top-center" }); 
-    };
-    
-    const handleReplySuccess = () => { 
-        handleCloseModals(); 
-        fetchData(); 
-        toast.success("Đã gửi phản hồi thành công!", { position: "top-center" }); 
-    };
-    
-    // Helpers Style
+    // Helpers Style (Giữ nguyên)
     const getTypeClass = (type) => type === 'SUPPORT_REQUEST' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';
     const getTypeText = (type) => type === 'SUPPORT_REQUEST' ? 'Yêu Cầu Hỗ Trợ' : 'Góp Ý';
-    const getStatusClass = (status) => {
-        switch (status) {
-            case 'PENDING': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
-            case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800 border border-blue-200';
-            case 'RESOLVED': return 'bg-green-100 text-green-800 border border-green-200';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
             
-            {/* 2. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Quản Lý Yêu Cầu & Góp Ý</h1>
                     <p className="text-sm text-gray-600">Danh sách các việc cần xử lý (Trạng thái: Chờ xử lý).</p>
@@ -143,11 +130,34 @@ function SupportTicketList() {
                 </button>
             </div>
 
-            {/* Bộ lọc */}
-            <div className="bg-white p-4 rounded-lg shadow-sm flex items-center border border-gray-200">
-                <div className="flex items-center gap-2">
+            {/* 5. THANH CÔNG CỤ (SEARCH & FILTER) */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                
+                {/* Search Box */}
+                <div className="relative w-full md:w-1/2">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Tìm theo Mã, Nội dung hoặc Tên KH..."
+                        value={searchTerm}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                     <button 
+                        onClick={handleSearch}
+                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
+                    >
+                        Tìm
+                    </button>
+                </div>
+
+                {/* Filter Box */}
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                     <Filter size={16} className="text-gray-600" />
-                    <label htmlFor="typeFilter" className="text-sm font-medium text-gray-700">Lọc theo loại:</label>
+                    <label htmlFor="typeFilter" className="text-sm font-medium text-gray-700 whitespace-nowrap">Lọc theo loại:</label>
                     <select
                         id="typeFilter"
                         value={typeFilter}
@@ -155,13 +165,11 @@ function SupportTicketList() {
                         className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="ALL">Tất cả</option>
-                        <option value="SUPPORT_REQUEST">🔴 Yêu Cầu Hỗ Trợ (Cần gán việc)</option>
-                        <option value="FEEDBACK">🔵 Góp Ý (Cần trả lời)</option>
+                        <option value="SUPPORT_REQUEST">🔴 Yêu Cầu Hỗ Trợ</option>
+                        <option value="FEEDBACK">🔵 Góp Ý</option>
                     </select>
                 </div>
             </div>
-
-            {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -180,7 +188,11 @@ function SupportTicketList() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {!loading && tickets.length === 0 ? (
-                                <tr><td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">Không tìm thấy yêu cầu nào phù hợp.</td></tr>
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
+                                        {searchTerm ? 'Không tìm thấy kết quả nào phù hợp.' : 'Không có yêu cầu nào cần xử lý.'}
+                                    </td>
+                                </tr>
                             ) : (
                                 tickets.map(ticket => (
                                     <tr key={ticket.id} className="hover:bg-gray-50">
@@ -194,7 +206,6 @@ function SupportTicketList() {
                                         <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={ticket.description}>{ticket.description}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(ticket.submittedDate).format('HH:mm DD/MM')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            {/* Logic hiển thị nút bấm dựa trên LOẠI */}
                                             {ticket.feedbackType === 'SUPPORT_REQUEST' ? (
                                                 <button onClick={() => handleOpenAssignModal(ticket)} className="text-indigo-600 hover:text-indigo-900 flex items-center font-medium transition-colors">
                                                     <UserCheck size={16} className="mr-1" /> Gán việc

@@ -18,6 +18,7 @@ public class InvoiceDTO {
     // --- Thông tin Khách hàng (Lấy từ Bảng 7) ---
     private Integer customerId;
     private String customerName;
+    private String customerCode;
     private String customerAddress;
     private String customerPhone;
     private String customerEmail;
@@ -26,8 +27,15 @@ public class InvoiceDTO {
     private Integer contractId; // ID HĐ Lắp đặt (Bảng 8)
     // (Bạn có thể thêm serviceContractId nếu cần)
 
-    // --- Thông tin Đọc số (Lấy từ Bảng 15) ---
-    private Integer meterReadingId; // (Sẽ là NULL nếu đây là HĐ Dịch vụ)
+    // --- Thông tin Đọc số & Đồng hồ (THÊM MỚI Ở ĐÂY) ---
+    private Integer meterReadingId;
+    private String meterCode;           // <--- Mã đồng hồ
+    private BigDecimal oldIndex;        // <--- Chỉ số cũ
+    private BigDecimal newIndex;        // <--- Chỉ số mới
+    private BigDecimal consumption;     // <--- Số khối tiêu thụ
+    private String billingPeriod;       // <--- Kỳ ghi số (VD: 12/2025)
+
+    // --- Thông tin Kỳ tính toán (Gốc của Invoice) ---
     private LocalDate fromDate;
     private LocalDate toDate;
     private BigDecimal totalConsumption;

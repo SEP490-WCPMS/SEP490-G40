@@ -50,23 +50,39 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<InvoiceDTO> getMyInvoicesByStatus(Integer customerAccountId, List<String> statusStrings, Pageable pageable) {
+    public Page<InvoiceDTO> getMyInvoicesByStatus(Integer customerAccountId, List<String> statusStrings, String keyword, Pageable pageable) {
         Customer customer = getCustomerFromAccountId(customerAccountId);
 
-        // SỬA: Xử lý trường hợp FE gửi null hoặc rỗng (khi chọn "ALL")
-        if (statusStrings == null || statusStrings.isEmpty()) {
-            // Trả về TẤT CẢ hóa đơn
-            Page<Invoice> invoices = invoiceRepository.findByCustomer(customer, pageable);
-            return invoices.map(invoiceMapper::toDto);
+        // 1. Xử lý Status
+        List<Invoice.PaymentStatus> targetStatuses = null;
+        if (statusStrings != null && !statusStrings.isEmpty() && !statusStrings.contains("ALL")) {
+            targetStatuses = statusStrings.stream()
+                    .map(s -> {
+                        try {
+                            return Invoice.PaymentStatus.valueOf(s.toUpperCase());
+                        } catch (IllegalArgumentException e) {
+                            return null;
+                        }
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            // Nếu lọc sai hết (vd gửi lên "ABC") -> trả về rỗng luôn
+            if (targetStatuses.isEmpty()) {
+                // return Page.empty(pageable); // Tùy chọn
+            }
         }
 
-        // Chuyển List<String> ("PENDING", "OVERDUE") thành List<Enum>
-        List<Invoice.PaymentStatus> statuses = statusStrings.stream()
-                .map(s -> Invoice.PaymentStatus.valueOf(s.toUpperCase()))
-                .collect(Collectors.toList());
+        // 2. Xử lý Keyword (Trim)
+        String searchKeyword = (keyword != null) ? keyword.trim() : null;
 
-        // Gọi hàm repo mới
-        Page<Invoice> invoices = invoiceRepository.findByCustomerAndPaymentStatusIn(customer, statuses, pageable);
+        // 3. Gọi Repository
+        Page<Invoice> invoices = invoiceRepository.searchMyInvoices(
+                customer.getId(),
+                targetStatuses,
+                searchKeyword,
+                pageable
+        );
 
         return invoices.map(invoiceMapper::toDto);
     }

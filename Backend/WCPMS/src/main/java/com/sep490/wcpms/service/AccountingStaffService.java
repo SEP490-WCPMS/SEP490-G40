@@ -17,9 +17,9 @@ import java.util.List;
 public interface AccountingStaffService {
 
     /**
-     * Lấy danh sách các khoản phí kiểm định chưa được lập hóa đơn (treo).
+     * [UPDATED] Lấy danh sách các khoản phí kiểm định được gán cho nhân viên kế toán này (staffId).
      */
-    Page<CalibrationFeeDTO> getUnbilledCalibrationFees(Pageable pageable);
+    Page<CalibrationFeeDTO> getMyUnbilledCalibrationFees(Integer staffId, String keyword, Pageable pageable);
 
     // --- SỬA LẠI HÀM NÀY ---
     /**
@@ -39,7 +39,7 @@ public interface AccountingStaffService {
      * Lấy danh sách Hóa đơn (đã tạo) có lọc theo Status (Req 3+4)
      * @param status (PENDING, PAID, ...) hoặc "ALL"
      */
-    Page<InvoiceDTO> getInvoices(String status, Pageable pageable);
+    Page<InvoiceDTO> getInvoices(String status, Integer staffId, String keyword, Pageable pageable);
 
     /**
      * (Mới) Lấy CHI TIẾT Hóa đơn (bao gồm Phí gốc).
@@ -81,7 +81,7 @@ public interface AccountingStaffService {
     /**
      * Lấy các chỉ số KPI cho Thẻ Thống kê (Stats Cards).
      */
-    AccountingStatsDTO getDashboardStats();
+    AccountingStatsDTO getDashboardStats(Integer staffId);
     // --- HẾT PHẦN THÊM ---
 
     // --- THÊM HÀM MỚI ---

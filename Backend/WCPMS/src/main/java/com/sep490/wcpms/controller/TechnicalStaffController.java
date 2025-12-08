@@ -75,9 +75,13 @@ public class TechnicalStaffController {
     // === API LUỒNG 1: SURVEY & DESIGN ===
 
     @GetMapping("/survey/contracts")
-    public ResponseEntity<List<ContractDetailsDTO>> getAssignedSurveyContracts() {
+    public ResponseEntity<Page<ContractDetailsDTO>> getAssignedSurveyContracts(
+            @RequestParam(required = false) String keyword, // <--- THÊM
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
         Integer staffId = getAuthenticatedStaffId();
-        List<ContractDetailsDTO> contracts = technicalStaffService.getAssignedSurveyContracts(staffId);
+        // Gọi service mới
+        Page<ContractDetailsDTO> contracts = technicalStaffService.getAssignedSurveyContracts(staffId, keyword, pageable);
         return ResponseEntity.ok(contracts);
     }
 
@@ -94,9 +98,13 @@ public class TechnicalStaffController {
     // === API LUỒNG 2: INSTALLATION ===
 
     @GetMapping("/install/contracts")
-    public ResponseEntity<List<ContractDetailsDTO>> getAssignedInstallationContracts() {
+    public ResponseEntity<Page<ContractDetailsDTO>> getAssignedInstallationContracts(
+            @RequestParam(required = false) String keyword, // <--- THÊM
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
         Integer staffId = getAuthenticatedStaffId();
-        List<ContractDetailsDTO> contracts = technicalStaffService.getAssignedInstallationContracts(staffId);
+        // Gọi service mới
+        Page<ContractDetailsDTO> contracts = technicalStaffService.getAssignedInstallationContracts(staffId, keyword, pageable);
         return ResponseEntity.ok(contracts);
     }
 
@@ -156,10 +164,12 @@ public class TechnicalStaffController {
      */
     @GetMapping("/maintenance-requests")
     public ResponseEntity<Page<SupportTicketDTO>> getMyMaintenanceRequests(
+            @RequestParam(required = false) String keyword, // <--- THÊM THAM SỐ NÀY
             @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Integer staffId = getAuthenticatedStaffId();
-        Page<SupportTicketDTO> tickets = technicalStaffService.getMyMaintenanceRequests(staffId, pageable);
+        // Truyền keyword xuống service
+        Page<SupportTicketDTO> tickets = technicalStaffService.getMyMaintenanceRequests(staffId, keyword, pageable);
         return ResponseEntity.ok(tickets);
     }
 

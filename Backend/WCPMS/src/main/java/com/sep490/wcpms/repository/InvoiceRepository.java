@@ -94,6 +94,21 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     );
     // --- HẾT PHẦN THÊM ---
 
+    /**
+     * Tìm kiếm Hóa đơn CHƯA THANH TOÁN (PENDING, OVERDUE) phục vụ cho Thu ngân.
+     * Tìm theo: Số hóa đơn, Tên khách hàng, Mã khách hàng, hoặc Số điện thoại.
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.paymentStatus IN ('PENDING', 'OVERDUE') " +
+            "AND (" +
+            "   LOWER(i.invoiceNumber) LIKE %:keyword% OR " +
+            "   LOWER(i.customer.customerName) LIKE %:keyword% OR " +
+            "   LOWER(i.customer.customerCode) LIKE %:keyword% OR " +
+            "   LOWER(i.customer.account.phone) LIKE %:keyword% " +
+            ") " +
+            "ORDER BY i.dueDate ASC") // Ưu tiên hiện cái nào sắp hết hạn/quá hạn trước
+    List<Invoice> searchUnpaidInvoices(@Param("keyword") String keyword);
+
     // --- THÊM 2 HÀM MỚI (Cho Thu ngân tại nhà) ---
 
     /**
@@ -123,31 +138,36 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     );
     // --- HẾT PHẦN THÊM ---
 
-    // --- THÊM 3 HÀM MỚI CHO STATS ---
+    // === CÁC HÀM THỐNG KÊ CHO DASHBOARD (PERSONALIZED) ===
 
     /**
-     * Đếm số Hóa đơn theo danh sách trạng thái
+     * 1. Đếm số Hóa đơn theo Staff ID và danh sách Trạng thái (Ví dụ: Đếm PENDING của tôi)
      */
-    @Query("SELECT COUNT(i) FROM Invoice i WHERE i.paymentStatus IN :statuses")
-    long countByPaymentStatusIn(@Param("statuses") Collection<PaymentStatus> statuses);
+    long countByAccountingStaff_IdAndPaymentStatusIn(Integer staffId, Collection<PaymentStatus> statuses);
 
     /**
-     * Tính TỔNG TIỀN của Hóa đơn theo danh sách trạng thái
+     * 2. Tính TỔNG TIỀN của Hóa đơn theo Staff ID và danh sách Trạng thái (Ví dụ: Tổng tiền tôi cần thu)
      */
-    @Query("SELECT SUM(i.totalAmount) FROM Invoice i WHERE i.paymentStatus IN :statuses")
-    BigDecimal sumTotalAmountByPaymentStatusIn(@Param("statuses") Collection<PaymentStatus> statuses);
+    @Query("SELECT SUM(i.totalAmount) FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus IN :statuses")
+    BigDecimal sumTotalAmountByStaffAndStatus(
+            @Param("staffId") Integer staffId,
+            @Param("statuses") Collection<PaymentStatus> statuses
+    );
 
     /**
-     * Đếm số Hóa đơn QUÁ HẠN (OVERDUE và ngày < hôm nay)
-     * (Thực ra status OVERDUE đã đủ, nhưng đây là cách check an toàn hơn)
+     * 3. Đếm số Hóa đơn QUÁ HẠN được gán cho Staff ID
      */
     @Query("SELECT COUNT(i) FROM Invoice i " +
-            "WHERE i.paymentStatus = :status AND i.dueDate < :today")
-    long countOverdueInvoices(
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus = :status " +
+            "AND i.dueDate < :today")
+    long countOverdueInvoicesByStaff(
+            @Param("staffId") Integer staffId,
             @Param("status") PaymentStatus status,
             @Param("today") LocalDate today
     );
-    // --- HẾT PHẦN THÊM ---
 
     // --- THÊM 2 HÀM MỚI CHO STATS ---
 
@@ -208,4 +228,206 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     // --- Thêm query group by ngày ---
     @Query("SELECT i.invoiceDate, SUM(i.totalAmount) FROM Invoice i WHERE i.invoiceDate BETWEEN :from AND :to GROUP BY i.invoiceDate ORDER BY i.invoiceDate")
     List<Object[]> sumTotalGroupedByInvoiceDate(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+
+    // === CÁC HÀM CHO ADMIN (GLOBAL) ===
+
+    /**
+     * 1. Đếm tổng số hóa đơn theo danh sách trạng thái (Admin)
+     */
+    long countByPaymentStatusIn(Collection<PaymentStatus> statuses);
+
+    /**
+     * 2. Đếm tổng số hóa đơn QUÁ HẠN toàn hệ thống (Admin)
+     * (Khác với hàm countOverdueInvoicesByStaff của kế toán)
+     */
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+            "WHERE i.paymentStatus = :status " +
+            "AND i.dueDate < :today")
+    long countGlobalOverdueInvoices(
+            @Param("status") PaymentStatus status,
+            @Param("today") LocalDate today
+    );
+
+    /**
+     * 3. Tính tổng tiền theo trạng thái và khoảng thời gian (Admin)
+     * Lưu ý: Dùng COALESCE để tránh lỗi null khi không có dữ liệu
+     */
+    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i " +
+            "WHERE i.paymentStatus IN :statuses " +
+            "AND i.invoiceDate BETWEEN :from AND :to")
+    BigDecimal sumGlobalTotalAmountByStatusAndDate(
+            @Param("statuses") Collection<PaymentStatus> statuses,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
+
+    // Nếu bạn muốn tính "Doanh thu thực" (đã trả tiền), dùng hàm này:
+    @Query("SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i " +
+            "WHERE i.paymentStatus = 'PAID' " +
+            "AND i.invoiceDate BETWEEN :from AND :to")
+    BigDecimal sumGlobalPaidAmountByDate(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
+
+
+    // === CÁC HÀM MỚI ĐỂ LỌC THEO NGƯỜI ĐƯỢC GIAO VIỆC (ACCOUNTING STAFF) ===
+
+    /**
+     * Tìm Hóa đơn của Kế toán viên theo Keyword (Mã HĐ, Tên KH, Mã KH).
+     * (Không lọc trạng thái - Status = ALL)
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(i.invoiceNumber) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.customerName) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.account.phone) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.customerCode) LIKE %:keyword%)")
+    Page<Invoice> searchByAccountingStaff_Id(
+            @Param("staffId") Integer staffId,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    /**
+     * Tìm Hóa đơn của Kế toán viên theo Trạng thái VÀ Keyword.
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus = :status " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(i.invoiceNumber) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.customerName) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.account.phone) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.customerCode) LIKE %:keyword%)")
+    Page<Invoice> searchByAccountingStaff_IdAndStatus(
+            @Param("staffId") Integer staffId,
+            @Param("status") Invoice.PaymentStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    // Nếu bạn muốn hỗ trợ status dạng String "ALL" thì xử lý logic ở Service, repo chỉ cần Enum
+
+
+    // --- THÊM HÀM MỚI NÀY ---
+    /**
+     * Tìm kiếm Hóa đơn của khách hàng:
+     * - Lọc theo Customer ID
+     * - Lọc theo Status (Nếu null thì lấy hết)
+     * - Tìm kiếm Keyword trong Số hóa đơn (Invoice Number)
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.customer.id = :customerId " +
+            "AND (:statuses IS NULL OR i.paymentStatus IN :statuses) " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Invoice> searchMyInvoices(
+            @Param("customerId") Integer customerId,
+            @Param("statuses") List<Invoice.PaymentStatus> statuses,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+    // ------------------------
+
+    /**
+     * Lấy danh sách hóa đơn cho Thu ngân đi thu tiền theo Tuyến.
+     * Logic:
+     * 1. Phải thuộc các tuyến (routeIds) mà thu ngân quản lý.
+     * 2. Điều kiện lọc:
+     * - Hoặc: Hợp đồng đăng ký Tiền mặt (CASH) và chưa thanh toán (PENDING).
+     * - Hoặc: Hóa đơn đã QUÁ HẠN (OVERDUE) (Bất kể phương thức thanh toán là gì -> Để đi nhắc nợ).
+     */
+    /**
+     * Tìm kiếm & Lọc hóa đơn cho Thu ngân đi thu.
+     * @param routeIds: Danh sách tuyến quản lý
+     * @param keyword: Từ khóa tìm kiếm (Mã HĐ, Tên KH, Mã KH, Địa chỉ)
+     * @param filterType: 'ALL', 'CASH', 'OVERDUE'
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.contract.readingRoute.id IN :routeIds " +
+            // 1. Logic Tìm kiếm Keyword
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(i.invoiceNumber) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.customerName) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.customerCode) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.account.phone) LIKE %:keyword% OR " +
+            "     LOWER(i.customer.address) LIKE %:keyword%) " +
+            // 2. Logic Bộ lọc (Filter)
+            "AND (" +
+            "   (:filterType = 'ALL' AND (" +
+            "       (i.contract.paymentMethod = 'CASH' AND i.paymentStatus = 'PENDING') OR " +
+            "       (i.paymentStatus = 'OVERDUE')" +
+            "   )) " +
+            "   OR " +
+            "   (:filterType = 'CASH' AND (i.contract.paymentMethod = 'CASH' AND i.paymentStatus = 'PENDING')) " +
+            "   OR " +
+            "   (:filterType = 'OVERDUE' AND i.paymentStatus = 'OVERDUE') " +
+            ")")
+    Page<Invoice> findInvoicesForCashierCollection(
+            @Param("routeIds") Collection<Integer> routeIds,
+            @Param("keyword") String keyword,
+            @Param("filterType") String filterType,
+            Pageable pageable
+    );
+
+    /**
+     * Đếm số lượng hóa đơn cần thu (Logic mới: Tiền mặt hoặc Quá hạn).
+     * Dùng cho Dashboard Stats.
+     */
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+            "WHERE i.contract.readingRoute.id IN :routeIds " +
+            "AND (" +
+            "   (i.contract.paymentMethod = 'CASH' AND i.paymentStatus = 'PENDING') " +
+            "   OR " +
+            "   (i.paymentStatus = 'OVERDUE') " +
+            ")")
+    long countInvoicesForCashierCollection(@Param("routeIds") Collection<Integer> routeIds);
+
+    /**
+     * Tính tổng tiền hóa đơn cần thu (Logic mới: Tiền mặt hoặc Quá hạn).
+     * Dùng cho Dashboard Stats.
+     */
+    @Query("SELECT SUM(i.totalAmount) FROM Invoice i " +
+            "WHERE i.contract.readingRoute.id IN :routeIds " +
+            "AND (" +
+            "   (i.contract.paymentMethod = 'CASH' AND i.paymentStatus = 'PENDING') " +
+            "   OR " +
+            "   (i.paymentStatus = 'OVERDUE') " +
+            ")")
+    BigDecimal sumAmountForCashierCollection(@Param("routeIds") Collection<Integer> routeIds);
+
+
+    /**
+     * Tính tổng doanh thu (Đã thanh toán) của các hóa đơn do Kế toán này tạo.
+     * (Dựa trên ngày thanh toán paidDate)
+     */
+    @Query("SELECT SUM(i.totalAmount) FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus = 'PAID' " +
+            "AND i.paidDate BETWEEN :startDate AND :endDate")
+    BigDecimal sumMyRevenueByDateRange(
+            @Param("staffId") Integer staffId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Đếm số Hóa đơn (Pending/Overdue) do Kế toán này tạo.
+     */
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus IN :statuses")
+    long countMyPendingInvoices(@Param("staffId") Integer staffId,
+                                @Param("statuses") Collection<PaymentStatus> statuses);
+
+    /**
+     * Đếm số Hóa đơn QUÁ HẠN do Kế toán này tạo.
+     */
+    @Query("SELECT COUNT(i) FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus = 'OVERDUE'") // Hoặc check dueDate < today
+    long countMyOverdueInvoices(@Param("staffId") Integer staffId);
 }

@@ -20,7 +20,7 @@ public interface CustomerService {
      * @param statuses Danh sách trạng thái (PENDING, PAID...)
      * @param pageable Phân trang
      */
-    Page<InvoiceDTO> getMyInvoicesByStatus(Integer customerAccountId, List<String> statuses, Pageable pageable);
+    Page<InvoiceDTO> getMyInvoicesByStatus(Integer customerAccountId, List<String> statuses, String keyword, Pageable pageable);
 
     /**
      * Lấy chi tiết 1 Hóa đơn (xác thực đúng chủ sở hữu).

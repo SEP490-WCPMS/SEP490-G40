@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getContractDetails, markInstallationAsCompleted } from '../../Services/apiTechnicalStaff'; 
-import { ArrowLeft, Save, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react'; 
+import { getContractDetails, markInstallationAsCompleted } from '../../Services/apiTechnicalStaff';
+import { ArrowLeft, Save, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
 
 // 1. IMPORT TOAST VÀ MODAL
 import { ToastContainer, toast } from 'react-toastify';
@@ -39,7 +39,7 @@ function InstallationDetail() {
         }
 
         setLoading(true);
-        
+
         getContractDetails(contractId)
             .then(response => {
                 setContract(response.data);
@@ -55,6 +55,17 @@ function InstallationDetail() {
     // Hàm xử lý khi người dùng nhập text/số
     const handleChange = (e) => {
         const { name, value } = e.target;
+        // 1. Xử lý riêng cho Chỉ Số Ban Đầu (Chỉ nhận số nguyên)
+        if (name === 'initialReading') {
+            // Sử dụng Regex thay thế tất cả ký tự KHÔNG phải số bằng rỗng
+            // Ví dụ: gõ "123a" -> thành "123"
+            const numericValue = value.replace(/\D/g, '');
+
+            setInstallData(prev => ({ ...prev, [name]: numericValue }));
+            return;
+        }
+
+        // 2. Các trường khác (như Ghi chú) xử lý bình thường
         setInstallData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -66,11 +77,11 @@ function InstallationDetail() {
             setImagePreview(null);
             return;
         }
-        
+
         // Xem trước
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
-        
+
         // Chuyển Base64
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -85,15 +96,35 @@ function InstallationDetail() {
 
     // 1. Validate và Mở Modal
     const handlePreSubmit = () => {
-        // Validate
+        // --- VALIDATE DỮ LIỆU ---
+
+        // 1. Check rỗng
         if (!installData.meterCode || installData.initialReading === '') {
-            toast.warn("Vui lòng nhập Mã Đồng Hồ và Chỉ Số Ban Đầu.");
+            toast.warn("Vui lòng điền đầy đủ Mã Đồng Hồ và Chỉ Số Ban Đầu.");
             return;
         }
+
+        // 2. Validate Mã Đồng Hồ (Phải là số nguyên dương)
+        // Regex /^\d+$/ đảm bảo chuỗi chỉ chứa số 0-9
+        // if (!/^\d+$/.test(installData.meterCode)) {
+        //     toast.error("Mã đồng hồ chỉ được phép chứa các ký tự số.");
+        //     return;
+        // }
+
+        // 3. Validate Chỉ Số Ban Đầu (Số nguyên >= 0)
+        const reading = Number(installData.initialReading);
+        if (isNaN(reading) || reading < 0 || !Number.isInteger(reading)) {
+            toast.error("Chỉ số ban đầu phải là số nguyên lớn hơn hoặc bằng 0.");
+            return;
+        }
+
+        // 4. Check ảnh
         if (!installData.installationImageBase64) {
             toast.warn("Vui lòng chụp và đính kèm ảnh đồng hồ đã lắp đặt.");
             return;
         }
+
+        // --- HẾT VALIDATE ---
 
         // Mở Modal
         setShowConfirmModal(true);
@@ -106,12 +137,12 @@ function InstallationDetail() {
 
         try {
             await markInstallationAsCompleted(contractId, installData);
-            
+
             toast.success("Xác nhận hoàn thành lắp đặt thành công!", {
                 position: "top-center",
                 autoClose: 2000
             });
-            
+
             // Quay lại danh sách sau 2s
             setTimeout(() => {
                 navigate('/technical/install');
@@ -119,7 +150,7 @@ function InstallationDetail() {
 
         } catch (err) {
             console.error("Lỗi khi xác nhận:", err);
-            toast.error(err.response?.data?.message || "Lỗi khi xác nhận. Vui lòng thử lại.", {
+            toast.error(err.response?.data?.message || "Lỗi khi xác nhận. Vui lòng nhập chính xác thông tin. Mã Đồng Hồ phải là Đồng Hồ còn trong kho", {
                 position: "top-center"
             });
         } finally {
@@ -129,12 +160,12 @@ function InstallationDetail() {
 
     // --- Loading State ---
     if (loading) {
-         return (
-             <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                 <span className="text-gray-500 text-lg">Đang tải chi tiết hợp đồng...</span>
-             </div>
-         );
+        return (
+            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                <span className="text-gray-500 text-lg">Đang tải chi tiết hợp đồng...</span>
+            </div>
+        );
     }
 
     // Nếu không có dữ liệu
@@ -143,37 +174,37 @@ function InstallationDetail() {
             <div className="p-8 text-center bg-gray-50 min-h-screen flex flex-col items-center pt-20">
                 <AlertCircle className="h-12 w-12 text-gray-300 mb-4" />
                 <p className="text-gray-500 mb-6">Không tìm thấy dữ liệu hợp đồng.</p>
-                <button 
-                   onClick={() => navigate('/technical/install')}
-                   className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
-               >
-                   Quay lại danh sách
-               </button>
-               <ToastContainer position="top-center" theme="colored" />
+                <button
+                    onClick={() => navigate('/technical/install')}
+                    className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                    Quay lại danh sách
+                </button>
+                <ToastContainer position="top-center" theme="colored" />
             </div>
         );
     }
 
     // --- Render Component ---
     return (
-        <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen"> 
-            
+        <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
             />
 
-             {/* Header */}
-             <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                 <button 
-                    onClick={() => navigate(-1)} 
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+                <button
+                    onClick={() => navigate(-1)}
                     className="p-2 rounded-full hover:bg-gray-100 transition duration-150 ease-in-out focus:outline-none"
-                 >
-                     <ArrowLeft size={20} className="text-gray-600"/>
-                 </button>
-                 <div>
+                >
+                    <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Chi Tiết Lắp Đặt</h1>
                     <p className="text-sm text-gray-600">Xem thông tin và nộp biên bản lắp đặt.</p>
                 </div>
@@ -190,12 +221,11 @@ function InstallationDetail() {
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Mã HĐ</span>
                         <span className="font-medium text-gray-900">{contract.contractNumber}</span>
                     </div>
-                    
+
                     <div className="p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Trạng thái</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${
-                            contract.contractStatus === 'SIGNED' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${contract.contractStatus === 'SIGNED' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
                             {contract.contractStatus === 'SIGNED' ? 'Chờ Lắp Đặt' : contract.contractStatus}
                         </span>
                     </div>
@@ -209,12 +239,12 @@ function InstallationDetail() {
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Ngày yêu cầu</span>
                         <span className="font-medium text-gray-900">{contract.applicationDate}</span>
                     </div>
-                    
+
                     <div className="md:col-span-2 p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Địa chỉ lắp đặt</span>
                         <span className="font-medium text-gray-900">{contract.customerAddress}</span>
                     </div>
-                    
+
                     <div className="p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Loại giá</span>
                         <span className="font-medium text-gray-900">{contract.priceTypeName || 'N/A'}</span>
@@ -244,7 +274,7 @@ function InstallationDetail() {
             {contract.contractStatus === 'SIGNED' ? (
                 <form className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5 border border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-4 flex items-center gap-2">
-                        <Save size={20} className="text-green-600"/>
+                        <Save size={20} className="text-green-600" />
                         Biên Bản Lắp Đặt (Bắt buộc)
                     </h3>
 
@@ -265,15 +295,25 @@ function InstallationDetail() {
 
                         {/* Chỉ Số Ban Đầu */}
                         <div>
-                            <label htmlFor="initialReading" className="block mb-1.5 text-sm font-medium text-gray-700">Chỉ Số Ban Đầu (m³) <span className="text-red-500">*</span></label>
+                            <label htmlFor="initialReading" className="block mb-1.5 text-sm font-medium text-gray-700">
+                                Chỉ Số Ban Đầu (m³) <span className="text-red-500">*</span>
+                            </label>
                             <input
-                                type="number"
-                                step="0.01"
+                                type="text" // Dùng text kết hợp regex để ép kiểu số nguyên tuyệt đối
                                 id="initialReading"
                                 name="initialReading"
                                 value={installData.initialReading}
                                 onChange={handleChange}
-                                placeholder="Nhập chỉ số trên mặt đồng hồ (vd: 0)"
+                                placeholder="Nhập chỉ số (vd: 0)"
+                                // Chặn ký tự lạ (dấu chấm, phẩy, e, dấu trừ...)
+                                onKeyDown={(e) => {
+                                    if (["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+                                        return;
+                                    }
+                                    if (!/[0-9]/.test(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                }}
                                 className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-bold"
                             />
                         </div>
@@ -282,7 +322,7 @@ function InstallationDetail() {
                     {/* Upload Ảnh */}
                     <div>
                         <label htmlFor="installationImage" className="block mb-1.5 text-sm font-medium text-gray-700 flex items-center gap-2">
-                            <ImageIcon size={16}/> Ảnh Chụp Đồng Hồ <span className="text-red-500">*</span>
+                            <ImageIcon size={16} /> Ảnh Chụp Đồng Hồ <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="file"
@@ -317,7 +357,7 @@ function InstallationDetail() {
 
                     {/* Nút Submit */}
                     <div className="pt-4 border-t border-gray-100 flex justify-end">
-                        <button 
+                        <button
                             type="button" // Đổi thành button để không submit form
                             onClick={handlePreSubmit} // Mở Modal
                             disabled={submitting}
@@ -347,7 +387,7 @@ function InstallationDetail() {
             )}
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

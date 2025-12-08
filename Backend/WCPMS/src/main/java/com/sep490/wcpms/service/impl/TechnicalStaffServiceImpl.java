@@ -78,6 +78,10 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     private com.sep490.wcpms.service.ActivityLogService activityLogService;
     @Autowired
     private ApplicationEventPublisher eventPublisher; // Publish domain events
+    // --- [NEW] Cần Inject RoleRepository để tìm Role Kế Toán ---
+    @Autowired
+    private RoleRepository roleRepository;
+    // -----------------------------------------------------------
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -103,12 +107,28 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     // === LUỒNG 1: SURVEY ===
 
     @Override
-    public List<ContractDetailsDTO> getAssignedSurveyContracts(Integer staffId) {
-        Account staff = getStaffAccountById(staffId);
-        List<Contract> contracts = contractRepository.findByTechnicalStaffAndContractStatus(
-                staff, Contract.ContractStatus.PENDING
+    @Transactional(readOnly = true)
+    public Page<ContractDetailsDTO> getAssignedSurveyContracts(Integer staffId, String keyword, Pageable pageable) {
+        // 1. Kiểm tra Staff tồn tại (Helper)
+        getStaffAccountById(staffId);
+
+        // 2. Xử lý keyword
+        String searchKeyword = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKeyword = keyword.trim().toLowerCase();
+        }
+
+        // 3. Gọi Repository MỚI
+        // Trạng thái cần tìm là PENDING (Chờ khảo sát)
+        Page<Contract> contracts = contractRepository.findByTechnicalStaffAndStatusWithSearch(
+                staffId,
+                Contract.ContractStatus.PENDING,
+                searchKeyword,
+                pageable
         );
-        return contractMapper.toDtoList(contracts);
+
+        // 4. Map sang DTO
+        return contracts.map(contractMapper::toDto);
     }
 
     @Override
@@ -138,13 +158,28 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     // === LUỒNG 2: INSTALLATION ===
 
     @Override
-    public List<ContractDetailsDTO> getAssignedInstallationContracts(Integer staffId) {
-        Account staff = getStaffAccountById(staffId);
-        // Lấy hợp đồng ở trạng thái SIGNED (đã ký, chờ lắp đặt)
-        List<Contract> contracts = contractRepository.findByTechnicalStaffAndContractStatus(
-                staff, Contract.ContractStatus.SIGNED
+    @Transactional(readOnly = true)
+    public Page<ContractDetailsDTO> getAssignedInstallationContracts(Integer staffId, String keyword, Pageable pageable) {
+        // 1. Kiểm tra Staff
+        getStaffAccountById(staffId);
+
+        // 2. Xử lý keyword
+        String searchKeyword = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKeyword = keyword.trim().toLowerCase();
+        }
+
+        // 3. Gọi Repository (Dùng chung hàm đã viết ở bước trước cho Survey)
+        // Trạng thái cần tìm là SIGNED (Chờ lắp đặt)
+        Page<Contract> contracts = contractRepository.findByTechnicalStaffAndStatusWithSearch(
+                staffId,
+                Contract.ContractStatus.SIGNED, // <--- Khác biệt duy nhất là Status
+                searchKeyword,
+                pageable
         );
-        return contractMapper.toDtoList(contracts);
+
+        // 4. Map sang DTO
+        return contracts.map(contractMapper::toDto);
     }
 
     @Override
@@ -384,7 +419,7 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
             throw new IllegalArgumentException("Chỉ số cuối của đồng hồ cũ không thể nhỏ hơn chỉ số đọc trước đó.");
         }
         finalReading.setConsumption(dto.getOldMeterFinalReading().subtract(previousReading));
-        finalReading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED); // Đã xác nhận
+        finalReading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED); //  Đã xác nhận
         finalReading.setNotes("Chốt sổ do thay thế đồng hồ. Lý do: " + dto.getReplacementReason());
         meterReadingRepository.save(finalReading);
 
@@ -430,7 +465,16 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
             calibration.setCalibrationStatus(MeterCalibration.CalibrationStatus.PENDING); // Đang chờ kết quả
             calibration.setCalibrationCost(dto.getCalibrationCost()); // Gán chi phí
             calibration.setNotes("Tháo dỡ để kiểm định định kỳ 5 năm.");
-            meterCalibrationRepository.save(calibration);
+            // Lưu lần 1 để có ID
+            MeterCalibration savedCalibration = meterCalibrationRepository.save(calibration);
+
+            // --- [THÊM MỚI] GỌI HÀM PHÂN BỔ KẾ TOÁN ---
+            // Nếu có phát sinh chi phí > 0, hệ thống tự tìm kế toán để gán
+            if (savedCalibration.getCalibrationCost() != null
+                    && savedCalibration.getCalibrationCost().compareTo(BigDecimal.ZERO) > 0) {
+                assignCalibrationToAccountant(savedCalibration);
+            }
+            // ------------------------------------------
 
         } else { // Mặc định là 'BROKEN'
             oldMeter.setMeterStatus(WaterMeter.MeterStatus.BROKEN);
@@ -527,7 +571,15 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         calibration.setCalibrationCost(dto.getCalibrationCost()); // Chi phí
         calibration.setNotes(dto.getNotes() + " (Kiểm định tại chỗ)");
 
-        meterCalibrationRepository.save(calibration);
+        MeterCalibration savedCalibration = meterCalibrationRepository.save(calibration);
+
+        // --- [THÊM MỚI] GỌI HÀM PHÂN BỔ KẾ TOÁN ---
+        // Phân bổ việc lập hóa đơn cho kế toán ít việc nhất
+        if (savedCalibration.getCalibrationCost() != null
+                && savedCalibration.getCalibrationCost().compareTo(BigDecimal.ZERO) > 0) {
+            assignCalibrationToAccountant(savedCalibration);
+        }
+        // ------------------------------------------
 
         // 3. Cập nhật Đồng hồ (Bảng 10)
         meter.setNextMaintenanceDate(dto.getNextCalibrationDate()); // Cập nhật ngày kiểm định tiếp theo
@@ -595,13 +647,20 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, Pageable pageable) {
+    public Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, String keyword, Pageable pageable) {
         Account staff = getStaffAccountById(staffId);
 
-        // Tìm các ticket được gán cho staff này VÀ đang "IN_PROGRESS"
-        Page<CustomerFeedback> tickets = customerFeedbackRepository.findByAssignedToAndStatus(
+        // Xử lý keyword
+        String searchKeyword = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKeyword = keyword.trim().toLowerCase();
+        }
+
+        // Gọi hàm Repository MỚI
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.findAssignedToAndStatusWithSearch(
                 staff,
                 CustomerFeedback.Status.IN_PROGRESS,
+                searchKeyword,
                 pageable
         );
         return tickets.map(supportTicketMapper::toDto);
@@ -689,6 +748,28 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         // 7. Map sang DTO chi tiết
         return supportTicketMapper.toDetailDto(ticket, activeServiceContract, installationToDisplay);
+    }
+
+    // ========================================================================
+    // === [NEW] HÀM HELPER PHÂN BỔ KẾ TOÁN (LOGIC STEP 3) ===
+    // ========================================================================
+
+    /**
+     * Tự động tìm kế toán đang có ít task nhất để gán khoản phí này.
+     */
+    private void assignCalibrationToAccountant(MeterCalibration calibration) {
+        // 1. Lấy Role Kế toán
+        Role accountantRole = roleRepository.findByRoleName(Role.RoleName.ACCOUNTING_STAFF)
+                .orElseThrow(() -> new RuntimeException("Role ACCOUNTING_STAFF không tồn tại trong hệ thống"));
+
+        // 2. Tìm Kế toán ít việc nhất (Dùng hàm Custom Query trong AccountRepository)
+        // Lưu ý: Cần đảm bảo AccountRepository đã có hàm findAccountantWithLeastWorkload
+        Account assignedAccountant = accountRepository.findAccountantWithLeastWorkload(accountantRole.getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên kế toán nào khả dụng để phân bổ công việc!"));
+
+        // 3. Gán và Lưu
+        calibration.setAssignedAccountant(assignedAccountant);
+        meterCalibrationRepository.save(calibration);
     }
 }
 
