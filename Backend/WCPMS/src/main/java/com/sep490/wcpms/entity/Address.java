@@ -33,11 +33,9 @@ public class Address {
     private Customer customer; // NULL nếu là địa chỉ tạm thời của guest
 
     // Địa chỉ chi tiết
-    @NotNull
     @Column(name = "street", length = 100, nullable = false)
     private String street; // Số nhà, tên đường
 
-    @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ward_id", nullable = false,
             foreignKey = @ForeignKey(name = "fk_addresses_wards"))

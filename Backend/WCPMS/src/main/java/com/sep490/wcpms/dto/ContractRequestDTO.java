@@ -7,7 +7,6 @@ import lombok.Data;
 @Data
 public class ContractRequestDTO {
 
-    @NotNull(message = "Account ID không được để trống")
     private Integer accountId;
 
     @NotNull(message = "Vui lòng chọn một loại hình sử dụng")
@@ -20,4 +19,8 @@ public class ContractRequestDTO {
 
     @NotNull(message = "Vui lòng chọn một tuyến đọc")
     private Integer routeId;
+
+    private String fullName;
+    private String phone;
+    private String address;
 }

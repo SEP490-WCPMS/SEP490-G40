@@ -17,35 +17,52 @@
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 600px;
-  max-height: 90vh;
-  overflow: hidden;
+  /* Giới hạn chiều cao modal để không bị tràn màn hình */
+  max-height: 90vh; 
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* Ẩn phần thừa */
 }
+
+/* --- QUAN TRỌNG: SỬA LỖI MẤT NÚT BẤM --- */
+/* Làm cho thẻ form chiếm toàn bộ chiều cao và chia bố cục flex */
+.modal-content form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+/* -------------------------------------- */
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  border-bottom: 1px solid var(--water-border-color);
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0; /* Không cho phép header bị co lại */
+  background-color: #fff;
 }
+
 .modal-header h3 {
   margin: 0;
-  color: var(--water-primary-blue);
+  color: #0A77E2;
+  font-size: 1.25rem;
 }
+
 .btn-close {
   background: none;
   border: none;
   cursor: pointer;
   padding: 5px;
-  line-height: 1;
   color: #64748b;
 }
 
 .modal-body {
   padding: 20px;
-  overflow-y: auto;
+  /* Cho phép body giãn ra và có thanh cuộn riêng */
+  flex-grow: 1; 
+  overflow-y: auto; 
 }
 
 .form-row {
@@ -59,36 +76,61 @@
 .form-group {
   margin-bottom: 15px;
 }
+
 .form-group label {
   display: block;
   font-weight: 600;
   margin-bottom: 6px;
   font-size: 0.9rem;
+  color: #334155;
 }
+
 .form-group input,
 .form-group select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--water-border-color);
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
   font-size: 1rem;
   background-color: #f8fafc;
+  outline: none;
 }
+
 .form-group input:focus,
 .form-group select:focus {
-  border-color: var(--water-primary-blue);
+  border-color: #0A77E2;
   background-color: #fff;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(10, 119, 226, 0.15);
+  box-shadow: 0 0 0 3px rgba(10, 119, 226, 0.1);
+}
+
+.alert {
+  padding: 10px 15px;
+  margin: 0 20px 10px; /* Căn lề cho alert */
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
 }
 
 .modal-footer {
   padding: 15px 20px;
-  border-top: 1px solid var(--water-border-color);
+  border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   background-color: #f8fafc;
+  flex-shrink: 0; /* Không cho phép footer bị co lại/biến mất */
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-size: 0.95rem;
+  transition: all 0.2s;
 }
 
 .btn-secondary {
@@ -98,27 +140,15 @@
 .btn-secondary:hover {
   background-color: #cbd5e1;
 }
+
 .btn-primary {
-  background-color: var(--water-primary-blue);
+  background-color: #0A77E2;
   color: white;
 }
 .btn-primary:hover {
-  background-color: var(--water-primary-blue-dark);
+  background-color: #085fb5;
 }
 .btn-primary:disabled {
-  background-color: #a0aec0;
+  opacity: 0.7;
   cursor: not-allowed;
-}
-
-/* Alert styles (sao chép từ file cũ) */
-.alert {
-  padding: 15px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-weight: 500;
-}
-.alert-danger {
-  background-color: var(--water-error-bg);
-  color: var(--water-error-text);
-  border: 1px solid #fecaca;
 }
