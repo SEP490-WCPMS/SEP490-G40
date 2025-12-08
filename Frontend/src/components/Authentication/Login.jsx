@@ -51,9 +51,9 @@ export default function Login() {
     <div className="water-login-container">
       {/* Logo góc trái màn hình (giống chữ Fastkart ở ảnh mẫu) */}
       <div className="page-logo">
-        <img 
-          src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png" 
-          alt="Logo" 
+        <img
+          src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
+          alt="Logo"
         />
         <span>PHUTHO WATER</span>
       </div>
@@ -114,13 +114,13 @@ export default function Login() {
 
           <div className="social-login">
             <button type="button" className="social-btn google">
-               <span>Google</span>
+              <span>Google</span>
             </button>
             <button type="button" className="social-btn facebook">
-               <span>Facebook</span>
+              <span>Facebook</span>
             </button>
           </div>
-          
+
           <div className="register-redirect">
             Chưa có tài khoản? <a href="/register">Đăng ký ngay</a>
           </div>

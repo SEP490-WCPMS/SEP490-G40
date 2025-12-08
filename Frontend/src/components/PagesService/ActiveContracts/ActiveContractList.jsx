@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Tag, Space, Button, message } from 'antd';
+import { Card, Table, Tag, Space, Button } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Pagination from '../../common/Pagination';
 import { getServiceContracts } from '../../Services/apiService';
 
 const ActiveContractList = () => {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
+    page: 0,
+    size: 10,
+    totalElements: 0
   });
 
   const columns = [
@@ -73,20 +77,22 @@ const ActiveContractList = () => {
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
+      const currentPage = params.page !== undefined ? params.page : pagination.page;
+      const currentSize = params.size !== undefined ? params.size : pagination.size;
       const response = await getServiceContracts({
-        page: (params.current || pagination.current) - 1,
-        size: params.pageSize || pagination.pageSize,
+        page: currentPage,
+        size: currentSize,
         status: 'ACTIVE'
       });
       setContracts(response.data?.content || []);
+      const pageInfo = response.data?.page || response.data || {};
       setPagination({
-        ...pagination,
-        total: response.data?.totalElements || 0,
-        current: params.current || pagination.current,
-        pageSize: params.pageSize || pagination.pageSize
+        page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
+        size: pageInfo.size || currentSize,
+        totalElements: pageInfo.totalElements || 0
       });
     } catch (error) {
-      message.error('Không thể tải danh sách hợp đồng');
+      toast.error('Không thể tải danh sách hợp đồng');
       console.error('Fetch error:', error);
     } finally {
       setLoading(false);
@@ -97,14 +103,8 @@ const ActiveContractList = () => {
     fetchData();
   }, []);
 
-  const handleTableChange = (newPagination, filters, sorter) => {
-    fetchData({
-      pageSize: newPagination.pageSize,
-      current: newPagination.current,
-      sortField: sorter.field,
-      sortOrder: sorter.order,
-      ...filters,
-    });
+  const handlePageChange = (newPage) => {
+    fetchData({ page: newPage });
   };
 
   return (
@@ -112,13 +112,21 @@ const ActiveContractList = () => {
       <Table
         columns={columns}
         dataSource={contracts}
-        pagination={pagination}
+        pagination={false}
         loading={loading}
-        onChange={handleTableChange}
         rowKey="id"
       />
+      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+        <Pagination
+          currentPage={pagination.page}
+          totalElements={pagination.totalElements}
+          pageSize={pagination.size}
+          onPageChange={handlePageChange}
+        />
+      </div>
     </Card>
   );
 };
 
 export default ActiveContractList;
+

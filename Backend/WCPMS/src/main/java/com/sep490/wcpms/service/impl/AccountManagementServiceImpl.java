@@ -63,6 +63,9 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         if (accountRepository.existsByEmail(requestDTO.getEmail())) {
             throw new DuplicateResourceException("Email đã tồn tại.");
         }
+        if (accountRepository.existsByStaffCode(requestDTO.getStaffCode())) {
+            throw new DuplicateResourceException("Mã nhân viên '" + requestDTO.getStaffCode() + "' đã tồn tại.");
+        }
 
         // Tìm vai trò (Role)
         Role role = roleRepository.findById(requestDTO.getRoleId())
@@ -74,6 +77,7 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         }
 
         Account account = new Account();
+        account.setStaffCode(requestDTO.getStaffCode());
         account.setUsername(requestDTO.getUsername());
         account.setPassword(passwordEncoder.encode(requestDTO.getPassword())); // Mã hóa mật khẩu
         account.setFullName(requestDTO.getFullName());
@@ -100,12 +104,17 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         if (accountRepository.findByEmail(requestDTO.getEmail()).filter(a -> !a.getId().equals(accountId)).isPresent()) {
             throw new DuplicateResourceException("Email đã tồn tại.");
         }
+        if (!requestDTO.getStaffCode().equals(account.getStaffCode()) &&
+                accountRepository.existsByStaffCode(requestDTO.getStaffCode())) {
+            throw new DuplicateResourceException("Mã nhân viên '" + requestDTO.getStaffCode() + "' đã tồn tại.");
+        }
 
         // Tìm vai trò (Role)
         Role role = roleRepository.findById(requestDTO.getRoleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò với ID: " + requestDTO.getRoleId()));
 
         // Cập nhật thông tin
+        account.setStaffCode(requestDTO.getStaffCode());
         account.setUsername(requestDTO.getUsername());
         account.setFullName(requestDTO.getFullName());
         account.setEmail(requestDTO.getEmail());

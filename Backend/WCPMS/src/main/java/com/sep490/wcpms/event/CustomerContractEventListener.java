@@ -12,8 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,8 +37,16 @@ public class CustomerContractEventListener {
                 event.getContractId(), event.getCustomerId());
 
         try {
+            // --- SỬA LỖI Ở ĐÂY: Kiểm tra Guest trước khi tìm Customer ---
+            if (event.getCustomerId() == null) {
+                log.info("[CUSTOMER-NOTIFY] Đây là yêu cầu từ Guest (Khách vãng lai). Không gửi thông báo Customer.");
+                return;
+            }
+            // -----------------------------------------------------------
+
             Customer customer = customerRepository.findById(event.getCustomerId())
                     .orElse(null);
+
             if (customer == null) {
                 log.warn("[CUSTOMER-NOTIFY] Customer not found for id={}", event.getCustomerId());
                 return;
@@ -248,4 +254,3 @@ public class CustomerContractEventListener {
         }
     }
 }
-

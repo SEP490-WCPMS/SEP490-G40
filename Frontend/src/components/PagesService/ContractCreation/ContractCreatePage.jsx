@@ -363,7 +363,6 @@ const ContractCreate = () => {
                                     <Select placeholder="Chọn phương thức thanh toán">
                                         <Option value="CASH">Tiền mặt</Option>
                                         <Option value="BANK_TRANSFER">Chuyển khoản</Option>
-                                        <Option value="INSTALLMENT">Trả góp</Option>
                                     </Select>
                                 </Form.Item>
                             </Col>

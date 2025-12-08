@@ -236,6 +236,9 @@ public class ContractCustomerService {
         dto.setTechnicalStaffId(
                 contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
         );
+        dto.setAccountingStaffId(
+                contract.getAccountingStaff() != null ? contract.getAccountingStaff().getId() : null
+        );
         return dto;
     }
 }

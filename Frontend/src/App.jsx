@@ -62,8 +62,8 @@ import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
 import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
 import GenerateWaterInvoice from './components/PagesAccounting/GenerateWaterInvoice'; // Sửa đường dẫn
-import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList'; 
-import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail'; 
+import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList';
+import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail';
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
 import RouteManagementPage from './components/PagesAccounting/RouteManagementPage';
 import CashPaymentForm from './components/PagesCashier/CashPaymentForm';
@@ -73,6 +73,7 @@ import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 import AdminDashboard from './components/PagesAdmin/AdminDashboard';
 import ContactPage from './components/Pages/ContactPage';
+import CustomerManagementPage from './components/Admin/CustomerManagementPage';
 import StaffAccountList from './components/Admin/StaffAccountList';
 import WaterMetersPage from './components/Admin/WaterMetersPage';
 import WaterPriceTypesPage from './components/Admin/WaterPriceTypesPage';
@@ -105,6 +106,7 @@ function App() {
         <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContactPage /></PublicLayout>} />
         <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
+        <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
         <Route path="/verify" element={<VerifyAccountPage />} />
         <Route path="/forgot" element={
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -131,7 +133,6 @@ function App() {
         {/* === CUSTOMER ROUTES (Cần đăng nhập, vai trò CUSTOMER) === */}
         <Route element={<PrivateRoute allowedRoles={['CUSTOMER']} />}>
           <Route path="/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerProfileUpdate /></PublicLayout>} />
-          <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
           <Route path="/contract-request-change" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestChange /></PublicLayout>} />
           <Route path="/pending-sign-contract" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><PendingSignContract /></PublicLayout>} />
           <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />
@@ -231,7 +232,6 @@ function App() {
             {/* --- HẾT --- */}
             {/* <Route path="route-management" element={<RouteManagementPage />} /> */}
             {/* (Thêm các trang khác của Kế toán ở đây) */}
-            <Route path="reading-routes" element={<ReadingRoutesList />} />
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
@@ -248,9 +248,11 @@ function App() {
             <Route index element={<AdminDashboard />} />
             {/* (Thêm các trang khác của Admin ở đây) */}
             <Route path="users" element={<StaffAccountList />} />
+            <Route path="customers" element={<CustomerManagementPage />} />
             <Route path="water-meters" element={<WaterMetersPage />} />
             <Route path="water-price-types" element={<WaterPriceTypesPage />} />
             <Route path="water-prices" element={<WaterPricesPage />} />
+            <Route path="reading-routes" element={<ReadingRoutesList />} />
             {/* --- HẾT --- */}
             <Route path="route-management" element={<RouteManagementPage />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />

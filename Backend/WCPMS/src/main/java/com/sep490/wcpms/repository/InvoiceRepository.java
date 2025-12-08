@@ -229,6 +229,12 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
     @Query("SELECT i.invoiceDate, SUM(i.totalAmount) FROM Invoice i WHERE i.invoiceDate BETWEEN :from AND :to GROUP BY i.invoiceDate ORDER BY i.invoiceDate")
     List<Object[]> sumTotalGroupedByInvoiceDate(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
+    boolean existsByContract_IdAndMeterReadingIsNullAndInvoiceNumberStartingWith(
+            Integer contractId,
+            String prefix
+    );
+
+
 
     // === CÁC HÀM CHO ADMIN (GLOBAL) ===
 

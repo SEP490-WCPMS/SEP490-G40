@@ -21,7 +21,7 @@
   
   /* --- THAY ĐỔI 1: Hình nền mới --- */
   /* Sử dụng ảnh bạn đã cung cấp làm nền */
-  background: url('./nuoc_sach.jpg') no-repeat center center/cover;
+  background: url('/nuoc_sach.jpg') no-repeat center center/cover;
 }
 
 /* Lớp phủ mờ nhẹ lên background */
@@ -116,7 +116,7 @@
 
 .water-input:focus {
   border-color: var(--water-light);
-  box-shadow: 0 0 0 4px rgba(72, 202, 228, 0.2);
+box-shadow: 0 0 0 4px rgba(72, 202, 228, 0.2);
   outline: none;
   background: #fff;
 }

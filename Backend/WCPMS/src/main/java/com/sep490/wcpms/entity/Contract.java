@@ -34,11 +34,20 @@ public class Contract {
     @Column(name = "contract_number", length = 50, nullable = false, unique = true)
     private String contractNumber;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "customer_id", nullable = false,
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id",
             foreignKey = @ForeignKey(name = "fk_contracts_customers"))
     private Customer customer;
+
+    // MỚI: SĐT liên hệ - BẮT BUỘC khi customer_id = NULL (guest)
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone;
+
+    // MỚI: Địa chỉ lắp đặt (từ bảng addresses)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id",
+            foreignKey = @ForeignKey(name = "fk_contracts_address"))
+    private Address address;
 
     @Column(name = "application_date")
     private LocalDate applicationDate;
@@ -85,6 +94,12 @@ public class Contract {
     @JoinColumn(name = "technical_staff_id",
             foreignKey = @ForeignKey(name = "fk_contracts_accounts_technical"))
     private Account technicalStaff;
+
+    // Liên kết đến accounting staff
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "accounting_staff_id",
+            foreignKey = @ForeignKey(name = "fk_contracts_accounts_accounting_assigned"))
+    private Account accountingStaff;
 
     // Hợp đồng cấp nước chính hiện tại
     @OneToOne(fetch = FetchType.LAZY)

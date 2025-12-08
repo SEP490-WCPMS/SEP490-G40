@@ -8,11 +8,14 @@ import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.WaterPriceTypeRepository;
 import com.sep490.wcpms.service.WaterPriceTypeAdminService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -21,14 +24,16 @@ public class WaterPriceTypeAdminServiceImpl implements WaterPriceTypeAdminServic
     private final WaterPriceTypeRepository repository;
 
     @Override
-    public List<WaterPriceTypeAdminResponseDTO> listAll(boolean includeInactive) {
-        List<WaterPriceType> list;
+    public Page<WaterPriceTypeAdminResponseDTO> listAll(boolean includeInactive, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<WaterPriceType> pageResult;
+
         if (includeInactive) {
-            list = repository.findAll();
+            pageResult = repository.findAll(pageable);
         } else {
-            list = repository.findAllByStatus(WaterPriceType.Status.ACTIVE);
+            pageResult = repository.findAllByStatus(WaterPriceType.Status.ACTIVE, pageable);
         }
-        return list.stream().map(this::toDto).collect(Collectors.toList());
+        return pageResult.map(this::toDto);
     }
 
     @Override
@@ -40,6 +45,17 @@ public class WaterPriceTypeAdminServiceImpl implements WaterPriceTypeAdminServic
     @Override
     @Transactional
     public WaterPriceTypeAdminResponseDTO create(CreateWaterPriceTypeRequestDTO req) {
+        // 1. CHECK TRÙNG
+        if (repository.existsByTypeName(req.getTypeName())) {
+            throw new IllegalArgumentException("Tên loại giá '" + req.getTypeName() + "' đã tồn tại.");
+        }
+        if (repository.existsByTypeCode(req.getTypeCode())) {
+            throw new IllegalArgumentException("Mã loại giá '" + req.getTypeCode() + "' đã tồn tại.");
+        }
+
+        // 2. CHECK TỈ LỆ (100 - 200)
+        validatePercentageRate(req.getPercentageRate());
+
         WaterPriceType t = new WaterPriceType();
         t.setTypeName(req.getTypeName());
         t.setTypeCode(req.getTypeCode());
@@ -55,6 +71,20 @@ public class WaterPriceTypeAdminServiceImpl implements WaterPriceTypeAdminServic
     @Transactional
     public WaterPriceTypeAdminResponseDTO update(Integer id, UpdateWaterPriceTypeRequestDTO req) {
         WaterPriceType t = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("WaterPriceType not found: " + id));
+
+        // 1. CHECK TRÙNG KHI UPDATE
+        if (req.getTypeName() != null && repository.existsByTypeNameAndIdNot(req.getTypeName(), id)) {
+            throw new IllegalArgumentException("Tên loại giá '" + req.getTypeName() + "' đã tồn tại.");
+        }
+        if (req.getTypeCode() != null && repository.existsByTypeCodeAndIdNot(req.getTypeCode(), id)) {
+            throw new IllegalArgumentException("Mã loại giá '" + req.getTypeCode() + "' đã tồn tại.");
+        }
+
+        // 2. CHECK TỈ LỆ
+        if (req.getPercentageRate() != null) {
+            validatePercentageRate(req.getPercentageRate());
+        }
+
         if (req.getTypeName() != null) t.setTypeName(req.getTypeName());
         if (req.getTypeCode() != null) t.setTypeCode(req.getTypeCode());
         if (req.getDescription() != null) t.setDescription(req.getDescription());
@@ -75,6 +105,20 @@ public class WaterPriceTypeAdminServiceImpl implements WaterPriceTypeAdminServic
         repository.save(t);
     }
 
+    // Hàm helper để validate tỉ lệ
+    private void validatePercentageRate(BigDecimal rate) {
+        if (rate != null) {
+            double val = rate.doubleValue();
+            if (val < 100.0 || val > 200.0) {
+                throw new IllegalArgumentException("Tỷ lệ phần trăm phải là số tự nhiên từ 100 đến 200.");
+            }
+            // Kiểm tra số tự nhiên (không có phần thập phân lẻ, ví dụ 100.5 -> fail, 100.0 -> ok)
+            if (val % 1 != 0) {
+                throw new IllegalArgumentException("Tỷ lệ phần trăm phải là số tự nhiên (không có phần thập phân).");
+            }
+        }
+    }
+
     private WaterPriceTypeAdminResponseDTO toDto(WaterPriceType t) {
         return WaterPriceTypeAdminResponseDTO.builder()
                 .id(t.getId())
@@ -89,4 +133,3 @@ public class WaterPriceTypeAdminServiceImpl implements WaterPriceTypeAdminServic
                 .build();
     }
 }
-

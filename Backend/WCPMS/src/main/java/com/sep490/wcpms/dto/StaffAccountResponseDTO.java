@@ -5,6 +5,7 @@ import lombok.Data;
 
 @Data
 public class StaffAccountResponseDTO {
+    private String staffCode;
     private Integer id;
     private String username;
     private String fullName;
@@ -16,6 +17,7 @@ public class StaffAccountResponseDTO {
 
     // Hàm chuyển đổi từ Entity sang DTO
     public StaffAccountResponseDTO(Account account) {
+        this.staffCode = account.getStaffCode();
         this.id = account.getId();
         this.username = account.getUsername();
         this.fullName = account.getFullName();

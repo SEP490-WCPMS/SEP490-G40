@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
-import { Modal, Spin, Descriptions } from 'antd';
+import { Modal, Spin } from 'antd';
+import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
 
 // Các trạng thái hợp lệ và tên hiển thị
 const CONTRACT_STATUS_MAP = {
     DRAFT: { text: 'Yêu cầu tạo đơn', color: 'blue' },
     PENDING: { text: 'Đang chờ xử lý', color: 'gold' },
-    PENDING_SURVEY_REVIEW: { text: 'Đang chờ báo cáo khảo sát', color: 'orange' },
+    PENDING_SURVEY_REVIEW: { text: 'Đã khảo sát', color: 'orange' },
     APPROVED: { text: 'Đã duyệt', color: 'cyan' },
     PENDING_SIGN: { text: 'Khách đã ký', color: 'geekblue' },
     SIGNED: { text: 'Khách đã ký, chờ lắp đặt', color: 'purple' },
@@ -32,7 +33,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         const map = {
             DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
             PENDING: { text: 'Đang chờ xử lý', cls: 'bg-yellow-100 text-yellow-800' },
-            PENDING_SURVEY_REVIEW: { text: 'Đang chờ báo cáo khảo sát', cls: 'bg-orange-100 text-orange-800' },
+            PENDING_SURVEY_REVIEW: { text: 'Đã khảo sát', cls: 'bg-orange-100 text-orange-800' },
             APPROVED: { text: 'Đã duyệt', cls: 'bg-cyan-100 text-cyan-800' },
             PENDING_SIGN: { text: 'Khách đã ký', cls: 'bg-indigo-100 text-indigo-800' },
             SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
@@ -54,76 +55,184 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
 
     return (
         <Modal
-            title={`Chi tiết Hợp đồng #${initialData?.contractNumber || ''}`}
+            title={
+                <div className="flex items-center gap-2">
+                    <FileTextOutlined className="text-blue-600 text-xl" />
+                    <span className="text-xl font-bold text-gray-800">Chi tiết Hợp đồng</span>
+                </div>
+            }
             open={isOpen}
             onCancel={onCancel}
             onOk={onCancel}
             okText="Đóng"
             cancelButtonProps={{ style: { display: 'none' } }}
-            width={720}
+            width={900}
             destroyOnClose
         >
             <Spin spinning={loading}>
-                <Descriptions bordered size="small" column={1}>
-                    <Descriptions.Item label="Số Hợp đồng">{initialData?.contractNumber || '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Trạng thái">{statusBadge(initialData?.contractStatus)}</Descriptions.Item>
-                    <Descriptions.Item label="Khách hàng">{initialData?.customerName || '—'}</Descriptions.Item>
-                    {initialData?.customerCode && (
-                        <Descriptions.Item label="Mã Khách hàng">{initialData.customerCode}</Descriptions.Item>
-                    )}
-                    {initialData?.applicationDate && (
-                        <Descriptions.Item label="Ngày đăng ký">{fmtDate(initialData.applicationDate)}</Descriptions.Item>
-                    )}
+                <div className="space-y-4 pt-2">
+                    {/* Header: Số HĐ và Trạng thái */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Số Hợp đồng</div>
+                                <div className="text-2xl font-bold text-blue-700">{initialData?.contractNumber || '—'}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>
+                                {statusBadge(initialData?.contractStatus)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Thông tin Khách hàng */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                            <UserOutlined className="mr-1" /> Thông tin khách hàng
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <div className="text-xs text-gray-500 mb-1">Tên khách hàng</div>
+                                <div className="font-semibold text-gray-800">{initialData?.customerName || '—'}</div>
+                            </div>
+                            {initialData?.customerCode && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Mã khách hàng</div>
+                                    <div className="font-medium text-gray-800">{initialData.customerCode}</div>
+                                </div>
+                            )}
+                            {initialData?.applicationDate && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Ngày đăng ký</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <CalendarOutlined className="text-blue-500" />
+                                        {fmtDate(initialData.applicationDate)}
+                                    </div>
+                                </div>
+                            )}
+                            {initialData?.priceTypeName && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Loại giá nước</div>
+                                    <div className="font-medium text-gray-800">{initialData.priceTypeName}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Thông tin Khảo sát & Kỹ thuật */}
                     {(initialData?.surveyDate || initialData?.technicalStaffName || initialData?.technicalDesign || initialData?.estimatedCost != null) && (
-                        <>
-                            {initialData?.surveyDate && (
-                                <Descriptions.Item label="Ngày khảo sát">{fmtDate(initialData.surveyDate)}</Descriptions.Item>
-                            )}
-                            {initialData?.technicalStaffName && (
-                                <Descriptions.Item label="Nhân viên Kỹ thuật">{initialData.technicalStaffName}</Descriptions.Item>
-                            )}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                                <ToolOutlined className="mr-1" /> Thông tin khảo sát & kỹ thuật
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {initialData?.surveyDate && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Ngày khảo sát</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <CalendarOutlined className="text-green-500" />
+                                            {fmtDate(initialData.surveyDate)}
+                                        </div>
+                                    </div>
+                                )}
+                                {initialData?.technicalStaffName && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Nhân viên kỹ thuật</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <UserOutlined className="text-orange-500" />
+                                            {initialData.technicalStaffName}
+                                        </div>
+                                    </div>
+                                )}
+                                {initialData?.estimatedCost != null && (
+                                    <div className="col-span-2">
+                                        <div className="text-xs text-gray-500 mb-1">Chi phí ước tính</div>
+                                        <div className="font-bold text-lg text-orange-600">
+                                            {fmtMoney(initialData.estimatedCost)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             {initialData?.technicalDesign && (
-                                <Descriptions.Item label="Thiết kế Kỹ thuật">
-                                    <div className="whitespace-pre-wrap">{initialData.technicalDesign}</div>
-                                </Descriptions.Item>
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <div className="text-xs text-gray-500 mb-1">Thiết kế kỹ thuật</div>
+                                    <div className="bg-white p-3 rounded border border-gray-200 text-sm text-gray-800 whitespace-pre-wrap">
+                                        {initialData.technicalDesign}
+                                    </div>
+                                </div>
                             )}
-                            {initialData?.estimatedCost != null && (
-                                <Descriptions.Item label="Chi phí Ước tính">{fmtMoney(initialData.estimatedCost)}</Descriptions.Item>
-                            )}
-                        </>
+                        </div>
                     )}
 
                     {/* Thông tin Hợp đồng */}
-                    {(initialData?.startDate || initialData?.endDate) && (
-                        <>
-                            {initialData?.startDate && (
-                                <Descriptions.Item label="Ngày bắt đầu">{fmtDate(initialData.startDate)}</Descriptions.Item>
-                            )}
-                            {initialData?.endDate && (
-                                <Descriptions.Item label="Ngày kết thúc">{fmtDate(initialData.endDate)}</Descriptions.Item>
-                            )}
-                        </>
+                    {(initialData?.startDate || initialData?.endDate || initialData?.contractValue != null || initialData?.paymentMethod || initialData?.serviceStaffName) && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                                <CheckCircleOutlined className="mr-1" /> Thông tin hợp đồng
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {initialData?.startDate && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Ngày bắt đầu</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <CalendarOutlined className="text-green-500" />
+                                            {fmtDate(initialData.startDate)}
+                                        </div>
+                                    </div>
+                                )}
+                                {initialData?.endDate && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <CalendarOutlined className="text-red-500" />
+                                            {fmtDate(initialData.endDate)}
+                                        </div>
+                                    </div>
+                                )}
+                                {initialData?.contractValue != null && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Giá trị hợp đồng</div>
+                                        <div className="font-bold text-lg text-green-600">
+                                            {fmtMoney(initialData.contractValue)}
+                                        </div>
+                                    </div>
+                                )}
+                                {initialData?.paymentMethod && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div>
+                                        <div className="font-medium text-gray-800">
+                                            {initialData.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : 
+                                             initialData.paymentMethod === 'CASH' ? 'Tiền mặt' : 
+                                             initialData.paymentMethod === 'CREDIT_CARD' ? 'Thẻ tín dụng' : 
+                                             initialData.paymentMethod}
+                                        </div>
+                                    </div>
+                                )}
+                                {initialData?.serviceStaffName && (
+                                    <div className="col-span-2">
+                                        <div className="text-xs text-gray-500 mb-1">Nhân viên dịch vụ phụ trách</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <UserOutlined className="text-blue-500" />
+                                            {initialData.serviceStaffName}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
-                    {initialData?.contractValue != null && (
-                        <Descriptions.Item label="Giá trị hợp đồng">{fmtMoney(initialData.contractValue)}</Descriptions.Item>
-                    )}
-                    {initialData?.paymentMethod && (
-                        <Descriptions.Item label="Phương thức thanh toán">{initialData.paymentMethod}</Descriptions.Item>
-                    )}
-                    {initialData?.serviceStaffName && (
-                        <Descriptions.Item label="Nhân viên Dịch vụ">{initialData.serviceStaffName}</Descriptions.Item>
-                    )}
-                    {initialData?.priceTypeName && (
-                        <Descriptions.Item label="Loại giá nước">{initialData.priceTypeName}</Descriptions.Item>
-                    )}
+
+                    {/* Ghi chú */}
                     {initialData?.notes && (
-                        <Descriptions.Item label="Ghi chú" span={1}>
-                            <div className="whitespace-pre-wrap">{initialData.notes}</div>
-                        </Descriptions.Item>
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2">
+                                <InfoCircleOutlined className="mr-1" /> Ghi chú
+                            </div>
+                            <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {initialData.notes}
+                            </div>
+                        </div>
                     )}
-                </Descriptions>
+                </div>
             </Spin>
         </Modal>
     );

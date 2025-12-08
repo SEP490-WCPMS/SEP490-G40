@@ -55,6 +55,25 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    // ========== Query MỚI (cho auto-assign) ==========
+    /**
+     * Tìm các meter_readings:
+     * - Status = COMPLETED
+     * - Được assign cho accountingStaffId
+     * - Chưa có invoice (NOT EXISTS trong bảng invoices với meter_reading_id)
+     */
+    @Query("SELECT mr FROM MeterReading mr " +
+           "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
+           "AND mr.accountingStaff.id = :accountingStaffId " +
+           "AND NOT EXISTS (" +
+           "    SELECT 1 FROM Invoice inv " +
+           "    WHERE inv.meterReading.id = mr.id" +
+           ")")
+    Page<MeterReading> findCompletedReadingsNotBilledByAccountingStaff(
+            @Param("accountingStaffId") Integer accountingStaffId,
+            Pageable pageable
+    );
     // --- HẾT PHẦN THÊM ---
 
     /**

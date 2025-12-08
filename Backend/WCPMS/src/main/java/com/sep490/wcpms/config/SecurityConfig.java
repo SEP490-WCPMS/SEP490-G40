@@ -101,12 +101,12 @@ public class SecurityConfig {
                                 .requestMatchers("/api/water-prices/**").permitAll()
                                 .requestMatchers("/api/contract-request/**").permitAll()
                                 .requestMatchers("/api/reading-routes/**").permitAll()
-                                // Allow public GET access to accounting reading-routes (so frontend can call existing path)
-                                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/accounting/reading-routes/**").permitAll()
+                                .requestMatchers("/api/admin/reading-routes/**").permitAll()
                                 .requestMatchers("/api/change-password/**").permitAll()
                                 .requestMatchers("/api/v1/contracts/**").permitAll()
                                 .requestMatchers("/api/v1/contract-requests/**").permitAll()
                                 .requestMatchers("/api/payment/webhook/**").permitAll()
+                                .requestMatchers("/api/public/**").permitAll()
 
 //// --- PHÂN QUYỀN ĐÚNG ---
                                 .requestMatchers("/api/technical/**").hasAuthority("TECHNICAL_STAFF")
@@ -127,10 +127,6 @@ public class SecurityConfig {
 
                                 // --- THÊM DÒNG NÀY ---
                                 .requestMatchers("/api/accounting/**").hasAnyAuthority("ACCOUNTING_STAFF", "ADMIN")
-                                // --- HẾT PHẦN THÊM ---
-
-                                // --- THÊM DÒNG NÀY ---
-                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                                 // --- HẾT PHẦN THÊM ---
 
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()

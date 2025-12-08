@@ -612,28 +612,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         return convertToDTO(updated);
     }
 
-    @Override
-    @Transactional
-    public ServiceStaffContractDTO rejectSurveyReport(Integer contractId, String reason) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
-
-        if (contract.getContractStatus() != ContractStatus.PENDING_SURVEY_REVIEW) {
-            throw new IllegalStateException("Only contracts in PENDING_SURVEY_REVIEW can be rejected.");
-        }
-
-        // Quay lại trạng thái PENDING để kỹ thuật sửa/khảo sát lại
-        contract.setContractStatus(ContractStatus.PENDING);
-        if (reason != null && !reason.isBlank()) {
-            String existing = contract.getNotes();
-            String merged = (existing == null || existing.isBlank())
-                    ? ("Reject reason: " + reason)
-                    : (existing + "\nReject reason: " + reason);
-            contract.setNotes(merged);
-        }
-        Contract saved = contractRepository.save(contract);
-        return convertToDTO(saved);
-    }
 
     @Override
     @Transactional(readOnly = true)

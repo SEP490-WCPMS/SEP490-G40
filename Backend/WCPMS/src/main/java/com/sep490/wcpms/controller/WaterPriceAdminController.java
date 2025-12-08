@@ -3,9 +3,11 @@ package com.sep490.wcpms.controller;
 import com.sep490.wcpms.dto.CreateWaterPriceRequestDTO;
 import com.sep490.wcpms.dto.UpdateWaterPriceRequestDTO;
 import com.sep490.wcpms.dto.WaterPriceAdminResponseDTO;
+import com.sep490.wcpms.dto.WaterPriceTypeAdminResponseDTO;
 import com.sep490.wcpms.service.WaterPriceAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,13 +23,22 @@ public class WaterPriceAdminController {
     private final WaterPriceAdminService service;
 
     @GetMapping
-    public ResponseEntity<List<WaterPriceAdminResponseDTO>> list(@RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive) {
-        return ResponseEntity.ok(service.listAll(includeInactive));
+    public ResponseEntity<Page<WaterPriceAdminResponseDTO>> list(
+            @RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(service.listAll(includeInactive, page, size));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<WaterPriceAdminResponseDTO> get(@PathVariable Integer id) {
         return ResponseEntity.ok(service.getById(id));
+    }
+
+    @GetMapping("/available-types")
+    public ResponseEntity<List<WaterPriceTypeAdminResponseDTO>> getAvailableTypes() {
+        return ResponseEntity.ok(service.getAvailablePriceTypes());
     }
 
     @PostMapping
@@ -47,4 +58,3 @@ public class WaterPriceAdminController {
         return ResponseEntity.ok(service.setStatus(id, status));
     }
 }
-

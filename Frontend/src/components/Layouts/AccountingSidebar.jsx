@@ -37,12 +37,6 @@ const accountingMenuItems = [
     url: '/accounting/contracts/eligible-installation',
     icon: ClipboardPlus,
   },
-  // Quản lý tuyến đọc (Reading Routes)
-  {
-    title: 'Quản lý Tuyến đọc',
-    url: '/accounting/reading-routes',
-    icon: ListChecks,
-  },
   {
     title: 'Lập Hóa đơn Tiền nước',
     url: '/accounting/billing/pending-readings', // Đường dẫn này phải khớp với App.jsx

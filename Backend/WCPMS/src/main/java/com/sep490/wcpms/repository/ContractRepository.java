@@ -104,6 +104,13 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             @Param("date") LocalDate date
     );
 
+    /** Đếm số hợp đồng gửi ký (PENDING_SIGN) vào một ngày cụ thể (Service view) */
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'PENDING_SIGN' AND CAST(c.updatedAt AS date) = :date")
+    long countPendingSignByDate(
+            @Param("staff") Account staff,
+            @Param("date") LocalDate date
+    );
+
     // --- BỔ SUNG: CÁC HÀM CHUẨN CHO BIỂU ĐỒ SERVICE STAFF ---
 
     /** Đếm số KHẢO SÁT HOÀN THÀNH (PENDING_SURVEY_REVIEW) theo ngày (Service view) */
@@ -112,6 +119,13 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             @Param("staff") Account staff,
             @Param("date") LocalDate date
     );
+
+    // Tìm hợp đồng của Guest (customer = null) và trạng thái là PENDING_SURVEY_REVIEW
+    @Query("SELECT c FROM Contract c " +
+            "WHERE c.customer IS NULL " +
+            "AND c.contractStatus = com.sep490.wcpms.entity.Contract.ContractStatus.PENDING_SURVEY_REVIEW " +
+            "ORDER BY c.applicationDate DESC")
+    List<Contract> findPendingGuestContracts();
 
     /** Đếm số LẮP ĐẶT HOÀN THÀNH (ACTIVE) theo ngày (Service view) */
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'ACTIVE' AND c.installationDate = :date")

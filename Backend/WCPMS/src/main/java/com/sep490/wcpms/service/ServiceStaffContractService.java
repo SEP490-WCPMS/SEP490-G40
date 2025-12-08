@@ -115,11 +115,6 @@ public interface ServiceStaffContractService {
     List<CustomerMeterDTO> getCustomerActiveMetersByCustomerId(Integer customerId);
     // --- HẾT PHẦN THÊM ---
 
-    /**
-     * Từ chối báo cáo khảo sát: chuyển từ PENDING_SURVEY_REVIEW về PENDING, lưu lý do.
-     */
-    ServiceStaffContractDTO rejectSurveyReport(Integer contractId, String reason);
-
     /** Tạo Hợp đồng Dịch vụ (WaterServiceContract) từ HĐ lắp đặt đã APPROVED */
     ServiceStaffContractDTO generateWaterServiceContract(Integer contractId, Integer priceTypeId, java.time.LocalDate serviceStartDate);
 

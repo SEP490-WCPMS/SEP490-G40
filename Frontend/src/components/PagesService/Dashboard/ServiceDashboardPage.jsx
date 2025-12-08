@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Typography, message, Spin, Card, Select, Button, Tooltip, Modal, Input } from 'antd';
+import { Row, Col, Typography, Spin, Card, Select, Button, Tooltip, Modal, Input } from 'antd';
 import { useNavigate } from 'react-router-dom';
+
+// Toast notifications
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { 
     FileAddOutlined, 
     ClockCircleOutlined, 
@@ -84,6 +88,7 @@ const ServiceDashboardPage = () => {
         approvedCount: 0,
         pendingSignCount: 0,
         signedCount: 0,
+        activeCount: 0,
     });
     
     // State cho bảng yêu cầu gần đây
@@ -135,7 +140,7 @@ const ServiceDashboardPage = () => {
         } catch (error) {
             console.error('Error fetching stats:', error);
             setError('Lỗi tải dữ liệu thống kê');
-            message.error('Không thể lấy dữ liệu thống kê');
+            toast.error('Không thể lấy dữ liệu thống kê');
         } finally {
             setLoading(false);
         }
@@ -144,7 +149,7 @@ const ServiceDashboardPage = () => {
     // Fallback: lấy count từ getServiceContracts API
     const fetchStatsFallback = async () => {
         try {
-            const statuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW', 'APPROVED', 'PENDING_SIGN', 'SIGNED'];
+            const statuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW', 'APPROVED', 'PENDING_SIGN', 'SIGNED', 'ACTIVE'];
             
             // Lấy tất cả status song song để nhanh hơn
             const promises = statuses.map(status => 
@@ -164,11 +169,12 @@ const ServiceDashboardPage = () => {
                 approvedCount: responses[3]?.data?.totalElements || 0,
                 pendingSignCount: responses[4]?.data?.totalElements || 0,
                 signedCount: responses[5]?.data?.totalElements || 0,
+                activeCount: responses[6]?.data?.totalElements || 0,
             });
         } catch (error) {
             console.error('Error fetching stats fallback:', error);
             setError('Lỗi tải dữ liệu thống kê');
-            message.error('Không thể lấy dữ liệu thống kê');
+            toast.error('Không thể lấy dữ liệu thống kê');
         }
     };
 
@@ -215,16 +221,20 @@ const ServiceDashboardPage = () => {
                 endDate = new Date(end);
             }
             
-            // Gọi BE: giờ BE đã trả theo hướng C (actions) trong các field hiện có
+            // Gọi BE: Backend giờ trả đầy đủ 4 metrics
             const response = await getServiceStaffChartData(startDate, endDate);
             const beLabels = response?.data?.labels;
-            const beSent = response?.data?.surveyCompletedCounts; // ánh xạ: gửi
-            const beApproved = response?.data?.installationCompletedCounts; // ánh xạ: duyệt
+            const beSent = response?.data?.surveyCompletedCounts; // Gửi khảo sát (PENDING)
+            const beApproved = response?.data?.installationCompletedCounts; // Đã duyệt (APPROVED)
+            const bePendingSign = response?.data?.pendingSignCounts; // Gửi ký (PENDING_SIGN)
+            const beActive = response?.data?.activeCounts; // Đã lắp đặt (ACTIVE)
 
             const labels = beLabels?.length ? beLabels : buildLabels(startDate, endDate);
 
-            const beValid = Array.isArray(beSent) && Array.isArray(beApproved) &&
-                (beSent.some(x => x > 0) || beApproved.some(x => x > 0));
+            const beValid = Array.isArray(beSent) && Array.isArray(beApproved) && 
+                Array.isArray(bePendingSign) && Array.isArray(beActive) &&
+                (beSent.some(x => x > 0) || beApproved.some(x => x > 0) || 
+                 bePendingSign.some(x => x > 0) || beActive.some(x => x > 0));
 
             if (beValid) {
                 setChartData({
@@ -232,34 +242,56 @@ const ServiceDashboardPage = () => {
                     datasets: [
                         { label: 'Gửi khảo sát', data: beSent, borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
                         { label: 'Đã duyệt', data: beApproved, borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
+                        { label: 'Gửi ký', data: bePendingSign, borderColor: '#722ed1', backgroundColor: '#722ed1', tension: 0.1 },
+                        { label: 'Đã lắp đặt', data: beActive, borderColor: '#fa8c16', backgroundColor: '#fa8c16', tension: 0.1 },
                     ],
                 });
-                setChartMeta({ source: 'backend-actions', sumSurvey: (beSent || []).reduce((a,b)=>a+b,0), sumInstall: (beApproved || []).reduce((a,b)=>a+b,0) });
+                setChartMeta({ 
+                    source: 'backend', 
+                    sumSurvey: (beSent || []).reduce((a,b)=>a+b,0), 
+                    sumApproved: (beApproved || []).reduce((a,b)=>a+b,0),
+                    sumPendingSign: (bePendingSign || []).reduce((a,b)=>a+b,0),
+                    sumActive: (beActive || []).reduce((a,b)=>a+b,0)
+                });
             } else {
-                // Fallback FE theo hướng C: hành động của Service Staff
-                // - "Gửi khảo sát": status PENDING, nhóm theo createdAt
-                // - "Đã duyệt": status APPROVED, nhóm theo updatedAt
-                const [pendingRes, approvedRes] = await Promise.all([
+                // Fallback FE: Thống kê các hành động quan trọng của Service Staff
+                const [pendingRes, approvedRes, pendingSignRes, activeRes] = await Promise.all([
                     getServiceContracts({ page: 0, size: 1000, status: 'PENDING' }),
                     getServiceContracts({ page: 0, size: 1000, status: 'APPROVED' }),
+                    getServiceContracts({ page: 0, size: 1000, status: 'PENDING_SIGN' }),
+                    getServiceContracts({ page: 0, size: 1000, status: 'ACTIVE' }),
                 ]);
                 const pendingItems = pendingRes?.data?.content || [];
                 const approvedItems = approvedRes?.data?.content || [];
+                const pendingSignItems = pendingSignRes?.data?.content || [];
+                const activeItems = activeRes?.data?.content || [];
 
                 const sentByDate = groupCountByDate(pendingItems, 'createdAt');
                 const approvedByDate = groupCountByDate(approvedItems, 'updatedAt');
+                const sentToSignByDate = groupCountByDate(pendingSignItems, 'updatedAt');
+                const installedByDate = groupCountByDate(activeItems, 'startDate');
 
                 const sentCounts = labels.map(d => sentByDate.get(d) || 0);
                 const approvedCounts = labels.map(d => approvedByDate.get(d) || 0);
+                const sentToSignCounts = labels.map(d => sentToSignByDate.get(d) || 0);
+                const installedCounts = labels.map(d => installedByDate.get(d) || 0);
 
                 setChartData({
                     labels,
                     datasets: [
                         { label: 'Gửi khảo sát', data: sentCounts, borderColor: '#1890ff', backgroundColor: '#1890ff', tension: 0.1 },
                         { label: 'Đã duyệt', data: approvedCounts, borderColor: '#52c41a', backgroundColor: '#52c41a', tension: 0.1 },
+                        { label: 'Gửi ký', data: sentToSignCounts, borderColor: '#722ed1', backgroundColor: '#722ed1', tension: 0.1 },
+                        { label: 'Đã lắp đặt', data: installedCounts, borderColor: '#fa8c16', backgroundColor: '#fa8c16', tension: 0.1 },
                     ],
                 });
-                setChartMeta({ source: 'fallback-actions', sumSurvey: sentCounts.reduce((a,b)=>a+b,0), sumInstall: approvedCounts.reduce((a,b)=>a+b,0) });
+                setChartMeta({ 
+                    source: 'fallback-actions', 
+                    sumSurvey: sentCounts.reduce((a,b)=>a+b,0), 
+                    sumInstall: installedCounts.reduce((a,b)=>a+b,0),
+                    sumApproved: approvedCounts.reduce((a,b)=>a+b,0),
+                    sumSentToSign: sentToSignCounts.reduce((a,b)=>a+b,0)
+                });
             }
         } catch (error) {
             console.error('Error fetching chart data:', error);
@@ -306,7 +338,7 @@ const ServiceDashboardPage = () => {
             setRecentPagination({ current: page, pageSize, total });
         } catch (error) {
             console.error('Error fetching tasks:', error);
-            message.error('Không thể lấy danh sách công việc');
+            toast.error('Không thể lấy danh sách công việc');
             setRecentContracts([]);
         } finally {
             setLoadingRecent(false);
@@ -321,9 +353,9 @@ const ServiceDashboardPage = () => {
             if (action === 'sendToSign') {
                 try {
                     await sendContractToSign(record.id);
-                    alert('✅ Đã gửi hợp đồng cho khách hàng ký.');
+                    toast.success('Đã gửi hợp đồng cho khách hàng ký.');
                 } catch (err) {
-                    alert('❌ Gửi ký thất bại.');
+                    toast.error('Gửi ký thất bại.');
                     throw err;
                 } finally {
                     setModalLoading(false);
@@ -337,9 +369,9 @@ const ServiceDashboardPage = () => {
             if (action === 'sendToInstallation') {
                 try {
                     await sendContractToInstallation(record.id);
-                    alert('✅ Đã gửi hợp đồng cho kỹ thuật lắp đặt.');
+                    toast.success('Đã gửi hợp đồng cho kỹ thuật lắp đặt.');
                 } catch (err) {
-                    alert('❌ Gửi lắp đặt thất bại.');
+                    toast.error('Gửi lắp đặt thất bại.');
                     throw err;
                 } finally {
                     setModalLoading(false);
@@ -357,10 +389,10 @@ const ServiceDashboardPage = () => {
             if (action === 'sendToInstall' || action === 'suspend' || action === 'reactivate') {
                 // Các hành động quản trị chuyên sâu -> điều hướng sang trang phù hợp
                 if (action === 'sendToInstall') {
-                    message.info('Đi tới danh sách Hợp đồng đã ký để thao tác lắp đặt.');
+                    toast.info('Đi tới danh sách Hợp đồng đã ký để thao tác lắp đặt.');
                     navigate('/service/signed-contracts');
                 } else {
-                    message.info('Đi tới danh sách Hợp đồng đang hoạt động để thao tác.');
+                    toast.info('Đi tới danh sách Hợp đồng đang hoạt động để thao tác.');
                     navigate('/service/active-contracts');
                 }
                 return;
@@ -380,12 +412,12 @@ const ServiceDashboardPage = () => {
                     cancelText: 'Hủy',
                     async onOk() {
                         if (!reason || !reason.trim()) {
-                            message.error('Vui lòng nhập lý do chấm dứt.');
+                            toast.error('Vui lòng nhập lý do chấm dứt.');
                             // Throw to keep modal open
                             throw new Error('Reason required');
                         }
                         await terminateContract(record.id, reason.trim());
-                        message.success('Đã chấm dứt hợp đồng.');
+                        toast.success('Đã chấm dứt hợp đồng.');
                         fetchRecentContracts();
                         fetchStatsFallback();
                     },
@@ -401,7 +433,7 @@ const ServiceDashboardPage = () => {
             setIsModalVisible(true);
         } catch (error) {
             console.error('Error handling action from dashboard:', error);
-            message.error(`Không thể xử lý hành động cho hợp đồng #${record.contractNumber || record.id}`);
+            toast.error(`Không thể xử lý hành động cho hợp đồng #${record.contractNumber || record.id}`);
         } finally {
             setModalLoading(false);
         }
@@ -437,19 +469,14 @@ const ServiceDashboardPage = () => {
                 });
             }
             
-            alert('✅ Gửi khảo sát thành công! Trạng thái: Chờ khảo sát');
-            
-            handleModalClose();
-            
+            // Không xử lý UI ở đây - để onSuccess callback xử lý
             // Refresh danh sách để hiển thị trạng thái mới
-            setTimeout(() => {
-                fetchRecentContracts();
-                // Cập nhật stats
-                fetchStatsFallback();
-            }, 500);
+            fetchRecentContracts();
+            fetchStatsFallback();
         } catch (error) {
             console.error('Error saving contract:', error);
-            alert('❌ Lỗi khi gửi khảo sát!');
+            toast.error('Lỗi khi gửi khảo sát!');
+            throw error; // Ném lỗi để AssignSurveyModal biết không gọi onSuccess
         } finally {
             setModalLoading(false);
         }
@@ -484,6 +511,20 @@ const ServiceDashboardPage = () => {
 
     return (
         <div className="space-y-6">
+            {/* Toast Container */}
+            <ToastContainer 
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
+            
             {/* Statistics Cards - Bắt đầu từ đây */}
             <Row gutter={[16, 16]}>
                 {/* Yêu cầu tạo đơn (DRAFT) - Chưa gửi khảo sát */}
@@ -592,7 +633,7 @@ const ServiceDashboardPage = () => {
                     <div className="flex gap-3">
                         <Select
                             placeholder="Lọc theo trạng thái"
-                            style={{ width: 200 }}
+                            style={{ width: 220 }}
                             value={filterStatus}
                             onChange={(value) => setFilterStatus(value)}
                             allowClear
@@ -600,13 +641,23 @@ const ServiceDashboardPage = () => {
                         >
                             <Select.Option value="all">Tất cả</Select.Option>
                             <Select.Option value="DRAFT">Yêu cầu tạo đơn</Select.Option>
-                            <Select.Option value="PENDING">Dạng chờ xử lý</Select.Option>
-                            <Select.Option value="PENDING_SURVEY_REVIEW">Dạng chờ báo cáo khảo sát</Select.Option>
+                            <Select.Option value="PENDING">Đang chờ xử lý</Select.Option>
+                            <Select.Option value="PENDING_SURVEY_REVIEW">Đã khảo sát</Select.Option>
                             <Select.Option value="APPROVED">Đã duyệt</Select.Option>
-                            {/* PENDING_CUSTOMER_SIGN (khách ký): ẩn khỏi dashboard Service,
-                                vì ở trạng thái này, hợp đồng đang ở tay khách, Service không thao tác được */}
-                            {/* Không cho lọc SIGNED hoặc PENDING_CUSTOMER_SIGN tại khu vực Service */}
+                            <Select.Option value="PENDING_SIGN">Khách đã ký</Select.Option>
+                            <Select.Option value="SIGNED">Chờ lắp đặt</Select.Option>
+                            <Select.Option value="ACTIVE">Đang hoạt động</Select.Option>
                         </Select>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => {
+                                fetchRecentContracts();
+                                fetchStatsFallback();
+                            }}
+                            loading={loadingRecent}
+                        >
+                            Làm mới
+                        </Button>
                     </div>
                 </div>
                 <Spin spinning={loadingRecent}>
@@ -639,6 +690,14 @@ const ServiceDashboardPage = () => {
                         onSave={handleModalSave}
                         initialData={selectedContract}
                         loading={modalLoading}
+                        onSuccess={() => {
+                            toast.success('Gửi khảo sát thành công!', {
+                                position: "top-center",
+                                autoClose: 3000,
+                            });
+                            fetchRecentContracts();
+                            fetchStatsFallback();
+                        }}
                     />
                 )}
         </div>
