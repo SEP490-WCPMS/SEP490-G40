@@ -127,9 +127,6 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
       "GROUP BY a " +
       "ORDER BY COUNT(c) ASC")
   List<Object[]> findServiceStaffWorkloads();
-}
-    // Tìm 1 tài khoản thu ngân (department = CASHIER) có status = 1 (active)
-    Optional<Account> findFirstByDepartmentAndStatus(Account.Department department, Integer status);
 
 
     // THÊM: Tìm Kế toán đang có ít khoản phí "treo" nhất

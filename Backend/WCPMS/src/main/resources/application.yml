@@ -40,3 +40,9 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
+  sms:
+    provider:
+      url: "https://api.speedsms.vn/index.php/sms/send" # Ví dụ URL của SpeedSMS
+      access-token: "dQ3jGZnhwcevB33Ad0xQxe--sJgNP-7x" # Lấy khi đăng ký tài khoản SMS
+      sender-id: "CAPNUOC_PT" # Tên Brandname (nếu có), hoặc để trống
+      enabled: true # Cờ để bật/tắt gửi thật (tắt khi dev để đỡ tốn tiền)
