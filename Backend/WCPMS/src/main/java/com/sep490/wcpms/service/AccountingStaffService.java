@@ -58,7 +58,7 @@ public interface AccountingStaffService {
     /**
      * Lấy danh sách HĐ ACTIVE chưa có hóa đơn lắp đặt (CONTRACT invoice).
      */
-    Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable);
+    Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable, Integer accountingStaffId);
 
     /**
      * Tạo Hóa đơn lắp đặt cho 1 Hợp đồng ACTIVE.

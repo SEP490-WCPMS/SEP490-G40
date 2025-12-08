@@ -24,6 +24,11 @@ public class PendingReadingDTO {
     private String customerAddress;
     private String readerName;
 
+    // ========== THÊM MỚI (cho auto-assign) ==========
+    private Integer accountingStaffId;
+    private String accountingStaffName;
+    // =================================================
+
     // Constructor để map từ Entity
     public PendingReadingDTO(MeterReading mr) {
         this.readingId = mr.getId();
@@ -49,5 +54,12 @@ public class PendingReadingDTO {
                 }
             }
         }
+
+        // ========== THÊM MỚI ==========
+        if (mr.getAccountingStaff() != null) {
+            this.accountingStaffId = mr.getAccountingStaff().getId();
+            this.accountingStaffName = mr.getAccountingStaff().getFullName();
+        }
+        // ==============================
     }
 }

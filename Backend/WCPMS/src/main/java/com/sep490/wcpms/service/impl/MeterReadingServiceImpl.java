@@ -114,7 +114,22 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         newReading.setReadingStatus(MeterReading.ReadingStatus.COMPLETED); // Trạng thái "đã hoàn thành"
         newReading.setNotes(dto.getNotes());
 
-        // 4. Lưu vào DB
+        // ========== 4. TỰ ĐỘNG ASSIGN CHO ACCOUNTING STAFF ÍT VIỆC NHẤT ==========
+        Account assignedAccountant = accountRepository
+            .findLeastBusyAccountingStaffForWaterBillingTask()
+            .orElseThrow(() -> new IllegalStateException(
+                "Không tìm thấy nhân viên kế toán active để phân công lập hóa đơn tiền nước."
+            ));
+
+        newReading.setAccountingStaff(assignedAccountant);
+
+        // Log để debug và tracking
+        System.out.println("✅ [AUTO-ASSIGN] Meter Reading ID: " + newReading.getId() +
+                         " được phân công cho Accounting Staff: " +
+                         assignedAccountant.getFullName() + " (ID: " + assignedAccountant.getId() + ")");
+        // ======================================================================
+
+        // 5. Lưu vào DB (với accounting_staff_id đã được set)
         meterReadingRepository.save(newReading);
 
         // --- BƯỚC 2: LƯU LOG  (Bảng Mới AiScanLogs) ---
