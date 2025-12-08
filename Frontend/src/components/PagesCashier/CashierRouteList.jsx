@@ -1,32 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyAssignedRoutes, getContractsByRoute } from '../Services/apiCashierStaff'; 
-// Thêm icon Search
+import { getMyAssignedRoutes, getContractsByRoute } from '../Services/apiCashierStaff';
 import { RefreshCw, Loader2, Eye, MapPin, Search } from 'lucide-react';
-import { Checkbox } from "@/components/ui/checkbox"; 
+import { Checkbox } from "@/components/ui/checkbox";
 import Pagination from '../common/Pagination';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// 1. Định nghĩa Key lưu trữ
+const STORAGE_KEY = 'CASHIER_ROUTE_LIST_STATE';
+
 function CashierRouteList() {
-    const [contracts, setContracts] = useState([]);
-    const [loading, setLoading] = useState(false); 
     const navigate = useNavigate();
 
+    // 2. KHỞI TẠO STATE TỪ SESSION STORAGE
+    const [selectedRouteId, setSelectedRouteId] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).routeId : '';
+    });
+
+    const [searchTerm, setSearchTerm] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).keyword : '';
+    });
+
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 10, totalElements: 0 };
+    });
+
+    const [contracts, setContracts] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [routes, setRoutes] = useState([]);
     const [loadingRoutes, setLoadingRoutes] = useState(true);
-    const [selectedRouteId, setSelectedRouteId] = useState('');
 
-    // 1. Thêm State Search
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const [pagination, setPagination] = useState({ 
-        page: 0, 
-        size: 10, 
-        totalElements: 0 
-    });
-    
-    // State Checkbox (Local) - Giữ nguyên
+    // State Checkbox (Local Storage - Giữ nguyên logic của bạn)
     const [completedItems, setCompletedItems] = useState(() => {
         try {
             const saved = localStorage.getItem('cashierCompletedContracts');
@@ -39,40 +48,43 @@ function CashierRouteList() {
         localStorage.setItem('cashierCompletedContracts', JSON.stringify(arrayToSave));
     }, [completedItems]);
 
-    // Tải danh sách Tuyến - Giữ nguyên
+    // 3. LƯU STATE VÀO SESSION STORAGE
+    useEffect(() => {
+        const stateToSave = {
+            routeId: selectedRouteId,
+            keyword: searchTerm,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [selectedRouteId, searchTerm, pagination.page]);
+
+    // Tải danh sách Tuyến (Chạy 1 lần khi mount)
     useEffect(() => {
         setLoadingRoutes(true);
         getMyAssignedRoutes()
             .then(res => setRoutes(res.data || []))
             .catch(err => toast.error("Không thể tải danh sách tuyến."))
             .finally(() => setLoadingRoutes(false));
-    }, []); 
+    }, []);
 
-    // 2. Cập nhật fetchData nhận keyword
-    const fetchData = (params = {}) => {
-        const currentRouteId = params.routeId !== undefined ? params.routeId : selectedRouteId;
-
-        if (!currentRouteId) {
+    // 4. Hàm Fetch Data (Refactor nhận tham số)
+    const fetchData = (currPage, currRouteId, currKeyword) => {
+        // Nếu không có Route ID (kể cả trong tham số hay state), dừng lại
+        if (!currRouteId) {
             setContracts([]);
-            setPagination({ page: 0, size: 10, totalElements: 0 });
+            setPagination(prev => ({ ...prev, totalElements: 0 }));
             return;
         }
 
         setLoading(true);
-        
-        const currentPage = params.page !== undefined ? params.page : pagination.page;
-        const currentSize = params.size || pagination.size;
-        // Lấy keyword
-        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
-        
-        getContractsByRoute(currentRouteId, { 
-            page: currentPage, 
-            size: currentSize,
-            keyword: currentKeyword || null // Gửi keyword
+
+        getContractsByRoute(currRouteId, {
+            page: currPage,
+            size: pagination.size,
+            keyword: currKeyword || null
         })
             .then(response => {
                 const data = response.data;
-
                 let loadedData = [];
                 let totalItems = 0;
                 let pageNum = 0;
@@ -84,18 +96,19 @@ function CashierRouteList() {
                     pageSizeRaw = data.length > 0 ? data.length : 10;
                 } else if (data && data.content) {
                     loadedData = data.content;
-                    const pageInfo = data.page || data; 
+                    const pageInfo = data.page || data;
                     totalItems = pageInfo.totalElements || 0;
                     pageNum = pageInfo.number || 0;
                     pageSizeRaw = pageInfo.size || 10;
                 }
 
                 setContracts(loadedData || []);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: pageNum,
                     size: pageSizeRaw,
                     totalElements: totalItems,
-                });
+                }));
             })
             .catch(err => {
                 console.error("Lỗi fetch:", err);
@@ -104,40 +117,65 @@ function CashierRouteList() {
             .finally(() => setLoading(false));
     };
 
-    // 3. Xử lý Search Handlers
+    // 5. EFFECT CHÍNH: Gọi API khi Page hoặc Route thay đổi
+    // (Lần đầu vào nếu có selectedRouteId từ storage, nó sẽ tự chạy)
+    useEffect(() => {
+        if (selectedRouteId) {
+            fetchData(pagination.page, selectedRouteId, searchTerm);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page, selectedRouteId]);
+
+    // Xử lý Search
     const handleSearch = () => {
-        fetchData({ page: 0, keyword: searchTerm });
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, selectedRouteId, searchTerm);
     };
 
     const handleSearchInputChange = (e) => {
         const value = e.target.value;
         setSearchTerm(value);
         if (value === '') {
-            // Nếu xóa trắng thì tìm lại tất cả của tuyến đó
-            fetchData({ page: 0, keyword: '' });
+            // Nếu xóa trắng thì tìm lại (reset về trang 0)
+            setPagination(prev => ({ ...prev, page: 0 }));
+            fetchData(0, selectedRouteId, '');
         }
     };
 
+    // Xử lý đổi Tuyến
     const handleRouteChange = (e) => {
         const newRouteId = e.target.value;
         setSelectedRouteId(newRouteId);
-        setSearchTerm(''); // Reset từ khóa khi đổi tuyến
-        fetchData({ routeId: newRouteId, page: 0, keyword: '' });
+
+        // Khi đổi tuyến: Reset Search và Page về mặc định
+        setSearchTerm('');
+        setPagination(prev => ({ ...prev, page: 0 }));
+
+        // Fetch dữ liệu mới (Effect sẽ tự chạy do selectedRouteId thay đổi, 
+        // nhưng để chắc chắn reset search/page ăn ngay lập tức, ta không gọi fetchData ở đây mà để useEffect lo
+        // hoặc gọi trực tiếp với tham số mới để nhanh hơn UI)
+        // Ở đây ta để useEffect lo logic gọi API dựa trên state thay đổi.
     };
 
     const handlePageChange = (newPage) => {
-        fetchData({ page: newPage });
+        setPagination(prev => ({ ...prev, page: newPage }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Xử lý làm mới (Xóa session storage nhưng giữ completed items checkbox)
     const handleRefresh = () => {
-        fetchData();
         if (selectedRouteId) {
+            // Chỉ reload data, giữ nguyên filter
+            fetchData(pagination.page, selectedRouteId, searchTerm);
             toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
         } else {
+            // Reset toàn bộ nếu muốn (tùy chọn)
+            sessionStorage.removeItem(STORAGE_KEY);
+            setSearchTerm('');
             toast.warn("Vui lòng chọn tuyến trước khi làm mới.");
         }
     };
-    
+
     const toggleCompleted = (contractId) => {
         setCompletedItems(prev => {
             const newSet = new Set(prev);
@@ -205,7 +243,7 @@ function CashierRouteList() {
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         disabled={!selectedRouteId} // Khóa nếu chưa chọn tuyến
                     />
-                     <button 
+                    <button
                         onClick={handleSearch}
                         className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors disabled:opacity-50"
                         disabled={!selectedRouteId}
@@ -217,10 +255,10 @@ function CashierRouteList() {
 
             {/* Bảng Dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
-                 <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     {loading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-lg">
-                           <Loader2 size={32} className="animate-spin text-blue-600" />
+                            <Loader2 size={32} className="animate-spin text-blue-600" />
                         </div>
                     )}
                     <table className="min-w-full divide-y divide-gray-200">
@@ -240,18 +278,18 @@ function CashierRouteList() {
                             {!loading && contracts.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        {selectedRouteId 
-                                            ? (searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không tìm thấy hợp đồng nào cho tuyến này.') 
+                                        {selectedRouteId
+                                            ? (searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không tìm thấy hợp đồng nào cho tuyến này.')
                                             : 'Vui lòng chọn một tuyến đọc để xem danh sách.'}
                                     </td>
                                 </tr>
                             ) : (
                                 contracts.map((contract, index) => {
                                     const isCompleted = completedItems.has(contract.contractId);
-                                    
+
                                     return (
-                                        <tr 
-                                            key={contract.contractId} 
+                                        <tr
+                                            key={contract.contractId}
                                             className={`transition-colors ${isCompleted ? 'bg-green-50 opacity-70' : 'hover:bg-gray-50'}`}
                                         >
                                             <td className="px-2 py-4 text-center">
@@ -290,17 +328,17 @@ function CashierRouteList() {
                             )}
                         </tbody>
                     </table>
-                 </div>
+                </div>
 
-                 {/* Pagination */}
-                 {!loading && contracts.length > 0 && (
-                    <Pagination 
+                {/* Pagination */}
+                {!loading && contracts.length > 0 && (
+                    <Pagination
                         currentPage={pagination.page}
                         totalElements={pagination.totalElements}
                         pageSize={pagination.size}
                         onPageChange={handlePageChange}
                     />
-                 )}
+                )}
             </div>
         </div>
     );

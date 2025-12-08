@@ -29,7 +29,28 @@ public class RouteManagementDTO {
 
         if (wsc.getCustomer() != null) {
             this.customerName = wsc.getCustomer().getCustomerName();
-            this.customerAddress = wsc.getCustomer().getAddress();
+            // --- SỬA LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY ---
+            String displayAddress = wsc.getCustomer().getAddress(); // Mặc định: Địa chỉ KH
+
+            // Ưu tiên 1: Địa chỉ từ Hợp đồng Dịch vụ (Bảng 9)
+            if (wsc.getAddress() != null) {
+                if (wsc.getAddress().getAddress() != null) {
+                    displayAddress = wsc.getAddress().getAddress();
+                } else {
+                    displayAddress = wsc.getAddress().getStreet(); // Hoặc ghép chuỗi
+                }
+            }
+            // Ưu tiên 2: Địa chỉ từ Hợp đồng Gốc (Bảng 8)
+            else if (wsc.getSourceContract() != null && wsc.getSourceContract().getAddress() != null) {
+                if (wsc.getSourceContract().getAddress().getAddress() != null) {
+                    displayAddress = wsc.getSourceContract().getAddress().getAddress();
+                } else {
+                    displayAddress = wsc.getSourceContract().getAddress().getStreet();
+                }
+            }
+
+            this.customerAddress = displayAddress;
+            // ------------------------------------
         }
 
         // --- SỬA LỖI LOGIC LẤY MÃ ĐỒNG HỒ ---

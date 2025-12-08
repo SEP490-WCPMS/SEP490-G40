@@ -182,9 +182,6 @@ function ServiceCreateTicketForm() {
 
             {/* Header */}
             <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
-                    <ArrowLeft size={20} className="text-gray-600" />
-                </button>
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Tạo Yêu Cầu Hỗ Trợ (Hộ Khách Hàng)</h1>
                     <p className="text-sm text-gray-600">Dùng khi khách hàng gọi điện thoại báo hỏng/khiếu nại.</p>
