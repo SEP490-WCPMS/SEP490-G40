@@ -75,4 +75,13 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
             Pageable pageable
     );
     // --- HẾT PHẦN THÊM ---
+
+    /**
+     * Đếm số chỉ số đã đọc (COMPLETED) nhưng chưa được lập hóa đơn.
+     * (Không lọc theo staff vì việc lập hóa đơn nước thường là pool chung, hoặc nếu có quy tắc phân công thì thêm vào)
+     */
+    @Query("SELECT COUNT(mr) FROM MeterReading mr " +
+            "WHERE mr.readingStatus = 'COMPLETED' " +
+            "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.meterReading = mr)")
+    long countPendingWaterBills();
 }

@@ -15,7 +15,7 @@ import ConfirmModal from '../common/ConfirmModal';
 function CreateServiceInvoice() {
     const { calibrationId } = useParams();
     const navigate = useNavigate();
-    
+
     // State
     const [feeDetail, setFeeDetail] = useState(null);
     const [formData, setFormData] = useState({
@@ -27,11 +27,11 @@ function CreateServiceInvoice() {
         totalAmount: 0,
         notes: ''
     });
-    
+
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     // const [error, setError] = useState(null); // Không dùng state error hiển thị nữa
-    
+
     // State Modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -42,12 +42,12 @@ function CreateServiceInvoice() {
             setLoading(false);
             return;
         }
-        
+
         getUnbilledFeeDetail(calibrationId)
             .then(response => {
                 const fee = response.data;
                 setFeeDetail(fee);
-                
+
                 // Tính toán VAT (5%)
                 const subtotal = fee.calibrationCost;
                 const vat = Math.round(subtotal * 0.05);
@@ -74,21 +74,59 @@ function CreateServiceInvoice() {
     // 2. Hàm xử lý thay đổi input
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // 3. Hàm Submit form (Chỉ mở Modal)
+    // 3. Hàm xử lý riêng cho TIỀN (Tự động tính toán)
+    const handleMoneyChange = (e) => {
+        const { name, value } = e.target;
+        // Xóa hết ký tự không phải số
+        const rawValue = value.replace(/\D/g, '');
+
+        // Cập nhật giá trị đang nhập
+        setFormData(prev => {
+            const newData = { ...prev, [name]: rawValue };
+
+            // Logic tự động tính toán:
+            // Nếu người dùng sửa "Tiền dịch vụ" -> Tự động tính lại VAT và Tổng
+            if (name === 'subtotalAmount') {
+                const sub = Number(rawValue);
+                const vat = Math.round(sub * 0.05); // 5% VAT
+                const total = sub + vat;
+
+                newData.vatAmount = vat.toString();
+                newData.totalAmount = total.toString();
+            }
+
+            return newData;
+        });
+    };
+
+    // 4. Validate và Mở Modal
     const handlePreSubmit = (e) => {
         e.preventDefault();
+        // Validate Hạn thanh toán (Phải là tương lai)
+        const today = moment().startOf('day');
+        const due = moment(formData.dueDate).startOf('day');
+
+        if (due.isSameOrBefore(today)) {
+            toast.error("Hạn thanh toán phải là ngày trong tương lai (từ ngày mai trở đi).");
+            return;
+        }
+
+        // Validate Tiền (Phải > 0)
+        if (Number(formData.totalAmount) <= 0) {
+            toast.warn("Tổng tiền hóa đơn phải lớn hơn 0.");
+            return;
+        }
+
         setShowConfirmModal(true);
     };
 
     // 4. Hàm gọi API thật (Khi bấm Có trong Modal)
     const handleConfirmSubmit = async () => {
         setSubmitting(true);
+        setShowConfirmModal(false);
 
         const invoiceDto = {
             calibrationId: parseInt(calibrationId),
@@ -102,7 +140,7 @@ function CreateServiceInvoice() {
 
         try {
             const response = await createServiceInvoice(invoiceDto);
-            
+
             // Đóng modal
             setShowConfirmModal(false);
 
@@ -116,7 +154,7 @@ function CreateServiceInvoice() {
             setTimeout(() => {
                 navigate('/accounting/unbilled-fees');
             }, 2000);
-            
+
         } catch (err) {
             console.error("Lỗi khi tạo hóa đơn:", err);
             // Đóng modal để hiện toast lỗi
@@ -128,9 +166,9 @@ function CreateServiceInvoice() {
             setSubmitting(false);
         }
     };
-    
+
     if (loading) return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;
-    
+
     if (!feeDetail) {
         return (
             <div className="p-8 text-center">
@@ -142,9 +180,9 @@ function CreateServiceInvoice() {
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen max-w-4xl mx-auto">
-            
+
             {/* 5. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -152,10 +190,10 @@ function CreateServiceInvoice() {
 
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
-                 <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                     <ArrowLeft size={20} className="text-gray-600"/>
-                 </button>
-                 <div>
+                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <div>
                     <h1 className="text-2xl font-bold text-gray-800">Xác nhận Tạo Hóa đơn Dịch vụ</h1>
                     <p className="text-sm text-gray-600">Kiểm tra và chỉnh sửa thông tin trước khi phát hành.</p>
                 </div>
@@ -167,6 +205,8 @@ function CreateServiceInvoice() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2">
                     <p><strong className="text-gray-600">Khách hàng:</strong> {feeDetail?.customerName}</p>
                     <p><strong className="text-gray-600">Mã KH:</strong> {feeDetail?.customerCode}</p>
+                    <p><strong className="text-gray-600">Số điện thoại:</strong> {feeDetail?.customerPhone}</p>
+                    <p><strong className="text-gray-600">Email:</strong> {feeDetail?.customerEmail}</p>
                     <p><strong className="text-gray-600">Địa chỉ:</strong> {feeDetail?.customerAddress}</p>
                     <p><strong className="text-gray-600">Đồng hồ:</strong> <span className="font-mono">{feeDetail?.meterCode}</span></p>
                     <p><strong className="text-gray-600">Phí gốc:</strong> <span className="text-red-600 font-medium">{feeDetail?.calibrationCost.toLocaleString('vi-VN')} VNĐ</span></p>
@@ -181,65 +221,99 @@ function CreateServiceInvoice() {
                 <h3 className="text-base font-bold text-gray-700 uppercase tracking-wide border-b pb-2">
                     Thông tin Hóa đơn
                 </h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* Số Hóa Đơn */}
+                    {/* Số Hóa Đơn - READ ONLY */}
                     <div>
                         <label htmlFor="invoiceNumber" className="block mb-1.5 text-sm font-medium text-gray-700">Số Hóa Đơn <span className="text-red-500">*</span></label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <FileText size={16} className="text-gray-400"/>
+                                <FileText size={16} className="text-gray-500" />
                             </div>
-                            <input type="text" id="invoiceNumber" name="invoiceNumber"
-                                value={formData.invoiceNumber} onChange={handleChange} required
-                                className="pl-10 block w-full border border-gray-300 rounded-md py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                            <input
+                                type="text"
+                                id="invoiceNumber"
+                                name="invoiceNumber"
+                                value={formData.invoiceNumber}
+                                readOnly // <-- CHẶN NHẬP
+                                className="pl-10 block w-full border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed rounded-md py-2 text-sm focus:ring-0 focus:border-gray-300"
                             />
                         </div>
                     </div>
-                    {/* Ngày Lập & Hạn TT */}
+
+                    {/* Ngày Lập HĐ - READ ONLY (Luôn là hôm nay) */}
                     <div>
                         <label htmlFor="invoiceDate" className="block mb-1.5 text-sm font-medium text-gray-700">Ngày Lập HĐ <span className="text-red-500">*</span></label>
-                        <input type="date" id="invoiceDate" name="invoiceDate"
-                            value={formData.invoiceDate} onChange={handleChange} required
-                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        <input
+                            type="date"
+                            id="invoiceDate"
+                            name="invoiceDate"
+                            value={formData.invoiceDate}
+                            readOnly // <-- CHẶN NHẬP (Luôn là Current Date)
+                            className="block w-full border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed rounded-md py-2 px-3 text-sm focus:ring-0 focus:border-gray-300"
                         />
                     </div>
+
+                    {/* Hạn Thanh Toán - VALIDATE TƯƠNG LAI */}
                     <div>
                         <label htmlFor="dueDate" className="block mb-1.5 text-sm font-medium text-gray-700">Hạn Thanh Toán <span className="text-red-500">*</span></label>
-                        <input type="date" id="dueDate" name="dueDate"
-                            value={formData.dueDate} onChange={handleChange} required
+                        <input
+                            type="date"
+                            id="dueDate"
+                            name="dueDate"
+                            value={formData.dueDate}
+                            onChange={handleChange}
+                            min={moment().add(1, 'days').format('YYYY-MM-DD')} // <-- UI chặn chọn ngày quá khứ/hiện tại
+                            required
                             className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
                         />
+                        <p className="text-xs text-gray-500 mt-1">Phải sau ngày lập hóa đơn.</p>
                     </div>
                 </div>
 
+                {/* Phần Tiền Tệ - FORMAT SỐ NGUYÊN */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4 border-t border-gray-100 bg-gray-50 p-4 rounded-md">
                     {/* Tiền (chưa VAT) */}
                     <div>
                         <label htmlFor="subtotalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền dịch vụ</label>
-                        <input type="number" id="subtotalAmount" name="subtotalAmount"
-                            value={formData.subtotalAmount} onChange={handleChange} required
-                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                        <input
+                            type="text" // <-- TEXT để format dấu phẩy
+                            id="subtotalAmount"
+                            name="subtotalAmount"
+                            value={formData.subtotalAmount ? Number(formData.subtotalAmount).toLocaleString('en-US') : ''}
+                            onChange={handleMoneyChange} // <-- Hàm xử lý tiền riêng
+                            required
+                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-medium"
                         />
                     </div>
                     {/* VAT */}
                     <div>
                         <label htmlFor="vatAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền VAT (5%)</label>
-                        <input type="number" id="vatAmount" name="vatAmount"
-                            value={formData.vatAmount} onChange={handleChange} required
-                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm"
+                        <input
+                            type="text"
+                            id="vatAmount"
+                            name="vatAmount"
+                            value={formData.vatAmount ? Number(formData.vatAmount).toLocaleString('en-US') : ''}
+                            onChange={handleMoneyChange}
+                            required
+                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-medium"
                         />
                     </div>
                     {/* Tổng cộng */}
                     <div>
                         <label htmlFor="totalAmount" className="block mb-1.5 text-sm font-bold text-gray-800">Tổng Tiền (VNĐ)</label>
-                        <input type="number" id="totalAmount" name="totalAmount"
-                            value={formData.totalAmount} onChange={handleChange} required
+                        <input
+                            type="text"
+                            id="totalAmount"
+                            name="totalAmount"
+                            value={formData.totalAmount ? Number(formData.totalAmount).toLocaleString('en-US') : ''}
+                            onChange={handleMoneyChange}
+                            required
                             className="block w-full border border-blue-300 bg-white rounded-md py-2 px-3 text-base font-bold text-red-600 shadow-sm"
                         />
                     </div>
                 </div>
-                
+
                 {/* Footer Button */}
                 <div className="flex justify-end pt-4">
                     <button
@@ -254,7 +328,7 @@ function CreateServiceInvoice() {
             </form>
 
             {/* 6. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit} // Gọi hàm xử lý API

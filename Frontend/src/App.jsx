@@ -230,7 +230,7 @@ function App() {
             {/* (Req 1) Trang Chi tiết Hóa đơn (Read-only) */}
             <Route path="invoices/:invoiceId" element={<InvoiceDetail />} />
             {/* --- HẾT --- */}
-            <Route path="route-management" element={<RouteManagementPage />} />
+            {/* <Route path="route-management" element={<RouteManagementPage />} /> */}
             {/* (Thêm các trang khác của Kế toán ở đây) */}
             <Route path="contracts/eligible-installation" element={<EligibleInstallationContracts />} />
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
@@ -253,6 +253,8 @@ function App() {
             <Route path="water-price-types" element={<WaterPriceTypesPage />} />
             <Route path="water-prices" element={<WaterPricesPage />} />
             <Route path="reading-routes" element={<ReadingRoutesList />} />
+            {/* --- HẾT --- */}
+            <Route path="route-management" element={<RouteManagementPage />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
           </Route>
         </Route>

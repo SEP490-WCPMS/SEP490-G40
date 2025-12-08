@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getContractDetails, submitSurveyReport } from '../../Services/apiTechnicalStaff'; 
-import { ArrowLeft, Save, AlertCircle, FileText } from 'lucide-react'; 
+import { getContractDetails, submitSurveyReport } from '../../Services/apiTechnicalStaff';
+import { ArrowLeft, Save, AlertCircle, FileText } from 'lucide-react';
 import moment from 'moment';
 
 // 1. IMPORT TOAST VÀ MODAL
@@ -15,7 +15,7 @@ function SurveyForm() {
 
     const [contractDetails, setContractDetails] = useState(null);
     const [formData, setFormData] = useState({
-        surveyDate: moment().format('YYYY-MM-DD'), 
+        surveyDate: moment().format('YYYY-MM-DD'),
         technicalDesign: '',
         estimatedCost: ''
     });
@@ -36,7 +36,7 @@ function SurveyForm() {
         }
 
         setLoading(true);
-        
+
         getContractDetails(contractId)
             .then(response => {
                 setContractDetails(response.data);
@@ -60,12 +60,40 @@ function SurveyForm() {
     // 1. Kiểm tra và mở Modal
     const handlePreSubmit = (e) => {
         e.preventDefault(); // Ngăn submit mặc định
-        
-        // Validate
+
+        // --- VALIDATE DỮ LIỆU ---
+
+        // 1. Check điền đầy đủ
         if (!formData.technicalDesign || !formData.estimatedCost || !formData.surveyDate) {
             toast.warn("Vui lòng điền đầy đủ thông tin bắt buộc (*).");
             return;
         }
+
+        // 2. Validate Ngày Khảo Sát (Không được chọn quá khứ)
+        // startOf('day') để đưa về 00:00:00, giúp so sánh chính xác ngày hiện tại
+        const selectedDate = moment(formData.surveyDate).startOf('day');
+        const today = moment().startOf('day');
+
+        if (selectedDate.isBefore(today)) {
+            toast.error("Ngày khảo sát không được nhỏ hơn ngày hiện tại.");
+            return;
+        }
+
+        // 3. Validate Chi Phí Dự Kiến (Phải là số nguyên dương)
+        const cost = Number(formData.estimatedCost);
+
+        // Kiểm tra NaN (không phải số), <= 0, hoặc không phải số nguyên (thập phân)
+        if (isNaN(cost) || cost <= 0) {
+            toast.error("Chi phí dự kiến phải lớn hơn 0.");
+            return;
+        }
+
+        if (!Number.isInteger(cost)) {
+            toast.error("Chi phí dự kiến phải là số nguyên (không được lẻ xu).");
+            return;
+        }
+
+        // --- HẾT VALIDATE ---
 
         // Mở Modal
         setShowConfirmModal(true);
@@ -78,7 +106,7 @@ function SurveyForm() {
 
         try {
             await submitSurveyReport(contractId, formData);
-            
+
             // Thông báo thành công
             toast.success("Nộp báo cáo khảo sát thành công!", {
                 position: "top-center",
@@ -100,53 +128,66 @@ function SurveyForm() {
         }
     };
 
+    // Hàm xử lý riêng cho ô nhập tiền
+    const handleCostChange = (e) => {
+        // 1. Lấy giá trị từ input
+        const inputValue = e.target.value;
+
+        // 2. Xóa tất cả ký tự KHÔNG phải là số (xóa dấu phẩy, chữ, ký tự lạ...)
+        // Điều này đảm bảo dữ liệu luôn là số nguyên dương như bạn muốn
+        const rawValue = inputValue.replace(/[^0-9]/g, '');
+
+        // 3. Cập nhật vào state (lưu số nguyên gốc, ví dụ: "1000000")
+        setFormData(prev => ({ ...prev, estimatedCost: rawValue }));
+    };
+
     // --- Loading State ---
     if (loading) {
-         return (
-             <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                 <span className="text-gray-500 text-lg">Đang tải chi tiết hợp đồng...</span>
-             </div>
-         );
+        return (
+            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                <span className="text-gray-500 text-lg">Đang tải chi tiết hợp đồng...</span>
+            </div>
+        );
     }
-    
+
     // Nếu load thất bại, không hiện form mà hiện thông báo
     if (!contractDetails) {
         return (
-             <div className="p-8 text-center bg-gray-50 min-h-screen flex flex-col items-center pt-20">
-                 <AlertCircle className="h-12 w-12 text-gray-300 mb-4" />
-                 <p className="text-gray-500 mb-6">Không tìm thấy dữ liệu hợp đồng.</p>
-                 <button 
+            <div className="p-8 text-center bg-gray-50 min-h-screen flex flex-col items-center pt-20">
+                <AlertCircle className="h-12 w-12 text-gray-300 mb-4" />
+                <p className="text-gray-500 mb-6">Không tìm thấy dữ liệu hợp đồng.</p>
+                <button
                     onClick={() => navigate('/technical/survey')}
                     className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                     Quay lại danh sách
                 </button>
                 <ToastContainer position="top-center" theme="colored" />
-             </div>
+            </div>
         );
     }
 
     // --- Render Component ---
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
             />
 
             {/* Header */}
-             <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                 <button
-                     onClick={() => navigate(-1)} 
-                     className="p-2 rounded-full hover:bg-gray-100 transition duration-150 ease-in-out focus:outline-none"
-                 >
-                     <ArrowLeft size={20} className="text-gray-600"/>
-                 </button>
-                 <div>
+            <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="p-2 rounded-full hover:bg-gray-100 transition duration-150 ease-in-out focus:outline-none"
+                >
+                    <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Báo Cáo Khảo Sát & Báo Giá</h1>
                     <p className="text-sm text-gray-600">Điền thông tin khảo sát và chi phí dự kiến cho hợp đồng.</p>
                 </div>
@@ -155,7 +196,7 @@ function SurveyForm() {
             {/* Box thông tin Hợp đồng (Read-only) */}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow mb-6 border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-4 flex items-center gap-2">
-                    <FileText size={20} className="text-blue-600"/>
+                    <FileText size={20} className="text-blue-600" />
                     Thông tin Yêu Cầu (HĐ: {contractDetails.contractNumber})
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm text-gray-700">
@@ -167,7 +208,7 @@ function SurveyForm() {
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Ngày yêu cầu</span>
                         <span className="font-medium text-gray-900">{contractDetails.applicationDate ? moment(contractDetails.applicationDate).format('DD/MM/YYYY') : 'N/A'}</span>
                     </div>
-                    
+
                     <div className="md:col-span-2 p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Địa chỉ lắp đặt</span>
                         <span className="font-medium text-gray-900">{contractDetails.customerAddress || 'N/A'}</span>
@@ -205,15 +246,16 @@ function SurveyForm() {
                         />
                     </div>
 
-                     {/* Chi Phí Dự Kiến */}
+                    {/* Chi Phí Dự Kiến */}
                     <div>
                         <label htmlFor="estimatedCost" className="block mb-1.5 text-sm font-medium text-gray-700">Chi Phí Dự Kiến (VNĐ) <span className="text-red-500">*</span></label>
                         <input
-                            type="number"
+                            type="text"                  // <-- ĐỔI TỪ NUMBER SANG TEXT
                             id="estimatedCost"
                             name="estimatedCost"
-                            value={formData.estimatedCost}
-                            onChange={handleChange}
+                            // Format số khi hiển thị: 1000000 => 1,000,000
+                            value={formData.estimatedCost ? Number(formData.estimatedCost).toLocaleString('en-US') : ''}
+                            onChange={handleCostChange}  // <-- DÙNG HÀM XỬ LÝ RIÊNG
                             placeholder="Nhập tổng chi phí dự kiến"
                             required
                             className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800"
@@ -239,8 +281,8 @@ function SurveyForm() {
                 {/* Nút Submit */}
                 <div className="pt-4 border-t border-gray-100 flex justify-end">
                     <button type="submit"
-                            className={`inline-flex items-center justify-center px-8 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                            disabled={submitting}>
+                        className={`inline-flex items-center justify-center px-8 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        disabled={submitting}>
                         {submitting ? (
                             <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -257,7 +299,7 @@ function SurveyForm() {
             </form>
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

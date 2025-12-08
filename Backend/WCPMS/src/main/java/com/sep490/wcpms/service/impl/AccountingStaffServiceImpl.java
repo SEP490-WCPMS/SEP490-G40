@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -66,12 +67,39 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
     private final ActivityLogService activityLogService; // NEW: inject ActivityLogService
 
+    private Account findLeastBusyAccountingStaff() {
+        // 1. Lấy danh sách tất cả user có role 'ACCOUNTING' (hoặc 'Ke Toan 1', 'Ke Toan 2'...)
+        // 2. Đếm số lượng hóa đơn có status = 'PENDING' của từng người.
+        // 3. Chọn người có số lượng thấp nhất.
+
+        // Ví dụ dùng Custom Query trong Repository:
+    /*
+    @Query("SELECT a FROM Account a " +
+           "LEFT JOIN Invoice i ON i.createdBy.id = a.id AND i.paymentStatus = 'PENDING' " +
+           "WHERE a.role.name = 'ROLE_ACCOUNTING_STAFF' " + // Hoặc check role ID
+           "GROUP BY a.id " +
+           "ORDER BY COUNT(i.id) ASC, a.id ASC")
+    List<Account> findAccountingStaffOrderedByWorkload();
+    */
+
+        List<Account> staffList = accountRepository.findAccountingStaffOrderedByWorkload(PageRequest.of(0, 1));
+        if (staffList.isEmpty()) {
+            throw new RuntimeException("Không tìm thấy nhân viên kế toán nào để gán việc!");
+        }
+        return staffList.get(0); // Người đầu tiên là người ít việc nhất
+    }
+
     @Override
     @Transactional(readOnly = true)
-    public Page<CalibrationFeeDTO> getUnbilledCalibrationFees(Pageable pageable) {
-        Page<MeterCalibration> feesPage = calibrationRepository.findUnbilledFees(pageable);
-        // Chuyển Page<Entity> sang Page<DTO>
-        return feesPage.map(CalibrationFeeDTO::new); // Dùng constructor của DTO
+    public Page<CalibrationFeeDTO> getMyUnbilledCalibrationFees(Integer staffId, String keyword, Pageable pageable) {
+        String searchKey = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKey = keyword.trim().toLowerCase();
+        }
+
+        // Gọi hàm Repo mới
+        Page<MeterCalibration> feesPage = calibrationRepository.searchUnbilledFees(staffId, searchKey, pageable);
+        return feesPage.map(CalibrationFeeDTO::new);
     }
 
     // --- HÀM TẠO HÓA ĐƠN (ĐÃ SỬA LỖI) ---
@@ -181,25 +209,27 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     /**
      * (Req 3+4) Lấy danh sách Hóa đơn (có lọc)
      */
+    // =================================================================
+    // === 1. SỬA HÀM LẤY DANH SÁCH (CHỈ HIỆN CỦA TÔI) ===
+    // =================================================================
     @Override
-    @Transactional(readOnly = true)
-    public Page<InvoiceDTO> getInvoices(String status, Pageable pageable) {
-        Page<Invoice> invoicePage;
-
-        if (status != null && !status.equalsIgnoreCase("ALL") && !status.isBlank()) {
-            // 1. Lọc theo Status
-            try {
-                Invoice.PaymentStatus paymentStatus = Invoice.PaymentStatus.valueOf(status.toUpperCase());
-                invoicePage = invoiceRepository.findByPaymentStatus(paymentStatus, pageable);
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Trạng thái hóa đơn không hợp lệ: " + status);
-            }
-        } else {
-            // 2. Lấy tất cả
-            invoicePage = invoiceRepository.findAll(pageable);
+    public Page<InvoiceDTO> getInvoices(String status, Integer staffId, String keyword, Pageable pageable) {
+        // Xử lý keyword
+        String searchKey = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKey = keyword.trim().toLowerCase();
         }
 
-        return invoicePage.map(invoiceMapper::toDto);
+        if ("ALL".equals(status)) {
+            // Gọi hàm tìm kiếm KHÔNG lọc status
+            return invoiceRepository.searchByAccountingStaff_Id(staffId, searchKey, pageable)
+                    .map(invoiceMapper::toDto);
+        } else {
+            // Gọi hàm tìm kiếm CÓ lọc status
+            Invoice.PaymentStatus paymentStatus = Invoice.PaymentStatus.valueOf(status);
+            return invoiceRepository.searchByAccountingStaff_IdAndStatus(staffId, paymentStatus, searchKey, pageable)
+                    .map(invoiceMapper::toDto);
+        }
     }
 
     /**
@@ -628,22 +658,34 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     // --- THÊM HÀM MỚI ---
     @Override
     @Transactional(readOnly = true)
-    public AccountingStatsDTO getDashboardStats() {
+    public AccountingStatsDTO getDashboardStats(Integer staffId) {
         AccountingStatsDTO stats = new AccountingStatsDTO();
+        LocalDate today = LocalDate.now();
+        // Ví dụ: Kỳ doanh thu là tháng hiện tại
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+        LocalDate endOfMonth = today.withDayOfMonth(today.lengthOfMonth());
 
-        // 1. (To-do) Phí chờ lập HĐ (Từ Bảng 14)
-        stats.setUnbilledFeesCount(calibrationRepository.countUnbilledFees());
+        // 1. Tổng Doanh Thu (Của tôi - Trong tháng này)
+        BigDecimal revenue = invoiceRepository.sumMyRevenueByDateRange(staffId, startOfMonth, endOfMonth);
+        stats.setTotalRevenue(revenue != null ? revenue : BigDecimal.ZERO); // <-- Cần thêm field này vào DTO
 
-        // 2. (KPI) Hóa đơn chờ thanh toán (Pending + Overdue)
+        // 2. Tổng Phí chờ lập Hóa đơn (Cả 3 loại)
+        long waterPending = meterReadingRepository.countPendingWaterBills();
+        long installPending = contractRepository.countPendingInstallationBills();
+        long calibrationPending = calibrationRepository.countUnbilledFeesByStaff(staffId);
+
+        stats.setUnbilledFeesCount(waterPending + installPending + calibrationPending);
+
+        // 3. HĐ chờ thanh toán (Của tôi)
         List<PaymentStatus> pendingStatuses = List.of(PaymentStatus.PENDING, PaymentStatus.OVERDUE);
-        stats.setPendingInvoicesCount(invoiceRepository.countByPaymentStatusIn(pendingStatuses));
+        stats.setPendingInvoicesCount(
+                invoiceRepository.countMyPendingInvoices(staffId, pendingStatuses)
+        );
 
-        // 3. (KPI) Tổng tiền chờ thanh toán
-        BigDecimal pendingAmount = invoiceRepository.sumTotalAmountByPaymentStatusIn(pendingStatuses);
-        stats.setPendingInvoicesAmount(pendingAmount != null ? pendingAmount : BigDecimal.ZERO);
-
-        // 4. (KPI) Số Hóa đơn đã quá hạn
-        stats.setOverdueInvoicesCount(invoiceRepository.countOverdueInvoices(PaymentStatus.OVERDUE, LocalDate.now()));
+        // 4. Hóa đơn QUÁ HẠN (Của tôi)
+        stats.setOverdueInvoicesCount(
+                invoiceRepository.countMyOverdueInvoices(staffId)
+        );
 
         return stats;
     }
@@ -663,7 +705,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     @Transactional(readOnly = true)
     public List<ReadingRouteDTO> getAllRoutes() {
         // 1. Lấy tất cả các tuyến (Entity)
-        List<ReadingRoute> routes = readingRouteRepository.findAll();
+        List<ReadingRoute> routes = readingRouteRepository.findAllByStatus(ReadingRoute.Status.ACTIVE);
 
         // 2. Chuyển đổi (Map) sang DTO để ngắt vòng lặp
         return routes.stream()

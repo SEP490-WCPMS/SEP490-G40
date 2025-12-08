@@ -33,11 +33,20 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
     );
 
     /**
-     * Lấy các ticket được gán cho một nhân viên cụ thể và theo trạng thái (cho Technical Staff).
+     * Tìm Ticket được gán cho nhân viên cụ thể (assignedTo) theo trạng thái
+     * VÀ tìm kiếm theo Keyword (Mã, Nội dung, Tên KH) <--- ĐIỂM MỚI
      */
-    Page<CustomerFeedback> findByAssignedToAndStatus(
-            Account assignedTo,
-            CustomerFeedback.Status status,
+    @Query("SELECT t FROM CustomerFeedback t " +
+            "WHERE t.assignedTo = :assignedTo " +
+            "AND t.status = :status " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(t.feedbackNumber) LIKE %:keyword% OR " +
+            "     LOWER(t.description) LIKE %:keyword% OR " +
+            "     LOWER(t.customer.customerName) LIKE %:keyword%)")
+    Page<CustomerFeedback> findAssignedToAndStatusWithSearch(
+            @Param("assignedTo") Account assignedTo,
+            @Param("status") CustomerFeedback.Status status,
+            @Param("keyword") String keyword,
             Pageable pageable
     );
 
@@ -111,5 +120,42 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
             Pageable pageable
     );
     // ---------------------------------------------------
+
+    // Thêm hàm này vào Interface Repository
+    @Query("SELECT f FROM CustomerFeedback f " +
+            "WHERE f.customer.id = :customerId " +
+            // Logic lọc Status: Nếu danh sách rỗng hoặc null thì lấy hết
+            "AND (:statuses IS NULL OR f.status IN :statuses) " +
+            // Logic tìm kiếm Keyword: Tìm trong Mã phiếu HOẶC Nội dung
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(f.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "     LOWER(f.feedbackNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<CustomerFeedback> searchMyTickets(
+            @Param("customerId") Integer customerId,
+            @Param("statuses") List<CustomerFeedback.Status> statuses,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+
+    /**
+     * Tìm Ticket được gán cho nhân viên cụ thể (assignedTo.id = :staffId)
+     * Lọc theo danh sách Type (nếu có)
+     * Chỉ lấy trạng thái PENDING hoặc IN_PROGRESS (việc cần làm)
+     */
+    @Query("SELECT t FROM CustomerFeedback t " +
+            "WHERE t.assignedTo.id = :staffId " +
+            "AND t.status IN ('PENDING', 'IN_PROGRESS') " +
+            "AND (:types IS NULL OR t.feedbackType IN :types)" +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(t.feedbackNumber) LIKE %:keyword% OR " +
+            "     LOWER(t.description) LIKE %:keyword% OR " +
+            "     LOWER(t.customer.customerName) LIKE %:keyword%)")
+    Page<CustomerFeedback> findAssignedTickets(
+            @Param("staffId") Integer staffId,
+            @Param("types") List<CustomerFeedback.FeedbackType> types,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 
 }

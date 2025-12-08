@@ -165,4 +165,31 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
 
     // Direct count by status (simple and efficient)
     long countByContractStatus(Contract.ContractStatus contractStatus);
+
+    /**
+     * Tìm Hợp đồng được gán cho Technical Staff cụ thể, theo Trạng thái
+     * VÀ tìm kiếm theo Keyword (Mã HĐ, Tên KH, Địa chỉ)
+     */
+    @Query("SELECT c FROM Contract c " +
+            "WHERE c.technicalStaff.id = :staffId " +
+            "AND c.contractStatus = :status " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(c.contractNumber) LIKE %:keyword% OR " +
+            "     LOWER(c.customer.customerName) LIKE %:keyword% OR " +
+            "     LOWER(c.customer.account.phone) LIKE %:keyword% OR " +
+            "     LOWER(c.customer.address) LIKE %:keyword%)")
+    Page<Contract> findByTechnicalStaffAndStatusWithSearch(
+            @Param("staffId") Integer staffId,
+            @Param("status") Contract.ContractStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    /**
+     * Đếm số Hợp đồng ACTIVE nhưng chưa có hóa đơn lắp đặt.
+     */
+    @Query("SELECT COUNT(c) FROM Contract c " +
+            "WHERE c.contractStatus = 'ACTIVE' " +
+            "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.contract = c AND i.meterReading IS NULL)")
+    long countPendingInstallationBills();
 }

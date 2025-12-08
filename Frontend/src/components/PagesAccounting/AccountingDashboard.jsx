@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-    getRevenueReport, 
-    getAccountingDashboardStats, 
-    getRecentUnbilledFees, 
-    getRecentInstallContracts, 
+import {
+    getRevenueReport,
+    getAccountingDashboardStats,
+    getRecentUnbilledFees,
+    getRecentInstallContracts,
     getRecentPendingReadings,
-    generateWaterBill,       
-    getWaterBillCalculation  
+    generateWaterBill,
+    getWaterBillCalculation
 } from '../Services/apiAccountingStaff';
-import { 
-    RefreshCw, Calendar as CalendarIcon, Eye, 
+import {
+    RefreshCw, Calendar as CalendarIcon, Eye,
     Droplets, Hammer, ClipboardList, Calculator
 } from 'lucide-react';
 import { addDays, format } from 'date-fns';
@@ -19,7 +19,7 @@ import moment from 'moment';
 // Import Biểu đồ
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 // Import UI
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -37,15 +37,15 @@ function AccountingDashboard() {
         pendingInvoicesAmount: 0,
         overdueInvoicesCount: 0,
     });
-    
+
     // --- State Chart ---
     const [chartData, setChartData] = useState([]);
-    
+
     // --- State Danh sách ---
     const [recentData, setRecentData] = useState({
-        calibrations: [], 
-        contracts: [],    
-        readings: []      
+        calibrations: [],
+        contracts: [],
+        readings: []
     });
 
     const [activeTab, setActiveTab] = useState('WATER');
@@ -55,15 +55,15 @@ function AccountingDashboard() {
 
     // State Date
     const [date, setDate] = useState({
-        from: addDays(new Date(), -30), 
+        from: addDays(new Date(), -30),
         to: new Date()
     });
 
     // State Modal Antd (Giữ nguyên vì cần hiện chi tiết tính toán)
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [modalData, setModalData] = useState(null);       
-    const [modalLoading, setModalLoading] = useState(false); 
-    const [submitting, setSubmitting] = useState(false);     
+    const [modalData, setModalData] = useState(null);
+    const [modalLoading, setModalLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [selectedReadingId, setSelectedReadingId] = useState(null);
 
     const fetchData = () => {
@@ -71,42 +71,42 @@ function AccountingDashboard() {
             toast.warn("Vui lòng chọn khoảng thời gian hợp lệ.");
             return;
         }
-        
+
         setLoading(true);
-        
+
         Promise.all([
             getAccountingDashboardStats(),
             getRevenueReport(date.from, date.to),
-            getRecentUnbilledFees(5),       
-            getRecentInstallContracts(5),   
-            getRecentPendingReadings(5)     
+            getRecentUnbilledFees(5),
+            getRecentInstallContracts(5),
+            getRecentPendingReadings(5)
         ])
-        .then(([statsResponse, revenueResponse, calibRes, contractRes, readingRes]) => {
-            // 1. Stats
-            setStats(statsResponse.data);
-            
-            // 2. Chart
-            const total = revenueResponse.data.reduce((acc, item) => acc + item.totalRevenue, 0);
-            setStats(prev => ({ ...prev, totalRevenue: total }));
-            
-            const formattedData = revenueResponse.data.map(item => ({
-                name: moment(item.date).format('DD/MM'), 
-                "Doanh thu": item.totalRevenue,
-            }));
-            setChartData(formattedData);
-            
-            // 3. Lists
-            setRecentData({
-                calibrations: calibRes.data?.content || [],
-                contracts: (contractRes.data?.content || []).sort((a,b) => b.id - a.id),
-                readings: readingRes.data?.content || []
-            });
-        })
-        .catch(err => {
-            console.error("Lỗi tải Dashboard:", err);
-            toast.error("Không thể tải dữ liệu bảng điều khiển.");
-        })
-        .finally(() => setLoading(false));
+            .then(([statsResponse, revenueResponse, calibRes, contractRes, readingRes]) => {
+                // 1. Stats
+                setStats(statsResponse.data);
+
+                // 2. Chart
+                const total = revenueResponse.data.reduce((acc, item) => acc + item.totalRevenue, 0);
+                setStats(prev => ({ ...prev, totalRevenue: total }));
+
+                const formattedData = revenueResponse.data.map(item => ({
+                    name: moment(item.date).format('DD/MM'),
+                    "Doanh thu": item.totalRevenue,
+                }));
+                setChartData(formattedData);
+
+                // 3. Lists
+                setRecentData({
+                    calibrations: calibRes.data?.content || [],
+                    contracts: (contractRes.data?.content || []).sort((a, b) => b.id - a.id),
+                    readings: readingRes.data?.content || []
+                });
+            })
+            .catch(err => {
+                console.error("Lỗi tải Dashboard:", err);
+                toast.error("Không thể tải dữ liệu bảng điều khiển.");
+            })
+            .finally(() => setLoading(false));
     };
 
     useEffect(() => {
@@ -114,7 +114,7 @@ function AccountingDashboard() {
     }, [date]);
 
     // === CÁC HÀM XỬ LÝ MODAL ===
-    
+
     const fmtMoney = (v) => (v != null ? `${Number(v).toLocaleString('vi-VN')} đ` : '0 đ');
 
     // Mở Modal xem trước tính toán
@@ -139,26 +139,26 @@ function AccountingDashboard() {
     // Xác nhận tạo hóa đơn (Trong Modal)
     const handleConfirmGenerate = async () => {
         if (!selectedReadingId) return;
-        
+
         setSubmitting(true);
 
         try {
             const response = await generateWaterBill(selectedReadingId);
-            
+
             const invoiceNum = response.data?.invoiceNumber || '';
-            
+
             // Đóng modal trước
             setIsModalVisible(false);
             setModalData(null);
-            
+
             // Hiện Toast thành công
             toast.success(`Thành công! Hóa đơn ${invoiceNum} đã được tạo.`, {
                 position: "top-center",
                 autoClose: 3000
             });
-            
+
             // Cập nhật lại dữ liệu
-            fetchData(); 
+            fetchData();
 
         } catch (err) {
             console.error("Lỗi khi tạo hóa đơn:", err);
@@ -180,7 +180,7 @@ function AccountingDashboard() {
     // --- HÀM RENDER BẢNG (Giữ nguyên logic hiển thị) ---
     const renderTableContent = () => {
         switch (activeTab) {
-            case 'WATER': 
+            case 'WATER':
                 return (
                     <>
                         <thead className="bg-blue-50">
@@ -210,11 +210,11 @@ function AccountingDashboard() {
                                         {item.consumption} m³
                                     </td>
                                     <td className="px-4 py-3 text-sm text-center">
-                                        <button 
-                                            onClick={() => handleOpenCreateModal(item.readingId)} 
+                                        <button
+                                            onClick={() => handleOpenCreateModal(item.readingId)}
                                             className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-xs border border-blue-200 bg-blue-50 px-2 py-1 rounded transition-colors hover:bg-blue-100"
                                         >
-                                            <Calculator size={14} className="mr-1"/> Lập HĐ
+                                            <Calculator size={14} className="mr-1" /> Lập HĐ
                                         </button>
                                     </td>
                                 </tr>
@@ -223,7 +223,7 @@ function AccountingDashboard() {
                     </>
                 );
 
-            case 'INSTALL': 
+            case 'INSTALL':
                 return (
                     <>
                         <thead className="bg-orange-50">
@@ -252,14 +252,14 @@ function AccountingDashboard() {
                                         {item.installationDate ? moment(item.installationDate).format('DD/MM/YYYY') : '-'}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-center">
-                                        <button 
+                                        <button
                                             onClick={() => navigate(
-                                                `/accounting/contracts/${item.id}/installation-invoice`, 
-                                                { state: { contract: item } } 
-                                            )} 
+                                                `/accounting/contracts/${item.id}/installation-invoice`,
+                                                { state: { contract: item } }
+                                            )}
                                             className="inline-flex items-center text-orange-600 hover:text-orange-800 font-medium text-xs border border-orange-200 bg-orange-50 px-2 py-1 rounded"
                                         >
-                                            <Eye size={14} className="mr-1"/> Lập HĐ
+                                            <Eye size={14} className="mr-1" /> Lập HĐ
                                         </button>
                                     </td>
                                 </tr>
@@ -268,7 +268,7 @@ function AccountingDashboard() {
                     </>
                 );
 
-            case 'CALIB': 
+            case 'CALIB':
                 return (
                     <>
                         <thead className="bg-purple-50">
@@ -293,11 +293,11 @@ function AccountingDashboard() {
                                         {item.calibrationCost.toLocaleString('vi-VN')} đ
                                     </td>
                                     <td className="px-4 py-3 text-sm text-center">
-                                        <button 
+                                        <button
                                             onClick={() => navigate(`/accounting/unbilled-fees/${item.calibrationId}`)}
                                             className="inline-flex items-center text-purple-600 hover:text-purple-800 font-medium text-xs border border-purple-200 bg-purple-50 px-2 py-1 rounded"
                                         >
-                                            <Eye size={14} className="mr-1"/> Xem chi tiết
+                                            <Eye size={14} className="mr-1" /> Xem chi tiết
                                         </button>
                                     </td>
                                 </tr>
@@ -311,9 +311,9 @@ function AccountingDashboard() {
 
     return (
         <div className="space-y-6">
-            
+
             {/* 2. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -374,49 +374,54 @@ function AccountingDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Stats Cards (Giữ nguyên) */}
+                {/* Card 1: Tổng Doanh Thu (Theo kỳ) */}
                 <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <h4 className="text-sm font-medium text-gray-500">Tổng Doanh Thu (theo kỳ)</h4>
-                    <p className="text-2xl lg:text-3xl font-bold text-green-600">
-                        {loading ? '...' : (stats.totalRevenue || 0).toLocaleString('vi-VN')} VNĐ
+                    <h4 className="text-sm font-medium text-gray-500">Tổng Doanh Thu (Tháng này)</h4>
+                    <p className="text-3xl font-bold text-green-600">
+                        {loading ? '...' : (stats.totalRevenue || 0).toLocaleString('vi-VN')}
+                        <span className="text-lg ml-1 font-normal text-gray-400">VNĐ</span>
                     </p>
                 </div>
+
+                {/* Card 2: Phí chờ lập Hóa đơn (Tổng hợp 3 loại) */}
                 <div className="bg-white p-4 rounded-lg shadow-sm">
-                    <h4 className="text-sm font-medium text-gray-500">Phí chờ lập Hóa đơn</h4>
-                    <p className="text-2xl lg:text-3xl font-bold text-blue-600">
-                         {loading ? '...' : stats.unbilledFeesCount} <span className="text-lg text-gray-400 font-normal">khoản</span>
+                    <h4 className="text-sm font-medium text-gray-500">Việc cần làm (Lập HĐ)</h4>
+                    <p className="text-3xl font-bold text-blue-600">
+                        {loading ? '...' : stats.unbilledFeesCount}
+                        <span className="text-lg ml-2 font-normal text-gray-400">khoản</span>
                     </p>
+                    <p className="text-xs text-gray-400 mt-1">Gồm: Nước, Lắp đặt, Kiểm định</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">HĐ chờ thanh toán</h4>
                     <p className="text-2xl lg:text-3xl font-bold text-yellow-600">
-                         {loading ? '...' : stats.pendingInvoicesCount} <span className="text-lg text-gray-400 font-normal">hóa đơn</span>
+                        {loading ? '...' : stats.pendingInvoicesCount} <span className="text-lg text-gray-400 font-normal">hóa đơn</span>
                     </p>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="text-sm font-medium text-gray-500">Hóa đơn QUÁ HẠN</h4>
                     <p className="text-2xl lg:text-3xl font-bold text-red-600">
-                         {loading ? '...' : stats.overdueInvoicesCount} <span className="text-lg text-gray-400 font-normal">hóa đơn</span>
+                        {loading ? '...' : stats.overdueInvoicesCount} <span className="text-lg text-gray-400 font-normal">hóa đơn</span>
                     </p>
                 </div>
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-                 <h3 className="text-lg font-semibold text-gray-700 mb-4">Thống kê Doanh thu theo ngày</h3>
-                {!loading && (      
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" fontSize={12} />
-                                <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN').format(value)} fontSize={12} />
-                                <Tooltip formatter={(value) => `${value.toLocaleString('vi-VN')} VNĐ`} />
-                                <Legend />
-                                <Line type="monotone" dataKey="Doanh thu" stroke="#16A34A" strokeWidth={2} activeDot={{ r: 8 }} />
-                            </LineChart>
-                        </ResponsiveContainer>            
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Thống kê Doanh thu theo ngày</h3>
+                {!loading && (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" fontSize={12} />
+                            <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN').format(value)} fontSize={12} />
+                            <Tooltip formatter={(value) => `${value.toLocaleString('vi-VN')} VNĐ`} />
+                            <Legend />
+                            <Line type="monotone" dataKey="Doanh thu" stroke="#16A34A" strokeWidth={2} activeDot={{ r: 8 }} />
+                        </LineChart>
+                    </ResponsiveContainer>
                 )}
             </div>
-            
+
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="border-b border-gray-200">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 pb-0 sm:pb-0">
@@ -427,33 +432,30 @@ function AccountingDashboard() {
                         <div className="flex space-x-1 bg-gray-100 p-1 rounded-t-lg">
                             <button
                                 onClick={() => setActiveTab('WATER')}
-                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-                                    activeTab === 'WATER' 
-                                    ? 'bg-white text-blue-600 shadow-sm border-t-2 border-blue-600' 
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
-                                }`}
+                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === 'WATER'
+                                        ? 'bg-white text-blue-600 shadow-sm border-t-2 border-blue-600'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                                    }`}
                             >
                                 <Droplets size={16} className="mr-2" /> Tiền Nước
                                 <span className="ml-2 bg-blue-100 text-blue-600 py-0.5 px-2 rounded-full text-xs">{recentData.readings.length}</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('INSTALL')}
-                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-                                    activeTab === 'INSTALL' 
-                                    ? 'bg-white text-orange-600 shadow-sm border-t-2 border-orange-600' 
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
-                                }`}
+                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === 'INSTALL'
+                                        ? 'bg-white text-orange-600 shadow-sm border-t-2 border-orange-600'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                                    }`}
                             >
                                 <Hammer size={16} className="mr-2" /> Phí Lắp Đặt
                                 <span className="ml-2 bg-orange-100 text-orange-600 py-0.5 px-2 rounded-full text-xs">{recentData.contracts.length}</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('CALIB')}
-                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-                                    activeTab === 'CALIB' 
-                                    ? 'bg-white text-purple-600 shadow-sm border-t-2 border-purple-600' 
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
-                                }`}
+                                className={`flex items-center px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${activeTab === 'CALIB'
+                                        ? 'bg-white text-purple-600 shadow-sm border-t-2 border-purple-600'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+                                    }`}
                             >
                                 <ClipboardList size={16} className="mr-2" /> Phí Kiểm Định
                                 <span className="ml-2 bg-purple-100 text-purple-600 py-0.5 px-2 rounded-full text-xs">{recentData.calibrations.length}</span>
@@ -488,10 +490,10 @@ function AccountingDashboard() {
                 onCancel={handleCancelModal}
                 footer={[
                     <AntButton key="back" onClick={handleCancelModal}>Hủy bỏ</AntButton>,
-                    <AntButton 
-                        key="submit" 
-                        type="primary" 
-                        loading={submitting} 
+                    <AntButton
+                        key="submit"
+                        type="primary"
+                        loading={submitting}
                         onClick={handleConfirmGenerate}
                         className="bg-green-600 hover:bg-green-700"
                         disabled={!modalData}

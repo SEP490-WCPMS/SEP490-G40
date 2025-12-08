@@ -88,7 +88,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
 
         try {
-            long overdue = invoiceRepository.countOverdueInvoices(Invoice.PaymentStatus.OVERDUE, today);
+            long overdue = invoiceRepository.countGlobalOverdueInvoices(Invoice.PaymentStatus.OVERDUE, today);
             dto.setOverdueInvoices(overdue);
         } catch (Exception e) {
             dto.setOverdueInvoices(0);
@@ -102,7 +102,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         } catch (Exception e) {
             // fallback to existing method (no date range)
             try {
-                BigDecimal sum = invoiceRepository.sumTotalAmountByPaymentStatusIn(List.of(Invoice.PaymentStatus.PENDING, Invoice.PaymentStatus.OVERDUE));
+                BigDecimal sum = invoiceRepository.sumGlobalTotalAmountByStatusAndDate(List.of(Invoice.PaymentStatus.PENDING, Invoice.PaymentStatus.OVERDUE), from, to);
                 dto.setRevenueMTD(sum == null ? 0L : sum.longValue());
             } catch (Exception ex) {
                 dto.setRevenueMTD(0L);

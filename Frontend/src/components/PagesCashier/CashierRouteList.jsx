@@ -1,45 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyAssignedRoutes, getContractsByRoute } from '../Services/apiCashierStaff'; 
-import { RefreshCw, Loader2, Eye, MapPin } from 'lucide-react';
+// Thêm icon Search
+import { RefreshCw, Loader2, Eye, MapPin, Search } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox"; 
-import moment from 'moment';
 import Pagination from '../common/Pagination';
-
-// 1. IMPORT TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-/**
- * Trang "Hợp đồng theo Tuyến" (để Ghi Chỉ Số)
- */
 function CashierRouteList() {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false); 
-    // const [error, setError] = useState(null); // Không dùng state error hiển thị nữa
     const navigate = useNavigate();
 
-    // State cho Dropdown
     const [routes, setRoutes] = useState([]);
     const [loadingRoutes, setLoadingRoutes] = useState(true);
     const [selectedRouteId, setSelectedRouteId] = useState('');
 
-    // State Pagination
+    // 1. Thêm State Search
+    const [searchTerm, setSearchTerm] = useState('');
+
     const [pagination, setPagination] = useState({ 
         page: 0, 
         size: 10, 
         totalElements: 0 
     });
     
-    // State Checkbox (Local)
+    // State Checkbox (Local) - Giữ nguyên
     const [completedItems, setCompletedItems] = useState(() => {
         try {
             const saved = localStorage.getItem('cashierCompletedContracts');
             return saved ? new Set(JSON.parse(saved)) : new Set();
-        } catch (e) {
-            console.error("Lỗi đọc localStorage:", e);
-            return new Set();
-        }
+        } catch (e) { return new Set(); }
     });
 
     useEffect(() => {
@@ -47,22 +39,16 @@ function CashierRouteList() {
         localStorage.setItem('cashierCompletedContracts', JSON.stringify(arrayToSave));
     }, [completedItems]);
 
-    // 1. Tải danh sách Tuyến
+    // Tải danh sách Tuyến - Giữ nguyên
     useEffect(() => {
         setLoadingRoutes(true);
         getMyAssignedRoutes()
-            .then(res => {
-                setRoutes(res.data || []);
-            })
-            .catch(err => {
-                console.error("Lỗi tải tuyến:", err);
-                // Thay setError bằng Toast
-                toast.error("Không thể tải danh sách tuyến được phân công.");
-            })
+            .then(res => setRoutes(res.data || []))
+            .catch(err => toast.error("Không thể tải danh sách tuyến."))
             .finally(() => setLoadingRoutes(false));
     }, []); 
 
-    // 3. Cập nhật fetchData
+    // 2. Cập nhật fetchData nhận keyword
     const fetchData = (params = {}) => {
         const currentRouteId = params.routeId !== undefined ? params.routeId : selectedRouteId;
 
@@ -76,12 +62,17 @@ function CashierRouteList() {
         
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
+        // Lấy keyword
+        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
         
-        getContractsByRoute(currentRouteId, { page: currentPage, size: currentSize })
+        getContractsByRoute(currentRouteId, { 
+            page: currentPage, 
+            size: currentSize,
+            keyword: currentKeyword || null // Gửi keyword
+        })
             .then(response => {
                 const data = response.data;
 
-                // Xử lý dữ liệu đa năng
                 let loadedData = [];
                 let totalItems = 0;
                 let pageNum = 0;
@@ -108,28 +99,38 @@ function CashierRouteList() {
             })
             .catch(err => {
                 console.error("Lỗi fetch:", err);
-                // Thay setError bằng Toast
-                toast.error("Không thể tải danh sách hợp đồng cho tuyến này.");
+                toast.error("Không thể tải danh sách hợp đồng.");
             })
             .finally(() => setLoading(false));
     };
 
-    // 4. Xử lý khi đổi Dropdown
+    // 3. Xử lý Search Handlers
+    const handleSearch = () => {
+        fetchData({ page: 0, keyword: searchTerm });
+    };
+
+    const handleSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value === '') {
+            // Nếu xóa trắng thì tìm lại tất cả của tuyến đó
+            fetchData({ page: 0, keyword: '' });
+        }
+    };
+
     const handleRouteChange = (e) => {
         const newRouteId = e.target.value;
         setSelectedRouteId(newRouteId);
-        fetchData({ routeId: newRouteId, page: 0 });
+        setSearchTerm(''); // Reset từ khóa khi đổi tuyến
+        fetchData({ routeId: newRouteId, page: 0, keyword: '' });
     };
 
-    // 5. Handlers chuyển trang
     const handlePageChange = (newPage) => {
         fetchData({ page: newPage });
-        // window.scrollTo({ top: 0, behavior: 'smooth' }); 
     };
 
     const handleRefresh = () => {
         fetchData();
-        // Thêm thông báo khi làm mới
         if (selectedRouteId) {
             toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
         } else {
@@ -140,24 +141,15 @@ function CashierRouteList() {
     const toggleCompleted = (contractId) => {
         setCompletedItems(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(contractId)) {
-                newSet.delete(contractId);
-            } else {
-                newSet.add(contractId);
-            }
+            if (newSet.has(contractId)) newSet.delete(contractId);
+            else newSet.add(contractId);
             return newSet;
         });
     };
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
-            {/* 2. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
@@ -175,9 +167,10 @@ function CashierRouteList() {
                 </button>
             </div>
 
-            {/* Box Lọc Tuyến */}
-            <div className="bg-white p-4 rounded-lg shadow-sm flex justify-between items-center">
-                <div className="flex items-center gap-2 w-full max-w-md">
+            {/* Box Lọc Tuyến + Tìm kiếm */}
+            <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center border border-gray-200">
+                {/* Dropdown Tuyến */}
+                <div className="flex items-center gap-2 w-full md:w-1/3">
                     <MapPin size={16} className="text-gray-600 flex-shrink-0" />
                     <label htmlFor="routeSelect" className="text-sm font-medium text-gray-700 flex-shrink-0">
                         Chọn Tuyến:
@@ -197,9 +190,30 @@ function CashierRouteList() {
                         ))}
                     </select>
                 </div>
-            </div>
 
-            {/* Đã bỏ phần hiển thị lỗi cũ */}
+                {/* 4. Thanh Tìm Kiếm */}
+                <div className="relative w-full md:w-1/2">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100"
+                        placeholder="Tìm Tên KH, Địa chỉ, Mã HĐ..."
+                        value={searchTerm}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        disabled={!selectedRouteId} // Khóa nếu chưa chọn tuyến
+                    />
+                     <button 
+                        onClick={handleSearch}
+                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors disabled:opacity-50"
+                        disabled={!selectedRouteId}
+                    >
+                        Tìm
+                    </button>
+                </div>
+            </div>
 
             {/* Bảng Dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -226,7 +240,9 @@ function CashierRouteList() {
                             {!loading && contracts.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        {selectedRouteId ? 'Không tìm thấy hợp đồng nào cho tuyến này.' : 'Vui lòng chọn một tuyến đọc để xem danh sách.'}
+                                        {selectedRouteId 
+                                            ? (searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không tìm thấy hợp đồng nào cho tuyến này.') 
+                                            : 'Vui lòng chọn một tuyến đọc để xem danh sách.'}
                                     </td>
                                 </tr>
                             ) : (
@@ -276,7 +292,7 @@ function CashierRouteList() {
                     </table>
                  </div>
 
-                 {/* 6. Gắn Component Phân trang */}
+                 {/* Pagination */}
                  {!loading && contracts.length > 0 && (
                     <Pagination 
                         currentPage={pagination.page}

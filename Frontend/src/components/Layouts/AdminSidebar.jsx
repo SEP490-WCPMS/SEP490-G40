@@ -60,6 +60,13 @@ const adminMenuItems = [
     url: "/admin/reading-routes", // ReadingRoutesList (sẽ chuyển từ Accounting sang)
     icon: Map,
   },
+  // --- THÊM MENU MỚI ---
+  {
+    title: 'Quản lý Thứ tự Tuyến đọc',
+    url: '/admin/route-management',
+    icon: Map,
+  },
+  // --- HẾT ---
 ];
 // --- Hết Menu Items ---
 

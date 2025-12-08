@@ -27,13 +27,20 @@ export const findUnpaidInvoice = (invoiceNumber) => {
     return apiClient.get(`/cashier/invoices/search/${invoiceNumber}`);
 };
 
+export const searchInvoices = (keyword) => {
+    return apiClient.get('/cashier/invoices/search', {
+        params: { keyword }
+    });
+};
+
 /**
  * Xử lý thanh toán Tiền mặt
  * @param {number} invoiceId - ID của Hóa đơn (Bảng 17)
  * @param {number} amountPaid - Số tiền khách trả
  */
-export const processCashPayment = (invoiceId, amountPaid) => {
-    return apiClient.post(`/cashier/invoices/${invoiceId}/pay-cash`, { amountPaid });
+export const processCashPayment = (invoiceId, data) => {
+    // data chính là object { amountPaid: 123456 } được truyền từ component
+    return apiClient.post(`/cashier/invoices/${invoiceId}/pay-cash`, data);
 };
 // --- HẾT PHẦN THÊM ---
 
@@ -43,7 +50,7 @@ export const processCashPayment = (invoiceId, amountPaid) => {
  * Lấy danh sách Hóa đơn CHƯA THANH TOÁN theo tuyến của Thu ngân.
  */
 export const getMyRouteInvoices = (params) => {
-    // params: { page, size, sort }
+    // params: { page, size, sort, keyword, filterType }
     return apiClient.get('/cashier/my-route-invoices', { params });
 };
 
@@ -68,8 +75,14 @@ export const getMyAssignedRoutes = () => {
  * (Sửa - Req 1) Lấy danh sách HỢP ĐỒNG (Khách hàng) đã sắp xếp
  * của 1 Tuyến CỤ THỂ.
  */
-export const getContractsByRoute = (routeId) => {
-    return apiClient.get(`/cashier/route/${routeId}/contracts`);
+export const getContractsByRoute = (routeId, params) => {
+    return apiClient.get(`/cashier/route/${routeId}/contracts`, {
+        params: {
+            page: params.page,
+            size: params.size,
+            keyword: params.keyword // <--- Quan trọng: Gửi keyword lên server
+        }
+    });
 };
 
 /**

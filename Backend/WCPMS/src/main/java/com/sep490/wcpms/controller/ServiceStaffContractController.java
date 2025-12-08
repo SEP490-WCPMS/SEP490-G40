@@ -198,10 +198,16 @@ public class ServiceStaffContractController {
     @GetMapping("/support-tickets")
     public ResponseEntity<Page<SupportTicketDTO>> getSupportTickets(
             @RequestParam(required = false) List<String> type, // Nhận 1 hoặc nhiều type
+            @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        // --- SỬA LỖI TẠI ĐÂY ---
-        Page<SupportTicketDTO> tickets = service.getSupportTickets(type, pageable); // Dùng 'service'
+        // 1. Lấy ID nhân viên đang đăng nhập (QUAN TRỌNG)
+        Integer currentStaffId = getAuthenticatedStaffId();
+
+        // 2. Gọi hàm Service mới với ID này
+        // (Lưu ý: Tôi đã đổi tên hàm service thành getMySupportTickets cho rõ nghĩa)
+        Page<SupportTicketDTO> tickets = service.getSupportTickets(currentStaffId, type, keyword, pageable);
+
         return ResponseEntity.ok(tickets);
     }
 

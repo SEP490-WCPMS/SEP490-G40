@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getMeterInfoByCode, submitMeterReplacement } from '../../Services/apiTechnicalStaff';
 import { ArrowLeft, Search, Save, AlertCircle } from 'lucide-react';
-import moment from 'moment'; 
+import moment from 'moment';
 
 // 1. IMPORT TOAST VÀ MODAL
 import { ToastContainer, toast } from 'react-toastify';
@@ -16,9 +16,9 @@ function MeterReplacementForm() {
     // State cho bước 1: Tìm kiếm
     const [oldMeterCode, setOldMeterCode] = useState('');
     const [loadingFetch, setLoadingFetch] = useState(false);
-    
+
     // State cho bước 2: Hiển thị thông tin cũ
-    const [foundMeterInfo, setFoundMeterInfo] = useState(null); 
+    const [foundMeterInfo, setFoundMeterInfo] = useState(null);
 
     // State cho bước 3: Form nhập liệu
     const [formData, setFormData] = useState({
@@ -26,7 +26,7 @@ function MeterReplacementForm() {
         newMeterCode: '',
         newMeterInitialReading: '',
         installationImageBase64: null,
-        replacementReason: 'BROKEN', 
+        replacementReason: 'BROKEN',
         calibrationCost: '',
         notes: ''
     });
@@ -46,14 +46,14 @@ function MeterReplacementForm() {
             return;
         }
         setLoadingFetch(true);
-        setFoundMeterInfo(null); 
-        
+        setFoundMeterInfo(null);
+
         try {
             const response = await getMeterInfoByCode(oldMeterCode);
             setFoundMeterInfo(response.data);
             // Tự động điền chỉ số cũ
             setFormData(prev => ({ ...prev, oldMeterFinalReading: response.data.lastReading || '' }));
-            
+
             toast.success("Đã tìm thấy thông tin đồng hồ!");
         } catch (err) {
             console.error("Lỗi khi tìm đồng hồ:", err);
@@ -68,28 +68,40 @@ function MeterReplacementForm() {
         if (location.state && location.state.prefillMeterCode) {
             const meterCodeFromState = location.state.prefillMeterCode;
             setOldMeterCode(meterCodeFromState);
-            
+
             setLoadingFetch(true);
             setFoundMeterInfo(null);
-            
+
             getMeterInfoByCode(meterCodeFromState)
                 .then(response => {
                     setFoundMeterInfo(response.data);
                     setFormData(prev => ({ ...prev, oldMeterFinalReading: response.data.lastReading || '' }));
                 })
                 .catch(err => {
-                     toast.error(err.response?.data?.message || "Không tìm thấy thông tin đồng hồ này.");
+                    toast.error(err.response?.data?.message || "Không tìm thấy thông tin đồng hồ này.");
                 })
                 .finally(() => {
                     setLoadingFetch(false);
                 });
         }
     }, [location.state]);
-    
+
 
     // --- HÀM XỬ LÝ NHẬP LIỆU FORM ---
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // Danh sách các trường cần ép kiểu SỐ NGUYÊN (Không chữ, không thập phân)
+        const integerFields = ['oldMeterFinalReading', 'newMeterInitialReading', 'calibrationCost'];
+
+        if (integerFields.includes(name)) {
+            // Thay thế tất cả ký tự KHÔNG phải số bằng rỗng
+            const numericValue = value.replace(/\D/g, '');
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
+            return;
+        }
+
+        // Các trường text/select bình thường
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -102,7 +114,7 @@ function MeterReplacementForm() {
         }
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
-        
+
         const reader = new FileReader();
         reader.onloadend = () => {
             const base64String = reader.result.split(",")[1];
@@ -116,16 +128,22 @@ function MeterReplacementForm() {
     // 1. Validate và mở Modal
     const handlePreSubmit = (e) => {
         e.preventDefault();
-        
-        // Validation
+
+        // 1. Check điền thiếu
         if (!formData.oldMeterFinalReading || !formData.newMeterCode || !formData.newMeterInitialReading || !formData.installationImageBase64) {
             toast.warn("Vui lòng điền đầy đủ các trường bắt buộc (*).");
             return;
         }
-        if (formData.replacementReason === 'CALIBRATION' && !formData.calibrationCost) {
-             toast.warn("Vui lòng nhập Chi phí kiểm định.");
-            return;
+
+        // 2. Check Chi phí kiểm định (nếu chọn lý do Kiểm Định)
+        if (formData.replacementReason === 'CALIBRATION') {
+            if (!formData.calibrationCost || Number(formData.calibrationCost) <= 0) {
+                toast.warn("Vui lòng nhập Chi phí kiểm định hợp lệ (> 0).");
+                return;
+            }
         }
+
+        // 3. Logic so sánh chỉ số cũ (Số nguyên so sánh với số nguyên)
         // So sánh số
         if (foundMeterInfo && parseFloat(formData.oldMeterFinalReading) < parseFloat(foundMeterInfo.lastReading)) {
             toast.error(`Chỉ số cuối (${formData.oldMeterFinalReading}) không thể nhỏ hơn chỉ số cũ (${foundMeterInfo.lastReading}).`);
@@ -154,15 +172,15 @@ function MeterReplacementForm() {
 
         try {
             await submitMeterReplacement(replacementData);
-            
+
             toast.success("Thay thế đồng hồ thành công!", {
                 position: "top-center",
                 autoClose: 2000
             });
-            
+
             // Chuyển hướng sau 2s
             setTimeout(() => {
-                navigate('/technical'); 
+                navigate('/technical');
             }, 2000);
 
         } catch (err) {
@@ -178,9 +196,9 @@ function MeterReplacementForm() {
     // --- JSX ---
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -188,10 +206,10 @@ function MeterReplacementForm() {
 
             {/* Header */}
             <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                 <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
-                     <ArrowLeft size={20} className="text-gray-600"/>
-                 </button>
-                 <div>
+                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
+                    <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Thay Thế Đồng Hồ (Hỏng / Kiểm Định)</h1>
                     <p className="text-sm text-gray-600">Ghi nhận chốt sổ đồng hồ cũ và lắp đặt đồng hồ mới.</p>
                 </div>
@@ -201,7 +219,7 @@ function MeterReplacementForm() {
 
             {/* --- BƯỚC 1: TÌM ĐỒNG HỒ CŨ --- */}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-4 border border-gray-200">
-                 <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-4">
+                <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-4">
                     Bước 1: Tìm Đồng Hồ Cũ
                 </h3>
                 <div className="flex flex-col sm:flex-row sm:items-end sm:gap-4">
@@ -222,7 +240,7 @@ function MeterReplacementForm() {
                         </div>
                     </div>
                     <button
-                        type="button" 
+                        type="button"
                         onClick={handleSearchMeter}
                         disabled={loadingFetch}
                         className="mt-2 sm:mt-0 inline-flex items-center justify-center px-6 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out disabled:opacity-70"
@@ -256,23 +274,27 @@ function MeterReplacementForm() {
 
                     {/* Box Form Nhập Liệu Thay Thế */}
                     <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5 border border-gray-200">
-                         <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-5">
+                        <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-5">
                             Bước 2: Nhập Thông Tin Thay Thế
                         </h3>
 
                         {/* Thông tin đồng hồ CŨ */}
                         <div>
-                            <label htmlFor="oldMeterFinalReading" className="block mb-1.5 text-sm font-medium text-gray-700">Chỉ số CUỐI (Đồng hồ CŨ) <span className="text-red-500">*</span></label>
+                            <label htmlFor="oldMeterFinalReading" className="block mb-1.5 text-sm font-medium text-gray-700">
+                                Chỉ số CUỐI (Đồng hồ CŨ) <span className="text-red-500">*</span>
+                            </label>
                             <input
-                                type="number" step="0.01" min={foundMeterInfo.lastReading || 0}
-                                id="oldMeterFinalReading" name="oldMeterFinalReading"
-                                value={formData.oldMeterFinalReading} onChange={handleChange}
+                                type="text" // Đổi thành text để chặn dấu chấm/phẩy
+                                id="oldMeterFinalReading"
+                                name="oldMeterFinalReading"
+                                value={formData.oldMeterFinalReading}
+                                onChange={handleChange}
                                 placeholder={`Phải >= ${foundMeterInfo.lastReading || 0}`}
                                 required
-                                className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                             />
                         </div>
-                        
+
                         <div className="border-t border-dashed border-gray-200 my-2"></div>
 
                         {/* Thông tin đồng hồ MỚI */}
@@ -287,19 +309,24 @@ function MeterReplacementForm() {
                                     className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>
+                            {/* 2. Chỉ số ĐẦU (Đồng hồ MỚI) */}
                             <div>
-                                <label htmlFor="newMeterInitialReading" className="block mb-1.5 text-sm font-medium text-gray-700">Chỉ số ĐẦU (Đồng hồ MỚI) <span className="text-red-500">*</span></label>
+                                <label htmlFor="newMeterInitialReading" className="block mb-1.5 text-sm font-medium text-gray-700">
+                                    Chỉ số ĐẦU (Đồng hồ MỚI) <span className="text-red-500">*</span>
+                                </label>
                                 <input
-                                    type="number" step="0.01" min="0"
-                                    id="newMeterInitialReading" name="newMeterInitialReading"
-                                    value={formData.newMeterInitialReading} onChange={handleChange}
+                                    type="text" // Đổi thành text
+                                    id="newMeterInitialReading"
+                                    name="newMeterInitialReading"
+                                    value={formData.newMeterInitialReading}
+                                    onChange={handleChange}
                                     placeholder="Ví dụ: 0"
                                     required
-                                    className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                    className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
                                 />
                             </div>
                         </div>
-                        
+
                         {/* Lý do thay thế */}
                         <div>
                             <label htmlFor="replacementReason" className="block mb-1.5 text-sm font-medium text-gray-700">Lý do thay thế <span className="text-red-500">*</span></label>
@@ -313,18 +340,23 @@ function MeterReplacementForm() {
                                 <option value="CALIBRATION">Do Đến Hạn Kiểm Định (5 năm)</option>
                             </select>
                         </div>
-                        
+
                         {/* Chi phí (Chỉ hiện khi là Kiểm Định) */}
                         {formData.replacementReason === 'CALIBRATION' && (
-                             <div className="bg-purple-50 p-4 rounded-md border border-purple-100 animate-in fade-in zoom-in duration-300">
-                                <label htmlFor="calibrationCost" className="block mb-1.5 text-sm font-medium text-purple-800">Chi Phí Kiểm Định (VNĐ) <span className="text-red-500">*</span></label>
+                            <div className="bg-purple-50 p-4 rounded-md border border-purple-100 animate-in fade-in zoom-in duration-300">
+                                <label htmlFor="calibrationCost" className="block mb-1.5 text-sm font-medium text-purple-800">
+                                    Chi Phí Kiểm Định (VNĐ) <span className="text-red-500">*</span>
+                                </label>
                                 <input
-                                    type="number" min="0"
-                                    id="calibrationCost" name="calibrationCost"
-                                    value={formData.calibrationCost} onChange={handleChange}
+                                    type="text" // Đổi thành text
+                                    id="calibrationCost"
+                                    name="calibrationCost"
+                                    // THÊM ĐOẠN NÀY ĐỂ HIỆN DẤU PHẨY (1,000,000)
+                                    value={formData.calibrationCost ? Number(formData.calibrationCost).toLocaleString('en-US') : ''}
+                                    onChange={handleChange}
                                     placeholder="Nhập chi phí kiểm định"
                                     required={formData.replacementReason === 'CALIBRATION'}
-                                    className="appearance-none block w-full border border-purple-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-purple-500 focus:border-purple-500"
+                                    className="appearance-none block w-full border border-purple-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-purple-500 focus:border-purple-500 font-bold text-gray-800"
                                 />
                             </div>
                         )}
@@ -346,7 +378,7 @@ function MeterReplacementForm() {
                         </div>
 
                         {/* Ghi chú */}
-                         <div>
+                        <div>
                             <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">Ghi Chú Chung</label>
                             <textarea
                                 id="notes" name="notes" rows="3"
@@ -359,8 +391,8 @@ function MeterReplacementForm() {
                         {/* Nút Submit */}
                         <div className="pt-4 border-t border-gray-100 flex justify-end">
                             <button type="submit"
-                                    className={`inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                    disabled={submitting}>
+                                className={`inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                disabled={submitting}>
                                 {submitting ? (
                                     <>
                                         <div className="animate-spin -ml-1 mr-3 h-5 w-5 text-white rounded-full border-b-2 border-white"></div>
@@ -379,7 +411,7 @@ function MeterReplacementForm() {
             )}
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

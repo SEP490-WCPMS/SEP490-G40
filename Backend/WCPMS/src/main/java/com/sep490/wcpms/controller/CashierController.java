@@ -57,6 +57,19 @@ public class CashierController {
     }
 
     /**
+     * API Tìm kiếm danh sách Hóa đơn chưa thanh toán theo từ khóa.
+     * Path: GET /api/cashier/invoices/search?keyword=...
+     */
+    @GetMapping("/invoices/search")
+    public ResponseEntity<List<InvoiceDTO>> searchInvoices(@RequestParam String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<InvoiceDTO> invoices = cashierService.searchUnpaidInvoices(keyword);
+        return ResponseEntity.ok(invoices);
+    }
+
+    /**
      * API Xử lý Thanh toán Tiền mặt.
      * Path: POST /api/cashier/invoices/{invoiceId}/pay-cash
      * Body: { "amountPaid": 123456 }
@@ -85,10 +98,12 @@ public class CashierController {
      */
     @GetMapping("/my-route-invoices")
     public ResponseEntity<Page<InvoiceDTO>> getMyRouteInvoices(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "ALL") String filterType, // <--- Thêm filterType
             @PageableDefault(size = 20, sort = "dueDate", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         Integer cashierId = getAuthenticatedStaffId();
-        Page<InvoiceDTO> invoices = cashierService.getInvoicesByMyRoutes(cashierId, pageable);
+        Page<InvoiceDTO> invoices = cashierService.getInvoicesByMyRoutes(cashierId, keyword, filterType, pageable);
         return ResponseEntity.ok(invoices);
     }
 
@@ -125,11 +140,14 @@ public class CashierController {
      * Path: GET /api/cashier/route/{routeId}/contracts
      */
     @GetMapping("/route/{routeId}/contracts")
-    public ResponseEntity<List<RouteManagementDTO>> getMyContractsByRoute(
-            @PathVariable Integer routeId
+    public ResponseEntity<Page<RouteManagementDTO>> getMyContractsByRoute(
+            @PathVariable Integer routeId,
+            @RequestParam(required = false) String keyword, // <--- Thêm keyword
+            @PageableDefault(size = 20, sort = "routeOrder", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         Integer cashierId = getAuthenticatedStaffId();
-        List<RouteManagementDTO> contracts = cashierService.getMyContractsByRoute(cashierId, routeId);
+        // Gọi service mới trả về Page
+        Page<RouteManagementDTO> contracts = cashierService.getMyContractsByRoute(cashierId, routeId, keyword, pageable);
         return ResponseEntity.ok(contracts);
     }
 

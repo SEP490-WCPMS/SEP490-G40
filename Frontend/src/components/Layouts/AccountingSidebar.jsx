@@ -32,12 +32,6 @@ const accountingMenuItems = [
     url: '/accounting/unbilled-fees',
     icon: DollarSign,
   },
-  // --- THÊM MENU MỚI ---
-  {
-    title: 'Quản lý Hóa đơn',
-    url: '/accounting/invoices',
-    icon: ListChecks,
-  },
   {
     title: 'Lập Hóa đơn Chính thức',
     url: '/accounting/contracts/eligible-installation',
@@ -48,13 +42,19 @@ const accountingMenuItems = [
     url: '/accounting/billing/pending-readings', // Đường dẫn này phải khớp với App.jsx
     icon: FileText, // Icon mới
   },
-  // --- HẾT ---
   // --- THÊM MENU MỚI ---
   {
-    title: 'Quản lý Thứ tự Tuyến đọc',
-    url: '/accounting/route-management',
-    icon: Map,
+    title: 'Quản lý Hóa đơn',
+    url: '/accounting/invoices',
+    icon: ListChecks,
   },
+  // --- HẾT ---
+  // --- THÊM MENU MỚI ---
+  // {
+  //   title: 'Quản lý Thứ tự Tuyến đọc',
+  //   url: '/accounting/route-management',
+  //   icon: Map,
+  // },
   // --- HẾT ---
   // (Thêm các trang khác của Kế toán sau, vd: Quản lý Hóa đơn)
 ];

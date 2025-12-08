@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitSupportTicket, getCustomerActiveMeters } from '../../Services/apiCustomer'; 
+import { submitSupportTicket, getCustomerActiveMeters } from '../../Services/apiCustomer';
 import { ArrowLeft, AlertCircle, CheckCircle, Send } from 'lucide-react';
 
 // 1. IMPORT TOAST VÀ MODAL
@@ -12,17 +12,17 @@ import ConfirmModal from '../../common/ConfirmModal';
  * Trang "Cách A": Cho phép Khách hàng tự gửi Yêu cầu Hỗ trợ (Báo hỏng).
  */
 function CustomerSupportForm() {
-    const [feedbackType, setFeedbackType] = useState('SUPPORT_REQUEST'); 
+    const [feedbackType, setFeedbackType] = useState('SUPPORT_REQUEST');
     const [description, setDescription] = useState('');
-    const [meterId, setMeterId] = useState(''); 
-    const [meters, setMeters] = useState([]); 
-    
+    const [meterId, setMeterId] = useState('');
+    const [meters, setMeters] = useState([]);
+
     const [loadingMeters, setLoadingMeters] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    
+
     // State Modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
-    
+
     const navigate = useNavigate();
 
     // Lấy danh sách đồng hồ khi trang load
@@ -39,19 +39,25 @@ function CustomerSupportForm() {
             .finally(() => {
                 setLoadingMeters(false);
             });
-    }, []); 
+    }, []);
 
     // --- CÁC HÀM XỬ LÝ SUBMIT MỚI ---
 
     // 1. Validate và Mở Modal
     const handlePreSubmit = (e) => {
         e.preventDefault();
-        
+
         if (!description.trim()) {
             toast.warn("Vui lòng nhập nội dung yêu cầu.");
             return;
         }
-        
+
+        // THÊM MỚI: Validate bắt buộc chọn đồng hồ nếu là Yêu cầu hỗ trợ
+        if (feedbackType === 'SUPPORT_REQUEST' && !meterId) {
+            toast.warn("Vui lòng chọn đồng hồ bạn muốn báo hỏng.");
+            return;
+        }
+
         // Mở Modal
         setShowConfirmModal(true);
     };
@@ -63,17 +69,17 @@ function CustomerSupportForm() {
 
         try {
             await submitSupportTicket(description, feedbackType, meterId);
-            
+
             toast.success("Gửi yêu cầu thành công! Chúng tôi sẽ sớm liên hệ với bạn.", {
                 position: "top-center",
                 autoClose: 3000
             });
-            
+
             // Reset form
             setDescription('');
             setFeedbackType('SUPPORT_REQUEST');
             setMeterId('');
-            
+
             // (Tùy chọn) Chuyển hướng về danh sách yêu cầu
             // setTimeout(() => navigate('/my-support-tickets'), 3000);
 
@@ -88,7 +94,7 @@ function CustomerSupportForm() {
                     errorMessage = err.response.data.message;
                 }
             }
-            
+
             toast.error(errorMessage, { position: "top-center" });
         } finally {
             setSubmitting(false);
@@ -97,9 +103,9 @@ function CustomerSupportForm() {
 
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-4xl mx-auto bg-gray-50 min-h-screen">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -110,10 +116,10 @@ function CustomerSupportForm() {
                 <h1 className="text-2xl font-bold text-gray-800">Gửi Yêu Cầu Hỗ Trợ</h1>
                 <p className="text-sm text-gray-600">Báo cáo sự cố (đồng hồ hỏng, vỡ ống...) hoặc khiếu nại.</p>
             </div>
-            
+
             {/* Form */}
             <form onSubmit={handlePreSubmit} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5 border border-gray-200">
-                
+
                 {/* Đã bỏ phần hiển thị lỗi/thành công cũ */}
 
                 {/* Loại Yêu Cầu */}
@@ -130,7 +136,7 @@ function CustomerSupportForm() {
                         disabled={submitting}
                         className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
-                        <option value="SUPPORT_REQUEST">Yêu cầu Hỗ trợ (Báo hỏng, Khiếu nại)</option>
+                        <option value="SUPPORT_REQUEST">Yêu cầu Hỗ trợ (Báo hỏng)</option>
                         <option value="FEEDBACK">Góp ý / Cải thiện dịch vụ</option>
                     </select>
                 </div>
@@ -140,7 +146,8 @@ function CustomerSupportForm() {
                 {feedbackType === 'SUPPORT_REQUEST' && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                         <label htmlFor="meter" className="block mb-1.5 text-sm font-medium text-gray-700">
-                            Đồng hồ liên quan (Nếu có)
+                            {/* THÊM MỚI: Dấu sao đỏ */}
+                            Đồng hồ liên quan <span className="text-red-500">*</span>
                         </label>
                         <select
                             id="meter"
@@ -149,16 +156,26 @@ function CustomerSupportForm() {
                             disabled={submitting || loadingMeters}
                             className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         >
+                            {/* SỬA LẠI: Option mặc định */}
                             <option value="">
-                                {loadingMeters ? "Đang tải danh sách đồng hồ..." : "-- Không chọn (Báo hỏng chung/đường ống) --"}
+                                {loadingMeters ? "Đang tải danh sách đồng hồ..." : "-- Chọn đồng hồ cần báo hỏng --"}
                             </option>
-                            {meters.map((meter) => (
-                                <option key={meter.meterId} value={meter.meterId}>
-                                    Mã: {meter.meterCode} (Địa chỉ: {meter.address})
-                                </option>
-                            ))}
+
+                            {meters && meters.length > 0 ? (
+                                meters.map((meter) => (
+                                    <option key={meter.meterId} value={meter.meterId}>
+                                        Mã: {meter.meterCode} (Địa chỉ: {meter.address})
+                                    </option>
+                                ))
+                            ) : (
+                                !loadingMeters && (
+                                    <option value="" disabled>
+                                        Bạn không có đồng hồ nào đang hoạt động
+                                    </option>
+                                )
+                            )}
                         </select>
-                        <p className="text-xs text-gray-500 mt-1 italic">Chọn đúng mã đồng hồ nếu bạn báo hỏng thiết bị cụ thể.</p>
+                        <p className="text-xs text-gray-500 mt-1 italic">Vui lòng chọn chính xác mã đồng hồ bị sự cố.</p>
                     </div>
                 )}
 
@@ -179,7 +196,7 @@ function CustomerSupportForm() {
                     />
                     <p className="mt-1 text-xs text-gray-500">Nhân viên dịch vụ sẽ xem xét và phản hồi sớm nhất có thể.</p>
                 </div>
-                
+
                 {/* Nút Gửi */}
                 <div className="pt-4 border-t border-gray-100 flex justify-end">
                     <button
@@ -203,7 +220,7 @@ function CustomerSupportForm() {
             </form>
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

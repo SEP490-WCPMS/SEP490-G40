@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'; 
-import { useNavigate, useLocation } from 'react-router-dom'; 
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { submitOnSiteCalibration } from '../../Services/apiTechnicalStaff';
 import { ArrowLeft, Check, X, Save } from 'lucide-react';
-import moment from 'moment'; 
+import moment from 'moment';
 
 // 1. IMPORT TOAST VÀ MODAL
 import { ToastContainer, toast } from 'react-toastify';
@@ -11,14 +11,14 @@ import ConfirmModal from '../../common/ConfirmModal';
 
 function OnSiteCalibrationForm() {
     const navigate = useNavigate();
-    const location = useLocation(); 
+    const location = useLocation();
 
     // State cho form
     const [formData, setFormData] = useState({
-        meterCode: '', 
-        calibrationDate: moment().format('YYYY-MM-DD'), 
-        calibrationStatus: 'PASSED', 
-        nextCalibrationDate: moment().add(5, 'years').format('YYYY-MM-DD'), 
+        meterCode: '',
+        calibrationDate: moment().format('YYYY-MM-DD'),
+        calibrationStatus: 'PASSED',
+        nextCalibrationDate: moment().add(5, 'years').format('YYYY-MM-DD'),
         calibrationCertificateNumber: '',
         calibrationCost: '',
         notes: ''
@@ -42,10 +42,18 @@ function OnSiteCalibrationForm() {
             }));
         }
     }, [location.state]);
-    
+
     // --- HÀM XỬ LÝ NHẬP LIỆU ---
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // 1. Xử lý Chi Phí Kiểm Định (Chỉ nhận số nguyên dương)
+        if (name === 'calibrationCost') {
+            const numericValue = value.replace(/\D/g, ''); // Xóa hết chữ, chỉ giữ số
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -63,15 +71,39 @@ function OnSiteCalibrationForm() {
     // 1. Validate và Mở Modal
     const handlePreSubmit = (e) => {
         e.preventDefault();
-        
-        // Validation
+
+        // 1. Validate điền đủ
         if (!formData.meterCode || !formData.calibrationDate || !formData.nextCalibrationDate || !formData.calibrationCost) {
             toast.warn("Vui lòng điền đầy đủ các trường bắt buộc (*).");
             return;
         }
 
-        if (moment(formData.nextCalibrationDate).isSameOrBefore(moment(), 'day')) {
-            toast.error("Lỗi: Ngày hẹn kiểm định tiếp theo phải là ngày trong tương lai!");
+        // 2. Validate Ngày Kiểm Định (Không được là quá khứ)
+        const today = moment().startOf('day');
+        const calibDate = moment(formData.calibrationDate).startOf('day');
+
+        if (calibDate.isBefore(today)) {
+            toast.error("Ngày kiểm định không được là ngày trong quá khứ.");
+            return;
+        }
+
+        // 3. Validate Ngày Hẹn Tiếp Theo (Phải là Tương lai, không được là hôm nay)
+        const nextDate = moment(formData.nextCalibrationDate).startOf('day');
+
+        if (nextDate.isSameOrBefore(today)) {
+            toast.error("Ngày hẹn kiểm định tiếp theo phải là ngày trong tương lai (từ ngày mai trở đi).");
+            return;
+        }
+
+        // Logic phụ: Ngày hẹn tiếp theo phải sau ngày kiểm định hiện tại
+        if (nextDate.isSameOrBefore(calibDate)) {
+            toast.error("Ngày hẹn kiểm định tiếp theo phải lớn hơn ngày kiểm định hiện tại.");
+            return;
+        }
+
+        // 4. Validate Chi phí (> 0)
+        if (Number(formData.calibrationCost) <= 0) {
+            toast.warn("Chi phí kiểm định phải lớn hơn 0.");
             return;
         }
 
@@ -91,7 +123,7 @@ function OnSiteCalibrationForm() {
 
         try {
             await submitOnSiteCalibration(calibrationData);
-            
+
             toast.success("Ghi nhận kết quả kiểm định tại chỗ thành công!", {
                 position: "top-center",
                 autoClose: 3000
@@ -121,9 +153,9 @@ function OnSiteCalibrationForm() {
     // --- JSX ---
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -131,12 +163,12 @@ function OnSiteCalibrationForm() {
 
             {/* Header */}
             <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                 <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
-                     <ArrowLeft size={20} className="text-gray-600"/>
-                 </button>
-                 <div>
+                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
+                    <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Kiểm Định Tại Chỗ</h1>
-                    <p className="text-sm text-gray-600">Ghi nhận kết quả kiểm định đồng hồ mà không cần thay thế.</p>
+                    <p className="text-sm text-gray-600">Ghi nhận kết quả kiểm định đồng hồ.</p>
                 </div>
             </div>
 
@@ -162,23 +194,35 @@ function OnSiteCalibrationForm() {
 
                 {/* Ngày Kiểm Định */}
                 <div>
-                    <label htmlFor="calibrationDate" className="block mb-1.5 text-sm font-medium text-gray-700">Ngày Kiểm Định <span className="text-red-500">*</span></label>
+                    <label htmlFor="calibrationDate" className="block mb-1.5 text-sm font-medium text-gray-700">
+                        Ngày Kiểm Định <span className="text-red-500">*</span>
+                    </label>
                     <input
-                        type="date" id="calibrationDate" name="calibrationDate"
+                        type="date"
+                        id="calibrationDate"
+                        name="calibrationDate"
                         value={formData.calibrationDate}
-                        onChange={handleDateChange} 
+                        onChange={handleDateChange}
+                        // min: Chặn chọn ngày quá khứ trên lịch (chỉ cho phép từ hôm nay)
+                        min={moment().format('YYYY-MM-DD')}
                         required
                         className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>
-                
+
                 {/* Ngày Hẹn Kiểm Định Lần Sau */}
                 <div>
-                    <label htmlFor="nextCalibrationDate" className="block mb-1.5 text-sm font-medium text-gray-700">Ngày Hẹn Kiểm Định Tiếp Theo <span className="text-red-500">*</span></label>
+                    <label htmlFor="nextCalibrationDate" className="block mb-1.5 text-sm font-medium text-gray-700">
+                        Ngày Hẹn Kiểm Định Tiếp Theo <span className="text-red-500">*</span>
+                    </label>
                     <input
-                        type="date" id="nextCalibrationDate" name="nextCalibrationDate"
+                        type="date"
+                        id="nextCalibrationDate"
+                        name="nextCalibrationDate"
                         value={formData.nextCalibrationDate}
-                        onChange={handleChange} 
+                        onChange={handleChange}
+                        // min: Chặn chọn hôm nay và quá khứ (chỉ cho phép từ ngày mai)
+                        min={moment().add(1, 'days').format('YYYY-MM-DD')}
                         required
                         className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -194,17 +238,22 @@ function OnSiteCalibrationForm() {
                         className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
                         <option value="PASSED">Đạt (PASSED)</option>
-                        <option value="FAILED">Hỏng (FAILED)</option>                   
+                        <option value="FAILED">Hỏng (FAILED)</option>
                     </select>
                 </div>
 
                 {/* Chi phí */}
                 <div>
-                    <label htmlFor="calibrationCost" className="block mb-1.5 text-sm font-medium text-gray-700">Chi Phí Kiểm Định (VNĐ) <span className="text-red-500">*</span></label>
+                    <label htmlFor="calibrationCost" className="block mb-1.5 text-sm font-medium text-gray-700">
+                        Chi Phí Kiểm Định (VNĐ) <span className="text-red-500">*</span>
+                    </label>
                     <input
-                        type="number" min="0"
-                        id="calibrationCost" name="calibrationCost"
-                        value={formData.calibrationCost} onChange={handleChange}
+                        type="text" // Đổi thành text để hiển thị dấu phẩy
+                        id="calibrationCost"
+                        name="calibrationCost"
+                        // Format hiển thị: 1000000 => 1,000,000
+                        value={formData.calibrationCost ? Number(formData.calibrationCost).toLocaleString('en-US') : ''}
+                        onChange={handleChange}
                         placeholder="Nhập chi phí để gửi Kế toán"
                         required
                         className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800"
@@ -224,7 +273,7 @@ function OnSiteCalibrationForm() {
                 </div>
 
                 {/* Ghi chú */}
-                 <div>
+                <div>
                     <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">Ghi Chú</label>
                     <textarea
                         id="notes" name="notes" rows="3"
@@ -237,25 +286,25 @@ function OnSiteCalibrationForm() {
                 {/* Nút Submit */}
                 <div className="pt-4 border-t border-gray-100 flex justify-end">
                     <button type="submit"
-                            className={`inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                            disabled={submitting}>
-                         {submitting ? (
+                        className={`inline-flex items-center justify-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        disabled={submitting}>
+                        {submitting ? (
                             <>
                                 <div className="animate-spin -ml-1 mr-3 h-5 w-5 text-white rounded-full border-b-2 border-white"></div>
                                 Đang lưu...
                             </>
-                         ) : (
-                             <>
+                        ) : (
+                            <>
                                 <Save size={18} className="mr-2" />
                                 Lưu Kết Quả Kiểm Định
-                             </>
-                         )}
+                            </>
+                        )}
                     </button>
                 </div>
             </form>
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

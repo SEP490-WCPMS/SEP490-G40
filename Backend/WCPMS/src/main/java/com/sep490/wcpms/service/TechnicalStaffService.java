@@ -18,7 +18,7 @@ public interface TechnicalStaffService {
     // === LUỒNG 1: SURVEY & DESIGN ===
 
     /** Lấy danh sách yêu cầu (status=PENDING) gán cho staff */
-    List<ContractDetailsDTO> getAssignedSurveyContracts(Integer staffId);
+    Page<ContractDetailsDTO> getAssignedSurveyContracts(Integer staffId, String keyword, Pageable pageable);
 
     /** Nộp báo cáo khảo sát (Survey Form) */
     ContractDetailsDTO submitSurveyReport(Integer contractId, SurveyReportRequestDTO reportDTO, Integer staffId);
@@ -26,7 +26,7 @@ public interface TechnicalStaffService {
     // === LUỒNG 2: INSTALLATION ===
 
     /** Lấy danh sách hợp đồng (status=SIGNED) gán cho staff */
-    List<ContractDetailsDTO> getAssignedInstallationContracts(Integer staffId);
+    Page<ContractDetailsDTO> getAssignedInstallationContracts(Integer staffId, String keyword, Pageable pageable);
 
     /** Đánh dấu hợp đồng đã hoàn thành lắp đặt (chuyển sang ACTIVE) */
     /** SỬA LẠI HÀM NÀY: Thêm DTO */
@@ -54,7 +54,7 @@ public interface TechnicalStaffService {
      * Lấy danh sách Yêu cầu Bảo trì (Hỏng, Kiểm định...)
      * đã được gán cho NV Kỹ thuật này (status = IN_PROGRESS).
      */
-    Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, Pageable pageable);
+    Page<SupportTicketDTO> getMyMaintenanceRequests(Integer staffId, String keyword, Pageable pageable);
 
     // --- THÊM HÀM MỚI ---
     /**

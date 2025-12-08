@@ -6,8 +6,15 @@ import moment from 'moment';
  * (Cần phân trang)
  * @param {object} params - { page: 0, size: 10 }
  */
-export const getUnbilledFees = (params) => {
-    return apiClient.get('/accounting/unbilled-calibrations', { params });
+export const getMyCalibrationFees = (params) => {
+    return apiClient.get('/accounting/unbilled-calibrations', { 
+        params: {
+            page: params.page,
+            size: params.size,
+            sort: params.sort,
+            keyword: params.keyword // <--- Gửi keyword lên
+        } 
+    });
 };
 
 /**
@@ -34,7 +41,15 @@ export const getUnbilledFeeDetail = (calibrationId) => {
  * @param {object} params - { page, size, status: "PENDING" | "PAID" | "ALL" ... }
  */
 export const getInvoices = (params) => {
-    return apiClient.get('/accounting/invoices', { params });
+    return apiClient.get('/accounting/invoices', { 
+        params: {
+            page: params.page,
+            size: params.size,
+            status: params.status,
+            sort: params.sort,
+            keyword: params.keyword // <--- Gửi keyword lên server
+        } 
+    });
 };
 
 /**

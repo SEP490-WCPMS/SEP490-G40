@@ -3,16 +3,10 @@ package com.sep490.wcpms.service.impl;
 import com.sep490.wcpms.dto.FeedbackCreateRequestDTO;
 import com.sep490.wcpms.dto.SupportTicketDTO;
 import com.sep490.wcpms.dto.CustomerMeterDTO;
-import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Customer;
-import com.sep490.wcpms.entity.CustomerFeedback;
-import com.sep490.wcpms.entity.WaterMeter;
+import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.SupportTicketMapper;
-import com.sep490.wcpms.repository.AccountRepository;
-import com.sep490.wcpms.repository.CustomerFeedbackRepository;
-import com.sep490.wcpms.repository.CustomerRepository;
-import com.sep490.wcpms.repository.WaterMeterRepository;
+import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.CustomerFeedbackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +29,31 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
     private final CustomerRepository customerRepository;
     private final SupportTicketMapper supportTicketMapper;
     private final WaterMeterRepository waterMeterRepository;
+    private final RoleRepository roleRepository;
+
+
+    /**
+     * Hàm helper: Tìm nhân viên Dịch vụ rảnh nhất và gán vào ticket
+     */
+    private void assignTicketToServiceStaff(CustomerFeedback ticket) {
+        // 1. Lấy Role ID của SERVICE_STAFF
+        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
+                .orElseThrow(() -> new RuntimeException("Role SERVICE_STAFF chưa được định nghĩa trong DB"));
+
+        // 2. Tìm nhân viên ít việc nhất
+        // Nếu không có ai (ví dụ cty chưa tuyển Service Staff), ta có thể để assigned_to = NULL (PENDING chung)
+        accountRepository.findServiceStaffWithLeastTickets(serviceRole.getId())
+                .ifPresentOrElse(
+                        staff -> {
+                            ticket.setAssignedTo(staff); // Gán vào cột assigned_to
+                            // Có thể thêm log: System.out.println("Auto-assigned ticket " + ticket.getFeedbackNumber() + " to " + staff.getUsername());
+                        },
+                        () -> {
+                            // Trường hợp không tìm thấy nhân viên nào (có thể log warning)
+                            System.err.println("WARNING: Không tìm thấy nhân viên Dịch vụ nào để gán ticket!");
+                        }
+                );
+    }
 
 
     @Override
@@ -127,6 +146,30 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
         ticket.setRequestedBy(requestedBy);
         ticket.setWaterMeter(meter); // Gán đồng hồ (nếu có)
 
+        // =================================================================
+        // 4. [MỚI] TỰ ĐỘNG PHÂN BỔ CHO NHÂN VIÊN DỊCH VỤ (Load Balancing)
+        // =================================================================
+
+        // Chỉ tự động phân bổ nếu người tạo KHÔNG phải là nhân viên (tức là Khách hàng tạo)
+        // Nếu nhân viên tự tạo ticket thì họ có thể tự assign cho mình hoặc để null tùy logic,
+        // nhưng ở đây ta tập trung vào việc Khách hàng gửi đơn lên.
+        if (requestedBy.getRole().getRoleName() == Role.RoleName.CUSTOMER) {
+            // TRƯỜNG HỢP A: Khách hàng tự tạo
+            // -> Hệ thống tự động tìm nhân viên rảnh nhất để chia việc (Auto Assign)
+            assignTicketToServiceStaff(ticket);
+
+        } else if (requestedBy.getRole().getRoleName() == Role.RoleName.SERVICE_STAFF) {
+            // TRƯỜNG HỢP B: Nhân viên Service tạo hộ
+            // -> Gán NGAY LẬP TỨC cho chính nhân viên đó ("Việc ai tạo người nấy làm")
+            ticket.setAssignedTo(requestedBy);
+
+            // (Tùy chọn: Nếu nhân viên tạo thì thường là họ đã tiếp nhận luôn,
+            // nên có thể set status là IN_PROGRESS luôn thay vì PENDING)
+            // ticket.setStatus(CustomerFeedback.Status.IN_PROGRESS);
+        }
+
+        // =================================================================
+
         CustomerFeedback savedTicket = customerFeedbackRepository.save(ticket);
 
         return supportTicketMapper.toDto(savedTicket);
@@ -143,33 +186,48 @@ public class CustomerFeedbackServiceImpl implements CustomerFeedbackService {
      */
     @Override
     @Transactional(readOnly = true)
-    public Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, List<String> statusStrings, Pageable pageable) {
-        // 1. Tìm hồ sơ Customer từ Account ID
+    public Page<SupportTicketDTO> getMyTickets(Integer customerAccountId, List<String> statusStrings, String keyword, Pageable pageable) {
+        // 1. Tìm hồ sơ Customer
         Customer customer = customerRepository.findByAccount_Id(customerAccountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ khách hàng cho tài khoản: " + customerAccountId));
 
-        Page<CustomerFeedback> tickets;
+        // 2. Xử lý Status Filter
+        List<CustomerFeedback.Status> targetStatuses = null;
 
-        // 2. Logic Lọc (Giống InvoiceServiceImpl)
-        if (statusStrings == null || statusStrings.isEmpty() || statusStrings.contains("ALL")) {
-            // Trường hợp 1: Không lọc -> Lấy hết
-            tickets = customerFeedbackRepository.findByCustomer_Id(customer.getId(), pageable);
-        } else {
-            // Trường hợp 2: Có lọc -> Chuyển String sang Enum -> Gọi hàm Repo mới
-            List<CustomerFeedback.Status> statuses = statusStrings.stream()
+        if (statusStrings != null && !statusStrings.isEmpty() && !statusStrings.contains("ALL")) {
+            // Chỉ convert nếu KHÔNG PHẢI là "ALL"
+            targetStatuses = statusStrings.stream()
                     .map(s -> {
                         try {
                             return CustomerFeedback.Status.valueOf(s.toUpperCase());
                         } catch (IllegalArgumentException e) {
-                            return CustomerFeedback.Status.PENDING; // Fallback nếu chuỗi sai
+                            return null; // Bỏ qua giá trị lỗi
                         }
                     })
+                    .filter(java.util.Objects::nonNull) // Lọc bỏ null
                     .collect(Collectors.toList());
 
-            tickets = customerFeedbackRepository.findByCustomer_IdAndStatusIn(customer.getId(), statuses, pageable);
+            // Nếu sau khi lọc mà list rỗng (do toàn string sai), ta có thể để null để lấy hết,
+            // hoặc để rỗng để không ra kết quả nào (tùy nghiệp vụ).
+            // Ở đây tôi để logic: nếu filter sai thì coi như không tìm thấy gì khớp status đó.
+            if (targetStatuses.isEmpty()) {
+                // Tùy chọn: return Page.empty(); nếu muốn chặt chẽ
+            }
         }
+        // Lưu ý: Nếu statusStrings là "ALL" hoặc null, thì targetStatuses vẫn là null -> Query sẽ lấy tất cả trạng thái.
 
-        // 3. Map sang DTO
+        // 3. Gọi Repository (Hàm mới viết ở Bước 1)
+        // Trim keyword để xóa khoảng trắng thừa đầu đuôi
+        String searchKeyword = (keyword != null) ? keyword.trim() : null;
+
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.searchMyTickets(
+                customer.getId(),
+                targetStatuses,
+                searchKeyword,
+                pageable
+        );
+
+        // 4. Map sang DTO
         return tickets.map(supportTicketMapper::toDto);
     }
 

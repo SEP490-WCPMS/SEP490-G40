@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createSupportTicketForCustomer, getAllCustomersSimple, getCustomerActiveMeters } from '../../Services/apiService'; 
+import { createSupportTicketForCustomer, getAllCustomersSimple, getCustomerActiveMeters } from '../../Services/apiService';
 import { ArrowLeft, Search } from 'lucide-react';
 
 // 1. IMPORT TOAST VÀ MODAL
@@ -10,25 +10,25 @@ import ConfirmModal from '../../common/ConfirmModal';
 
 function ServiceCreateTicketForm() {
     // --- State cho dữ liệu ---
-    const [allCustomers, setAllCustomers] = useState([]); 
-    const [filteredCustomers, setFilteredCustomers] = useState([]); 
-    const [activeMeters, setActiveMeters] = useState([]); 
-    
+    const [allCustomers, setAllCustomers] = useState([]);
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
+    const [activeMeters, setActiveMeters] = useState([]);
+
     // --- State cho Form ---
-    const [customerSearchTerm, setCustomerSearchTerm] = useState(''); 
+    const [customerSearchTerm, setCustomerSearchTerm] = useState('');
     const [selectedCustomerId, setSelectedCustomerId] = useState('');
-    const [selectedMeterId, setSelectedMeterId] = useState(''); 
+    const [selectedMeterId, setSelectedMeterId] = useState('');
     const [description, setDescription] = useState('');
     const [feedbackType, setFeedbackType] = useState('SUPPORT_REQUEST');
 
     // --- State cho UI ---
     const [loadingCustomers, setLoadingCustomers] = useState(true);
-    const [loadingMeters, setLoadingMeters] = useState(false); 
+    const [loadingMeters, setLoadingMeters] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     // const [error, setError] = useState(null); // Bỏ state error hiển thị UI cũ
     // const [success, setSuccess] = useState(null); // Bỏ state success hiển thị UI cũ
-    const [isDropdownVisible, setIsDropdownVisible] = useState(false); 
-    
+    const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+
     // State Modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -40,7 +40,7 @@ function ServiceCreateTicketForm() {
         getAllCustomersSimple()
             .then(res => {
                 setAllCustomers(res.data || []);
-                setFilteredCustomers([]); 
+                setFilteredCustomers([]);
             })
             .catch(err => {
                 console.error("Lỗi tải danh sách khách hàng:", err);
@@ -60,7 +60,7 @@ function ServiceCreateTicketForm() {
         }
 
         setLoadingMeters(true);
-        getCustomerActiveMeters(selectedCustomerId) 
+        getCustomerActiveMeters(selectedCustomerId)
             .then(res => {
                 setActiveMeters(res.data || []);
             })
@@ -71,34 +71,34 @@ function ServiceCreateTicketForm() {
             .finally(() => {
                 setLoadingMeters(false);
             });
-            
+
     }, [selectedCustomerId]);
 
     // --- HÀM XỬ LÝ TÌM KIẾM KHÁCH HÀNG ---
     const handleCustomerSearch = (e) => {
-        const searchTerm = e.target.value; 
-        setCustomerSearchTerm(searchTerm); 
-        setSelectedCustomerId(''); 
+        const searchTerm = e.target.value;
+        setCustomerSearchTerm(searchTerm);
+        setSelectedCustomerId('');
 
         if (!searchTerm.trim()) {
-            setFilteredCustomers([]); 
+            setFilteredCustomers([]);
             setIsDropdownVisible(false);
         } else {
-            const lowerSearchTerm = searchTerm.toLowerCase(); 
+            const lowerSearchTerm = searchTerm.toLowerCase();
             const filtered = allCustomers.filter(customer =>
                 customer.customerName.toLowerCase().includes(lowerSearchTerm) ||
                 customer.customerCode.toLowerCase().includes(lowerSearchTerm)
             );
-            setFilteredCustomers(filtered.slice(0, 10)); 
-            setIsDropdownVisible(true); 
+            setFilteredCustomers(filtered.slice(0, 10));
+            setIsDropdownVisible(true);
         }
     };
 
     const handleCustomerSelect = (customer) => {
-        setSelectedCustomerId(customer.id); 
-        setCustomerSearchTerm(customer.customerName); 
-        setIsDropdownVisible(false); 
-        setFilteredCustomers([]); 
+        setSelectedCustomerId(customer.id);
+        setCustomerSearchTerm(customer.customerName);
+        setIsDropdownVisible(false);
+        setFilteredCustomers([]);
     };
 
     // --- HÀM XỬ LÝ INPUT ---
@@ -111,13 +111,19 @@ function ServiceCreateTicketForm() {
     // 1. Validate và Mở Modal
     const handlePreSubmit = (e) => {
         e.preventDefault();
-        
+
         // Validate
-        if (!selectedCustomerId || !description.trim() || !feedbackType) { 
+        if (!selectedCustomerId || !description.trim() || !feedbackType) {
             toast.warn("Vui lòng chọn khách hàng, loại yêu cầu và nhập nội dung.");
             return;
         }
-        
+
+        // 2. THÊM MỚI: Validate bắt buộc chọn đồng hồ nếu là Yêu cầu hỗ trợ
+        if (feedbackType === 'SUPPORT_REQUEST' && !selectedMeterId) {
+            toast.warn("Vui lòng chọn đồng hồ cần hỗ trợ.");
+            return;
+        }
+
         // Mở Modal
         setShowConfirmModal(true);
     };
@@ -129,7 +135,7 @@ function ServiceCreateTicketForm() {
 
         try {
             await createSupportTicketForCustomer(selectedCustomerId, description, feedbackType, selectedMeterId || null);
-            
+
             toast.success("Tạo ticket thành công!", {
                 position: "top-center",
                 autoClose: 2000
@@ -157,7 +163,7 @@ function ServiceCreateTicketForm() {
                     errorMessage = err.response.data.message;
                 }
             }
-            
+
             toast.error(errorMessage, { position: "top-center" });
         } finally {
             setSubmitting(false);
@@ -166,9 +172,9 @@ function ServiceCreateTicketForm() {
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -176,21 +182,21 @@ function ServiceCreateTicketForm() {
 
             {/* Header */}
             <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                 <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
-                     <ArrowLeft size={20} className="text-gray-600"/>
-                 </button>
-                 <div>
+                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 transition duration-150 focus:outline-none">
+                    <ArrowLeft size={20} className="text-gray-600" />
+                </button>
+                <div>
                     <h1 className="text-2xl font-bold text-gray-800">Tạo Yêu Cầu Hỗ Trợ (Hộ Khách Hàng)</h1>
                     <p className="text-sm text-gray-600">Dùng khi khách hàng gọi điện thoại báo hỏng/khiếu nại.</p>
                 </div>
             </div>
-            
+
             {/* Form */}
             <form onSubmit={handlePreSubmit} className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5 border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-5">
                     Nội dung Yêu cầu
                 </h3>
-                
+
                 {/* Đã bỏ phần hiển thị lỗi/thành công cũ */}
 
                 {/* Chọn Khách Hàng */}
@@ -198,23 +204,23 @@ function ServiceCreateTicketForm() {
                     <label htmlFor="customer-search" className="block mb-1.5 text-sm font-medium text-gray-700">
                         Tìm kiếm Khách hàng (theo Tên hoặc Mã KH) <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative"> 
+                    <div className="relative">
                         <div className="relative">
                             <input
                                 type="text"
                                 id="customer-search"
                                 value={customerSearchTerm}
-                                onChange={handleCustomerSearch} 
+                                onChange={handleCustomerSearch}
                                 placeholder={loadingCustomers ? "Đang tải KH..." : "Gõ để tìm kiếm..."}
                                 disabled={loadingCustomers || submitting}
                                 className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 pl-10 text-sm capitalize-none focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 autoComplete="off"
-                                onFocus={() => setIsDropdownVisible(true)} 
+                                onFocus={() => setIsDropdownVisible(true)}
                                 onBlur={() => setTimeout(() => setIsDropdownVisible(false), 200)}
                             />
                             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         </div>
-                        
+
                         {/* Dropdown list */}
                         {isDropdownVisible && filteredCustomers.length > 0 && (
                             <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
@@ -232,7 +238,7 @@ function ServiceCreateTicketForm() {
                     </div>
                     {/* Hiển thị tên KH đã chọn */}
                     {selectedCustomerId && !isDropdownVisible && (
-                         <p className="text-xs text-green-600 mt-1 font-medium">Đã chọn: {customerSearchTerm}</p>
+                        <p className="text-xs text-green-600 mt-1 font-medium">Đã chọn: {customerSearchTerm}</p>
                     )}
                 </div>
 
@@ -250,16 +256,17 @@ function ServiceCreateTicketForm() {
                         disabled={submitting}
                         className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     >
-                        <option value="SUPPORT_REQUEST">Yêu cầu Hỗ trợ (Báo hỏng, Khiếu nại)</option>
+                        <option value="SUPPORT_REQUEST">Yêu cầu Hỗ trợ (Báo hỏng)</option>
                         <option value="FEEDBACK">Góp ý / Cải thiện dịch vụ</option>
                     </select>
                 </div>
 
-                {/* Chọn Đồng Hồ (Nếu có) */}
+                {/* Chọn Đồng Hồ */}
                 {selectedCustomerId && feedbackType === 'SUPPORT_REQUEST' && (
-                    <div>
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                         <label htmlFor="meter" className="block mb-1.5 text-sm font-medium text-gray-700">
-                            Đồng hồ liên quan (Nếu có)
+                            {/* THÊM MỚI: Dấu sao đỏ */}
+                            Đồng hồ liên quan <span className="text-red-500">*</span>
                         </label>
                         <select
                             id="meter"
@@ -268,9 +275,11 @@ function ServiceCreateTicketForm() {
                             disabled={submitting || loadingMeters}
                             className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         >
+                            {/* SỬA LẠI: Option mặc định không cho chọn (disabled) nếu chưa chọn */}
                             <option value="">
-                                {loadingMeters ? "Đang tải đồng hồ..." : "-- Không chọn (Báo hỏng chung) --"}
+                                {loadingMeters ? "Đang tải đồng hồ..." : "-- Vui lòng chọn đồng hồ --"}
                             </option>
+
                             {activeMeters.length > 0 ? (
                                 activeMeters.map((meter) => (
                                     <option key={meter.meterId} value={meter.meterId}>
@@ -300,7 +309,7 @@ function ServiceCreateTicketForm() {
                         className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
                     />
                 </div>
-                
+
                 {/* Nút Submit */}
                 <div className="pt-2 border-t border-gray-100 flex justify-end">
                     <button
@@ -314,7 +323,7 @@ function ServiceCreateTicketForm() {
             </form>
 
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

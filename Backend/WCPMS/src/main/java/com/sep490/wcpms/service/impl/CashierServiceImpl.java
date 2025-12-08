@@ -64,6 +64,20 @@ public class CashierServiceImpl implements CashierService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<InvoiceDTO> searchUnpaidInvoices(String keyword) {
+        String searchKey = (keyword == null) ? "" : keyword.trim().toLowerCase();
+
+        // Gọi Repo
+        List<Invoice> invoices = invoiceRepository.searchUnpaidInvoices(searchKey);
+
+        // Map sang DTO
+        return invoices.stream()
+                .map(invoiceMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid) {
 
@@ -160,20 +174,19 @@ public class CashierServiceImpl implements CashierService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<InvoiceDTO> getInvoicesByMyRoutes(Integer cashierId, Pageable pageable) {
-        // 1. Lấy danh sách ID Tuyến mà Thu ngân này quản lý
+    public Page<InvoiceDTO> getInvoicesByMyRoutes(Integer cashierId, String keyword, String filterType, Pageable pageable) {
         List<Integer> myRouteIds = getMyRouteIds(cashierId);
 
-        // 2. Định nghĩa các status "Chưa thanh toán"
-        List<Invoice.PaymentStatus> unpaidStatuses = List.of(
-                Invoice.PaymentStatus.PENDING,
-                Invoice.PaymentStatus.OVERDUE
-        );
+        // Xử lý keyword
+        String searchKey = (keyword == null) ? "" : keyword.trim().toLowerCase();
 
-        // 3. Gọi hàm Repo mới
-        Page<Invoice> invoices = invoiceRepository.findByRouteIdsAndStatus(
+        // Xử lý filterType (Mặc định là ALL nếu null)
+        String filter = (filterType == null || filterType.isEmpty()) ? "ALL" : filterType;
+
+        Page<Invoice> invoices = invoiceRepository.findInvoicesForCashierCollection(
                 myRouteIds,
-                unpaidStatuses,
+                searchKey,
+                filter,
                 pageable
         );
 
@@ -212,7 +225,7 @@ public class CashierServiceImpl implements CashierService {
     public List<ReadingRouteDTO> getMyAssignedRoutes(Integer cashierId) {
         Account cashier = getCashierAccount(cashierId);
 
-        List<ReadingRoute> routes = readingRouteRepository.findAllByAssignedReader(cashier);
+        List<ReadingRoute> routes = readingRouteRepository.findByAssignedReaderAndStatus(cashier, ReadingRoute.Status.ACTIVE);
 
         return routes.stream()
                 .map(ReadingRouteDTO::new) // Dùng constructor DTO
@@ -224,25 +237,30 @@ public class CashierServiceImpl implements CashierService {
      */
     @Override
     @Transactional(readOnly = true)
-    public List<RouteManagementDTO> getMyContractsByRoute(Integer cashierId, Integer routeId) {
-        // 1. Lấy các tuyến của Thu ngân (để xác thực)
+    public Page<RouteManagementDTO> getMyContractsByRoute(Integer cashierId, Integer routeId, String keyword, Pageable pageable) {
+        // 1. Lấy các tuyến của Thu ngân (để xác thực quyền)
         List<Integer> myRouteIds = getMyRouteIds(cashierId);
 
-        // 2. Kiểm tra xem Thu ngân có quyền xem tuyến này không
+        // 2. Xác thực
         if (!myRouteIds.contains(routeId)) {
             throw new AccessDeniedException("Bạn không có quyền truy cập Tuyến đọc (ID: " + routeId + ").");
         }
 
-        // 3. Lấy HĐ (đã sắp xếp) của Tuyến này
-        List<WaterServiceContract> contracts = waterServiceContractRepository
-                .findByReadingRoute_IdAndContractStatusOrderByRouteOrderAsc(
-                        routeId,
-                        WaterServiceContract.WaterServiceContractStatus.ACTIVE
-                );
+        // 3. Xử lý Keyword
+        String searchKeyword = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKeyword = keyword.trim().toLowerCase();
+        }
 
-        return contracts.stream()
-                .map(RouteManagementDTO::new)
-                .collect(Collectors.toList());
+        // 4. Gọi Repository MỚI (Trả về Page)
+        Page<WaterServiceContract> contracts = waterServiceContractRepository.searchContractsInRoute(
+                routeId,
+                searchKeyword,
+                pageable
+        );
+
+        // 5. Map sang DTO
+        return contracts.map(RouteManagementDTO::new);
     }
 
     /**
@@ -320,18 +338,17 @@ public class CashierServiceImpl implements CashierService {
             stats.setPendingInvoicesOnMyRoutesCount(0);
             stats.setPendingInvoicesOnMyRoutesAmount(BigDecimal.ZERO);
         } else {
-            // 4. Lấy HĐ PENDING/OVERDUE trên tuyến
-            List<Invoice.PaymentStatus> unpaidStatuses = List.of(
-                    Invoice.PaymentStatus.PENDING,
-                    Invoice.PaymentStatus.OVERDUE
-            );
+            // --- SỬA ĐOẠN NÀY (Dùng logic mới) ---
 
-            stats.setPendingInvoicesOnMyRoutesCount(
-                    invoiceRepository.countByRouteIdsAndStatus(myRouteIds, unpaidStatuses)
-            );
+            // 4. Đếm số lượng HĐ cần thu thực tế
+            long count = invoiceRepository.countInvoicesForCashierCollection(myRouteIds);
+            stats.setPendingInvoicesOnMyRoutesCount(count);
 
-            BigDecimal pendingAmount = invoiceRepository.sumTotalAmountByRouteIdsAndStatus(myRouteIds, unpaidStatuses);
-            stats.setPendingInvoicesOnMyRoutesAmount(pendingAmount != null ? pendingAmount : BigDecimal.ZERO);
+            // 5. Tính tổng tiền cần thu thực tế
+            BigDecimal amount = invoiceRepository.sumAmountForCashierCollection(myRouteIds);
+            stats.setPendingInvoicesOnMyRoutesAmount(amount != null ? amount : BigDecimal.ZERO);
+
+            // ------------------------------------
         }
 
         return stats;

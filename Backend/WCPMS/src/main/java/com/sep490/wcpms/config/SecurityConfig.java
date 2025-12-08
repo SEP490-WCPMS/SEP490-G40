@@ -126,7 +126,7 @@ public class SecurityConfig {
                                 // --- HẾT ---
 
                                 // --- THÊM DÒNG NÀY ---
-                                .requestMatchers("/api/accounting/**").hasAuthority("ACCOUNTING_STAFF")
+                                .requestMatchers("/api/accounting/**").hasAnyAuthority("ACCOUNTING_STAFF", "ADMIN")
                                 // --- HẾT PHẦN THÊM ---
 
                                 .requestMatchers("/profile", "/contract-request/**", "/my-requests").permitAll()

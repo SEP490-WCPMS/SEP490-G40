@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import { scanMeterImage } from "../Services/apiCashierStaff"; 
+import { scanMeterImage } from "../Services/apiCashierStaff";
 import { Camera, RefreshCw, Loader2, AlertCircle, Save, ArrowRight } from 'lucide-react';
 
 // 1. IMPORT TOAST VÀ MODAL
@@ -10,14 +10,14 @@ import ConfirmModal from '../common/ConfirmModal';
 
 function MeterScan() {
     const [imagePreview, setImagePreview] = useState(null);
-    const [loadingAI, setLoadingAI] = useState(false); 
+    const [loadingAI, setLoadingAI] = useState(false);
     // const [error, setError] = useState(null); // Bỏ state error UI cũ
     const navigate = useNavigate();
 
     // State lưu kết quả
     const [formData, setFormData] = useState({
         reading: '',
-        meterId: '' 
+        meterId: ''
     });
 
     // State log
@@ -34,7 +34,7 @@ function MeterScan() {
     const handleOpenCamera = () => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = "image/*;capture=camera"; 
+        input.accept = "image/*;capture=camera";
         input.capture = "environment";
 
         input.onchange = async (event) => {
@@ -43,10 +43,10 @@ function MeterScan() {
 
             const imageURL = URL.createObjectURL(file);
             setImagePreview(imageURL);
-            
+
             setLoadingAI(true);
-            setFormData({ reading: '', meterId: '' }); 
-            setLogData({ aiDetectedReading: null, aiDetectedMeterId: null, scanImageBase64: null }); 
+            setFormData({ reading: '', meterId: '' });
+            setLogData({ aiDetectedReading: null, aiDetectedMeterId: null, scanImageBase64: null });
 
             const reader = new FileReader();
             reader.onloadend = async () => {
@@ -68,7 +68,7 @@ function MeterScan() {
                             aiDetectedMeterId: aiResult.meterId,
                             scanImageBase64: base64
                         });
-                        
+
                         // Thông báo nhẹ khi AI nhận diện xong
                         toast.success("AI đã nhận diện xong. Vui lòng kiểm tra lại!", { autoClose: 2000 });
                     }
@@ -88,20 +88,34 @@ function MeterScan() {
             };
             reader.readAsDataURL(file);
         };
-        input.click(); 
+        input.click();
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        
+
+        // 1. Xử lý riêng cho Chỉ Số (reading): Chỉ nhận SỐ NGUYÊN (0-9)
+        if (name === 'reading') {
+            // Thay thế tất cả ký tự KHÔNG phải số bằng rỗng
+            // Điều này chặn cả dấu chấm (.), dấu phẩy (,), dấu trừ (-)
+            const numericValue = value.replace(/\D/g, '');
+
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
+        }
+
+        // 2. Các trường khác (meterId) xử lý bình thường
+        else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+
+        // Logic reset ảnh (giữ nguyên như cũ)
         if (imagePreview) {
-             setImagePreview(null); 
-             setLogData({ 
+            setImagePreview(null);
+            setLogData({
                 aiDetectedReading: null,
                 aiDetectedMeterId: null,
-                scanImageBase64: null 
-             });
+                scanImageBase64: null
+            });
         }
     };
 
@@ -110,8 +124,14 @@ function MeterScan() {
     // Bước 1: Kiểm tra dữ liệu và mở Modal
     const handlePreSubmit = () => {
         // Validate
-        if (!formData.meterId || formData.reading === '') { 
+        if (!formData.meterId || formData.reading === '') {
             toast.warn("Vui lòng nhập đầy đủ Mã Đồng Hồ và Chỉ Số Mới.");
+            return;
+        }
+
+        // Kiểm tra thêm: Chỉ số phải là số (Logic phụ trợ vì handleChange đã chặn rồi)
+        if (!/^\d+$/.test(formData.reading)) {
+            toast.warn("Chỉ số mới phải là số nguyên dương.");
             return;
         }
 
@@ -122,23 +142,23 @@ function MeterScan() {
     // Bước 2: Chuyển trang (Sau khi bấm "Có")
     const handleConfirmSubmit = () => {
         setShowConfirmModal(false);
-        
+
         // Chuyển sang trang Xác nhận
         navigate('/cashier/submit-reading', {
             state: {
-                physicalMeterId: formData.meterId, 
-                currentReading: formData.reading,  
-                ...logData, 
-                userCorrectedMeterIdText: formData.meterId 
+                physicalMeterId: formData.meterId,
+                currentReading: formData.reading,
+                ...logData,
+                userCorrectedMeterIdText: formData.meterId
             }
         });
     };
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
+            <ToastContainer
                 position="top-center"
                 autoClose={3000}
                 theme="colored"
@@ -163,13 +183,13 @@ function MeterScan() {
             {/* Đã bỏ phần hiển thị lỗi cũ */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
+
                 {/* CỘT 1: NHẬP LIỆU */}
                 <div className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5">
                     <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">
                         Thông tin Ghi nhận
                     </h2>
-                    
+
                     {/* Loading AI */}
                     {loadingAI && (
                         <div className="flex items-center text-gray-500 p-3 bg-blue-50 rounded-md animate-pulse">
@@ -177,7 +197,7 @@ function MeterScan() {
                             Đang phân tích ảnh... Vui lòng chờ.
                         </div>
                     )}
-                    
+
                     {/* Form */}
                     <div className="space-y-4">
                         <div>
@@ -188,31 +208,35 @@ function MeterScan() {
                                 name="meterId"
                                 value={formData.meterId}
                                 onChange={handleChange}
-                                placeholder="Nhập mã đồng hồ (VD: DH001)"
+                                placeholder="Nhập mã đồng hồ (VD: M001)"
                                 className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
                             />
                             {logData.aiDetectedMeterId && formData.meterId !== logData.aiDetectedMeterId && (
                                 <p className="text-xs text-orange-600 mt-1 flex items-center">
-                                    <AlertCircle size={12} className="mr-1"/> AI gợi ý: {logData.aiDetectedMeterId}
+                                    <AlertCircle size={12} className="mr-1" /> AI gợi ý: {logData.aiDetectedMeterId}
                                 </p>
                             )}
                         </div>
 
                         <div>
-                            <label htmlFor="reading" className="block mb-1.5 text-sm font-medium text-gray-700">Chỉ Số Mới (m³) <span className="text-red-500">*</span></label>
+                            <label htmlFor="reading" className="block mb-1.5 text-sm font-medium text-gray-700">
+                                Chỉ Số Mới (m³) <span className="text-red-500">*</span>
+                            </label>
                             <input
-                                type="number"
-                                step="0.01"
+                                type="text"            // <-- Đổi từ number sang text để chặn ký tự lạ
+                                inputMode="numeric"    // <-- Hiện bàn phím số trên mobile
                                 id="reading"
                                 name="reading"
                                 value={formData.reading}
                                 onChange={handleChange}
-                                placeholder="Nhập chỉ số nước"
-                                className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Nhập chỉ số (VD: 123)"
+                                className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800"
                             />
+
+                            {/* Phần hiển thị gợi ý AI giữ nguyên */}
                             {logData.aiDetectedReading && formData.reading !== logData.aiDetectedReading && (
                                 <p className="text-xs text-orange-600 mt-1 flex items-center">
-                                    <AlertCircle size={12} className="mr-1"/> AI gợi ý: {logData.aiDetectedReading}
+                                    <AlertCircle size={12} className="mr-1" /> AI gợi ý: {logData.aiDetectedReading}
                                 </p>
                             )}
                         </div>
@@ -229,10 +253,10 @@ function MeterScan() {
                         </button>
                     </div>
                 </div>
-                
+
                 {/* CỘT 2: ẢNH XEM TRƯỚC */}
                 <div className="bg-white p-4 sm:p-6 rounded-lg shadow">
-                     <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">
+                    <h2 className="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">
                         Ảnh minh chứng
                     </h2>
                     {imagePreview ? (
@@ -251,9 +275,9 @@ function MeterScan() {
                 </div>
 
             </div>
-            
+
             {/* 4. RENDER MODAL XÁC NHẬN */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}

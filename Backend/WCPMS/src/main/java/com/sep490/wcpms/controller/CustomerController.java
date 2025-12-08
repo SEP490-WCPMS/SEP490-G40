@@ -51,10 +51,11 @@ public class CustomerController {
     public ResponseEntity<Page<InvoiceDTO>> getMyInvoices(
             // Cho phép tham số 'status' được bỏ trống (null)
             @RequestParam(required = false) List<String> status, // Nhận 1 hoặc nhiều status
+            @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "invoiceDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Integer customerAccountId = getAuthenticatedUserId();
-        Page<InvoiceDTO> invoices = customerService.getMyInvoicesByStatus(customerAccountId, status, pageable);
+        Page<InvoiceDTO> invoices = customerService.getMyInvoicesByStatus(customerAccountId, status, keyword, pageable);
         return ResponseEntity.ok(invoices);
     }
 

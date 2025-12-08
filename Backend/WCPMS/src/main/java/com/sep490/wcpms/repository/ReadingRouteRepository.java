@@ -16,5 +16,11 @@ public interface ReadingRouteRepository extends JpaRepository<ReadingRoute, Inte
      * Tìm tất cả các tuyến đọc (Bảng 4) được gán cho một NV Thu ngân (Account).
      */
     List<ReadingRoute> findAllByAssignedReader(Account cashier);
+
+    // --- THÊM HÀM MỚI ---
+    /**
+     * Tìm tuyến theo Người đọc VÀ Trạng thái (ACTIVE)
+     */
+    List<ReadingRoute> findByAssignedReaderAndStatus(Account assignedReader, ReadingRoute.Status status);
 }
 
