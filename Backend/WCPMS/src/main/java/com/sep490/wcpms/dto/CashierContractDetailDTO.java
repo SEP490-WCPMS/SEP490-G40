@@ -42,7 +42,33 @@ public class CashierContractDetailDTO {
         if (wsc.getCustomer() != null) {
             Customer customer = wsc.getCustomer();
             this.customerName = customer.getCustomerName();
-            this.customerAddress = customer.getAddress();
+            // === [SỬA LẠI LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY] ===
+            String displayAddress = wsc.getCustomer().getAddress(); // Mặc định: Lấy của Customer
+
+            // Ưu tiên 1: Lấy từ HĐ Dịch vụ (Bảng 9) -> Bảng Address
+            if (wsc.getAddress() != null) {
+                if (wsc.getAddress().getAddress() != null) {
+                    displayAddress = wsc.getAddress().getAddress();
+                } else {
+                    // Tự ghép chuỗi nếu cần (Street + Ward)
+                    String street = wsc.getAddress().getStreet();
+                    String ward = wsc.getAddress().getWard() != null ? wsc.getAddress().getWard().getWardName() : "";
+                    displayAddress = street + (ward.isEmpty() ? "" : ", " + ward);
+                }
+            }
+            // Ưu tiên 2: Lấy từ HĐ Lắp đặt gốc (Bảng 8) -> Bảng Address
+            else if (wsc.getSourceContract() != null && wsc.getSourceContract().getAddress() != null) {
+                if (wsc.getSourceContract().getAddress().getAddress() != null) {
+                    displayAddress = wsc.getSourceContract().getAddress().getAddress();
+                } else {
+                    String street = wsc.getSourceContract().getAddress().getStreet();
+                    String ward = wsc.getSourceContract().getAddress().getWard() != null ? wsc.getSourceContract().getAddress().getWard().getWardName() : "";
+                    displayAddress = street + (ward.isEmpty() ? "" : ", " + ward);
+                }
+            }
+
+            this.customerAddress = displayAddress;
+            // ===========================================
 
             if (customer.getAccount() != null) {
                 this.customerPhone = customer.getAccount().getPhone();

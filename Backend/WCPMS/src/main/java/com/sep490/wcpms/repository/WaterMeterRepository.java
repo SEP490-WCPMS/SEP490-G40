@@ -45,14 +45,29 @@ public interface WaterMeterRepository extends JpaRepository<WaterMeter, Integer>
      */
 
 
-    @Query("SELECT DISTINCT new com.sep490.wcpms.dto.CustomerMeterDTO(wm.id, wm.meterCode, c.address) " +
-            "FROM MeterInstallation mi " + // 1. Bắt đầu từ Bảng Lắp đặt (Bảng 13)
-            "JOIN mi.waterMeter wm " + // 2. Join sang Đồng hồ (Bảng 12)
-            "JOIN mi.waterServiceContract wsc " + // 3. Join sang HĐ Dịch vụ (Bảng 9)
-            "JOIN wsc.customer c " + // 4. Join sang Khách hàng (Bảng 7)
-            "WHERE c.id = :customerId " + // Lọc theo Khách hàng
-            "AND wm.meterStatus = com.sep490.wcpms.entity.WaterMeter.MeterStatus.INSTALLED " + // Đồng hồ phải INSTALLED
-            "AND wsc.contractStatus = com.sep490.wcpms.entity.WaterServiceContract.WaterServiceContractStatus.ACTIVE") // HĐ Dịch vụ phải ACTIVE
+    /**
+     * Lấy danh sách đồng hồ (ID, Mã, Địa chỉ) đang ở trạng thái INSTALLED.
+     * ƯU TIÊN lấy địa chỉ lắp đặt cụ thể trong Hợp đồng (Bảng Address).
+     * Nếu không có, mới lấy địa chỉ chung của Khách hàng.
+     */
+    @Query("SELECT DISTINCT new com.sep490.wcpms.dto.CustomerMeterDTO(" +
+            "   wm.id, " +
+            "   wm.meterCode, " +
+            // Logic lấy địa chỉ:
+            // 1. Lấy từ bảng Address của Hợp đồng (cột address đầy đủ)
+            // 2. Nếu không có, lấy cột street
+            // 3. Nếu vẫn không có, lấy địa chỉ của Customer (fallback)
+            "   COALESCE(addr.address, addr.street, cust.address) " +
+            ") " +
+            "FROM MeterInstallation mi " +           // 1. Từ Bảng Lắp đặt
+            "JOIN mi.waterMeter wm " +               // 2. Join Đồng hồ
+            "JOIN mi.contract ctr " +                // 3. Join Hợp đồng Lắp đặt (quan trọng: lấy contract, ko phải waterServiceContract)
+            "LEFT JOIN ctr.address addr " +          // 4. Join sang bảng Address (địa chỉ lắp đặt)
+            "JOIN ctr.customer cust " +              // 5. Join Khách hàng
+            "WHERE cust.id = :customerId " +
+            "AND wm.meterStatus = com.sep490.wcpms.entity.WaterMeter.MeterStatus.INSTALLED " +
+            // Đảm bảo chỉ lấy bản ghi lắp đặt MỚI NHẤT của đồng hồ đó (tránh lặp nếu đồng hồ từng được lắp chỗ khác)
+            "AND mi.id = (SELECT MAX(mi2.id) FROM MeterInstallation mi2 WHERE mi2.waterMeter.id = wm.id)")
     List<CustomerMeterDTO> findActiveMetersByCustomerId(@Param("customerId") Integer customerId);
     // --- HẾT PHẦN SỬA ---
 }
