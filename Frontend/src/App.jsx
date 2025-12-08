@@ -73,6 +73,7 @@ import CashierDashboard from './components/PagesCashier/CashierDashboard';
 import LayoutAdmin from './components/Layouts/LayoutAdmin';
 import AdminDashboard from './components/PagesAdmin/AdminDashboard';
 import ContactPage from './components/Pages/ContactPage';
+import CustomerManagementPage from './components/Admin/CustomerManagementPage';
 import StaffAccountList from './components/Admin/StaffAccountList';
 import WaterMetersPage from './components/Admin/WaterMetersPage';
 import WaterPriceTypesPage from './components/Admin/WaterPriceTypesPage';
@@ -247,6 +248,7 @@ function App() {
             <Route index element={<AdminDashboard />} />
             {/* (Thêm các trang khác của Admin ở đây) */}
             <Route path="users" element={<StaffAccountList />} />
+            <Route path="customers" element={<CustomerManagementPage />} />
             <Route path="water-meters" element={<WaterMetersPage />} />
             <Route path="water-price-types" element={<WaterPriceTypesPage />} />
             <Route path="water-prices" element={<WaterPricesPage />} />

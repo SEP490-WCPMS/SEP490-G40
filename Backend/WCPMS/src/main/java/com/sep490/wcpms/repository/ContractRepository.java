@@ -120,6 +120,13 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             @Param("date") LocalDate date
     );
 
+    // Tìm hợp đồng của Guest (customer = null) và trạng thái là PENDING_SURVEY_REVIEW
+    @Query("SELECT c FROM Contract c " +
+            "WHERE c.customer IS NULL " +
+            "AND c.contractStatus = com.sep490.wcpms.entity.Contract.ContractStatus.PENDING_SURVEY_REVIEW " +
+            "ORDER BY c.applicationDate DESC")
+    List<Contract> findPendingGuestContracts();
+
     /** Đếm số LẮP ĐẶT HOÀN THÀNH (ACTIVE) theo ngày (Service view) */
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.serviceStaff = :staff AND c.contractStatus = 'ACTIVE' AND c.installationDate = :date")
     long countInstallationCompletedByDate(
