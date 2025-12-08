@@ -2,7 +2,13 @@ import apiClient from './apiClient'; // <-- Import apiClient đã có intercepto
 
 // === LUỒNG 1: SURVEY & DESIGN ===
 export const getAssignedSurveyContracts = (params) => {
-    return apiClient.get('/technical/survey/contracts', { params });
+    return apiClient.get('/technical/survey/contracts', {
+        params: {
+            page: params.page,
+            size: params.size,
+            keyword: params.keyword // <--- Quan trọng
+        }
+    });
 };
 export const submitSurveyReport = (contractId, reportData) => {
     return apiClient.put(`/technical/contracts/${contractId}/report`, reportData);
@@ -10,7 +16,13 @@ export const submitSurveyReport = (contractId, reportData) => {
 
 // === LUỒNG 2: INSTALLATION ===
 export const getAssignedInstallationContracts = (params) => {
-    return apiClient.get('/technical/install/contracts', { params });
+    return apiClient.get('/technical/install/contracts', {
+        params: {
+            page: params.page,
+            size: params.size,
+            keyword: params.keyword // <--- Quan trọng
+        }
+    });
 };
 export const markInstallationAsCompleted = (contractId, installData) => {
     return apiClient.put(`/technical/contracts/${contractId}/complete`, installData);

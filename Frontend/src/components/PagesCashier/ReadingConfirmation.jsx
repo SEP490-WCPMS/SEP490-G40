@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getReadingConfirmationDataByMeterCode, saveNewReading } from '../Services/apiCashierStaff'; 
-import { ArrowLeft, CheckCircle, AlertCircle, FileText, Save } from 'lucide-react';
-
-// 1. IMPORT CÁC THÀNH PHẦN GIAO DIỆN MỚI
+import { ArrowLeft, CheckCircle, AlertCircle, FileText, Save, User, Phone, MapPin, Droplets, Info, Hash } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmModal from '../common/ConfirmModal';
@@ -24,13 +22,14 @@ function ReadingConfirmation() {
     const [confirmationData, setConfirmationData] = useState(null); 
     const [loading, setLoading] = useState(true); 
     const [submitting, setSubmitting] = useState(false); 
-    // const [error, setError] = useState(null); // Không dùng state error hiển thị UI cũ
     const [notes, setNotes] = useState(""); 
-
-    // State cho Modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    // Fetch dữ liệu
+    // Tính toán tiêu thụ tạm tính
+    const estimatedConsumption = confirmationData && currentReading 
+        ? (parseFloat(currentReading) - parseFloat(confirmationData.previousReading)).toFixed(2) 
+        : 0;
+
     useEffect(() => {
         if (!physicalMeterId || currentReading === undefined || currentReading === null) {
             toast.error("Dữ liệu đọc số không hợp lệ. Vui lòng thử lại.");
@@ -39,35 +38,28 @@ function ReadingConfirmation() {
         }
 
         setLoading(true);
-        
         getReadingConfirmationDataByMeterCode(physicalMeterId)
-            .then(response => {
-                setConfirmationData(response.data); 
-            })
-            .catch(err => {
-                console.error("Lỗi khi lấy dữ liệu xác nhận:", err);
-                // Thay setError bằng toast
-                toast.error(err.response?.data?.message || "Lỗi tải dữ liệu hợp đồng. Kiểm tra lại mã đồng hồ.");
-            })
+            .then(response => setConfirmationData(response.data))
+            .catch(err => toast.error("Lỗi tải dữ liệu hợp đồng."))
             .finally(() => setLoading(false)); 
 
     }, [physicalMeterId]);
 
-    // --- CÁC HÀM XỬ LÝ MỚI ---
-
-    // 1. Khi bấm nút "Gửi" -> Mở Modal
     const handlePreSubmit = () => {
-        if (!confirmationData) {
-            toast.error("Chưa tải được thông tin hợp đồng để gửi.");
+        if (!confirmationData) return;
+        const prev = Number(confirmationData.previousReading);
+        const curr = Number(currentReading);
+
+        if (curr < prev) {
+            toast.error(`Chỉ số mới (${curr}) nhỏ hơn chỉ số cũ (${prev})! Vui lòng kiểm tra lại.`);
             return;
         }
         setShowConfirmModal(true);
     };
 
-    // 2. Khi bấm "Có" -> Gọi API
     const handleConfirmSubmit = async () => {
         setSubmitting(true);
-        setShowConfirmModal(false); // Đóng modal
+        setShowConfirmModal(false);
 
         const saveData = {
             meterInstallationId: confirmationData.meterInstallationId,
@@ -82,177 +74,164 @@ function ReadingConfirmation() {
 
         try {
             await saveNewReading(saveData);
-            
-            toast.success("Đã gửi chỉ số thành công!", {
-                position: "top-center",
-                autoClose: 2000
-            });
-
-            // Chuyển trang sau 2s
-            setTimeout(() => {
-                navigate('/cashier');
-            }, 2000);
-
+            toast.success("Đã gửi chỉ số thành công!", { autoClose: 2000 });
+            setTimeout(() => navigate('/cashier'), 2000);
         } catch (err) {
-            console.error("Lỗi khi lưu chỉ số:", err);
-            toast.error(err.response?.data?.message || "Lỗi khi lưu chỉ số. Vui lòng thử lại.", {
-                position: "top-center"
-            });
+            console.error("Lỗi:", err);
+            toast.error("Lỗi khi lưu chỉ số. Vui lòng thử lại.");
         } finally {
             setSubmitting(false);
         }
     };
 
-    // --- Loading State ---
     if (loading) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-                <span className="text-gray-500 text-lg">Đang tải thông tin xác nhận...</span>
+            <div className="flex justify-center items-center h-screen bg-gray-50">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
             </div>
         );
     }
 
-    // --- Render Component ---
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
-            {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
-                <button
-                    onClick={() => navigate(-1)} 
-                    className="p-2 rounded-full hover:bg-gray-100 transition duration-150 ease-in-out focus:outline-none"
-                >
+            <div className="flex items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
+                <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
                     <ArrowLeft size={20} className="text-gray-600"/>
                 </button>
                 <div>
-                   <h1 className="text-2xl font-bold text-gray-800 mb-1">Xác Nhận Chỉ Số</h1>
-                   <p className="text-sm text-gray-600">Kiểm tra thông tin trước khi gửi cho bộ phận Kế toán.</p>
-               </div>
-           </div>
+                    <h1 className="text-2xl font-bold text-gray-800">Xác Nhận Chỉ Số</h1>
+                    <p className="text-sm text-gray-600">Mã đồng hồ đang xử lý: <span className="font-mono font-bold text-blue-600">{physicalMeterId}</span></p>
+                </div>
+            </div>
 
-           {/* Nếu lỗi tải dữ liệu quan trọng, hiện thông báo và nút quay lại */}
-           {!confirmationData && !loading && (
+            {!confirmationData && !loading ? (
                 <div className="bg-white p-8 text-center rounded-lg shadow">
                     <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy dữ liệu hợp đồng</h3>
-                    <p className="text-gray-500 mb-6">Có thể mã đồng hồ không đúng hoặc chưa được lắp đặt.</p>
-                    <button 
-                        onClick={() => navigate('/cashier/scan')}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                    >
-                        Quay lại trang Scan
-                    </button>
+                    <h3>Không tìm thấy dữ liệu hợp đồng</h3>
+                    <button onClick={() => navigate('/cashier/scan')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Quay lại</button>
                 </div>
-           )}
-
-            {/* Box Xác nhận */}
-            {confirmationData && physicalMeterId && currentReading !== undefined && (
-                <div className="bg-white p-4 sm:p-6 rounded-lg shadow border border-gray-200 space-y-6">
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     
-                    {/* Thông tin Hợp đồng */}
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
-                            <FileText size={20} className="text-blue-600" />
-                            Thông Tin Hợp Đồng
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm text-gray-700">
-                            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-                                <span className="block text-xs text-gray-500 uppercase font-semibold">Mã Hợp đồng</span>
-                                <span className="text-base font-medium text-gray-900">{confirmationData.contractNumber || 'N/A'}</span>
+                    {/* Cột 1: Thông tin Khách hàng (Chi tiết) */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-800 border-b pb-3 mb-4 flex items-center gap-2">
+                                <User size={20} className="text-blue-600" /> Thông Tin Khách Hàng
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase font-semibold">Tên Khách hàng</label>
+                                    <p className="text-base font-bold text-gray-900">{confirmationData.customerName}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase font-semibold">Mã Khách hàng</label>
+                                    <p className="text-sm font-medium text-gray-700">{confirmationData.customerCode || '---'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase font-semibold flex items-center gap-1"><Phone size={12}/> Số điện thoại</label>
+                                    <p className="text-sm font-medium text-gray-700">{confirmationData.customerPhone || 'Chưa cập nhật'}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase font-semibold flex items-center gap-1"><MapPin size={12}/> Địa chỉ</label>
+                                    <p className="text-sm font-medium text-gray-700">{confirmationData.customerAddress}</p>
+                                </div>
                             </div>
-                            <div className="bg-gray-50 p-3 rounded border border-gray-100">
-                                <span className="block text-xs text-gray-500 uppercase font-semibold">Khách hàng</span>
-                                <span className="text-base font-medium text-gray-900">{confirmationData.customerName || 'N/A'}</span>
-                            </div>
-                            <div className="bg-gray-50 p-3 rounded border border-gray-100 md:col-span-2">
-                                <span className="block text-xs text-gray-500 uppercase font-semibold">Địa chỉ lắp đặt</span>
-                                <span className="text-base font-medium text-gray-900">{confirmationData.customerAddress || 'N/A'}</span>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-800 border-b pb-3 mb-4 flex items-center gap-2">
+                                <FileText size={20} className="text-purple-600" /> Hợp Đồng & Đồng Hồ
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div className="bg-gray-50 p-3 rounded">
+                                    <span className="block text-gray-500 text-xs">Số Hợp Đồng</span>
+                                    <span className="font-bold text-gray-800">{confirmationData.contractNumber}</span>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded">
+                                    <span className="block text-gray-500 text-xs">Loại Giá</span>
+                                    <span className="font-bold text-blue-600">{confirmationData.priceType || 'Sinh hoạt'}</span>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded">
+                                    <span className="block text-gray-500 text-xs">Tuyến Đọc</span>
+                                    <span className="font-bold text-gray-800">{confirmationData.routeName || '---'}</span>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded">
+                                    <span className="block text-gray-500 text-xs">Mã Đồng Hồ</span>
+                                    <span className="font-mono font-bold text-gray-800">{physicalMeterId}</span>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded md:col-span-2">
+                                    <span className="block text-gray-500 text-xs">Số Seri</span>
+                                    <span className="font-mono text-gray-700">{confirmationData.meterSerial || '---'}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Thông tin Chỉ số */}
-                    <div>
-                         <h3 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
-                            <CheckCircle size={20} className="text-green-600" />
-                            Thông Tin Chỉ Số
-                        </h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Chỉ số cũ */}
-                            <div className="flex flex-col justify-center items-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <span className="text-sm text-gray-500 mb-1">Chỉ số cũ</span>
-                                <span className="text-xl font-bold text-gray-700">{confirmationData.previousReading ?? 'N/A'}</span>
-                                <span className="text-xs text-gray-400 mt-1">m³</span>
-                            </div>
-                            
-                            {/* Chỉ số mới */}
-                            <div className="flex flex-col justify-center items-center p-4 bg-blue-50 rounded-lg border border-blue-200 ring-2 ring-blue-100">
-                                <span className="text-sm text-blue-600 mb-1 font-semibold">Chỉ số mới (Vừa nhập)</span>
-                                <span className="text-2xl font-extrabold text-blue-700">{currentReading ?? 'N/A'}</span>
-                                <span className="text-xs text-blue-400 mt-1">m³</span>
-                            </div>
+                    {/* Cột 2: Chỉ số & Gửi (Sticky) */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-white p-6 rounded-lg shadow border-2 border-teal-100 sticky top-4">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <CheckCircle size={20} className="text-teal-600" /> Xác Nhận Số Liệu
+                            </h3>
 
-                             {/* Tiêu thụ */}
-                             <div className="flex flex-col justify-center items-center p-4 bg-green-50 rounded-lg border border-green-200">
-                                <span className="text-sm text-green-600 mb-1 font-semibold">Tiêu thụ (Tạm tính)</span>
-                                <span className="text-2xl font-extrabold text-green-700">
-                                     { (typeof currentReading === 'number' && typeof confirmationData.previousReading === 'number')
-                                        ? (currentReading - confirmationData.previousReading).toFixed(2)
-                                        : 'N/A'
-                                     }
-                                </span>
-                                <span className="text-xs text-green-500 mt-1">m³</span>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center bg-gray-50 p-3 rounded">
+                                    <span className="text-gray-600 text-sm">Chỉ số cũ:</span>
+                                    <span className="font-bold text-gray-800 text-lg">{confirmationData.previousReading}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-teal-50 p-3 rounded border border-teal-200">
+                                    <span className="text-teal-800 text-sm font-bold">Chỉ số mới:</span>
+                                    <span className="font-extrabold text-teal-700 text-2xl">{currentReading}</span>
+                                </div>
+                                
+                                <div className="bg-blue-50 p-4 rounded text-center">
+                                    <p className="text-xs text-blue-600 uppercase font-semibold flex justify-center items-center gap-1">
+                                        <Droplets size={14}/> Tiêu thụ (Tạm tính)
+                                    </p>
+                                    <p className="text-3xl font-extrabold text-blue-800 mt-1">
+                                        {estimatedConsumption} <span className="text-sm font-medium">m³</span>
+                                    </p>
+                                    {Number(estimatedConsumption) > 50 && (
+                                        <p className="text-xs text-orange-600 mt-1 flex items-center justify-center">
+                                            <AlertCircle size={12} className="mr-1"/> Cao bất thường?
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block mb-2 text-sm font-medium text-gray-700">Ghi Chú</label>
+                                    <textarea
+                                        rows="3"
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="Ghi chú sự cố (nếu có)..."
+                                        className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-teal-500 focus:border-teal-500"
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={handlePreSubmit}
+                                    disabled={submitting}
+                                    className={`w-full py-3 rounded-md text-white font-bold shadow-md transition-all flex justify-center items-center gap-2 ${submitting ? 'bg-gray-400' : 'bg-teal-600 hover:bg-teal-700'}`}
+                                >
+                                    {submitting ? 'Đang gửi...' : <><Save size={18}/> Xác Nhận & Gửi</>}
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Ô Ghi chú */}
-                    <div>
-                        <label htmlFor="notes" className="block mb-2 text-sm font-medium text-gray-700">Ghi Chú (Nếu có sự cố)</label>
-                        <textarea
-                            id="notes"
-                            rows="3"
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Ví dụ: Đồng hồ quay ngược, mặt kính mờ, vắng nhà..."
-                            className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                    </div>
-
-                    {/* Nút Gửi */}
-                    <div className="pt-4 border-t border-gray-100 flex justify-end">
-                        <button
-                            onClick={handlePreSubmit} // Mở Modal
-                            disabled={submitting}
-                            className={`inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none transition-all transform active:scale-95 ${submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        >
-                             {submitting ? (
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                             ) : (
-                                <Save size={18} className="mr-2" />
-                             )}
-                             {submitting ? 'Đang gửi...' : 'Xác Nhận & Gửi Kế Toán'}
-                        </button>
                     </div>
                 </div>
             )}
 
-            {/* 4. RENDER MODAL XÁC NHẬN */}
             <ConfirmModal 
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmSubmit}
                 title="Xác nhận gửi chỉ số"
-                message={`Bạn có chắc chắn muốn gửi chỉ số [${currentReading}] cho mã đồng hồ [${physicalMeterId}] không?`}
+                message={`Bạn có chắc chắn muốn gửi chỉ số [${currentReading}]? Lượng tiêu thụ: ${estimatedConsumption} m³.`}
                 isLoading={submitting}
             />
         </div>

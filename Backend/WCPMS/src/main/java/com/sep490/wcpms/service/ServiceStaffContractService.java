@@ -85,7 +85,9 @@ public interface ServiceStaffContractService {
     List<AccountDTO> getAvailableTechStaff();
 
     /** Lấy danh sách Yêu cầu Hỗ trợ (PENDING) */
-    Page<SupportTicketDTO> getSupportTickets(List<String> feedbackTypes, Pageable pageable);
+    // SỬA HÀM NÀY: Thêm tham số staffId
+    Page<SupportTicketDTO> getSupportTickets(Integer staffId, List<String> types, String keyword, Pageable pageable);
+    // ...
 
     /** Gán ticket cho NV Kỹ thuật và đổi status sang IN_PROGRESS */
     SupportTicketDTO assignTechToTicket(Integer ticketId, Integer technicalStaffId);

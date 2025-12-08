@@ -405,38 +405,38 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     // === CẬP NHẬT HÀM NÀY (Bước 4) ===
     @Override
     @Transactional(readOnly = true)
-    public Page<SupportTicketDTO> getSupportTickets(List<String> feedbackTypes, Pageable pageable) {
-        Page<CustomerFeedback> tickets;
+    public Page<SupportTicketDTO> getSupportTickets(Integer staffId, List<String> typeStrings, String keyword, Pageable pageable) {
 
-        // 1. Mặc định: Luôn lấy ticket đang ở trạng thái PENDING (Chờ xử lý)
-        // Vì đây là màn hình "Việc cần làm" của nhân viên
-        CustomerFeedback.Status targetStatus = CustomerFeedback.Status.PENDING;
-
-        // 2. Logic Lọc theo Loại (Type):
-        if (feedbackTypes == null || feedbackTypes.isEmpty() || feedbackTypes.contains("ALL")) {
-            // Trường hợp A: Không chọn Type hoặc chọn ALL
-            // -> Lấy tất cả PENDING (bất kể là Góp ý hay Yêu cầu)
-            tickets = customerFeedbackRepository.findByStatus(targetStatus, pageable);
-        } else {
-            // Trường hợp B: Có chọn Type (ví dụ: ["FEEDBACK"] hoặc ["SUPPORT_REQUEST"])
-
-            // B1: Chuyển từ List<String> sang List<FeedbackType>
-            List<CustomerFeedback.FeedbackType> types = feedbackTypes.stream()
+        // 1. Xử lý danh sách Type (String -> Enum)
+        List<CustomerFeedback.FeedbackType> types = null;
+        if (typeStrings != null && !typeStrings.isEmpty()) {
+            types = typeStrings.stream()
                     .map(s -> {
                         try {
                             return CustomerFeedback.FeedbackType.valueOf(s.toUpperCase());
                         } catch (IllegalArgumentException e) {
-                            // Nếu chuỗi không hợp lệ, mặc định coi là FEEDBACK (hoặc log lỗi)
-                            return CustomerFeedback.FeedbackType.FEEDBACK;
+                            return null;
                         }
                     })
-                    .collect(Collectors.toList());
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
 
-            // B2: Gọi hàm repo mới: Lọc PENDING + Danh sách Type
-            tickets = customerFeedbackRepository.findByStatusAndFeedbackTypeIn(targetStatus, types, pageable);
+            if (types.isEmpty()) types = null; // Nếu convert lỗi hết thì coi như lấy tất cả
         }
 
-        // 3. Map kết quả sang DTO
+        // 2. Xử lý Keyword (lowercase, trim, thêm %)
+        String searchKeyword = null;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            searchKeyword = keyword.trim().toLowerCase();
+            // Lưu ý: Do JPQL ở repo tôi dùng LIKE %:keyword% nên ở đây chỉ cần lower case thôi
+            // Hoặc nếu bạn dùng LIKE :keyword thì ở đây thêm % vào 2 đầu.
+            // Để thống nhất với repo tôi viết ở trên (LIKE %:keyword%), ở đây CHỈ CẦN trim().toLowerCase()
+        }
+
+        // 3. Gọi Repository (Hàm mới có keyword)
+        Page<CustomerFeedback> tickets = customerFeedbackRepository.findAssignedTickets(staffId, types, searchKeyword, pageable);
+
+        // 4. Map sang DTO
         return tickets.map(supportTicketMapper::toDto);
     }
     // --- HẾT PHẦN CẬP NHẬT ---

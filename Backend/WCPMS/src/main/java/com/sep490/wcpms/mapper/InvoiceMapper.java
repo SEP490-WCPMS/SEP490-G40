@@ -44,6 +44,7 @@ public class InvoiceMapper {
             dto.setCustomerId(customer.getId());
             dto.setCustomerName(customer.getCustomerName());
             dto.setCustomerAddress(customer.getAddress());
+            dto.setCustomerCode(entity.getCustomer().getCustomerCode());
             // --- THÊM LOGIC LẤY SĐT/EMAIL ---
             // (Giả định Customer entity đã liên kết với Account)
             if (customer.getAccount() != null) {
@@ -63,6 +64,26 @@ public class InvoiceMapper {
         MeterReading reading = entity.getMeterReading();
         if (reading != null) {
             dto.setMeterReadingId(reading.getId());
+
+            // --- BỔ SUNG ĐOẠN NÀY ĐỂ HIỆN CHỈ SỐ ---
+            dto.setOldIndex(reading.getPreviousReading());  // Lấy chỉ số cũ
+            dto.setNewIndex(reading.getCurrentReading());   // Lấy chỉ số mới
+            dto.setConsumption(reading.getConsumption());   // Lấy số khối tiêu thụ
+
+            // Lấy kỳ ghi số (Ví dụ: Tháng/Năm)
+            if (reading.getReadingDate() != null) {
+                String period = reading.getReadingDate().getMonthValue() + "/" + reading.getReadingDate().getYear();
+                dto.setBillingPeriod(period);
+            }
+            // ---------------------------------------
+
+            // --- THÊM ĐOẠN NÀY ĐỂ LẤY MÃ ĐỒNG HỒ ---
+            if (reading.getMeterInstallation() != null
+                    && reading.getMeterInstallation().getWaterMeter() != null) {
+
+                dto.setMeterCode(reading.getMeterInstallation().getWaterMeter().getMeterCode());
+            }
+            // ---------------------------------------
         } else {
             dto.setMeterReadingId(null); // (Cho Hóa đơn Dịch vụ)
         }

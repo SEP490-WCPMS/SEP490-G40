@@ -19,6 +19,8 @@ public interface CashierService {
      */
     InvoiceDTO findUnpaidInvoice(String invoiceNumber);
 
+    List<InvoiceDTO> searchUnpaidInvoices(String keyword);
+
     /**
      * Xử lý thanh toán Tiền mặt (CASH) cho một Hóa đơn.
      * Cập nhật Invoice (Bảng 17) sang PAID.
@@ -32,7 +34,7 @@ public interface CashierService {
      * Lấy danh sách Hóa đơn PENDING/OVERDUE
      * thuộc các tuyến (Routes) mà Thu ngân này quản lý.
      */
-    Page<InvoiceDTO> getInvoicesByMyRoutes(Integer cashierId, Pageable pageable);
+    Page<InvoiceDTO> getInvoicesByMyRoutes(Integer cashierId, String keyword, String filterType, Pageable pageable);
 
     /**
      * Lấy chi tiết 1 Hóa đơn (xác thực Thu ngân có quyền xem).
@@ -51,7 +53,7 @@ public interface CashierService {
      * (Sửa - Req 1) Lấy danh sách HĐ (đã sắp xếp)
      * thuộc 1 Tuyến (routeId) CỤ THỂ mà Thu ngân quản lý.
      */
-    List<RouteManagementDTO> getMyContractsByRoute(Integer cashierId, Integer routeId);
+    Page<RouteManagementDTO> getMyContractsByRoute(Integer cashierId, Integer routeId, String keyword, Pageable pageable);
 
     /**
      * (Mới - Req 3) Lấy Chi tiết 1 Hợp đồng (xác thực theo tuyến).

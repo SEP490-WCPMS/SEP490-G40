@@ -11,6 +11,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class AccountingStatsDTO {
 
+    private BigDecimal totalRevenue;
+
     /** 1. (To-do) Số phí dịch vụ (Bảng 14) đang chờ lập hóa đơn */
     private long unbilledFeesCount;
 

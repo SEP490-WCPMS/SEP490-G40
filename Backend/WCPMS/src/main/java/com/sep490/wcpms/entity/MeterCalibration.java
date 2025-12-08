@@ -63,6 +63,13 @@ public class MeterCalibration {
     private Invoice invoice; // Liên kết đến hóa đơn đã thanh toán
     // --- HẾT PHẦN THÊM ---
 
+    // 2. [FIX LỖI 2] Liên kết Kế toán được phân bổ
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_accountant_id") // Tên cột phải khớp với lệnh SQL ALTER TABLE
+    private Account assignedAccountant;
+
+    // ---------------------------------------------------
+
     public enum CalibrationStatus {
         PASSED, FAILED, PENDING
     }

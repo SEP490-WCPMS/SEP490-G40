@@ -1,38 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAssignedInstallationContracts } from '../../Services/apiTechnicalStaff'; 
-import { RefreshCw, Eye } from 'lucide-react'; 
+// Thêm icon Search
+import { RefreshCw, Eye, Search } from 'lucide-react'; 
 import Pagination from '../../common/Pagination';
-
-// 1. IMPORT TOASTIFY
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 function InstallContractsList() {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(true);
-    // const [error, setError] = useState(null); // Không dùng state error hiển thị UI nữa
     const navigate = useNavigate();
 
-    // 2. State Pagination
+    // 1. Thêm State Search
+    const [searchTerm, setSearchTerm] = useState('');
+
     const [pagination, setPagination] = useState({
         page: 0,
         size: 10,
         totalElements: 0,
     });
 
-    // 3. Cập nhật fetchData
+    // 2. Cập nhật fetchData nhận keyword
     const fetchData = (params = {}) => {
         setLoading(true);
         
         const currentPage = params.page !== undefined ? params.page : pagination.page;
         const currentSize = params.size || pagination.size;
+        // Lấy keyword
+        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
 
-        getAssignedInstallationContracts({ page: currentPage, size: currentSize })
+        getAssignedInstallationContracts({ 
+            page: currentPage, 
+            size: currentSize,
+            keyword: currentKeyword || null // Gửi keyword
+        })
             .then(response => {
                 const data = response.data;
                 
-                // --- XỬ LÝ DỮ LIỆU ĐA NĂNG ---
                 let loadedData = [];
                 let totalItems = 0;
                 let pageNum = 0;
@@ -59,8 +64,7 @@ function InstallContractsList() {
             })
             .catch(err => {
                 console.error("Lỗi khi lấy danh sách hợp đồng lắp đặt:", err);
-                // Thay setError bằng Toast
-                toast.error("Không thể tải dữ liệu. Vui lòng thử lại sau.");
+                toast.error("Không thể tải dữ liệu.");
             })
             .finally(() => {
                 setLoading(false);
@@ -71,15 +75,27 @@ function InstallContractsList() {
         fetchData({ page: 0 });
     }, []); 
 
-    // Handlers
+    // 3. Xử lý Search Handlers
+    const handleSearch = () => {
+        fetchData({ page: 0, keyword: searchTerm });
+    };
+
+    const handleSearchInputChange = (e) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value === '') {
+            fetchData({ page: 0, keyword: '' });
+        }
+    };
+
     const handlePageChange = (newPage) => {
         fetchData({ page: newPage });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleRefresh = () => {
-        fetchData();
-        // Thông báo nhẹ khi làm mới
+        setSearchTerm('');
+        fetchData({ page: 0, keyword: '' });
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
@@ -90,15 +106,10 @@ function InstallContractsList() {
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
             
-            {/* 2. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Công Việc Lắp Đặt</h1>
                     <p className="text-sm text-gray-600">Danh sách các hợp đồng đã ký chờ lắp đặt (Trạng thái: SIGNED).</p>
@@ -113,7 +124,28 @@ function InstallContractsList() {
                 </button>
             </div>
 
-            {/* Đã bỏ phần hiển thị lỗi cũ */}
+            {/* 4. THANH TÌM KIẾM */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                 <div className="relative w-full md:w-1/2">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        placeholder="Tìm theo Mã HĐ, Tên KH hoặc Địa chỉ..."
+                        value={searchTerm}
+                        onChange={handleSearchInputChange}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                     <button 
+                        onClick={handleSearch}
+                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
+                    >
+                        Tìm
+                    </button>
+                </div>
+            </div>
 
             {/* Bảng Dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
@@ -136,7 +168,7 @@ function InstallContractsList() {
                             {!loading && contracts.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        Không có hợp đồng nào chờ lắp đặt.
+                                        {searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không có hợp đồng nào chờ lắp đặt.'}
                                     </td>
                                 </tr>
                             ) : (
