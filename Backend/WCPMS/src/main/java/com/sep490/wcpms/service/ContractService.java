@@ -16,6 +16,7 @@ public interface ContractService {
      */
     void createContractRequest(ContractRequestDTO requestDTO);
 
+    String createGuestContractRequest(ContractRequestDTO requestDTO);
     /**
      * Lấy danh sách các yêu cầu hợp đồng của khách hàng
      *

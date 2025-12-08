@@ -105,6 +105,7 @@ function App() {
         <Route path="/about" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><AboutPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContactPage /></PublicLayout>} />
         <Route path="/" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><HomePage isAuthenticated={isAuthenticated} user={user} /></PublicLayout>} />
+        <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
         <Route path="/verify" element={<VerifyAccountPage />} />
         <Route path="/forgot" element={
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -131,7 +132,6 @@ function App() {
         {/* === CUSTOMER ROUTES (Cần đăng nhập, vai trò CUSTOMER) === */}
         <Route element={<PrivateRoute allowedRoles={['CUSTOMER']} />}>
           <Route path="/profile" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><CustomerProfileUpdate /></PublicLayout>} />
-          <Route path="/contract-request" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestForm /></PublicLayout>} />
           <Route path="/contract-request-change" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestChange /></PublicLayout>} />
           <Route path="/pending-sign-contract" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><PendingSignContract /></PublicLayout>} />
           <Route path="/my-requests" element={<PublicLayout isAuthenticated={isAuthenticated} user={user}><ContractRequestStatusList /></PublicLayout>} />

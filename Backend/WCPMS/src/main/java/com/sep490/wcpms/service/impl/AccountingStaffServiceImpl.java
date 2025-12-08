@@ -6,16 +6,19 @@ import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.mapper.ContractMapper;
-import com.sep490.wcpms.mapper.InvoiceMapper; // <-- Cần tạo Mapper này
+import com.sep490.wcpms.mapper.InvoiceMapper;
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.AccountingStaffService;
 import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.service.InvoiceNotificationService;
+import com.sep490.wcpms.security.services.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.sep490.wcpms.entity.Invoice;
@@ -443,11 +446,33 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     @Override
     @Transactional(readOnly = true)
     public Page<PendingReadingDTO> getPendingReadings(Pageable pageable) {
-        // 1. Gọi hàm repo mới
-        Page<MeterReading> readingsPage = meterReadingRepository.findCompletedReadingsNotBilled(pageable);
+        // ❌ CŨ: Lấy TẤT CẢ reading chưa bill
+        // Page<MeterReading> readingsPage = meterReadingRepository.findCompletedReadingsNotBilled(pageable);
 
-        // 2. Map sang DTO
+        // ✅ MỚI: Chỉ lấy reading được ASSIGN cho Accounting Staff hiện tại
+        Integer currentAccountingStaffId = getCurrentAccountingStaffId();
+        Page<MeterReading> readingsPage = meterReadingRepository
+            .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);
+
+        // 2. Map sang DTO (Constructor đã có accountingStaffId và accountingStaffName)
         return readingsPage.map(PendingReadingDTO::new);
+    }
+
+    /**
+     * Helper: Lấy ID của Accounting Staff đang đăng nhập từ SecurityContext
+     */
+    private Integer getCurrentAccountingStaffId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("Chưa đăng nhập hoặc không có quyền truy cập.");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetailsImpl userDetails) {
+            return userDetails.getId();
+        }
+
+        throw new IllegalStateException("Không thể xác định Accounting Staff hiện tại.");
     }
 
     @Override
@@ -701,3 +726,4 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
     // === HẾT PHẦN SỬA ===
 }
+

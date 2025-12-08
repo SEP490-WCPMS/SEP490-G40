@@ -115,6 +115,7 @@ const StaffAccountList = () => {
                 <table className="staff-table">
                     <thead>
                         <tr>
+                            <th>Mã NV</th>
                             <th>Tên đăng nhập</th>
                             <th>Họ và Tên</th>
                             <th>Email</th>
@@ -127,6 +128,7 @@ const StaffAccountList = () => {
                     <tbody>
                         {staffAccounts.map(account => (
                             <tr key={account.id}>
+                                <td>{account.staffCode || '-'}</td>
                                 <td>{account.username}</td>
                                 <td>{account.fullName}</td>
                                 <td>{account.email}</td>
