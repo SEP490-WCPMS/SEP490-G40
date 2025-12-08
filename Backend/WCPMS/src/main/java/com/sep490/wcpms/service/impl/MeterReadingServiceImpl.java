@@ -80,7 +80,30 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         ReadingConfirmationDTO dto = new ReadingConfirmationDTO();
         dto.setContractNumber(serviceContract.getContractNumber()); // <-- LẤY SỐ HĐ TỪ BẢNG 9
         dto.setCustomerName(customer.getCustomerName());
-        dto.setCustomerAddress(customer.getAddress());
+        // --- SỬA LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY ---
+        String displayAddress = customer.getAddress(); // Mặc định: Địa chỉ KH
+
+        // Ưu tiên 1: Lấy từ Hợp đồng Dịch vụ (Bảng 9) -> Bảng Address
+        if (serviceContract.getAddress() != null) {
+            if (serviceContract.getAddress().getAddress() != null) {
+                displayAddress = serviceContract.getAddress().getAddress();
+            } else {
+                displayAddress = serviceContract.getAddress().getStreet(); // Hoặc ghép chuỗi
+            }
+        }
+        // Ưu tiên 2: Lấy từ Hợp đồng Lắp đặt (Bảng 8) -> Bảng Address (Dự phòng)
+        else if (serviceContract.getSourceContract() != null
+                && serviceContract.getSourceContract().getAddress() != null) {
+
+            if (serviceContract.getSourceContract().getAddress().getAddress() != null) {
+                displayAddress = serviceContract.getSourceContract().getAddress().getAddress();
+            } else {
+                displayAddress = serviceContract.getSourceContract().getAddress().getStreet();
+            }
+        }
+
+        dto.setCustomerAddress(displayAddress);
+        // ------------------------------------
         dto.setMeterInstallationId(installation.getId());
         dto.setPreviousReading(previousReading);
         // --- BỔ SUNG CÁC TRƯỜNG MỚI ĐỂ HIỂN THỊ CHI TIẾT ---

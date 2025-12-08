@@ -1,66 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff'; 
-// Thêm icon Search
-import { RefreshCw, Search, Eye } from 'lucide-react'; 
+import { getAssignedSurveyContracts } from '../../Services/apiTechnicalStaff';
+import { RefreshCw, Search, Eye } from 'lucide-react';
 import Pagination from '../../common/Pagination';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+// 1. Định nghĩa Key lưu trữ
+const STORAGE_KEY = 'SURVEY_CONTRACT_LIST_STATE';
+
 function SurveyContractsList() {
-    const [contracts, setContracts] = useState([]);
-    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // 1. Thêm State Search
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const [pagination, setPagination] = useState({ 
-        page: 0, 
-        size: 10, 
-        totalElements: 0 
+    // 2. KHỞI TẠO STATE TỪ SESSION STORAGE
+    const [searchTerm, setSearchTerm] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).keyword : '';
     });
 
-    // 2. Cập nhật fetchData nhận keyword
-    const fetchData = (params = {}) => {
-        setLoading(true);
-        
-        const currentPage = params.page !== undefined ? params.page : pagination.page;
-        const currentSize = params.size || pagination.size;
-        // Lấy keyword
-        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 10, totalElements: 0 };
+    });
 
-        getAssignedSurveyContracts({ 
-            page: currentPage, 
-            size: currentSize,
-            keyword: currentKeyword || null // Gửi keyword
+    const [contracts, setContracts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // 3. LƯU STATE VÀO SESSION STORAGE KHI CÓ THAY ĐỔI
+    useEffect(() => {
+        const stateToSave = {
+            keyword: searchTerm,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [searchTerm, pagination.page]);
+
+    // 4. Hàm Fetch Data (Nhận tham số trực tiếp)
+    const fetchData = (currPage, currKeyword) => {
+        setLoading(true);
+
+        getAssignedSurveyContracts({
+            page: currPage,
+            size: pagination.size,
+            keyword: currKeyword || null
         })
             .then(response => {
                 const data = response.data;
-                
+
                 let loadedData = [];
                 let totalItems = 0;
                 let pageNum = 0;
                 let pageSizeRaw = 10;
 
+                // Xử lý logic dữ liệu trả về (Array hoặc Page object)
                 if (Array.isArray(data)) {
                     loadedData = data;
                     totalItems = data.length;
                     pageSizeRaw = data.length > 0 ? data.length : 10;
                 } else if (data && data.content) {
                     loadedData = data.content;
-                    const pageInfo = data.page || data; 
+                    const pageInfo = data.page || data;
                     totalItems = pageInfo.totalElements || 0;
                     pageNum = pageInfo.number || 0;
                     pageSizeRaw = pageInfo.size || 10;
                 }
 
                 setContracts(loadedData || []);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev, // Giữ size cũ nếu có
                     page: pageNum,
                     size: pageSizeRaw,
                     totalElements: totalItems,
-                });
+                }));
             })
             .catch(err => {
                 console.error("Lỗi khi lấy danh sách hợp đồng khảo sát:", err);
@@ -71,31 +83,36 @@ function SurveyContractsList() {
             });
     };
 
+    // 5. EFFECT CHÍNH: Gọi API khi Page thay đổi (hoặc lần đầu mount với page đã lưu)
     useEffect(() => {
-        fetchData({ page: 0 });
-    }, []); 
+        fetchData(pagination.page, searchTerm);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page]);
 
-    // 3. Xử lý Search Handlers
+    // Xử lý Search
     const handleSearch = () => {
-        fetchData({ page: 0, keyword: searchTerm });
+        // Reset về trang 0 khi tìm kiếm mới
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, searchTerm);
     };
 
     const handleSearchInputChange = (e) => {
         const value = e.target.value;
         setSearchTerm(value);
-        if (value === '') {
-            fetchData({ page: 0, keyword: '' });
-        }
     };
 
+    // Xử lý chuyển trang
     const handlePageChange = (newPage) => {
-        fetchData({ page: newPage });
+        setPagination(prev => ({ ...prev, page: newPage }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Xử lý làm mới (Xóa Storage)
     const handleRefresh = () => {
+        sessionStorage.removeItem(STORAGE_KEY);
         setSearchTerm('');
-        fetchData({ page: 0, keyword: '' });
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, '');
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
@@ -105,7 +122,7 @@ function SurveyContractsList() {
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
@@ -126,7 +143,7 @@ function SurveyContractsList() {
 
             {/* 4. THANH TÌM KIẾM */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                 <div className="relative w-full md:w-1/2">
+                <div className="relative w-full md:w-1/2">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-5 w-5 text-gray-400" />
                     </div>
@@ -138,7 +155,7 @@ function SurveyContractsList() {
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
-                     <button 
+                    <button
                         onClick={handleSearch}
                         className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
                     >
@@ -149,9 +166,9 @@ function SurveyContractsList() {
 
             {/* Bảng dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
-                 <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     {loading && contracts.length === 0 && (
-                         <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
+                        <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
                     )}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -197,17 +214,17 @@ function SurveyContractsList() {
                             )}
                         </tbody>
                     </table>
-                 </div>
+                </div>
 
-                 {/* Component Phân trang */}
-                 {!loading && contracts.length > 0 && (
-                    <Pagination 
+                {/* Component Phân trang */}
+                {!loading && contracts.length > 0 && (
+                    <Pagination
                         currentPage={pagination.page}
                         totalElements={pagination.totalElements}
                         pageSize={pagination.size}
                         onPageChange={handlePageChange}
                     />
-                 )}
+                )}
             </div>
         </div>
     );

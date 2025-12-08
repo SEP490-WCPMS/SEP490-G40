@@ -1,54 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import apiClient from '../../Services/apiClient';
-// Thêm icon Search
 import { RefreshCw, Eye, Filter, Search } from 'lucide-react'; 
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-/**
- * Trang "Cách A": Khách hàng xem danh sách các Yêu cầu Hỗ trợ đã gửi.
- */
+// 1. Định nghĩa Key để lưu trữ
+const STORAGE_KEY = 'SUPPORT_TICKET_LIST_STATE';
+
 function MySupportTicketList() {
+    const navigate = useNavigate();
+
+    // 2. KHỞI TẠO STATE TỪ SESSION STORAGE
+    const [searchTerm, setSearchTerm] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).keyword : '';
+    });
+
+    const [statusFilter, setStatusFilter] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).status : 'ALL';
+    });
+
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 10, totalElements: 0 };
+    });
+
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
-    
-    // 1. Thêm state cho từ khóa tìm kiếm
-    const [searchTerm, setSearchTerm] = useState('');
 
-    const [pagination, setPagination] = useState({ 
-        page: 0, 
-        size: 10, 
-        totalElements: 0 
-    });
-    
-    const navigate = useNavigate();
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    // 3. LƯU STATE VÀO SESSION STORAGE KHI CÓ THAY ĐỔI
+    useEffect(() => {
+        const stateToSave = {
+            keyword: searchTerm,
+            status: statusFilter,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [searchTerm, statusFilter, pagination.page]);
 
-    // 2. Cập nhật fetchData để nhận keyword
-    const fetchData = (params = {}) => {
+    // Hàm gọi API (nhận tham số trực tiếp để đảm bảo tính đồng bộ)
+    const fetchData = (currPage, currStatus, currKeyword) => {
         setLoading(true);
         
-        const currentPage = params.page !== undefined ? params.page : pagination.page;
-        const currentSize = params.size || pagination.size;
-        // Lấy keyword từ tham số truyền vào hoặc state hiện tại
-        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
-
         let paramStatus = null;
-        if (statusFilter !== 'ALL') {
-            paramStatus = [statusFilter]; 
+        if (currStatus !== 'ALL') {
+            paramStatus = [currStatus]; 
         }
 
         apiClient.get('/feedback/customer/my-tickets', {
             params: {
-                page: currentPage,
-                size: currentSize,
+                page: currPage,
+                size: pagination.size,
                 sort: 'submittedDate,desc',
                 status: paramStatus,
-                // Gửi thêm keyword lên server (Backend cần hỗ trợ param này)
-                keyword: currentKeyword || null 
+                keyword: currKeyword || null 
             },
             paramsSerializer: {
                 indexes: null 
@@ -56,54 +66,62 @@ function MySupportTicketList() {
         })
             .then(response => {
                 const data = response.data;
-                const pageInfo = data.page || data || {};
+                const pageInfo = data.page || data || {}; // Xử lý tùy format trả về của BE
 
                 setTickets(data?.content || []);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: pageInfo.number || 0,
                     size: pageInfo.size || 10,
                     totalElements: pageInfo.totalElements || 0,
-                });
+                }));
             })
             .catch(err => {
                 console.error("Lỗi khi tải danh sách ticket:", err);
-                toast.error("Không thể tải danh sách yêu cầu. Vui lòng thử lại sau.");
+                toast.error("Không thể tải danh sách yêu cầu.");
                 setTickets([]);
             })
             .finally(() => setLoading(false));
     };
 
-    // Effect: Khi đổi filter status -> Reset về trang 0
+    // 4. EFFECT CHÍNH: Gọi API khi Page hoặc Status thay đổi
+    // (Bỏ dependency searchTerm để tránh gọi API khi đang gõ, chỉ gọi khi bấm Tìm)
     useEffect(() => {
-        // Khi đổi status, ta vẫn giữ nguyên keyword hiện tại
-        fetchData({ page: 0 });
-    }, [statusFilter]); 
+        fetchData(pagination.page, statusFilter, searchTerm);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page, statusFilter]); 
 
-    // 3. Hàm xử lý tìm kiếm
+    // Xử lý Tìm kiếm (Reset về trang 0)
     const handleSearch = () => {
-        // Reset về trang 0 khi tìm kiếm mới
-        fetchData({ page: 0, keyword: searchTerm });
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, statusFilter, searchTerm);
     };
 
-    // Hàm xử lý khi người dùng xóa trắng ô tìm kiếm
     const handleSearchInputChange = (e) => {
-        const value = e.target.value;
-        setSearchTerm(value);
-        if (value === '') {
-            // Nếu xóa hết chữ, tự động load lại danh sách gốc
-            fetchData({ page: 0, keyword: '' });
-        }
+        setSearchTerm(e.target.value);
     };
 
+    // Xử lý đổi trang
     const handlePageChange = (newPage) => {
-        fetchData({ page: newPage });
+        setPagination(prev => ({ ...prev, page: newPage }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // 5. Xử lý đổi Filter (Reset về trang 0)
+    const handleFilterChange = (e) => {
+        const newStatus = e.target.value;
+        setStatusFilter(newStatus);
+        // Quan trọng: Chỉ reset về trang 0 khi người dùng chủ động chọn
+        setPagination(prev => ({ ...prev, page: 0 }));
+    };
+
+    // Xử lý làm mới (Xóa Storage)
     const handleRefresh = () => {
-        // Reset tất cả
+        sessionStorage.removeItem(STORAGE_KEY);
         setSearchTerm('');
-        fetchData({ keyword: '' }); 
+        setStatusFilter('ALL');
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, 'ALL', ''); 
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 

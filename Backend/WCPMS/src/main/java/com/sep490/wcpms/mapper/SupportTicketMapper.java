@@ -88,7 +88,23 @@ public class SupportTicketMapper {
         if (customer != null) {
             dto.setCustomerId(customer.getId());
             dto.setCustomerName(customer.getCustomerName());
-            dto.setCustomerAddress(customer.getAddress());
+            // --- [SỬA ĐỔI TẠI ĐÂY] ---
+            String detailAddress = customer.getAddress(); // Mặc định
+
+            // Nếu tìm thấy thông tin lắp đặt -> Lấy địa chỉ từ Hợp đồng Lắp đặt (Bảng 8)
+            if (installation != null && installation.getContract() != null && installation.getContract().getAddress() != null) {
+                Address addr = installation.getContract().getAddress();
+                if (addr.getAddress() != null) {
+                    detailAddress = addr.getAddress();
+                } else {
+                    String street = addr.getStreet() != null ? addr.getStreet() : "";
+                    String ward = (addr.getWard() != null) ? addr.getWard().getWardName() : "";
+                    detailAddress = street + ", " + ward;
+                }
+            }
+
+            dto.setCustomerAddress(detailAddress);
+            // ------------------------
 
             // Lấy SĐT, Email từ Account của Customer
             Account customerAccount = customer.getAccount();

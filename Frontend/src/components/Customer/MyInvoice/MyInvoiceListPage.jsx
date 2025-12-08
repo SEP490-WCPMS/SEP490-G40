@@ -1,58 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getMyInvoices } from '../../Services/apiCustomer';
-// Thêm icon Search
 import { RefreshCw, Eye, Filter, Search } from 'lucide-react'; 
 import moment from 'moment';
 import Pagination from '../../common/Pagination';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-/**
- * Trang Danh sách Hóa đơn (Khách hàng) - Có Search & Filter
- */
+// Tên key để lưu trong Storage
+const STORAGE_KEY = 'INVOICE_LIST_STATE';
+
 function MyInvoiceListPage({ title }) {
+    const navigate = useNavigate();
+
+    // 1. KHỞI TẠO STATE (Đọc từ SessionStorage nếu có)
+    const [searchTerm, setSearchTerm] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).keyword : '';
+    });
+
+    const [statusFilter, setStatusFilter] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).status : 'ALL';
+    });
+
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 10, totalElements: 0 };
+    });
+
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
-    
-    // 1. Thêm State cho tìm kiếm
-    const [searchTerm, setSearchTerm] = useState('');
 
-    const [pagination, setPagination] = useState({ page: 0, size: 10, totalElements: 0 });
-    const navigate = useNavigate();
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    // 2. LƯU STATE VÀO SESSION STORAGE (Mỗi khi có thay đổi quan trọng)
+    useEffect(() => {
+        const stateToSave = {
+            keyword: searchTerm,
+            status: statusFilter,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [searchTerm, statusFilter, pagination.page]);
 
-    // 2. Cập nhật fetchData nhận keyword
-    const fetchData = (params = {}) => {
+    // Hàm gọi API
+    const fetchData = (currPage, currStatus, currKeyword) => {
         setLoading(true);
         
-        const currentPage = params.page !== undefined ? params.page : pagination.page;
-        const currentSize = params.size || pagination.size;
-        // Lấy keyword từ tham số truyền vào hoặc state hiện tại
-        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
-
-        // Xử lý logic Filter Status
         let statusesToSend = [];
-        if (statusFilter === 'PENDING') statusesToSend = ['PENDING', 'OVERDUE'];
-        else if (statusFilter === 'PAID') statusesToSend = ['PAID'];
+        if (currStatus === 'PENDING') statusesToSend = ['PENDING', 'OVERDUE'];
+        else if (currStatus === 'PAID') statusesToSend = ['PAID'];
 
-        // Gọi API
         getMyInvoices({
-            page: currentPage,
-            size: currentSize,
+            page: currPage,
+            size: pagination.size,
             status: statusesToSend,
-            keyword: currentKeyword || null // Gửi keyword lên server
+            keyword: currKeyword || null
         })
             .then(response => {
                 const data = response.data;
                 const pageInfo = data.page || {};
 
                 setInvoices(data?.content || []);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: pageInfo.number || 0,
                     size: pageInfo.size || 10,
                     totalElements: pageInfo.totalElements || 0,
-                });
+                }));
             })
             .catch(err => {
                 console.error(err);
@@ -62,33 +77,49 @@ function MyInvoiceListPage({ title }) {
             .finally(() => setLoading(false));
     };
 
-    // Khi đổi filter status -> reset trang và giữ keyword
+    // 3. EFFECT CHÍNH: Gọi API khi Page hoặc Status thay đổi
+    // Lưu ý: Logic cũ của bạn reset page về 0 khi status thay đổi ở đây.
+    // Chúng ta sẽ tách việc reset page ra khỏi useEffect này để hỗ trợ việc "Back" lại trang cũ.
     useEffect(() => {
-        fetchData({ page: 0 });
-    }, [statusFilter]);
+        fetchData(pagination.page, statusFilter, searchTerm);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page, statusFilter]); 
+    // Bỏ searchTerm ra khỏi dependency để tránh gọi API liên tục khi gõ, chỉ gọi khi ấn Enter hoặc nút Tìm
 
-    // 3. Xử lý sự kiện Tìm kiếm
+    // Xử lý Tìm kiếm
     const handleSearch = () => {
-        fetchData({ page: 0, keyword: searchTerm });
+        // Khi tìm kiếm mới, reset về trang 0
+        setPagination(prev => ({ ...prev, page: 0 }));
+        // Gọi fetch luôn (hoặc để useEffect lo nếu bạn đưa pagination.page vào dep)
+        // Tuy nhiên do setPagination là bất đồng bộ, nên gọi trực tiếp để chắc chắn
+        fetchData(0, statusFilter, searchTerm);
     };
 
     const handleSearchInputChange = (e) => {
-        const value = e.target.value;
-        setSearchTerm(value);
-        if (value === '') {
-            fetchData({ page: 0, keyword: '' }); // Tự động load lại khi xóa trắng
-        }
+        setSearchTerm(e.target.value);
     };
 
+    // Xử lý đổi trang
     const handlePageChange = (newPage) => {
-        fetchData({ page: newPage });
+        setPagination(prev => ({ ...prev, page: newPage }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Xử lý đổi Filter
+    const handleFilterChange = (e) => {
+        const newStatus = e.target.value;
+        setStatusFilter(newStatus);
+        // Quan trọng: Khi người dùng CHỦ ĐỘNG đổi filter, ta mới reset về trang 0
+        setPagination(prev => ({ ...prev, page: 0 }));
+    };
+
     const handleRefresh = () => {
-        setSearchTerm(''); // Reset ô tìm kiếm
-        setStatusFilter('ALL'); // Reset filter (tùy chọn)
-        fetchData({ page: 0, keyword: '', status: [] }); 
+        // Xóa storage để reset hoàn toàn
+        sessionStorage.removeItem(STORAGE_KEY);
+        setSearchTerm('');
+        setStatusFilter('ALL');
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, 'ALL', '');
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 

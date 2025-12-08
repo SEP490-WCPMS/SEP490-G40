@@ -1,8 +1,6 @@
 package com.sep490.wcpms.dto;
 
-import com.sep490.wcpms.entity.MeterCalibration;
-import com.sep490.wcpms.entity.MeterInstallation;
-import com.sep490.wcpms.entity.Customer;
+import com.sep490.wcpms.entity.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -47,8 +45,30 @@ public class CalibrationFeeDTO {
                 var customer = installation.getCustomer();
                 this.customerId = customer.getId();
                 this.customerName = customer.getCustomerName();
-                this.customerAddress = customer.getAddress();
                 this.customerCode = customer.getCustomerCode();
+                // ==================================================================
+                // === SỬA TẠI ĐÂY: LOGIC ƯU TIÊN ĐỊA CHỈ HỢP ĐỒNG (CONTRACT) ===
+                // ==================================================================
+
+                // 1. Mặc định gán tạm địa chỉ của Khách hàng (đề phòng HĐ không có địa chỉ)
+                this.customerAddress = customer.getAddress();
+
+                // 2. Kiểm tra trong Hợp Đồng (Contract) có địa chỉ lắp đặt không?
+                Contract contract = installation.getContract();
+                if (contract != null && contract.getAddress() != null) {
+                    // Nếu bảng Address là một Entity riêng (có street, ward, district...)
+                    // Bạn cần ghép chuỗi hoặc lấy trường cụ thể. Ví dụ:
+                    if (contract.getAddress().getAddress() != null && !contract.getAddress().getAddress().isEmpty()) {
+                        // Ưu tiên cao nhất: Lấy trường address full trong bảng Address của HĐ
+                        this.customerAddress = contract.getAddress().getAddress();
+                    } else {
+                        // Nếu trường address full rỗng, thử ghép Street + Ward (tùy cấu trúc DB của bạn)
+                        String street = contract.getAddress().getStreet();
+                        String ward = (contract.getAddress().getWard() != null) ? contract.getAddress().getWard().getWardName() : "";
+                        this.customerAddress = street + (ward.isEmpty() ? "" : ", " + ward);
+                    }
+                }
+                // ==================================================================
 
 
                 if (customer.getAccount() != null) {

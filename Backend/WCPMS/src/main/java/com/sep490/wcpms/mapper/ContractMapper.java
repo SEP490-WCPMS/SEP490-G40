@@ -2,6 +2,7 @@ package com.sep490.wcpms.mapper;
 
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
+import com.sep490.wcpms.entity.Address;
 import com.sep490.wcpms.entity.Contract;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +26,29 @@ public class ContractMapper {
         if (contract.getCustomer() != null) {
             dto.setCustomerId(contract.getCustomer().getId());
             dto.setCustomerName(contract.getCustomer().getCustomerName()); // Giả định field là getFullName()
-            dto.setCustomerAddress(contract.getCustomer().getAddress()); // Giả định field là getAddress()
+            // --- [SỬA ĐỔI TẠI ĐÂY] LOGIC LẤY ĐỊA CHỈ THÔNG MINH ---
+            String displayAddress = contract.getCustomer().getAddress(); // Mặc định lấy từ Customer
+
+            // Ưu tiên: Lấy từ bảng Address được gắn vào Hợp đồng
+            if (contract.getAddress() != null) {
+                Address addr = contract.getAddress();
+                if (addr.getAddress() != null && !addr.getAddress().isEmpty()) {
+                    // Nếu đã có chuỗi full
+                    displayAddress = addr.getAddress();
+                } else {
+                    // Nếu chưa có, tự ghép chuỗi từ Street + Ward
+                    String street = addr.getStreet() != null ? addr.getStreet() : "";
+                    String wardName = (addr.getWard() != null) ? addr.getWard().getWardName() : "";
+                    String district = (addr.getWard() != null) ? addr.getWard().getDistrict() : "";
+
+                    displayAddress = street;
+                    if (!wardName.isEmpty()) displayAddress += ", " + wardName;
+                    if (!district.isEmpty()) displayAddress += ", " + district;
+                }
+            }
+
+            dto.setCustomerAddress(displayAddress);
+            // -------------------------------------------------------
         }
 
         // Xử lý Technical Staff (tránh NullPointerException)
