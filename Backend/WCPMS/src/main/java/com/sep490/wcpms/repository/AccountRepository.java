@@ -79,5 +79,31 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
         """, nativeQuery = true)
     Optional<Account> findLeastBusyAccountingStaffForInstallationTask();
 
-
+    // ========== Query MỚI (cho HĐ tiền nước) ==========
+    /**
+     * Chọn 1 nhân viên kế toán (ACCOUNTING, status=1)
+     * có ÍT METER_READINGS (COMPLETED) chưa có hóa đơn tiền nước nhất.
+     *
+     * Hóa đơn tiền nước: invoice.meterReadingId IS NOT NULL và invoice.invoiceNumber LIKE 'TN%'.
+     */
+    @Query(value = """
+        SELECT a.*
+        FROM accounts a
+        LEFT JOIN (
+            SELECT mr.accounting_staff_id AS acc_id, COUNT(*) AS workload
+            FROM meter_readings mr
+            LEFT JOIN invoices i
+                ON i.meter_reading_id = mr.id
+               AND i.invoice_number LIKE 'TN%%'
+            WHERE mr.reading_status = 'COMPLETED'
+              AND mr.accounting_staff_id IS NOT NULL
+              AND i.id IS NULL              -- chỉ tính reading chưa có HĐ tiền nước
+            GROUP BY mr.accounting_staff_id
+        ) w ON w.acc_id = a.id
+        WHERE a.department = 'ACCOUNTING'
+          AND a.status = 1
+        ORDER BY COALESCE(w.workload, 0) ASC, a.id ASC
+        LIMIT 1
+        """, nativeQuery = true)
+    Optional<Account> findLeastBusyAccountingStaffForWaterBillingTask();
 }

@@ -45,6 +45,15 @@ public class MeterReading {
     @Column(name = "reading_status", length = 20)
     private ReadingStatus readingStatus;
 
+    // ========== AUTO-ASSIGN ACCOUNTING STAFF ==========
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "accounting_staff_id",
+        foreignKey = @ForeignKey(name = "fk_meter_readings_accounts_accounting_assigned")
+    )
+    private Account accountingStaff; // Accounting Staff được assign tự động để lập HĐ tiền nước
+    // ===================================================
+
     @Lob
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
