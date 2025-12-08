@@ -25,6 +25,13 @@ const adminMenuItems = [
     url: '/admin', // Đường dẫn index
     icon: LayoutDashboard,
   },
+
+  {
+    title: 'Quản lý Khách hàng',
+    url: '/admin/customers',
+    icon: Users,
+  },
+
   {
     title: 'Quản lý Tài khoản',
     url: '/admin/users',
