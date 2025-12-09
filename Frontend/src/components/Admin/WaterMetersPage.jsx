@@ -10,7 +10,6 @@ import { Button } from '../ui/button';
 import './WaterMetersPage.css';
 import { AlertCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
-// --- MODAL XÁC NHẬN ---
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
@@ -52,14 +51,11 @@ export default function WaterMetersPage() {
     const [error, setError] = useState(null);
     const [includeRetired, setIncludeRetired] = useState(false);
 
-    // --- State PHÂN TRANG ---
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const pageSize = 10;
 
-    // --- State Modal Confirm ---
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', meter: null, message: '' });
-
     const [form, setForm] = useState(emptyForm);
     const [editingId, setEditingId] = useState(null);
 
@@ -67,11 +63,9 @@ export default function WaterMetersPage() {
         setLoading(true);
         setError(null);
         try {
-            // Gọi API với tham số phân trang
             const resp = await getAdminWaterMeters(includeRetired, currentPage, pageSize);
             const data = resp.data || resp;
 
-            // Xử lý dữ liệu trả về (Page hoặc List)
             if (data && Array.isArray(data.content)) {
                 setMeters(data.content);
                 setTotalPages(data.totalPages);
@@ -99,10 +93,8 @@ export default function WaterMetersPage() {
         setForm((s) => ({ ...s, [id]: value }));
     };
 
-    // --- HÀM THỰC HIỆN LƯU DỮ LIỆU (Sau khi Confirm) ---
     const performSave = async () => {
         setLoading(true);
-        // Đóng modal trước
         setConfirmModal({ isOpen: false, type: '', meter: null, message: '' });
 
         try {
@@ -127,11 +119,9 @@ export default function WaterMetersPage() {
         }
     };
 
-    // --- HÀM SUBMIT FORM ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (editingId) {
-            // Nếu là Sửa -> Hiện Modal Confirm
             setConfirmModal({
                 isOpen: true,
                 type: 'UPDATE',
@@ -139,7 +129,6 @@ export default function WaterMetersPage() {
                 message: `Bạn có chắc chắn muốn lưu thay đổi cho đồng hồ mã "${form.meterCode}" không?`
             });
         } else {
-            // Nếu là Thêm mới -> Lưu luôn
             await performSave();
         }
     };
@@ -147,13 +136,11 @@ export default function WaterMetersPage() {
     const handleConfirmAction = async () => {
         const { type, meter } = confirmModal;
 
-        // Case 1: Confirm Update
         if (type === 'UPDATE') {
             await performSave();
             return;
         }
 
-        // Case 2: Confirm Retire/Restore
         if (!meter) return;
         setLoading(true);
         setConfirmModal({ isOpen: false, type: '', meter: null, message: '' });
@@ -163,7 +150,9 @@ export default function WaterMetersPage() {
             await changeAdminWaterMeterStatus(meter.id, { status: targetStatus });
             await fetchList();
         } catch (err) {
-            setError(err.message || 'Lỗi khi thay đổi trạng thái');
+            // Hiển thị lỗi từ backend nếu cố xóa đồng hồ đang installed
+            setError(err.response?.data?.message || err.message || 'Lỗi khi thay đổi trạng thái');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setLoading(false);
         }
@@ -276,30 +265,39 @@ export default function WaterMetersPage() {
                                 {(!Array.isArray(meters) || meters.length === 0) && (
                                     <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>
                                 )}
-                                {Array.isArray(meters) && meters.map((m) => (
-                                    <tr key={m.id} className={m.meterStatus === 'RETIRED' ? 'retired' : ''}>
-                                        <td>{m.id}</td>
-                                        <td>{m.meterCode}</td>
-                                        <td>{m.serialNumber}</td>
-                                        <td>{m.meterName}</td>
-                                        <td>{m.meterType}</td>
-                                        <td>
-                                            <span className={`status-badge status-${m.meterStatus?.toLowerCase()}`}>
-                                                {m.meterStatus}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <Button size="sm" variant="outline" onClick={() => handleEdit(m)}>Sửa</Button>
-                                            <Button size="sm"
-                                                variant={m.meterStatus === 'RETIRED' ? 'secondary' : 'destructive'}
-                                                onClick={() => requestToggleRetire(m)}
-                                                style={{ marginLeft: 8 }}
-                                            >
-                                                {m.meterStatus === 'RETIRED' ? 'Khôi phục' : 'Xóa'}
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {Array.isArray(meters) && meters.map((m) => {
+                                    // Logic kiểm tra quyền xóa
+                                    const canDelete = m.meterStatus === 'IN_STOCK' || m.meterStatus === 'RETIRED';
+
+                                    return (
+                                        <tr key={m.id} className={m.meterStatus === 'RETIRED' ? 'retired' : ''}>
+                                            <td>{m.id}</td>
+                                            <td>{m.meterCode}</td>
+                                            <td>{m.serialNumber}</td>
+                                            <td>{m.meterName}</td>
+                                            <td>{m.meterType}</td>
+                                            <td>
+                                                <span className={`status-badge status-${m.meterStatus?.toLowerCase()}`}>
+                                                    {m.meterStatus}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <Button size="sm" variant="outline" onClick={() => handleEdit(m)}>Sửa</Button>
+
+                                                {/* Nút Xóa/Khôi phục: Chỉ hiện/enable nếu là IN_STOCK hoặc RETIRED */}
+                                                <Button size="sm"
+                                                    variant={m.meterStatus === 'RETIRED' ? 'secondary' : 'destructive'}
+                                                    onClick={() => requestToggleRetire(m)}
+                                                    style={{ marginLeft: 8 }}
+                                                    disabled={!canDelete}
+                                                    title={!canDelete ? "Chỉ xóa được đồng hồ trong kho (IN_STOCK)" : ""}
+                                                >
+                                                    {m.meterStatus === 'RETIRED' ? 'Khôi phục' : 'Xóa'}
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
 

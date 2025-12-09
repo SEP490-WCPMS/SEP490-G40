@@ -50,11 +50,4 @@ public class WaterPriceAdminController {
     public ResponseEntity<WaterPriceAdminResponseDTO> update(@PathVariable Integer id, @RequestBody UpdateWaterPriceRequestDTO req) {
         return ResponseEntity.ok(service.update(id, req));
     }
-
-    @PutMapping("/{id}/status")
-    public ResponseEntity<WaterPriceAdminResponseDTO> setStatus(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
-        String status = payload.get("status");
-        if (status == null) return ResponseEntity.badRequest().build();
-        return ResponseEntity.ok(service.setStatus(id, status));
-    }
 }
