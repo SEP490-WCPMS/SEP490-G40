@@ -24,6 +24,7 @@ import com.sep490.wcpms.repository.MeterInstallationRepository; // Thêm import
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 // Import mới cho việc tạo hợp đồng dịch vụ nước
@@ -63,6 +64,43 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Autowired
     private ActivityLogService activityLogService; // NEW: persist activity logs for service actions
 
+    // Helper to safely obtain current authenticated user's account ID.
+    // Handles cases where Security principal is our UserDetailsImpl or when only username is present.
+    private Integer getCurrentUserId() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated()) return null;
+
+            Object principal = auth.getPrincipal();
+            if (principal instanceof UserDetailsImpl ud) {
+                return ud.getId();
+            }
+
+            // Fallback: try by name (could be username, email, or numeric id)
+            String name = auth.getName();
+            if (name == null || name.isBlank()) return null;
+
+            // If name is numeric, it might be user id stored as subject in token
+            try {
+                int id = Integer.parseInt(name);
+                return accountRepository.findById(id).map(Account::getId).orElse(null);
+            } catch (NumberFormatException ignored) {
+            }
+
+            // try username
+            Optional<Account> byUsername = accountRepository.findByUsername(name);
+            if (byUsername.isPresent()) return byUsername.get().getId();
+
+            // try email
+            Optional<Account> byEmail = accountRepository.findByEmail(name);
+            if (byEmail.isPresent()) return byEmail.get().getId();
+
+        } catch (Exception e) {
+            // swallow - return null to indicate not available
+        }
+        return null;
+    }
+
     @Override
     public Page<ServiceStaffContractDTO> findContractsForServiceStaff(String status, String keyword, Pageable pageable) {
         ContractStatus contractStatus = null;
@@ -72,6 +110,14 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Invalid contract status: " + status);
             }
+        }
+
+        // If current authenticated user is a Service Staff, filter results to only their contracts
+        Integer currentUserId = getCurrentUserId();
+
+        if (currentUserId != null) {
+            return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, contractStatus, keyword, pageable)
+                    .map(this::convertToDTO);
         }
 
         return contractRepository.findByStatusAndKeyword(contractStatus, keyword, pageable)
@@ -127,6 +173,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     public Page<ServiceStaffContractDTO> getDraftContracts(String keyword, Pageable pageable) {
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, ContractStatus.DRAFT, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
         return contractRepository.findByStatusAndKeyword(ContractStatus.DRAFT, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -148,7 +199,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             if (auth == null || !auth.isAuthenticated()) {
                 throw new IllegalStateException("User not authenticated");
             }
-            
+
             Integer currentUserId;
             if (auth.getPrincipal() instanceof UserDetailsImpl user) {
                 currentUserId = user.getId();
@@ -158,7 +209,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                         .orElseThrow(() -> new IllegalStateException("Account not found: " + username));
                 currentUserId = currentAccount.getId();
             }
-            
+
             Account currentServiceStaff = accountRepository.findById(currentUserId)
                     .orElseThrow(() -> new RuntimeException("Service Staff not found with id: " + currentUserId));
 
@@ -184,6 +235,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     public Page<ServiceStaffContractDTO> getPendingSurveyReviewContracts(String keyword, Pageable pageable) {
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, ContractStatus.PENDING_SURVEY_REVIEW, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
         return contractRepository.findByStatusAndKeyword(ContractStatus.PENDING_SURVEY_REVIEW, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -216,6 +272,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     public Page<ServiceStaffContractDTO> getApprovedContracts(String keyword, Pageable pageable) {
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, ContractStatus.APPROVED, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
         return contractRepository.findByStatusAndKeyword(ContractStatus.APPROVED, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -224,6 +285,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     public Page<ServiceStaffContractDTO> getActiveContracts(String keyword, Pageable pageable) {
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, ContractStatus.ACTIVE, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
         return contractRepository.findByStatusAndKeyword(ContractStatus.ACTIVE, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -350,13 +416,53 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setEndDate(c.getEndDate());
         dto.setEstimatedCost(c.getEstimatedCost());
         dto.setContractValue(c.getContractValue());
-        dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null); // MỚI
+        dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null);
         dto.setNotes(c.getNotes());
+
+        // --- MAP CUSTOMER / GUEST ---
         if (c.getCustomer() != null) {
+            // Trường hợp Khách hàng có tài khoản
             dto.setCustomerId(c.getCustomer().getId());
             dto.setCustomerName(c.getCustomer().getCustomerName());
             dto.setCustomerCode(c.getCustomer().getCustomerCode());
+            dto.setContactPhone(c.getCustomer().getContactPersonPhone());
+            dto.setAddress(c.getCustomer().getAddress());
+            dto.setIsGuest(false);
+        } else {
+            // Trường hợp Khách vãng lai (Guest) -> Lấy tên từ Notes
+            dto.setIsGuest(true);
+            dto.setCustomerCode(null);
+
+            // 1. Lấy SĐT từ Contract (vì Guest lưu ở đây)
+            dto.setContactPhone(c.getContactPhone());
+
+            // 2. Lấy Địa chỉ
+            if (c.getAddress() != null) {
+                dto.setAddress(c.getAddress().getAddress());
+            }
+
+            // 3. Bóc tách tên từ Notes
+            String note = c.getNotes();
+            if (note != null && note.startsWith("KHÁCH:")) {
+                try {
+                    int pipeIndex = note.indexOf("|");
+                    if (pipeIndex > 0) {
+                        dto.setCustomerName(note.substring(7, pipeIndex).trim());
+                    } else {
+                        dto.setCustomerName(note.substring(7).trim());
+                    }
+                } catch (Exception e) {
+                    dto.setCustomerName("Khách vãng lai");
+                }
+            } else {
+                dto.setCustomerName("Khách vãng lai");
+            }
         }
+
+        dto.setSurveyDate(c.getSurveyDate());
+        dto.setTechnicalDesign(c.getTechnicalDesign());
+
+        // --- MAP STAFF ---
         if (c.getServiceStaff() != null) {
             dto.setServiceStaffId(c.getServiceStaff().getId());
             dto.setServiceStaffName(c.getServiceStaff().getFullName());
@@ -365,14 +471,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             dto.setTechnicalStaffId(c.getTechnicalStaff().getId());
             dto.setTechnicalStaffName(c.getTechnicalStaff().getFullName());
         }
-        dto.setSurveyDate(c.getSurveyDate());
-        dto.setTechnicalDesign(c.getTechnicalDesign());
 
-        // Lấy giá tiền loại từ Chi tiết Sử dụng Hợp đồng
+        // --- MAP PRICE TYPE ---
         if (c.getContractUsageDetails() != null && !c.getContractUsageDetails().isEmpty()) {
-            // Lấy phần tử đầu tiên từ danh sách (nếu có nhiều, lấy cái đầu)
             ContractUsageDetail firstUsageDetail = c.getContractUsageDetails().get(0);
-            if (firstUsageDetail != null && firstUsageDetail.getPriceType() != null) { // Thêm kiểm tra null
+            if (firstUsageDetail != null && firstUsageDetail.getPriceType() != null) {
                 dto.setPriceTypeName(firstUsageDetail.getPriceType().getTypeName());
             }
         }
@@ -388,17 +491,21 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         return dto;
     }
 
-    // === TRIỂN KHAI 3 HÀM MỚI (BƯỚC 2) ===
+    // === TRIỂN KHAI 3 HÀM MỚI (BƯỚC 2) - ĐÃ SỬA WORKLOAD ===
 
     @Override
     @Transactional(readOnly = true)
     public List<AccountDTO> getAvailableTechStaff() {
-        // Lấy tất cả tài khoản có vai trò TECHNICAL_STAFF
-        List<Account> techStaffList = accountRepository.findByRole_RoleName(Role.RoleName.TECHNICAL_STAFF);
-
-        // Chuyển đổi Account sang AccountDTO (chỉ lấy ID và Tên)
-        return techStaffList.stream()
-                .map(account -> new AccountDTO(account.getId(), account.getFullName()))
+        // Use repository query that returns AccountDTO with workload precomputed
+        try {
+            List<AccountDTO> dtos = accountRepository.findTechnicalStaffWithWorkload();
+            if (dtos != null) return dtos;
+        } catch (Exception ignored) {
+            // fallback to simple list
+        }
+        return accountRepository.findByRole_RoleName(Role.RoleName.TECHNICAL_STAFF)
+                .stream()
+                .map(acc -> new AccountDTO(acc.getId(), acc.getFullName()))
                 .collect(Collectors.toList());
     }
 
@@ -428,12 +535,9 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         String searchKeyword = null;
         if (keyword != null && !keyword.trim().isEmpty()) {
             searchKeyword = keyword.trim().toLowerCase();
-            // Lưu ý: Do JPQL ở repo tôi dùng LIKE %:keyword% nên ở đây chỉ cần lower case thôi
-            // Hoặc nếu bạn dùng LIKE :keyword thì ở đây thêm % vào 2 đầu.
-            // Để thống nhất với repo tôi viết ở trên (LIKE %:keyword%), ở đây CHỈ CẦN trim().toLowerCase()
         }
 
-        // 3. Gọi Repository (Hàm mới có keyword)
+        // 3. Gọi Repository
         Page<CustomerFeedback> tickets = customerFeedbackRepository.findAssignedTickets(staffId, types, searchKeyword, pageable);
 
         // 4. Map sang DTO
@@ -509,7 +613,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional(readOnly = true)
     public List<CustomerSimpleDTO> getSimpleCustomerList() {
-        // Gọi hàm mới trong CustomerRepository
         return customerRepository.findSimpleList();
     }
     // --- HẾT PHẦN THÊM ---
@@ -518,7 +621,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional(readOnly = true)
     public List<CustomerMeterDTO> getCustomerActiveMetersByCustomerId(Integer customerId) {
-        // Gọi thẳng WaterMeterRepository
         return waterMeterRepository.findActiveMetersByCustomerId(customerId);
     }
     // --- HẾT PHẦN THÊM ---
@@ -616,6 +718,11 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional(readOnly = true)
     public Page<ServiceStaffContractDTO> getPendingSignContracts(String keyword, Pageable pageable) {
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, ContractStatus.PENDING_SIGN, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
         return contractRepository.findByStatusAndKeyword(ContractStatus.PENDING_SIGN, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -623,11 +730,12 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional(readOnly = true)
     public Page<ContractAnnulTransferRequestDTO> getPendingAnnulTransferRequests(String keyword, Pageable pageable) {
-        // Giả sử repository có method findByStatus với PENDING
-        // Nếu không có, cần thêm vào repository
-        //        return contractAnnulTransferRequestRepository.findByApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING, pageable)
-        //                .map(this::convertToAnnulTransferDTO);
-        // Use the new repository method to fetch customers eagerly so names are available
+        Integer currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            return contractAnnulTransferRequestRepository
+                    .findWithCustomersByApprovalStatusAndServiceStaff(ContractAnnulTransferRequest.ApprovalStatus.PENDING, currentUserId, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        }
         return contractAnnulTransferRequestRepository.findWithCustomersByApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING, pageable)
                 .map(this::convertToAnnulTransferDTO);
     }
@@ -635,7 +743,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional
     public ContractAnnulTransferRequestDTO approveAnnulTransferRequest(Integer requestId) {
-        // Delegate to ContractAnnulTransferRequestService to reuse validation and mapping logic
         ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
                 .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.APPROVED)
                 .approvalDate(LocalDate.now())
@@ -647,7 +754,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 dto.setApprovedById(ud.getId());
             }
         } catch (Exception ex) {
-            // ignore - central service will validate
+            // ignore
         }
 
         return contractAnnulTransferRequestService.updateApproval(requestId, dto);
@@ -656,7 +763,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional
     public ContractAnnulTransferRequestDTO rejectAnnulTransferRequest(Integer requestId, String reason) {
-        // Delegate to central service to enforce notes required for rejection
         ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
                 .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED)
                 .approvalDate(LocalDate.now())
@@ -684,7 +790,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setRejectionReason(request.getRejectionReason());
         dto.setCreatedDate(request.getCreatedAt());
         dto.setProcessedDate(request.getApprovalDate());
-        // Also populate createdAt/updatedAt (some frontend expects these names)
         dto.setCreatedAt(request.getCreatedAt());
         dto.setUpdatedAt(request.getUpdatedAt());
         if (request.getContract() != null) {
@@ -695,21 +800,10 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             dto.setRequesterId(request.getRequestedBy().getId());
             dto.setRequesterName(request.getRequestedBy().getFullName());
         }
-        // Set customer ids and names for transfer requests
-        //        if (request.getFromCustomer() != null) {
-        //            dto.setFromCustomerId(request.getFromCustomer().getId());
-        //            dto.setFromCustomerName(request.getFromCustomer().getCustomerName());
-        //        }
-        //        if (request.getToCustomer() != null) {
-        //            dto.setToCustomerId(request.getToCustomer().getId());
-        //            dto.setToCustomerName(request.getToCustomer().getCustomerName());
-        //        }
-        // The repository fetches fromCustomer/toCustomer eagerly; still guard for null
         if (request.getFromCustomer() != null) {
             dto.setFromCustomerId(request.getFromCustomer().getId());
             dto.setFromCustomerName(request.getFromCustomer().getCustomerName());
         } else {
-            // Fallback: set fromCustomerName from the contract's customer (current owner)
             if (request.getContract() != null && request.getContract().getCustomer() != null) {
                 dto.setFromCustomerId(request.getContract().getCustomer().getId());
                 dto.setFromCustomerName(request.getContract().getCustomer().getCustomerName());

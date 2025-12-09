@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, Input, Spin, message, Divider, Row, Col, Tag } from 'antd';
 import { FileTextOutlined, UserOutlined, AppstoreOutlined, InfoCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { toast, ToastContainer } from 'react-toastify';
-import { getTechnicalStaff } from '../../Services/apiService';
+import { getAvailableTechStaff } from '../../Services/apiService';
 import ConfirmModal from '../../common/ConfirmModal';
 import './AssignSurveyModal.css'; // ✨ SỬA LỖI 1: Đổi tên file CSS import cho khớp
 
@@ -23,9 +23,10 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
   useEffect(() => {
     if (isOpen) {
       setStaffLoading(true);
-      getTechnicalStaff()
+      getAvailableTechStaff()
         .then((response) => {
           console.log('Phản hồi nhân viên kỹ thuật:', response);
+          // Backend may return list in various shapes: { data }, { content }, or raw array
           const payload = response?.data ?? [];
           const staff = payload?.data ?? payload?.content ?? payload;
           setTechnicalStaff(Array.isArray(staff) ? staff : []);
@@ -168,18 +169,48 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
               loading={staffLoading}
               size="large"
               showSearch
+              // Logic lọc tìm kiếm theo tên
               filterOption={(input, option) =>
-                (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
+                (option?.label || '').toLowerCase().includes(input.toLowerCase())
               }
+              // Prop này giúp hiển thị tên gọn gàng sau khi đã chọn xong (không hiện cả badge)
+              optionLabelProp="label"
             >
-              {technicalStaff.map((staff) => (
-                <Select.Option key={staff.id} value={staff.id}>
-                  <div className="flex items-center gap-2">
-                    <UserOutlined className="text-blue-500" />
-                    <span>{staff.fullName || staff.username || staff.name || `NV #${staff.id}`}</span>
-                  </div>
-                </Select.Option>
-              ))}
+              {technicalStaff.map((staff) => {
+                // --- LOGIC HIỂN THỊ SỐ LƯỢNG VIỆC ---
+                // Backend DTOs might use different property names: prefer 'currentTaskCount', then 'workload'
+                const count = Number(
+                  staff.currentTaskCount ?? staff.workload ?? staff.taskCount ?? staff.currentTasks ?? 0
+                );
+                
+                // Màu sắc cảnh báo: Ít việc (Xanh), Vừa (Cam), Nhiều (Đỏ)
+                let badgeColor = 'green';
+                if (count >= 5) badgeColor = 'orange';
+                if (count >= 10) badgeColor = 'red';
+
+                return (
+                  <Select.Option 
+                    key={staff.id} 
+                    value={staff.id} 
+                    // label dùng để hiển thị text khi đã chọn vào ô input
+                    label={staff.fullName || staff.username}
+                  >
+                    <div className="flex justify-between items-center w-full">
+                      <div className="flex items-center gap-2">
+                        <UserOutlined className="text-blue-500" />
+                        <span className="font-medium">
+                            {staff.fullName || staff.username || staff.name || `NV #${staff.id}`}
+                        </span>
+                      </div>
+                      
+                      {/* Badge hiển thị số lượng công việc */}
+                      <Tag color={badgeColor} style={{ marginRight: 0, borderRadius: 10 }}>
+                        {count} đơn
+                      </Tag>
+                    </div>
+                  </Select.Option>
+                );
+              })}
             </Select>
           </Form.Item>
 
