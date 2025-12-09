@@ -26,19 +26,17 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
     const [modalLoading, setModalLoading] = useState(false);
     const [form] = Form.useForm();
     
-    // State cho confirmation modal (terminate/suspend) - Giữ nguyên logic cũ của bạn
+    // State cho confirmation modal
     const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-    const [confirmAction, setConfirmAction] = useState(null); // 'terminate' hoặc 'suspend'
-    const [confirmData, setConfirmData] = useState(null); // { reason, actionType }
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [confirmData, setConfirmData] = useState(null);
     const [confirmLoading, setConfirmLoading] = useState(false);
 
-    // State cho reactivate confirmation
     const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
     const [reactivating, setReactivating] = useState(false);
 
-    // State cho renew confirmation
     const [showRenewConfirm, setShowRenewConfirm] = useState(false);
-    const [renewData, setRenewData] = useState(null); // Store form values
+    const [renewData, setRenewData] = useState(null);
     const [renewing, setRenewing] = useState(false);
 
     const [pagination, setPagination] = useState({
@@ -47,35 +45,49 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
         totalElements: 0,
     });
 
+    // --- LOGIC MỚI: ĐỒNG BỘ HÓA VỚI CHA ---
+    const normalizeStatus = (s) => {
+        if (!s || s === 'all') return 'ACTIVE';
+        if (['ACTIVE', 'SUSPENDED', 'TERMINATED', 'EXPIRED'].includes(s)) return s;
+        return 'ACTIVE';
+    };
+
     const [filters, setFilters] = useState({
         keyword: externalKeyword || null,
-        status: externalStatus || 'ACTIVE', // Mặc định hiển thị Đang hoạt động
+        status: normalizeStatus(externalStatus),
     });
 
-    const fetchContracts = async (params = {}) => {
+    useEffect(() => {
+        setFilters(prev => ({
+            ...prev,
+            keyword: externalKeyword !== undefined ? externalKeyword : prev.keyword,
+            status: normalizeStatus(externalStatus)
+        }));
+    }, [externalKeyword, externalStatus]);
+
+    useEffect(() => {
+        fetchContracts();
+    }, [filters.status, filters.keyword, pagination.page, pagination.size]);
+
+
+    const fetchContracts = async () => {
         setLoading(true);
         try {
-            const currentPage = params.page !== undefined ? params.page : pagination.page;
-            const currentSize = params.size !== undefined ? params.size : pagination.size;
-            // Allow parent-provided keyword/status to override
-            const effectiveKeyword = externalKeyword !== undefined ? externalKeyword : filters.keyword;
-            const effectiveStatus = externalStatus !== undefined ? externalStatus : filters.status;
             const response = await getServiceContracts({
-                page: currentPage,
-                size: currentSize,
-                keyword: effectiveKeyword,
-                status: effectiveStatus,
+                page: pagination.page,
+                size: pagination.size,
+                keyword: filters.keyword,
+                status: filters.status,
                 sort: 'updatedAt,desc'
             });
             
             if (response.data) {
                 setContracts(response.data.content || []);
                 const pageInfo = response.data.page || response.data || {};
-                setPagination({
-                    page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
-                    size: pageInfo.size || currentSize,
+                setPagination(prev => ({
+                    ...prev,
                     totalElements: pageInfo.totalElements || 0,
-                });
+                }));
             }
         } catch (error) {
             toast.error('Lỗi khi tải danh sách hợp đồng!');
@@ -87,18 +99,13 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
         }
     };
 
-    useEffect(() => {
-        fetchContracts();
-    }, [externalKeyword, externalStatus]);
-
-    // Highlight logic: if URL includes ?highlight=<id>, scroll to that contract after contracts load
+    // Highlight logic
     const location = useLocation();
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const highlightId = params.get('highlight');
         if (!highlightId) return;
 
-        // Try to find the element after contracts loaded; retry a few times in case of async rendering
         let attempts = 0;
         const tryHighlight = () => {
             attempts += 1;
@@ -111,24 +118,20 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                 setTimeout(tryHighlight, 300);
             }
         };
-
-        // Start after a short delay to allow table render
         setTimeout(tryHighlight, 200);
     }, [location.search, contracts]);
 
-    const handleFilterChange = (value) => {
-        setFilters(prev => ({ ...prev, keyword: value }));
+    const handleFilterChange = (key, value) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
         setPagination(prev => ({ ...prev, page: 0 }));
-        fetchContracts({ page: 0 });
     };
 
     const handlePageChange = (newPage) => {
-        fetchContracts({ page: newPage });
+        setPagination(prev => ({ ...prev, page: newPage }));
     };
 
     const handleOpenModal = async (record, type) => {
         try {
-            // Nếu là kích hoạt lại (reactivate) thì không cần gọi API chi tiết, mở confirm luôn
             if (type === 'reactivate') {
                 setSelectedContract(record);
                 setModalType(type);
@@ -145,12 +148,8 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             setModalType(type);
             
             if (type === 'view') {
-                // (Giữ nguyên logic view cũ)
-                form.setFieldsValue({
-                   // ...
-                });
+                form.setFieldsValue({});
             } else if (type === 'renew') {
-                // Form gia hạn MỚI: Chỉ reset các trường nhập liệu
                 form.setFieldsValue({
                     newEndDate: null,
                     notes: ''
@@ -187,7 +186,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
 
     const handleSubmit = async () => {
         try {
-            // Xử lý riêng cho Reactivate (Kích hoạt lại) - Show confirm modal
             if (modalType === 'reactivate') {
                 setShowReactivateConfirm(true);
                 return;
@@ -196,14 +194,12 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             const values = await form.validateFields();
             
             if (modalType === 'renew') {
-                // Store form data and show confirm modal
                 setRenewData({
                     endDate: values.newEndDate ? values.newEndDate.format('YYYY-MM-DD') : null,
                     notes: values.notes
                 });
                 setShowRenewConfirm(true);
             } else if (modalType === 'terminate' || modalType === 'suspend') {
-                // Mở confirmation modal thay vì submit ngay (Giữ nguyên logic cũ)
                 setConfirmData({
                     reason: values.reason,
                     actionType: modalType
@@ -213,7 +209,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             }
         } catch (error) {
             console.error("Error:", error);
-            // message.error(error.message || 'Có lỗi xảy ra!'); // Antd form tự handle validate error visual
         } finally {
             setModalLoading(false);
         }
@@ -222,7 +217,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
     const handleConfirmAction = async () => {
         try {
             setConfirmLoading(true);
-            
             if (confirmAction === 'terminate') {
                 await terminateContract(selectedContract.id, confirmData.reason);
                 toast.success('Chấm dứt hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
@@ -230,10 +224,9 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                 await suspendContract(selectedContract.id, confirmData.reason);
                 toast.success('Tạm ngưng hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
             }
-            
             setConfirmModalVisible(false);
             handleCloseModal();
-            fetchContracts(pagination.current, pagination.pageSize);
+            fetchContracts();
         } catch (error) {
             console.error("Error:", error);
             toast.error(error.message || 'Có lỗi xảy ra!');
@@ -268,7 +261,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             setShowRenewConfirm(false);
             toast.success('Gia hạn hợp đồng thành công!', { position: "top-center", autoClose: 3000 });
             handleCloseModal();
-            fetchContracts(pagination.current, pagination.pageSize);
+            fetchContracts();
         } catch (error) {
             setShowRenewConfirm(false);
             console.error("Error:", error);
@@ -277,126 +270,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             setRenewing(false);
         }
     };
-
-    const columns = [
-        {
-            title: '#',
-            dataIndex: 'id',
-            key: 'id',
-            width: 60,
-        },
-        {
-            title: 'Số Hợp đồng',
-            dataIndex: 'contractNumber',
-            key: 'contractNumber',
-            render: (text) => <span className="text-base font-medium">{text}</span>,
-        },
-        {
-            title: 'Khách hàng',
-            dataIndex: 'customerName',
-            key: 'customerName',
-            render: (text) => <span className="text-base">{text}</span>,
-        },
-        {
-            title: 'Ngày bắt đầu',
-            dataIndex: 'startDate',
-            key: 'startDate',
-            render: (date) => <span className="text-base">{date ? dayjs(date).format('DD/MM/YYYY') : 'N/A'}</span>,
-        },
-        {
-            title: 'Ngày kết thúc',
-            dataIndex: 'endDate',
-            key: 'endDate',
-            render: (date) => <span className="text-base">{date ? dayjs(date).format('DD/MM/YYYY') : 'N/A'}</span>,
-        },
-        {
-            title: 'Chi phí lắp đặt',
-            dataIndex: 'contractValue',
-            key: 'contractValue',
-            render: (value) => <span className="text-base">{value ? `${value.toLocaleString()} đ` : 'N/A'}</span>,
-        },
-        // Thêm cột Trạng thái để thấy rõ khi lọc
-        {
-            title: 'Trạng thái',
-            dataIndex: 'contractStatus',
-            key: 'contractStatus',
-            render: (status) => {
-                let color = 'default';
-                let text = status;
-                if (status === 'ACTIVE') { color = 'green'; text = 'Đang hoạt động'; }
-                if (status === 'SUSPENDED') { color = 'orange'; text = 'Đang tạm ngưng'; }
-                return <Tag color={color}>{text}</Tag>;
-            }
-        },
-        {
-            title: 'Hành động',
-            key: 'action',
-            render: (_, record) => {
-                const actions = [];
-                actions.push(
-                    <button
-                        key="detail"
-                        onClick={() => handleOpenModal(record, 'view')}
-                        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-                    >
-                        Chi tiết
-                    </button>
-                );
-
-                // Logic hiển thị nút dựa trên trạng thái
-                if (record.contractStatus === 'ACTIVE') {
-                    actions.push(
-                        <button
-                            key="renew"
-                            onClick={() => handleOpenModal(record, 'renew')}
-                            className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-                        >
-                            Gia hạn
-                        </button>
-                    );
-                    actions.push(
-                        <button
-                            key="suspend"
-                            onClick={() => handleOpenModal(record, 'suspend')}
-                            className="font-semibold text-amber-600 hover:text-amber-800 transition duration-150 ease-in-out"
-                        >
-                            Tạm ngưng
-                        </button>
-                    );
-                } else if (record.contractStatus === 'SUSPENDED') {
-                    actions.push(
-                        <button
-                            key="reactivate"
-                            onClick={() => handleOpenModal(record, 'reactivate')}
-                            className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out"
-                        >
-                            Kích hoạt lại
-                        </button>
-                    );
-                }
-
-                actions.push(
-                    <button
-                        key="terminate"
-                        onClick={() => handleOpenModal(record, 'terminate')}
-                        className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
-                    >
-                        Chấm dứt
-                    </button>
-                );
-                return (
-                    <div className="flex flex-wrap items-center gap-3">
-                        {actions.map((el, idx) => (
-                            <React.Fragment key={idx}>
-                                {idx > 0 && <span className="text-gray-300">|</span>}
-                                {el}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                );
-            },
-        },
-    ]; // columns definition no longer used - inline rendering in table now
 
     const statusBadge = (status) => {
         const s = (status || '').toUpperCase();
@@ -423,7 +296,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             
             return (
                 <div className="space-y-4 pt-2">
-                    {/* Header: Số HĐ và Trạng thái */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
@@ -436,8 +308,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                             </div>
                         </div>
                     </div>
-
-                    {/* Thông tin Khách hàng */}
+                    {/* ... (Các phần thông tin khách hàng, hợp đồng giữ nguyên) ... */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
                             <FileTextOutlined className="mr-1" /> Thông tin khách hàng
@@ -455,9 +326,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                             )}
                         </div>
                     </div>
-
-                    {/* Thông tin Hợp đồng */}
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
                             <CalendarOutlined className="mr-1" /> Thông tin hợp đồng
                         </div>
@@ -505,9 +374,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                             )}
                         </div>
                     </div>
-
-                    {/* Ảnh lắp đặt */}
-                    {c.installationImageBase64 && (
+                     {c.installationImageBase64 && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
                                 <FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ
@@ -521,8 +388,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                             </div>
                         </div>
                     )}
-
-                    {/* Ghi chú */}
                     {(c.notes || c.customerNotes) && (
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                             <div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2">
@@ -536,10 +401,8 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                 </div>
             );
         } else if (modalType === 'renew') {
-            // --- ✨ GIAO DIỆN MỚI CHO FORM GIA HẠN ✨ ---
-            return (
+             return (
                 <Form form={form} layout="vertical" className="pt-2">
-                     {/* Box thông tin cũ: Nền xám nhẹ, chữ rõ ràng, thiết kế hiện đại */}
                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6 flex flex-col gap-3">
                         <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider">
                             <FileTextOutlined className="mr-1" /> Thông tin hiện tại
@@ -562,8 +425,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                             </div>
                         </div>
                      </div>
-                     
-                     {/* Phần nhập liệu: Input to, dễ thao tác */}
                      <Form.Item 
                          name="newEndDate" 
                          label={<span className="font-semibold text-gray-700 text-base">Chọn ngày kết thúc mới <span className="text-red-500">*</span></span>}
@@ -571,26 +432,18 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                          className="mb-5"
                      >
                          <DatePicker 
-                            style={{ width: '100%' }} 
-                            format="DD/MM/YYYY"
-                            size="large" // Input to hơn
-                            placeholder="Chọn ngày hết hạn mới"
-                            // Logic chặn ngày: Chỉ cho phép chọn ngày SAU ngày kết thúc hiện tại (nếu có)
-                            disabledDate={(current) => {
-                                const currentEnd = selectedContract?.endDate ? dayjs(selectedContract.endDate) : dayjs();
-                                return current && current.isBefore(currentEnd.add(1, 'day'), 'day');
-                            }}
+                           style={{ width: '100%' }} 
+                           format="DD/MM/YYYY"
+                           size="large"
+                           placeholder="Chọn ngày hết hạn mới"
+                           disabledDate={(current) => {
+                               const currentEnd = selectedContract?.endDate ? dayjs(selectedContract.endDate) : dayjs();
+                               return current && current.isBefore(currentEnd.add(1, 'day'), 'day');
+                           }}
                          />
                      </Form.Item>
-                     <Form.Item 
-                        name="notes" 
-                        label={<span className="font-medium text-gray-700">Ghi chú / Lý do gia hạn</span>}
-                     >
-                         <TextArea 
-                            rows={3} 
-                            placeholder="Nhập ghi chú cho lần gia hạn này..." 
-                            className="text-sm rounded-md"
-                        />
+                     <Form.Item name="notes" label={<span className="font-medium text-gray-700">Ghi chú / Lý do gia hạn</span>}>
+                         <TextArea rows={3} placeholder="Nhập ghi chú cho lần gia hạn này..." className="text-sm rounded-md" />
                      </Form.Item>
                 </Form>
             );
@@ -600,7 +453,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                     <div className="bg-red-50 border-l-4 border-red-400 p-3 mb-4 rounded">
                         <div className="font-semibold text-red-900 text-sm">⚠️ Chấm dứt hợp đồng</div>
                     </div>
-                    {/* ... (Giữ nguyên logic hiển thị thông tin cũ nếu bạn muốn) ... */}
                     <Form.Item name="contractNumber" label={<span className="text-gray-700 font-medium">Số Hợp đồng</span>}>
                         <FormInput disabled style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
                     </Form.Item>
@@ -664,69 +516,62 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
 
     return (
         <div className="space-y-6">
-            {/* Toast Container */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                hideProgressBar={false}
-                newestOnTop={false}
-                closeOnClick
-                rtl={false}
-                pauseOnFocusLoss
-                draggable
-                pauseOnHover
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} />
             
+            {/* Header & Filter Bar */}
             <Row gutter={16} align="middle">
                 <Col xs={24} sm={12}>
                     <div>
                         <Title level={3} className="!mb-2">Hợp đồng đang hoạt động</Title>
-                        <Paragraph className="!mb-0">Danh sách hợp đồng đang trong quá trình hoạt động.</Paragraph>
+                        <Paragraph className="!mb-0">
+                            Danh sách hợp đồng theo trạng thái: 
+                            <span className="font-semibold ml-1 text-blue-600">
+                                {filters.status === 'ACTIVE' ? 'Đang hoạt động' : 
+                                 filters.status === 'SUSPENDED' ? 'Tạm ngưng' : 
+                                 filters.status === 'TERMINATED' ? 'Đã chấm dứt' : filters.status}
+                            </span>
+                        </Paragraph>
                     </div>
                 </Col>
                 <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-                    {/* --- BỘ LỌC TRẠNG THÁI MỚI --- */}
-                        <Space>
-                            <span className="text-gray-600 font-medium">Lọc theo:</span>
-                            {externalStatus === undefined ? (
-                                <Select 
-                                    defaultValue={filters.status || 'ACTIVE'} 
-                                    style={{ width: 160, textAlign: 'left' }} 
-                                    onChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
-                                >
-                                    <Option value="ACTIVE">🟢 Đang hoạt động</Option>
-                                    <Option value="SUSPENDED">🟠 Đang tạm ngưng</Option>
-                                </Select>
-                            ) : (
-                                <Tag color={externalStatus === 'ACTIVE' ? 'green' : 'orange'}>
-                                    {externalStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Đang tạm ngưng'}
-                                </Tag>
-                            )}
-                            <Button
-                                icon={<ReloadOutlined />}
-                                onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
-                                loading={loading}
-                            >
-                                Làm mới
-                            </Button>
-                        </Space>
+                    <Space>
+                        <span className="text-gray-600 font-medium">Lọc theo:</span>
+                        <Select 
+                            value={filters.status} // Bind đúng vào state filters.status
+                            style={{ width: 160, textAlign: 'left' }} 
+                            onChange={(val) => handleFilterChange('status', val)}
+                        >
+                            <Option value="ACTIVE">🟢 Đang hoạt động</Option>
+                            <Option value="SUSPENDED">🟠 Đang tạm ngưng</Option>
+                            <Option value="TERMINATED">🔴 Đã chấm dứt</Option>
+                            <Option value="EXPIRED">⚫ Hết hạn</Option>
+                        </Select>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => fetchContracts()}
+                            loading={loading}
+                        >
+                            Làm mới
+                        </Button>
+                    </Space>
                 </Col>
             </Row>
 
+            {/* Search Bar (Chỉ hiện nếu cha không truyền keyword) */}
             <Row gutter={16} className="mb-6">
                 <Col xs={24} md={12}>
-                        {externalKeyword === undefined && (
+                    {externalKeyword === undefined && (
                         <Search
                             placeholder="Tìm theo tên hoặc mã KH..."
-                            onSearch={handleFilterChange}
+                            onSearch={(val) => handleFilterChange('keyword', val)}
                             enterButton
                             allowClear
                         />
-                        )}
+                    )}
                 </Col>
             </Row>
 
+            {/* Table & Pagination */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -737,7 +582,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày bắt đầu</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày kết thúc</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chi phí lắp đặt</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                             </tr>
@@ -768,18 +613,9 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                                     if (record.contractStatus === 'ACTIVE') {
                                         actions.push(
                                             <button
-                                                key="renew"
-                                                onClick={() => handleOpenModal(record, 'renew')}
-                                                className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-                                            >
-                                                Gia hạn
-                                            </button>
-                                        );
-                                        actions.push(
-                                            <button
                                                 key="suspend"
                                                 onClick={() => handleOpenModal(record, 'suspend')}
-                                                className="font-semibold text-gray-700 hover:text-gray-900 transition duration-150 ease-in-out"
+                                                className="font-semibold text-amber-600 hover:text-amber-800 transition duration-150 ease-in-out"
                                             >
                                                 Tạm ngưng
                                             </button>
@@ -793,9 +629,17 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                                                 Chấm dứt
                                             </button>
                                         );
-                                    }
-
-                                    if (record.contractStatus === 'SUSPENDED') {
+                                    } else if (record.contractStatus === 'EXPIRED') {
+                                         actions.push(
+                                            <button
+                                                key="renew"
+                                                onClick={() => handleOpenModal(record, 'renew')}
+                                                className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+                                            >
+                                                Gia hạn
+                                            </button>
+                                        );
+                                    } else if (record.contractStatus === 'SUSPENDED') {
                                         actions.push(
                                             <button
                                                 key="reactivate"
@@ -822,8 +666,16 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                                                 {record.contractValue ? `${record.contractValue.toLocaleString()} đ` : 'N/A'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                <Tag color={record.contractStatus === 'ACTIVE' ? 'green' : 'orange'}>
-                                                    {record.contractStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Đang tạm ngưng'}
+                                                <Tag color={
+                                                    record.contractStatus === 'ACTIVE' ? 'green' : 
+                                                    record.contractStatus === 'SUSPENDED' ? 'orange' :
+                                                    record.contractStatus === 'EXPIRED' ? 'volcano' :
+                                                    record.contractStatus === 'TERMINATED' ? 'red' : 'default'
+                                                }>
+                                                    {record.contractStatus === 'ACTIVE' ? 'Đang hoạt động' : 
+                                                     record.contractStatus === 'SUSPENDED' ? 'Đang tạm ngưng' :
+                                                     record.contractStatus === 'EXPIRED' ? 'Hết hạn' :
+                                                     record.contractStatus === 'TERMINATED' ? 'Đã chấm dứt' : record.contractStatus}
                                                 </Tag>
                                             </td>
                                             <td className="px-6 py-4 text-sm">
@@ -842,7 +694,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                             ) : (
                                 <tr>
                                     <td colSpan="8" className="px-6 py-12 text-center text-sm text-gray-500">
-                                        {filters.status === 'ACTIVE' ? 'Không có hợp đồng đang hoạt động' : 'Không có hợp đồng đang tạm ngưng'}
+                                        Không tìm thấy hợp đồng nào có trạng thái {filters.status}
                                     </td>
                                 </tr>
                             )}
@@ -874,12 +726,12 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
                 cancelText={modalType === 'view' ? undefined : 'Hủy'}
                 cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined}
                 destroyOnClose
-                width={modalType === 'reactivate' ? 400 : 700} // Modal confirm nhỏ gọn hơn
+                width={modalType === 'reactivate' ? 400 : 700}
                 okButtonProps={{ 
-                    danger: modalType === 'terminate', // Nút chấm dứt màu đỏ
-                    className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : '' // Nút kích hoạt màu xanh
+                    danger: modalType === 'terminate',
+                    className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : ''
                 }}
-                centered // Căn giữa màn hình
+                centered
             >
                 {renderModalContent()}
             </Modal>

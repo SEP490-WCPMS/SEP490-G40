@@ -324,24 +324,77 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
 
-        // Chỉ cho phép gia hạn hợp đồng ACTIVE
-        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
-            throw new RuntimeException("Only ACTIVE contracts can be renewed. Current status: " + contract.getContractStatus());
+        //Chỉ cho phép gia hạn EXPIRED (Hết hạn)
+        if (contract.getContractStatus() != ContractStatus.EXPIRED) {
+            throw new RuntimeException("Only EXPIRED contracts can be renewed. Current status: " + contract.getContractStatus());
         }
 
         // Cập nhật ngày kết thúc mới
         if (renewRequest.getEndDate() != null) {
+            // Kiểm tra: Ngày kết thúc mới phải sau ngày hiện tại
+            if (renewRequest.getEndDate().isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("New end date must be in the future.");
+            }
             contract.setEndDate(renewRequest.getEndDate());
         } else {
             throw new IllegalArgumentException("End date is required for renewal");
         }
 
         if (renewRequest.getNotes() != null) {
-            contract.setNotes(renewRequest.getNotes());
+            // Nối thêm ghi chú gia hạn thay vì ghi đè (tuỳ chọn)
+            String oldNote = contract.getNotes() == null ? "" : contract.getNotes();
+            contract.setNotes(oldNote + "\n[Renewed]: " + renewRequest.getNotes());
         }
 
+        //Chuyển trạng thái trở lại ACTIVE sau khi gia hạn thành công
+        contract.setContractStatus(ContractStatus.ACTIVE);
+
         Contract updated = contractRepository.save(contract);
+        // Ghi log
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            log.setSubjectId(String.valueOf(updated.getId()));
+            log.setAction("CONTRACT_RENEWED");
+            // Set actor info...
+            activityLogService.save(log);
+        } catch (Exception e) {}
+
         return convertToDTO(updated);
+    }
+
+    // === THÊM HÀM MỚI ===
+    @Override
+    @Transactional
+    public void scanAndExpireContracts() {
+        LocalDate today = LocalDate.now();
+        // Tìm tất cả hợp đồng ACTIVE mà ngày kết thúc < hôm nay
+        List<Contract> expiredContracts = contractRepository.findByContractStatusAndEndDateBefore(ContractStatus.ACTIVE, today);
+
+        if (expiredContracts.isEmpty()) {
+            return;
+        }
+
+        log.info("Found {} contracts to expire.", expiredContracts.size());
+
+        for (Contract c : expiredContracts) {
+            c.setContractStatus(ContractStatus.EXPIRED);
+
+            // Ghi log hệ thống
+            try {
+                ActivityLog log = new ActivityLog();
+                log.setSubjectType("CONTRACT");
+                log.setSubjectId(c.getContractNumber());
+                log.setAction("AUTO_EXPIRED");
+                log.setActorType("SYSTEM");
+                log.setPayload("Contract expired on " + today);
+                activityLogService.save(log);
+            } catch (Exception e) {
+                log.error("Failed to save activity log for expired contract " + c.getId());
+            }
+        }
+
+        contractRepository.saveAll(expiredContracts);
     }
 
     //LOGIC TẠM NGƯNG

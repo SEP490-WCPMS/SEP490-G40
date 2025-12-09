@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.util.List; // <-- THÊM
+
 @Repository
 public interface ServiceStaffContractRepository extends JpaRepository<Contract, Integer> {
 
@@ -64,4 +67,6 @@ public interface ServiceStaffContractRepository extends JpaRepository<Contract, 
     """)
     Page<Contract> findByServiceStaffAndStatusAndKeyword(Integer staffId, ContractStatus status, String keyword, Pageable pageable);
 
+    // Tìm các hợp đồng đang ACTIVE mà ngày kết thúc nhỏ hơn ngày hiện tại
+    List<Contract> findByContractStatusAndEndDateBefore(ContractStatus status, LocalDate date);
 }

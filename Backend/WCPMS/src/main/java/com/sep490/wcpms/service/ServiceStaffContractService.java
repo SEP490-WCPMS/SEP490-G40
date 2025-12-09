@@ -143,4 +143,10 @@ public interface ServiceStaffContractService {
      * Từ chối yêu cầu hủy/chuyển nhượng hợp đồng: chuyển trạng thái sang REJECTED, lưu lý do
      */
     ContractAnnulTransferRequestDTO rejectAnnulTransferRequest(Integer requestId, String reason);
+
+    // --- THÊM HÀM CẬP NHẬT CHO HÓA ĐƠN HẾT HẠN ---
+    /** * Quét và cập nhật trạng thái hợp đồng hết hạn
+     * (Chuyển ACTIVE -> EXPIRED nếu endDate < today)
+     */
+    void scanAndExpireContracts();
 }
