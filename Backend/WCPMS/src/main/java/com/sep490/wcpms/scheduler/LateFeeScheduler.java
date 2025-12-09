@@ -10,6 +10,7 @@ import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.repository.InvoiceRepository;
 import com.sep490.wcpms.repository.MeterCalibrationRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
+import com.sep490.wcpms.service.CustomerNotificationSmsService;
 import com.sep490.wcpms.service.PaymentService;
 import com.sep490.wcpms.service.impl.InvoicePdfExportService;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class LateFeeScheduler {
     private final InvoicePdfExportService invoicePdfExportService;
     private final MeterCalibrationRepository calibrationRepository;
     private final PaymentService paymentService;
+    private final CustomerNotificationSmsService smsNotificationService;
 
     // Phí nộp muộn mặc định
     private static final BigDecimal LATE_FEE_AMOUNT = new BigDecimal("35000");
@@ -177,9 +179,8 @@ public class LateFeeScheduler {
         n.setCreatedAt(LocalDateTime.now());
 
         notificationRepository.save(n);
-
-        // 2.3. Gửi email
         emailService.sendEmail(n);
+        smsNotificationService.sendForNotification(n);
 
         logger.info("[LATE-FEE] Đã gửi thông báo quá hạn cho invoice {} (customer id={})",
                 invoice.getInvoiceNumber(), customer.getId());
