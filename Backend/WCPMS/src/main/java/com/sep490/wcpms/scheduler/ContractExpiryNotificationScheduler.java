@@ -6,6 +6,7 @@ import com.sep490.wcpms.entity.CustomerNotification;
 import com.sep490.wcpms.repository.ContractRepository;
 import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
+import com.sep490.wcpms.service.CustomerNotificationSmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,6 +27,7 @@ public class ContractExpiryNotificationScheduler {
     private final ContractRepository contractRepository;
     private final CustomerNotificationRepository notificationRepository;
     private final CustomerNotificationEmailService emailService;
+    private final CustomerNotificationSmsService smsNotificationService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final int REMIND_DAYS = 10;
@@ -107,6 +109,7 @@ public class ContractExpiryNotificationScheduler {
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[CONTRACT-EXPIRY] Error processing contract id={}: {}",

@@ -7,6 +7,8 @@ import com.sep490.wcpms.repository.ContractRepository;
 import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.repository.CustomerRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
+import com.sep490.wcpms.service.CustomerNotificationSmsService;
+import com.sep490.wcpms.service.SmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -28,7 +30,17 @@ public class CustomerContractEventListener {
     private final CustomerNotificationRepository notificationRepository;
     private final CustomerNotificationEmailService emailService;
 
+    // Dùng cho SMS trực tiếp (guest)
+    private final SmsService smsService;
+
+    // Dùng cho SMS theo CustomerNotification (customer)
+    private final CustomerNotificationSmsService smsNotificationService;
+
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    // ============================================================
+    // 1) KH tạo yêu cầu hợp đồng (ContractRequestCreatedEvent)
+    // ============================================================
 
     @Transactional
     @EventListener
@@ -37,13 +49,33 @@ public class CustomerContractEventListener {
                 event.getContractId(), event.getCustomerId());
 
         try {
-            // --- SỬA LỖI Ở ĐÂY: Kiểm tra Guest trước khi tìm Customer ---
+            // --- CASE 1: Guest (không có customerId) → gửi SMS trực tiếp ---
             if (event.getCustomerId() == null) {
-                log.info("[CUSTOMER-NOTIFY] Đây là yêu cầu từ Guest (Khách vãng lai). Không gửi thông báo Customer.");
+                log.info("[CUSTOMER-NOTIFY] Yêu cầu từ Guest. Gửi SMS trực tiếp qua SmsService.");
+
+                Optional<Contract> optContract = contractRepository.findById(event.getContractId());
+                if (optContract.isEmpty()) {
+                    log.warn("[CUSTOMER-NOTIFY] Contract not found for id={} (guest request)", event.getContractId());
+                    return;
+                }
+                Contract contract = optContract.get();
+
+                String phone = contract.getContactPhone();
+                if (phone == null || phone.isBlank()) {
+                    log.warn("[CUSTOMER-NOTIFY] Guest contract id={} không có contactPhone, không gửi SMS được.", contract.getId());
+                    return;
+                }
+
+                String smsContent = String.format(
+                        "Cap nuoc Phu Tho: Da tiep nhan yeu cau dau noi nuoc ma hop dong tam %s. " +
+                                "Nhan vien se lien he de xac nhan thong tin va hen lich khao sat.",
+                        event.getContractNumber()
+                );
+                smsService.sendSms(phone, smsContent);
                 return;
             }
-            // -----------------------------------------------------------
 
+            // --- CASE 2: Customer đã có trong hệ thống ---
             Customer customer = customerRepository.findById(event.getCustomerId())
                     .orElse(null);
 
@@ -83,11 +115,16 @@ public class CustomerContractEventListener {
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[CUSTOMER-NOTIFY] Error in onContractRequestCreated: {}", ex.getMessage(), ex);
         }
     }
+
+    // ============================================================
+    // 2) Nhân viên kỹ thuật nộp biên bản khảo sát (SurveyReportSubmittedEvent)
+    // ============================================================
 
     @Transactional
     @EventListener
@@ -103,11 +140,31 @@ public class CustomerContractEventListener {
             }
             Contract contract = optContract.get();
             Customer customer = contract.getCustomer();
+
+            // --- CASE 1: Guest (contract chưa link Customer) → gửi SMS trực tiếp ---
             if (customer == null) {
-                log.warn("[CUSTOMER-NOTIFY] Contract id={} has no customer", contract.getId());
+                log.info("[CUSTOMER-NOTIFY] Survey result for Guest contract id={}", contract.getId());
+
+                String phone = contract.getContactPhone();
+                if (phone == null || phone.isBlank()) {
+                    log.warn("[CUSTOMER-NOTIFY] Guest contract id={} không có contactPhone, không gửi SMS được.", contract.getId());
+                    return;
+                }
+
+                LocalDateTime submittedAt = event.getSubmittedAt() != null ? event.getSubmittedAt() : LocalDateTime.now();
+                String dateStr = submittedAt.toLocalDate().format(DATE_FMT);
+
+                String smsContent = String.format(
+                        "Cap nuoc Phu Tho: Da hoan tat khao sat ky thuat cho yeu cau dau noi nuoc ma hop dong %s ngay %s. " +
+                                "Nhan vien se lien he de trao doi ket qua va huong dan buoc tiep theo.",
+                        event.getContractNumber(),
+                        dateStr
+                );
+                smsService.sendSms(phone, smsContent);
                 return;
             }
 
+            // --- CASE 2: Customer đã có tài khoản ---
             CustomerNotification n = new CustomerNotification();
             n.setCustomer(customer);
             n.setInvoice(null);
@@ -138,11 +195,16 @@ public class CustomerContractEventListener {
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[CUSTOMER-NOTIFY] Error in onSurveyReportSubmitted: {}", ex.getMessage(), ex);
         }
     }
+
+    // ============================================================
+    // 3) Báo cáo khảo sát được phê duyệt – hợp đồng sẵn sàng để ký
+    // ============================================================
 
     @Transactional
     @EventListener
@@ -158,11 +220,27 @@ public class CustomerContractEventListener {
             }
             Contract contract = optContract.get();
             Customer customer = contract.getCustomer();
+
+            // Guest: gửi SMS trực tiếp (nếu có SĐT), không tạo CustomerNotification
             if (customer == null) {
-                log.warn("[CUSTOMER-NOTIFY] Contract id={} has no customer", contract.getId());
+                log.info("[CUSTOMER-NOTIFY] Survey approved for Guest contract id={}", contract.getId());
+
+                String phone = contract.getContactPhone();
+                if (phone == null || phone.isBlank()) {
+                    log.warn("[CUSTOMER-NOTIFY] Guest contract id={} không có contactPhone, không gửi SMS được.", contract.getId());
+                    return;
+                }
+
+                String smsContent = String.format(
+                        "Cap nuoc Phu Tho: Ho so dau noi nuoc ma hop dong %s da duoc phe duyet va san sang ky. " +
+                                "Vui long lien he quay giao dich hoac nhan vien dich vu de duoc huong dan ky hop dong.",
+                        event.getContractNumber()
+                );
+                smsService.sendSms(phone, smsContent);
                 return;
             }
 
+            // Customer: dùng CustomerNotification
             CustomerNotification n = new CustomerNotification();
             n.setCustomer(customer);
             n.setInvoice(null);
@@ -189,11 +267,16 @@ public class CustomerContractEventListener {
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[CUSTOMER-NOTIFY] Error in onSurveyReportApproved: {}", ex.getMessage(), ex);
         }
     }
+
+    // ============================================================
+    // 4) Hoàn tất lắp đặt – hợp đồng có hiệu lực
+    // ============================================================
 
     @Transactional
     @EventListener
@@ -209,11 +292,34 @@ public class CustomerContractEventListener {
             }
             Contract contract = optContract.get();
             Customer customer = contract.getCustomer();
+
+            LocalDate effectiveDate = contract.getStartDate();
+            if (effectiveDate == null && event.getCompletedAt() != null) {
+                effectiveDate = event.getCompletedAt().toLocalDate();
+            }
+            String effectiveDateStr = effectiveDate != null ? effectiveDate.format(DATE_FMT) : "";
+
+            // Guest: gửi SMS trực tiếp
             if (customer == null) {
-                log.warn("[CUSTOMER-NOTIFY] Contract id={} has no customer", contract.getId());
+                log.info("[CUSTOMER-NOTIFY] Installation completed for Guest contract id={}", contract.getId());
+
+                String phone = contract.getContactPhone();
+                if (phone == null || phone.isBlank()) {
+                    log.warn("[CUSTOMER-NOTIFY] Guest contract id={} không có contactPhone, không gửi SMS được.", contract.getId());
+                    return;
+                }
+
+                String smsContent = String.format(
+                        "Cap nuoc Phu Tho: Yeu cau dau noi nuoc ma hop dong %s da duoc lap dat hoan tat va co hieu luc tu ngay %s. " +
+                                "Hoa don tien nuoc se duoc tinh tu ky doc nuoc ke tiep.",
+                        event.getContractNumber(),
+                        effectiveDateStr
+                );
+                smsService.sendSms(phone, smsContent);
                 return;
             }
 
+            // Customer: tạo CustomerNotification
             CustomerNotification n = new CustomerNotification();
             n.setCustomer(customer);
             n.setInvoice(null);
@@ -222,13 +328,6 @@ public class CustomerContractEventListener {
 
             n.setRelatedType(CustomerNotification.CustomerNotificationRelatedType.CONTRACT);
             n.setRelatedId(contract.getId());
-
-            LocalDate effectiveDate = contract.getStartDate();
-            if (effectiveDate == null && event.getCompletedAt() != null) {
-                effectiveDate = event.getCompletedAt().toLocalDate();
-            }
-
-            String effectiveDateStr = effectiveDate != null ? effectiveDate.format(DATE_FMT) : "";
 
             String subject = "Xác nhận hợp đồng cấp nước đã có hiệu lực";
             String body = String.format(
@@ -248,6 +347,7 @@ public class CustomerContractEventListener {
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[CUSTOMER-NOTIFY] Error in onInstallationCompleted: {}", ex.getMessage(), ex);

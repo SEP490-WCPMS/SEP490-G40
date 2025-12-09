@@ -33,7 +33,7 @@ const accountingMenuItems = [
     icon: DollarSign,
   },
   {
-    title: 'Lập Hóa đơn Chính thức',
+    title: 'Lập Hóa đơn Lắp đặt',
     url: '/accounting/contracts/eligible-installation',
     icon: ClipboardPlus,
   },

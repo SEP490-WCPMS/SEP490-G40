@@ -5,13 +5,13 @@ import com.sep490.wcpms.dto.GuestRequestResponseDTO;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.*;
-import com.sep490.wcpms.service.AdminService;
-import com.sep490.wcpms.service.SmsService; // Service gửi SMS
+import com.sep490.wcpms.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -27,6 +27,9 @@ public class AdminServiceImpl implements AdminService {
     private final AddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
     private final SmsService smsService;
+    private final CustomerNotificationRepository notificationRepository;
+    private final CustomerNotificationEmailService emailService;
+    private final CustomerNotificationSmsService customerNotificationSmsService;
 
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
@@ -69,6 +72,10 @@ public class AdminServiceImpl implements AdminService {
         // 1. Lấy hợp đồng
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hợp đồng không tồn tại"));
+
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_SURVEY_REVIEW) {
+            throw new IllegalStateException("Chỉ tạo tài khoản cho hợp đồng với trạng thái là PENDING_SURVEY_REVIEW.");
+        }
 
         if (contract.getCustomer() != null) {
             throw new IllegalArgumentException("Hợp đồng này đã có khách hàng.");
@@ -127,11 +134,46 @@ public class AdminServiceImpl implements AdminService {
         contract.setContractStatus(Contract.ContractStatus.PENDING_CUSTOMER_SIGN);
         contractRepository.save(contract);
 
-        // 7. Gửi SMS
-        String smsContent = String.format(
-                "Chao mung %s. Ho so nuoc da duoc duyet. Tai khoan: %s, Mat khau: %s. Vui long dang nhap wcpms.vn de ky hop dong.",
-                removeAccent(fullName), phone, rawPassword
+        // Chuẩn bị thông tin chung dùng cho cả email & SMS
+        String contractNumber = contract.getContractNumber() != null
+                ? contract.getContractNumber()
+                : String.valueOf(contract.getId());
+
+        CustomerNotification notification = new CustomerNotification();
+        notification.setCustomer(savedCustomer);
+        notification.setInvoice(null);
+        notification.setMessageType(CustomerNotification.CustomerNotificationMessageType.ACCOUNT_CREATED);
+        notification.setRelatedType(CustomerNotification.CustomerNotificationRelatedType.CONTRACT);
+        notification.setRelatedId(contract.getId());
+        notification.setIssuerRole(CustomerNotification.CustomerNotificationIssuerRole.SYSTEM);
+        notification.setStatus(CustomerNotification.CustomerNotificationStatus.PENDING);
+        notification.setCreatedAt(LocalDateTime.now());
+
+        String subject = "Tài khoản khách hàng cấp nước đã được tạo";
+        String body = String.format(
+                "Kính gửi %s,\n\n" +
+                        "Hệ thống cấp nước Phú Thọ đã tạo tài khoản khách hàng cho hợp đồng số %s.\n\n" +
+                        "Thông tin đăng nhập:\n" +
+                        "- Số điện thoại: %s\n" +
+                        "- Mật khẩu tạm thời: %s\n\n" +
+                        "Vui lòng đăng nhập hệ thống để đổi mật khẩu và ký hợp đồng.\n\n" +
+                        "Trân trọng.",
+                fullName, contractNumber, phone, rawPassword
         );
+
+        notification.setMessageSubject(subject);
+        notification.setMessageContent(body);
+
+        notificationRepository.save(notification);
+        emailService.sendEmail(notification);
+        customerNotificationSmsService.sendForNotification(notification);
+
+        // 8. Gửi SMS qua httpSMS
+        String smsContent = String.format(
+                "Tai khoan nuoc Phu Tho da duoc tao. SDT: %s, Mat khau: %s. Vui long dang nhap de ky hop dong.",
+                phone, rawPassword
+        );
+
         smsService.sendSms(phone, smsContent);
     }
 
