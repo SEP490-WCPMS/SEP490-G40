@@ -97,14 +97,6 @@ public class WaterPriceTypeAdminServiceImpl implements WaterPriceTypeAdminServic
         return toDto(saved);
     }
 
-    @Override
-    @Transactional
-    public void setStatus(Integer id, String status) {
-        WaterPriceType t = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("WaterPriceType not found: " + id));
-        try { t.setStatus(WaterPriceType.Status.valueOf(status)); } catch (Exception ex) { throw new IllegalArgumentException("Invalid status: " + status); }
-        repository.save(t);
-    }
-
     // Hàm helper để validate tỉ lệ
     private void validatePercentageRate(BigDecimal rate) {
         if (rate != null) {

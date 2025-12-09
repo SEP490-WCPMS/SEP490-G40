@@ -1,24 +1,24 @@
 import apiClient from './apiClient';
 
-// Admin - Water Price Types
-export const getAdminWaterPriceTypes = (includeInactive = false) => {
-    const params = {};
-    if (includeInactive) params.includeInactive = true;
-    return apiClient.get('/admin/water-price-types', { params });
+const API_URL = '/admin/water-price-types';
+
+export const getAdminWaterPriceTypes = (includeInactive = false, page = 0, size = 10) => {
+    return apiClient.get(API_URL, {
+        params: { includeInactive, page, size }
+    });
 };
 
-export const getAdminWaterPriceTypeById = (id) => apiClient.get(`/admin/water-price-types/${id}`);
+export const getAdminWaterPriceTypeById = (id) => apiClient.get(`${API_URL}/${id}`);
 
-export const createAdminWaterPriceType = (payload) => apiClient.post('/admin/water-price-types', payload);
+export const createAdminWaterPriceType = (payload) => apiClient.post(API_URL, payload);
 
-export const updateAdminWaterPriceType = (id, payload) => apiClient.put(`/admin/water-price-types/${id}`, payload);
+export const updateAdminWaterPriceType = (id, payload) => apiClient.put(`${API_URL}/${id}`, payload);
 
-export const changeAdminWaterPriceTypeStatus = (id, statusBody) => apiClient.put(`/admin/water-price-types/${id}/status`, statusBody);
+// --- ĐÃ XÓA hàm changeStatus ---
 
 export default {
     getAdminWaterPriceTypes,
     getAdminWaterPriceTypeById,
     createAdminWaterPriceType,
     updateAdminWaterPriceType,
-    changeAdminWaterPriceTypeStatus,
 };
