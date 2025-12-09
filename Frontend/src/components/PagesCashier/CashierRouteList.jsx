@@ -112,7 +112,7 @@ function CashierRouteList() {
             })
             .catch(err => {
                 console.error("Lỗi fetch:", err);
-                toast.error("Không thể tải danh sách hợp đồng.");
+                //toast.error("Không thể tải danh sách hợp đồng.");
             })
             .finally(() => setLoading(false));
     };
