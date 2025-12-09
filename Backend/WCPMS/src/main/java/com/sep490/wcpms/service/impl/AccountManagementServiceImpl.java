@@ -12,6 +12,10 @@ import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.RoleRepository;
 import com.sep490.wcpms.service.AccountManagementService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,19 +35,29 @@ public class AccountManagementServiceImpl implements AccountManagementService {
     @Override
     public List<RoleDTO> getAssignableRoles() {
         // Lọc bỏ CUSTOMER và GUEST
-        List<Role.RoleName> excludedRoles = Arrays.asList(Role.RoleName.CUSTOMER, Role.RoleName.GUEST);
+        List<Role.RoleName> excludedRoles = Arrays.asList(Role.RoleName.CUSTOMER, Role.RoleName.GUEST, Role.RoleName.ADMIN);
         return roleRepository.findByRoleNameNotIn(excludedRoles).stream()
                 .map(RoleDTO::new)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<StaffAccountResponseDTO> getAllStaffAccounts() {
-        // Lọc bỏ CUSTOMER và GUEST
-        List<Role.RoleName> excludedRoles = Arrays.asList(Role.RoleName.CUSTOMER, Role.RoleName.GUEST);
-        return accountRepository.findByRole_RoleNameNotIn(excludedRoles).stream()
-                .map(StaffAccountResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<StaffAccountResponseDTO> getAllStaffAccounts(int page, int size, Account.Department department) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+        List<Role.RoleName> excludedRoles = Arrays.asList(
+                Role.RoleName.CUSTOMER, Role.RoleName.GUEST, Role.RoleName.ADMIN
+        );
+
+        Page<Account> pageResult;
+
+        if (department != null) {
+            pageResult = accountRepository.findStaffAccountsByDepartment(department, excludedRoles, pageable);
+        } else {
+            pageResult = accountRepository.findStaffAccounts(excludedRoles, pageable);
+        }
+
+        return pageResult.map(StaffAccountResponseDTO::new);
     }
 
     @Override
