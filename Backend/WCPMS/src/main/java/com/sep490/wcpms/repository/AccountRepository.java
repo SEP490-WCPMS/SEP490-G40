@@ -201,4 +201,22 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
             "ORDER BY COUNT(c) ASC, a.fullName ASC")
     List<AccountDTO> findTechnicalStaffWithWorkload();
 
+  /**
+   * Tìm Service Staff đang có ít yêu cầu hủy/chuyển hợp đồng (PENDING) nhất.
+   * Dùng cho bảng annul_transfer_contract_requests.
+   */
+  @Query(value = """
+        SELECT a.* 
+        FROM accounts a
+        LEFT JOIN annul_transfer_contract_requests atr
+               ON atr.service_staff_id = a.id
+              AND atr.approval_status = 'PENDING'   -- chỉ đếm yêu cầu chưa xử lý
+        WHERE a.role_id = :roleId
+          AND a.status = 1                         -- chỉ lấy account đang ACTIVE
+        GROUP BY a.id
+        ORDER BY COUNT(atr.id) ASC, a.id ASC
+        LIMIT 1
+        """, nativeQuery = true)
+  Optional<Account> findServiceStaffWithLeastAnnulTransferWorkload(@Param("roleId") int roleId);
+
 }
