@@ -21,46 +21,11 @@ const mainMenuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Tạo hợp đồng',
-    url: '/service/contract-create',
-    icon: FilePlus
-  },
-  {
-    title: 'Đơn từ khách hàng',
-    url: '/service/requests',
+    title: 'Quản lý Hợp đồng',
+    url: '/service/contracts',
     icon: FileText,
   },
-  {
-    title: 'Hợp đồng khảo sát',
-    url: '/service/survey-reviews',
-    icon: Eye,
-  },
-  {
-    title: 'Hợp đồng đã duyệt',
-    url: '/service/approved-contracts',
-    icon: CheckCircle,
-  },
-  {
-    title: 'Hợp đồng đã ký',
-    url: '/service/signed-contracts',
-    icon: FileCheckIcon,
-  },
-  {
-    title: 'Hợp đồng đang hoạt động',
-    url: '/service/active-contracts',
-    icon: Zap,
-  },
-  {
-    title: 'Yêu cầu chuyển nhượng',
-    url: '/service/contract-transfers',
-    icon: Shuffle,
-  },
-  {
-    title: 'Yêu cầu hủy hợp đồng',
-    url: '/service/contract-annuls',
-    icon: Trash2,
-  },
-  // --- THÊM MENU MỚI ---
+    // --- THÊM MENU MỚI ---
   {
     title: 'Yêu Cầu Hỗ Trợ', // (Ticket Hỏng/Kiểm định 5 năm)
     url: '/service/support-tickets',

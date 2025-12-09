@@ -204,12 +204,19 @@ function SurveyForm() {
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Khách hàng</span>
                         <span className="font-medium text-gray-900">{contractDetails.customerName || 'N/A'}</span>
                     </div>
+                    {/* SĐT Liên Hệ - THÊM MỚI Ở ĐÂY */}
+                    <div className="p-2 bg-gray-50 rounded border border-gray-100">
+                        <span className="block text-xs text-gray-500 uppercase font-semibold">SĐT Liên Hệ</span>
+                        <span className="font-medium text-blue-600 font-mono">
+                            {contractDetails.customerPhone || 'Chưa cập nhật'}
+                        </span>
+                    </div>
                     <div className="p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Ngày yêu cầu</span>
                         <span className="font-medium text-gray-900">{contractDetails.applicationDate ? moment(contractDetails.applicationDate).format('DD/MM/YYYY') : 'N/A'}</span>
                     </div>
 
-                    <div className="md:col-span-2 p-2 bg-gray-50 rounded border border-gray-100">
+                    <div className="p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Địa chỉ lắp đặt</span>
                         <span className="font-medium text-gray-900">{contractDetails.customerAddress || 'N/A'}</span>
                     </div>

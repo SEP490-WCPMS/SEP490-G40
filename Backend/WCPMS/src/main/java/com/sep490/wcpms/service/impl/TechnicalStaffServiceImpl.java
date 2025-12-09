@@ -449,8 +449,24 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
             throw new IllegalArgumentException("Chỉ số cuối của đồng hồ cũ không thể nhỏ hơn chỉ số đọc trước đó.");
         }
         finalReading.setConsumption(dto.getOldMeterFinalReading().subtract(previousReading));
-        finalReading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED); //  Đã xác nhận
+        finalReading.setReadingStatus(MeterReading.ReadingStatus.COMPLETED); //  Đã xác nhận
         finalReading.setNotes("Chốt sổ do thay thế đồng hồ. Lý do: " + dto.getReplacementReason());
+        // ====================================================================
+        // === [SỬA] DÙNG HÀM CHUYÊN BIỆT CHO BILLING TASK ===
+        // ====================================================================
+        try {
+            // Gọi hàm repository bạn đã có sẵn
+            // (Không cần truyền Role ID vì query native đã filter theo department 'ACCOUNTING')
+            Account assignedAccountant = accountRepository.findLeastBusyAccountingStaffForWaterBillingTask()
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên kế toán nào khả dụng!"));
+
+            // Gán vào bản ghi đọc số
+            finalReading.setAccountingStaff(assignedAccountant);
+
+        } catch (Exception e) {
+            System.err.println("WARNING: Lỗi phân công kế toán: " + e.getMessage());
+        }
+        // ====================================================================
         meterReadingRepository.save(finalReading);
 
         // 5. Lấy Đồng hồ MỚI

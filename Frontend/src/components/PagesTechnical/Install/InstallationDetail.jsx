@@ -222,6 +222,14 @@ function InstallationDetail() {
                         <span className="font-medium text-gray-900">{contract.contractNumber}</span>
                     </div>
 
+                    {/* SĐT Liên Hệ - THÊM MỚI Ở ĐÂY */}
+                    <div className="p-2 bg-gray-50 rounded border border-gray-100">
+                        <span className="block text-xs text-gray-500 uppercase font-semibold">SĐT Liên Hệ</span>
+                        <span className="font-medium text-blue-600 font-mono">
+                            {contract.customerPhone || 'Chưa cập nhật'}
+                        </span>
+                    </div>
+
                     <div className="p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Trạng thái</span>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${contract.contractStatus === 'SIGNED' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
@@ -240,7 +248,7 @@ function InstallationDetail() {
                         <span className="font-medium text-gray-900">{contract.applicationDate}</span>
                     </div>
 
-                    <div className="md:col-span-2 p-2 bg-gray-50 rounded border border-gray-100">
+                    <div className="p-2 bg-gray-50 rounded border border-gray-100">
                         <span className="block text-xs text-gray-500 uppercase font-semibold">Địa chỉ lắp đặt</span>
                         <span className="font-medium text-gray-900">{contract.customerAddress}</span>
                     </div>

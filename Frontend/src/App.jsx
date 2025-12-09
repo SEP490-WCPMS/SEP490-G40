@@ -30,6 +30,7 @@ import ActiveContractsPage from './components/PagesService/ActiveContracts/Activ
 import ContractTransferList from './components/PagesService/AnnulTransfer/ContractTransferList';
 import ContractAnnulList from './components/PagesService/AnnulTransfer/ContractAnnulList';
 import ContractCreatePage from './components/PagesService/ContractCreation/ContractCreatePage';
+import ServiceContractsManager from './components/PagesService/ServiceContractsManager';
 import ContractRequestForm from "./components/Customer/ContractRequestForm";
 import ContractRequestStatusList from "./components/Customer/ContractRequestStatusList";
 import ContractList from './components/Customer/ContractList';
@@ -198,15 +199,17 @@ function App() {
         <Route element={<PrivateRoute allowedRoles={['SERVICE_STAFF']} />}>
           <Route path="/service" element={<LayoutService />}>
             <Route index element={<ServiceDashboardPage />} />
-            <Route path="requests" element={<ContractRequestsPage />} />
+            <Route path="contracts" element={<ServiceContractsManager />} />
             <Route path="contract-create" element={<ContractCreatePage />} />
-            <Route path="survey-reviews" element={<SurveyReviewPage />} />
-            <Route path="approved-contracts" element={<ApprovedContractsPage />} />
-            <Route path="signed-contracts" element={<SignedContractsPage />} />
-            <Route path="active-contracts" element={<ActiveContractsPage />} />
-            {/* Quản lý yêu cầu chuyển nhượng/hủy hợp đồng */}
-            <Route path="contract-transfers" element={<ContractTransferList />} />
-            <Route path="contract-annuls" element={<ContractAnnulList />} />
+            {/* Legacy routes kept for backward navigation: render manager with tab */}
+            <Route path="survey-reviews" element={<ServiceContractsManager initialTab="survey" />} />
+            <Route path="approved-contracts" element={<ServiceContractsManager initialTab="approved" />} />
+            <Route path="signed-contracts" element={<ServiceContractsManager initialTab="signed" />} />
+            <Route path="active-contracts" element={<ServiceContractsManager initialTab="active" />} />
+            {/* Quản lý yêu cầu chuyển nhượng/hủy hợp đồng (legacy paths) */}
+            <Route path="contract-transfers" element={<ServiceContractsManager initialTab="transfers" />} />
+            <Route path="contract-annuls" element={<ServiceContractsManager initialTab="annuls" />} />
+            <Route path="requests" element={<ServiceContractsManager initialTab="requests" />} />
             <Route path="support-tickets" element={<SupportTicketList />} />
             <Route path="create-ticket" element={<ServiceCreateTicketForm />} />
           </Route>
