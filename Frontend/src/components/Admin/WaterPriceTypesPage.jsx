@@ -3,14 +3,13 @@ import {
     getAdminWaterPriceTypes,
     createAdminWaterPriceType,
     updateAdminWaterPriceType,
-    changeAdminWaterPriceTypeStatus,
-} from '../Services/apiAdminWaterPriceTypes'; // Kiểm tra lại đường dẫn này
-import { Input } from '../ui/input';   // Kiểm tra lại đường dẫn này (../ hay ../../)
-import { Button } from '../ui/button'; // Kiểm tra lại đường dẫn này
+} from '../Services/apiAdminWaterPriceTypes';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
 import './WaterPriceTypesPage.css';
-import { AlertCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, X, Edit } from 'lucide-react';
 
-// --- 1. COMPONENT MODAL XÁC NHẬN ---
+// --- MODAL XÁC NHẬN ---
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
     return (
@@ -36,37 +35,37 @@ export default function WaterPriceTypesPage() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [includeInactive, setIncludeInactive] = useState(false);
 
-    // --- 2. STATE PHÂN TRANG ---
+    // Bỏ includeInactive vì không còn chức năng xóa/ẩn
+    const includeInactive = false;
+
+    // --- PHÂN TRANG ---
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const pageSize = 10;
 
-    // --- 3. STATE MODAL ---
+    // --- MODAL ---
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', item: null, message: '' });
 
     const [form, setForm] = useState(emptyForm);
     const [editingId, setEditingId] = useState(null);
 
-    // --- 4. HÀM FETCH DỮ LIỆU AN TOÀN ---
+    // --- FETCH LIST ---
     const fetchList = async () => {
         setLoading(true);
         setError(null);
         try {
-            // Gọi API có phân trang
             const resp = await getAdminWaterPriceTypes(includeInactive, currentPage, pageSize);
             const data = resp.data || resp;
 
-            // Kiểm tra dữ liệu trả về để tránh lỗi "map is not a function"
             if (data && Array.isArray(data.content)) {
-                setItems(data.content);       // Nếu là Page object
+                setItems(data.content);
                 setTotalPages(data.totalPages);
             } else if (Array.isArray(data)) {
-                setItems(data);               // Nếu là List thường
+                setItems(data);
                 setTotalPages(0);
             } else {
-                setItems([]);                 // Fallback
+                setItems([]);
             }
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Lỗi tải danh sách');
@@ -79,14 +78,13 @@ export default function WaterPriceTypesPage() {
     useEffect(() => {
         fetchList();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [includeInactive, currentPage]);
+    }, [currentPage]);
 
     const handleChange = (e) => setForm(s => ({ ...s, [e.target.id]: e.target.value }));
 
-    // --- 5. TÁCH LOGIC LƯU (ĐỂ GỌI TRONG MODAL) ---
+    // --- LƯU (CREATE/UPDATE) ---
     const performSave = async () => {
         setLoading(true);
-        // Đóng modal
         setConfirmModal({ isOpen: false, type: '', item: null, message: '' });
 
         try {
@@ -99,14 +97,13 @@ export default function WaterPriceTypesPage() {
             await fetchList();
             alert(editingId ? "Cập nhật thành công!" : "Thêm mới thành công!");
         } catch (err) {
-            // Hiển thị lỗi chi tiết từ Backend (ví dụ: Trùng tên, sai tỉ lệ)
             setError(err.response?.data?.message || err.message || 'Lỗi lưu');
         } finally {
             setLoading(false);
         }
     };
 
-    // --- 6. XỬ LÝ SUBMIT (MỞ MODAL NẾU EDIT) ---
+    // --- SUBMIT ---
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (editingId) {
@@ -117,42 +114,15 @@ export default function WaterPriceTypesPage() {
                 message: `Bạn có chắc muốn lưu thay đổi cho loại giá "${form.typeName}" không?`
             });
         } else {
-            await performSave(); // Tạo mới thì lưu luôn
+            await performSave();
         }
     };
 
-    // --- 7. XỬ LÝ HÀNH ĐỘNG XÁC NHẬN ---
     const handleConfirmAction = async () => {
-        const { type, item } = confirmModal;
-
+        const { type } = confirmModal;
         if (type === 'UPDATE') {
             await performSave();
-            return;
         }
-
-        if (!item) return;
-
-        setLoading(true);
-        setConfirmModal({ isOpen: false, type: '', item: null, message: '' });
-        try {
-            const target = item.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE';
-            await changeAdminWaterPriceTypeStatus(item.id, { status: target });
-            await fetchList();
-        } catch (err) {
-            setError(err.message || 'Lỗi thay đổi trạng thái');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const requestToggleStatus = (it) => {
-        const action = it.status === 'INACTIVE' ? 'Kích hoạt' : 'Vô hiệu hóa';
-        setConfirmModal({
-            isOpen: true,
-            type: 'STATUS',
-            item: it,
-            message: `Bạn có chắc muốn ${action} loại giá "${it.typeName}" không?`
-        });
     };
 
     const handleEdit = (it) => {
@@ -165,6 +135,12 @@ export default function WaterPriceTypesPage() {
             percentageRate: it.percentageRate || ''
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setForm(emptyForm);
+        setError(null);
     };
 
     return (
@@ -201,7 +177,7 @@ export default function WaterPriceTypesPage() {
 
                     <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                         <Button type="submit" style={{ backgroundColor: '#0A77E2', color: 'white' }}>{editingId ? 'Lưu thay đổi' : 'Thêm'}</Button>
-                        {editingId && <Button variant="outline" onClick={() => { setEditingId(null); setForm(emptyForm); setError(null); }}>Hủy</Button>}
+                        {editingId && <Button variant="outline" onClick={handleCancelEdit}>Hủy</Button>}
                     </div>
                 </form>
             </div>
@@ -210,9 +186,6 @@ export default function WaterPriceTypesPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
                     <h2>Danh sách Loại Giá</h2>
                     <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.9rem', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={includeInactive} onChange={e => { setIncludeInactive(e.target.checked); setCurrentPage(0); }} /> Hiện INACTIVE
-                        </label>
                         <Button variant="ghost" onClick={() => fetchList()}>Tải lại</Button>
                     </div>
                 </div>
@@ -237,19 +210,19 @@ export default function WaterPriceTypesPage() {
                                     <tr><td colSpan="6" style={{ textAlign: 'center', padding: 20 }}>Không có dữ liệu</td></tr>
                                 )}
                                 {Array.isArray(items) && items.map(it => (
-                                    <tr key={it.id} style={it.status === 'INACTIVE' ? { opacity: 0.6, backgroundColor: '#fdf2f2' } : {}}>
+                                    <tr key={it.id}>
                                         <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.id}</td>
                                         <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.typeName}</td>
                                         <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.typeCode}</td>
                                         <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.percentageRate}%</td>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.status}</td>
                                         <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>
-                                            <Button size="sm" variant="outline" onClick={() => handleEdit(it)}>Sửa</Button>
-                                            <Button size="sm"
-                                                style={{ marginLeft: 8, backgroundColor: it.status === 'INACTIVE' ? '#e2e8f0' : '#fee2e2', color: it.status === 'INACTIVE' ? '#333' : '#dc2626', border: 'none' }}
-                                                onClick={() => requestToggleStatus(it)}
-                                            >
-                                                {it.status === 'INACTIVE' ? 'Kích hoạt' : 'Vô hiệu hóa'}
+                                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: '#dcfce7', color: '#166534' }}>
+                                                {it.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>
+                                            <Button size="sm" variant="outline" onClick={() => handleEdit(it)} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                                <Edit size={14} /> Sửa
                                             </Button>
                                         </td>
                                     </tr>
@@ -257,7 +230,6 @@ export default function WaterPriceTypesPage() {
                             </tbody>
                         </table>
 
-                        {/* --- 8. THANH PHÂN TRANG --- */}
                         <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 20, padding: 10 }}>
                             <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}>
                                 <ChevronLeft size={16} /> Trước

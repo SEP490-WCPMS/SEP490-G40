@@ -375,7 +375,29 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         // 5. Trả về DTO
         MeterInfoDTO dto = new MeterInfoDTO();
         dto.setCustomerName(customer.getCustomerName());
-        dto.setCustomerAddress(customer.getAddress());
+        // --- SỬA LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY ---
+        String displayAddress = customer.getAddress(); // Mặc định: Địa chỉ KH
+
+        // Ưu tiên 1: Lấy từ Hợp đồng Dịch vụ (Bảng 9) -> Bảng Address
+        if (serviceContract.getAddress() != null) {
+            if (serviceContract.getAddress().getAddress() != null) {
+                displayAddress = serviceContract.getAddress().getAddress();
+            } else {
+                // Tự ghép chuỗi nếu cần
+                displayAddress = serviceContract.getAddress().getStreet();
+            }
+        }
+        // Ưu tiên 2: Lấy từ Hợp đồng Lắp đặt (Bảng 8) -> Bảng Address (Dự phòng)
+        else if (serviceContract.getSourceContract() != null && serviceContract.getSourceContract().getAddress() != null) {
+            if (serviceContract.getSourceContract().getAddress().getAddress() != null) {
+                displayAddress = serviceContract.getSourceContract().getAddress().getAddress();
+            } else {
+                displayAddress = serviceContract.getSourceContract().getAddress().getStreet();
+            }
+        }
+
+        dto.setCustomerAddress(displayAddress);
+        // ------------------------------------
         dto.setContractNumber(serviceContract.getContractNumber()); // Số HĐ Dịch vụ
         dto.setMeterInstallationId(oldInstallation.getId()); // ID Lắp đặt CŨ
         dto.setLastReading(lastReading); // Chỉ số CŨ

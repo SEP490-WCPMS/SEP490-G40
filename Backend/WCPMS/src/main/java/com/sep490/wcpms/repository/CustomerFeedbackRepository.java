@@ -150,6 +150,7 @@ public interface CustomerFeedbackRepository extends JpaRepository<CustomerFeedba
             "AND (:keyword IS NULL OR :keyword = '' OR " +
             "     LOWER(t.feedbackNumber) LIKE %:keyword% OR " +
             "     LOWER(t.description) LIKE %:keyword% OR " +
+            "     LOWER(t.customer.account.phone) LIKE %:keyword% OR " +
             "     LOWER(t.customer.customerName) LIKE %:keyword%)")
     Page<CustomerFeedback> findAssignedTickets(
             @Param("staffId") Integer staffId,

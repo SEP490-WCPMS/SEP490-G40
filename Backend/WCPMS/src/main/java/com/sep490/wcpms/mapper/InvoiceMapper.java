@@ -43,8 +43,34 @@ public class InvoiceMapper {
         if (customer != null) {
             dto.setCustomerId(customer.getId());
             dto.setCustomerName(customer.getCustomerName());
-            dto.setCustomerAddress(customer.getAddress());
             dto.setCustomerCode(entity.getCustomer().getCustomerCode());
+            // --- SỬA TẠI ĐÂY: LOGIC ƯU TIÊN ĐỊA CHỈ HỢP ĐỒNG ---
+            String displayAddress = customer.getAddress(); // Mặc định: Lấy địa chỉ chung của KH
+
+            // Kiểm tra nếu Hợp đồng có gắn Địa chỉ lắp đặt riêng (Bảng Address)
+            if (entity.getContract() != null && entity.getContract().getAddress() != null) {
+                com.sep490.wcpms.entity.Address installAddr = entity.getContract().getAddress();
+
+                // Nếu có chuỗi địa chỉ đầy đủ
+                if (installAddr.getAddress() != null && !installAddr.getAddress().isEmpty()) {
+                    displayAddress = installAddr.getAddress();
+                }
+                // Nếu không, tự ghép từ Tên đường + Phường/Xã
+                else {
+                    String street = installAddr.getStreet() != null ? installAddr.getStreet() : "";
+                    String ward = (installAddr.getWard() != null) ? installAddr.getWard().getWardName() : "";
+                    String district = (installAddr.getWard() != null) ? installAddr.getWard().getDistrict() : "";
+
+                    // Ghép chuỗi (ví dụ: "Số 10, Tân Dân, Việt Trì")
+                    displayAddress = street;
+                    if (!ward.isEmpty()) displayAddress += ", " + ward;
+                    if (!district.isEmpty()) displayAddress += ", " + district;
+                }
+            }
+
+            // Gán địa chỉ cuối cùng vào DTO
+            dto.setCustomerAddress(displayAddress);
+            // ----------------------------------------------------
             // --- THÊM LOGIC LẤY SĐT/EMAIL ---
             // (Giả định Customer entity đã liên kết với Account)
             if (customer.getAccount() != null) {

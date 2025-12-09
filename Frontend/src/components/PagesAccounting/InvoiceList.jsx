@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getInvoices, cancelInvoice } from '../Services/apiAccountingStaff';
-// Thêm icon Search
 import { RefreshCw, Filter, XCircle, CheckCircle, Eye, AlertCircle, Search } from 'lucide-react';
 import moment from 'moment';
 import Pagination from '../common/Pagination';
@@ -9,37 +8,57 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmModal from '../common/ConfirmModal';
 
+// 1. Định nghĩa Key lưu trữ
+const STORAGE_KEY = 'ACCOUNTING_INVOICE_LIST_STATE';
+
 function InvoiceList() {
-    const [invoices, setInvoices] = useState([]);
-    const [loading, setLoading] = useState(true);
-    
-    // State Lọc & Tìm kiếm
-    const [statusFilter, setStatusFilter] = useState('ALL'); 
-    const [searchTerm, setSearchTerm] = useState(''); // <--- MỚI
-
-    const [pagination, setPagination] = useState({ 
-        page: 0, 
-        size: 10, 
-        totalElements: 0 
-    });
-
-    const [processingId, setProcessingId] = useState(null); 
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [invoiceToCancel, setInvoiceToCancel] = useState(null); 
-
     const navigate = useNavigate();
 
-    // --- FETCH DATA ---
-    // Nhận thêm tham số keyword
-    const fetchData = (page = 0, size = 10, status = statusFilter, keyword = searchTerm) => {
+    // 2. KHỞI TẠO STATE TỪ SESSION STORAGE
+    const [searchTerm, setSearchTerm] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).keyword : '';
+    });
+
+    const [statusFilter, setStatusFilter] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).status : 'ALL';
+    });
+
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 10, totalElements: 0 };
+    });
+
+    const [invoices, setInvoices] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Modal states
+    const [processingId, setProcessingId] = useState(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [invoiceToCancel, setInvoiceToCancel] = useState(null);
+
+    // 3. LƯU STATE VÀO SESSION STORAGE KHI CÓ THAY ĐỔI
+    useEffect(() => {
+        const stateToSave = {
+            keyword: searchTerm,
+            status: statusFilter,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [searchTerm, statusFilter, pagination.page]);
+
+    // 4. Hàm Fetch Data (Nhận tham số trực tiếp)
+    const fetchData = (currPage, currSize, currStatus, currKeyword) => {
         setLoading(true);
-        
-        getInvoices({ 
-            page, 
-            size, 
-            status, 
+
+        getInvoices({
+            page: currPage,
+            size: currSize,
+            status: currStatus,
             sort: 'invoiceDate,desc',
-            keyword: keyword || null // <--- MỚI
+            keyword: currKeyword || null
         })
             .then(response => {
                 const data = response.data;
@@ -54,18 +73,19 @@ function InvoiceList() {
                     pageSizeRaw = data.length > 0 ? data.length : 10;
                 } else if (data && data.content) {
                     loadedData = data.content;
-                    const pageInfo = data.page || data; 
+                    const pageInfo = data.page || data;
                     totalItems = pageInfo.totalElements || 0;
                     pageNum = pageInfo.number || 0;
                     pageSizeRaw = pageInfo.size || 10;
                 }
 
                 setInvoices(loadedData || []);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: pageNum,
                     size: pageSizeRaw,
                     totalElements: totalItems,
-                });
+                }));
             })
             .catch(err => {
                 console.error(err);
@@ -74,37 +94,52 @@ function InvoiceList() {
             .finally(() => setLoading(false));
     };
 
-    // Effect: Khi đổi filter status -> Reset về trang 0
+    // 5. EFFECT CHÍNH: Gọi API khi Page hoặc Status thay đổi
     useEffect(() => {
-        fetchData(0, pagination.size, statusFilter, searchTerm);
-    }, [statusFilter]); 
+        fetchData(pagination.page, pagination.size, statusFilter, searchTerm);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page, statusFilter]);
 
-    // --- HANDLERS MỚI CHO TÌM KIẾM ---
+    // --- HANDLERS ---
+
     const handleSearch = () => {
+        // Reset về trang 0 khi tìm kiếm
+        setPagination(prev => ({ ...prev, page: 0 }));
         fetchData(0, pagination.size, statusFilter, searchTerm);
     };
 
     const handleSearchInputChange = (e) => {
-        setSearchTerm(e.target.value);
-        if (e.target.value === '') {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value === '') {
+            setPagination(prev => ({ ...prev, page: 0 }));
             fetchData(0, pagination.size, statusFilter, '');
         }
     };
-    // ----------------------------------
+
+    // Xử lý đổi bộ lọc
+    const handleFilterChange = (e) => {
+        const newStatus = e.target.value;
+        setStatusFilter(newStatus);
+        // Khi người dùng chủ động chọn filter, reset về trang 0
+        setPagination(prev => ({ ...prev, page: 0 }));
+    };
 
     const handlePageChange = (newPage) => {
-        fetchData(newPage, pagination.size, statusFilter, searchTerm);
+        setPagination(prev => ({ ...prev, page: newPage }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleRefresh = () => {
-        setSearchTerm(''); // Reset ô tìm kiếm
-        setStatusFilter('ALL'); // Reset filter
+        sessionStorage.removeItem(STORAGE_KEY);
+        setSearchTerm('');
+        setStatusFilter('ALL');
+        setPagination(prev => ({ ...prev, page: 0 }));
         fetchData(0, pagination.size, 'ALL', '');
         toast.info("Đã làm mới dữ liệu.", { autoClose: 1000, hideProgressBar: true });
     };
 
-    // ... (Giữ nguyên các hàm xử lý Hủy hóa đơn & Helper status) ...
+    // ... (Giữ nguyên logic Hủy hóa đơn & Helper UI) ...
     const handlePreCancel = (invoiceId) => {
         setInvoiceToCancel(invoiceId);
         setShowConfirmModal(true);
@@ -118,7 +153,8 @@ function InvoiceList() {
         cancelInvoice(invoiceToCancel)
             .then(response => {
                 toast.success(`Hủy Hóa đơn ${response.data.invoiceNumber} thành công!`);
-                handleRefresh();
+                // Reload lại dữ liệu hiện tại
+                fetchData(pagination.page, pagination.size, statusFilter, searchTerm);
             })
             .catch(err => toast.error("Hủy hóa đơn thất bại."))
             .finally(() => {
@@ -169,7 +205,7 @@ function InvoiceList() {
 
             {/* --- THANH CÔNG CỤ (SEARCH & FILTER) --- */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                
+
                 {/* Search Box */}
                 <div className="relative w-full md:w-1/2">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -183,7 +219,7 @@ function InvoiceList() {
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
-                     <button 
+                    <button
                         onClick={handleSearch}
                         className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
                     >
@@ -212,9 +248,9 @@ function InvoiceList() {
 
             {/* Bảng Dữ liệu */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
-                 <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     {loading && invoices.length === 0 && (
-                         <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
+                        <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
                     )}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -231,8 +267,8 @@ function InvoiceList() {
                             {!loading && invoices.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
-                                        {searchTerm 
-                                            ? 'Không tìm thấy hóa đơn nào phù hợp với từ khóa.' 
+                                        {searchTerm
+                                            ? 'Không tìm thấy hóa đơn nào phù hợp với từ khóa.'
                                             : 'Không có hóa đơn nào.'}
                                     </td>
                                 </tr>
@@ -290,20 +326,20 @@ function InvoiceList() {
                             )}
                         </tbody>
                     </table>
-                 </div>
+                </div>
 
-                 {!loading && invoices.length > 0 && (
-                    <Pagination 
+                {!loading && invoices.length > 0 && (
+                    <Pagination
                         currentPage={pagination.page}
                         totalElements={pagination.totalElements}
                         pageSize={pagination.size}
                         onPageChange={handlePageChange}
                     />
-                 )}
+                )}
             </div>
 
             {/* Modal Xác nhận */}
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmCancel}

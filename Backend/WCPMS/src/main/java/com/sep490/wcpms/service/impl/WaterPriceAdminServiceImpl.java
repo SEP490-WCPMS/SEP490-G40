@@ -101,14 +101,6 @@ public class WaterPriceAdminServiceImpl implements WaterPriceAdminService {
         return toDto(priceRepository.save(p));
     }
 
-    @Override
-    @Transactional
-    public WaterPriceAdminResponseDTO setStatus(Integer id, String status) {
-        WaterPrice p = priceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("WaterPrice not found: " + id));
-        try { p.setStatus(WaterPrice.Status.valueOf(status)); } catch (Exception ex) { throw new IllegalArgumentException("Invalid status: " + status); }
-        return toDto(priceRepository.save(p));
-    }
-
     private void validatePriceData(BigDecimal unitPrice, BigDecimal envFee, BigDecimal vatRate) {
         validatePositiveInteger(unitPrice, "Đơn giá");
         if (envFee != null) validatePositiveInteger(envFee, "Phí môi trường");

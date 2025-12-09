@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../../Services/apiClient'; 
-// Thêm icon Search
+import apiClient from '../../Services/apiClient';
 import { RefreshCw, UserCheck, MessageSquare, Filter, Search } from 'lucide-react';
 import AssignTicketModal from './AssignTicketModal';
 import ReplyTicketModal from './ReplyTicketModal';
@@ -10,96 +9,123 @@ import Pagination from '../../common/Pagination';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-function SupportTicketList() {
-    const [tickets, setTickets] = useState([]);
-    const [loading, setLoading] = useState(true);
-    
-    // 1. Thêm State Search
-    const [searchTerm, setSearchTerm] = useState('');
+// 1. Định nghĩa Key lưu trữ (Khác với trang Customer để tránh xung đột)
+const STORAGE_KEY = 'STAFF_TICKET_LIST_STATE';
 
-    const [pagination, setPagination] = useState({
-        page: 0,
-        size: 10,
-        totalElements: 0,
+function SupportTicketList() {
+    // 2. KHỞI TẠO STATE TỪ SESSION STORAGE
+    const [searchTerm, setSearchTerm] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).keyword : '';
     });
 
-    const [typeFilter, setTypeFilter] = useState('ALL');
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 10, totalElements: 0 };
+    });
+
+    const [typeFilter, setTypeFilter] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).type : 'ALL';
+    });
+
+    const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
 
-    // --- FETCH DATA ---
-    const fetchData = (params = {}) => {
-        setLoading(true);
-        
-        const currentPage = params.page !== undefined ? params.page : pagination.page;
-        const currentSize = params.size || pagination.size;
-        // 2. Lấy keyword
-        const currentKeyword = params.keyword !== undefined ? params.keyword : searchTerm;
+    // 3. LƯU STATE VÀO SESSION STORAGE
+    useEffect(() => {
+        const stateToSave = {
+            keyword: searchTerm,
+            type: typeFilter,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [searchTerm, typeFilter, pagination.page]);
 
+    // --- FETCH DATA ---
+    const fetchData = (currPage, currType, currKeyword) => {
+        setLoading(true);
+
+        // Xử lý tham số filter
         let paramType = null;
-        if (typeFilter !== 'ALL') {
-            paramType = [typeFilter]; 
+        if (currType !== 'ALL') {
+            paramType = [currType];
         }
 
-        apiClient.get('/service/contracts/support-tickets', { 
+        apiClient.get('/service/contracts/support-tickets', {
             params: {
-                page: currentPage,
-                size: currentSize,
+                page: currPage,
+                size: pagination.size,
                 sort: 'submittedDate,desc',
                 type: paramType,
-                keyword: currentKeyword || null // 3. Gửi keyword lên server
+                keyword: currKeyword || null
             },
-            paramsSerializer: { indexes: null } 
+            paramsSerializer: { indexes: null }
         })
             .then(response => {
                 const data = response.data;
                 const pageInfo = data.page || data || {};
 
                 setTickets(data?.content || []);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: pageInfo.number || 0,
                     size: pageInfo.size || 10,
                     totalElements: pageInfo.totalElements || 0,
-                });
+                }));
             })
             .catch(err => {
-                 console.error("Lỗi tải ticket:", err);
-                 toast.error("Không thể tải danh sách yêu cầu.");
-                 setTickets([]);
+                console.error("Lỗi tải ticket:", err);
+                toast.error("Không thể tải danh sách yêu cầu.");
+                setTickets([]);
             })
             .finally(() => {
                 setLoading(false);
             });
     };
 
+    // 4. EFFECT CHÍNH: Gọi API khi Page hoặc Type thay đổi
     useEffect(() => {
-        fetchData({ page: 0 });
-    }, [typeFilter]); 
+        fetchData(pagination.page, typeFilter, searchTerm);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagination.page, typeFilter]);
 
-    // 4. Xử lý Search
+    // Xử lý Search
     const handleSearch = () => {
-        fetchData({ page: 0, keyword: searchTerm });
+        // Reset về trang 0 khi tìm kiếm mới
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, typeFilter, searchTerm);
     };
 
     const handleSearchInputChange = (e) => {
-        const value = e.target.value;
-        setSearchTerm(value);
-        if (value === '') {
-            fetchData({ page: 0, keyword: '' });
-        }
+        setSearchTerm(e.target.value);
     };
 
+    // Xử lý đổi trang
     const handlePageChange = (newPage) => {
-        fetchData({ page: newPage });
+        setPagination(prev => ({ ...prev, page: newPage }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // 5. Xử lý đổi Filter (Tách riêng để reset page về 0)
+    const handleTypeChange = (e) => {
+        const newType = e.target.value;
+        setTypeFilter(newType);
+        setPagination(prev => ({ ...prev, page: 0 }));
+    };
+
+    // Xử lý Refresh (Xóa storage)
     const handleRefresh = () => {
+        sessionStorage.removeItem(STORAGE_KEY);
         setSearchTerm('');
         setTypeFilter('ALL');
-        fetchData({ page: 0, keyword: '', type: [] }); 
+        setPagination(prev => ({ ...prev, page: 0 }));
+        fetchData(0, 'ALL', '');
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
@@ -107,16 +133,26 @@ function SupportTicketList() {
     const handleOpenAssignModal = (t) => { setSelectedTicket(t); setIsAssignModalOpen(true); };
     const handleOpenReplyModal = (t) => { setSelectedTicket(t); setIsReplyModalOpen(true); };
     const handleCloseModals = () => { setIsAssignModalOpen(false); setIsReplyModalOpen(false); setSelectedTicket(null); };
-    const handleAssignSuccess = () => { handleCloseModals(); fetchData(); toast.success("Gán việc thành công!"); };
-    const handleReplySuccess = () => { handleCloseModals(); fetchData(); toast.success("Đã gửi phản hồi thành công!"); };
-    
-    // Helpers Style (Giữ nguyên)
+
+    // Khi xử lý thành công, gọi lại fetchData với state hiện tại (không bị reset về 0)
+    const handleAssignSuccess = () => {
+        handleCloseModals();
+        fetchData(pagination.page, typeFilter, searchTerm);
+        toast.success("Gán việc thành công!");
+    };
+    const handleReplySuccess = () => {
+        handleCloseModals();
+        fetchData(pagination.page, typeFilter, searchTerm);
+        toast.success("Đã gửi phản hồi thành công!");
+    };
+
+    // Helpers Style
     const getTypeClass = (type) => type === 'SUPPORT_REQUEST' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800';
     const getTypeText = (type) => type === 'SUPPORT_REQUEST' ? 'Yêu Cầu Hỗ Trợ' : 'Góp Ý';
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            
+
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
@@ -132,7 +168,7 @@ function SupportTicketList() {
 
             {/* 5. THANH CÔNG CỤ (SEARCH & FILTER) */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                
+
                 {/* Search Box */}
                 <div className="relative w-full md:w-1/2">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -146,7 +182,7 @@ function SupportTicketList() {
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     />
-                     <button 
+                    <button
                         onClick={handleSearch}
                         className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
                     >
@@ -173,7 +209,7 @@ function SupportTicketList() {
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow border border-gray-200">
-                 <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
                     {loading && tickets.length === 0 && <div className="text-center py-10 text-gray-500">Đang tải dữ liệu...</div>}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -221,12 +257,12 @@ function SupportTicketList() {
                             )}
                         </tbody>
                     </table>
-                 </div>
-                 
-                 {/* Phân trang */}
-                 {!loading && tickets.length > 0 && (
+                </div>
+
+                {/* Phân trang */}
+                {!loading && tickets.length > 0 && (
                     <Pagination currentPage={pagination.page} totalElements={pagination.totalElements} pageSize={pagination.size} onPageChange={handlePageChange} />
-                 )}
+                )}
             </div>
 
             {/* Modal */}

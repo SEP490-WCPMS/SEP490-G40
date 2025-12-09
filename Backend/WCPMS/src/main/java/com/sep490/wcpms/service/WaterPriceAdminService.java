@@ -14,6 +14,5 @@ public interface WaterPriceAdminService {
     WaterPriceAdminResponseDTO getById(Integer id);
     WaterPriceAdminResponseDTO create(CreateWaterPriceRequestDTO req);
     WaterPriceAdminResponseDTO update(Integer id, UpdateWaterPriceRequestDTO req);
-    WaterPriceAdminResponseDTO setStatus(Integer id, String status);
     List<WaterPriceTypeAdminResponseDTO> getAvailablePriceTypes();
 }
