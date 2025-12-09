@@ -4,9 +4,11 @@ import com.sep490.wcpms.dto.CreateStaffRequestDTO;
 import com.sep490.wcpms.dto.RoleDTO;
 import com.sep490.wcpms.dto.StaffAccountResponseDTO;
 import com.sep490.wcpms.dto.UpdateStaffRequestDTO;
+import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.service.AccountManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,8 +32,12 @@ public class AccountManagementController {
 
     // (R)EAD - Lấy tất cả tài khoản nhân viên
     @GetMapping
-    public ResponseEntity<List<StaffAccountResponseDTO>> getAllStaffAccounts() {
-        return ResponseEntity.ok(accountService.getAllStaffAccounts());
+    public ResponseEntity<Page<StaffAccountResponseDTO>> getAllStaffAccounts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Account.Department department // Tham số lọc phòng ban
+    ) {
+        return ResponseEntity.ok(accountService.getAllStaffAccounts(page, size, department));
     }
 
     // (R)EAD - Lấy một tài khoản theo ID

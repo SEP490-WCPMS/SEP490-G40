@@ -2,6 +2,7 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Role;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -45,12 +46,20 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
   @Query("SELECT a.customerCode FROM Account a WHERE a.customerCode IS NOT NULL AND a.customerCode LIKE 'KH%' ORDER BY a.customerCode DESC LIMIT 1")
   Optional<String> findMaxCustomerCode();
 
-  /**
-   * Tìm tất cả các tài khoản KHÔNG PHẢI là CUSTOMER hoặc GUEST
-   */
-  List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
-
   boolean existsByStaffCode(String staffCode);
+
+    // 1. Lấy danh sách nhân viên (Trừ Admin, Guest, Customer) - Có phân trang
+    @Query("SELECT a FROM Account a WHERE a.role.roleName NOT IN :roles")
+    Page<Account> findStaffAccounts(@Param("roles") Collection<Role.RoleName> roles, Pageable pageable);
+
+    // 2. Lấy danh sách nhân viên theo Phòng ban - Có phân trang
+    @Query("SELECT a FROM Account a WHERE a.department = :department AND a.role.roleName NOT IN :roles")
+    Page<Account> findStaffAccountsByDepartment(@Param("department") Account.Department department,
+                                                @Param("roles") Collection<Role.RoleName> roles,
+                                                Pageable pageable);
+
+    // Hàm này dùng cho dropdown (không phân trang)
+    List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
 
   // Tìm 1 tài khoản thu ngân (department = CASHIER) có status = 1 (active)
   Optional<Account> findFirstByDepartmentAndStatus(Account.Department department, Integer status);
