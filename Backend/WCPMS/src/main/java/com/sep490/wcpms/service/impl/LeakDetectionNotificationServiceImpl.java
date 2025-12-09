@@ -6,6 +6,7 @@ import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.repository.InvoiceRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
+import com.sep490.wcpms.service.CustomerNotificationSmsService;
 import com.sep490.wcpms.service.LeakDetectionNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
     private final InvoiceRepository invoiceRepository;
     private final CustomerNotificationRepository notificationRepository;
     private final CustomerNotificationEmailService emailService;
+    private final CustomerNotificationSmsService smsNotificationService;
 
     private static final BigDecimal THRESHOLD_RATIO = new BigDecimal("1.5");
 
@@ -106,6 +108,7 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[LEAK-DETECTION] Error when checking leak warning for invoice {}: {}",
