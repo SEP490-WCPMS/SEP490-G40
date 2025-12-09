@@ -310,7 +310,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus 
             render: (date) => <span className="text-base">{date ? dayjs(date).format('DD/MM/YYYY') : 'N/A'}</span>,
         },
         {
-            title: 'Giá trị',
+            title: 'Chi phí lắp đặt',
             dataIndex: 'contractValue',
             key: 'contractValue',
             render: (value) => <span className="text-base">{value ? `${value.toLocaleString()} đ` : 'N/A'}</span>,
