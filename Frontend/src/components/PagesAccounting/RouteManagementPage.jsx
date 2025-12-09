@@ -21,12 +21,14 @@ import { getAllRoutes, getContractsByRoute, updateRouteOrder } from '../Services
 import { GripVertical, Loader2, Save, MapPin, RefreshCw } from 'lucide-react';
 import Pagination from '../common/Pagination';
 
-// --- 1. IMPORT CÁC THÀNH PHẦN MỚI ---
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // Nhớ dòng này để hiện style
-import ConfirmModal from '../common/ConfirmModal'; // Component Modal bạn vừa tạo ở Bước 2
+import 'react-toastify/dist/ReactToastify.css'; 
+import ConfirmModal from '../common/ConfirmModal'; 
 
-// --- COMPONENT CON: Item Hợp đồng ---
+// 1. Định nghĩa Key lưu trữ
+const STORAGE_KEY = 'ACCOUNTING_ROUTE_MANAGEMENT_STATE';
+
+// --- COMPONENT CON: Item Hợp đồng (Giữ nguyên) ---
 function SortableContractCard({ item, index }) {
     const {
         attributes, listeners, setNodeRef, transform, transition, isDragging
@@ -68,36 +70,45 @@ function SortableContractCard({ item, index }) {
 
 // --- COMPONENT CHÍNH ---
 function RouteManagementPage() {
+    const navigate = useNavigate();
+
+    // 2. KHỞI TẠO STATE TỪ SESSION STORAGE
+    const [selectedRouteId, setSelectedRouteId] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved).routeId : '';
+    });
+
+    const [pagination, setPagination] = useState(() => {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        const savedPage = saved ? JSON.parse(saved).page : 0;
+        return { page: savedPage, size: 50, totalElements: 0 };
+    });
+
     const [routes, setRoutes] = useState([]);
-    const [selectedRouteId, setSelectedRouteId] = useState('');
     const [assignedList, setAssignedList] = useState([]);
 
     const [loadingRoutes, setLoadingRoutes] = useState(true);
     const [loadingContracts, setLoadingContracts] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     
-    // --- 2. THÊM STATE CHO MODAL ---
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-    const navigate = useNavigate();
+    // 3. LƯU STATE VÀO SESSION STORAGE KHI CÓ THAY ĐỔI
+    useEffect(() => {
+        const stateToSave = {
+            routeId: selectedRouteId,
+            page: pagination.page
+        };
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }, [selectedRouteId, pagination.page]);
 
-    const [pagination, setPagination] = useState({
-        page: 0,
-        size: 50,
-        totalElements: 0,
-    });
-
+    // Dnd Sensors
     const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 5,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // Load danh sách Tuyến (1 lần đầu)
     useEffect(() => {
         setLoadingRoutes(true);
         getAllRoutes()
@@ -112,14 +123,17 @@ function RouteManagementPage() {
                 setRoutes(routesArray);
             })
             .catch(err => {
-                toast.error("Lỗi tải danh sách Tuyến đọc."); // Thay setError bằng toast
+                toast.error("Lỗi tải danh sách Tuyến đọc."); 
                 console.error("Lỗi tải Tuyến:", err);
             })
             .finally(() => setLoadingRoutes(false));
     }, []);
 
+    // Hàm tải danh sách hợp đồng (Refactor để nhận tham số)
     const fetchContracts = (params = {}) => {
+        // Ưu tiên lấy từ params, nếu không thì lấy từ state
         const routeId = params.routeId !== undefined ? params.routeId : selectedRouteId;
+        
         if (!routeId) {
             setAssignedList([]);
             return;
@@ -152,33 +166,51 @@ function RouteManagementPage() {
                 }
 
                 setAssignedList(contractsArray);
-                setPagination({
+                setPagination(prev => ({
+                    ...prev,
                     page: pageNum,
                     size: pageSizeRaw,
                     totalElements: totalItems,
-                });
+                }));
             })
             .catch(err => {
-                toast.error("Lỗi tải HĐ đã gán của Tuyến này."); // Thay setError bằng toast
+                toast.error("Lỗi tải HĐ đã gán của Tuyến này.");
                 console.error("Lỗi tải HĐ:", err);
             })
             .finally(() => setLoadingContracts(false));
     };
 
+    // 4. EFFECT CHÍNH: Tự động gọi API khi selectedRouteId thay đổi 
+    // (Bao gồm cả lần đầu load từ storage)
     useEffect(() => {
         if (selectedRouteId) {
-            fetchContracts({ page: 0 });
+            fetchContracts({ page: pagination.page }); // Giữ page nếu load từ storage
         } else {
             setAssignedList([]);
         }
-    }, [selectedRouteId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedRouteId]); // Bỏ pagination.page ra khỏi dep để tránh loop, page change handle riêng
+
+    const handleRouteSelectChange = (e) => {
+        const newRouteId = e.target.value;
+        setSelectedRouteId(newRouteId);
+        // Khi chọn tuyến mới, reset về trang 0
+        setPagination(prev => ({ ...prev, page: 0 }));
+        // fetchContracts sẽ được gọi bởi useEffect [selectedRouteId]
+    };
 
     const handlePageChange = (newPage) => {
+        // Cập nhật state page, sau đó gọi fetch
+        setPagination(prev => ({ ...prev, page: newPage }));
         fetchContracts({ page: newPage });
     };
 
     const handleRefresh = () => {
-        fetchContracts();
+        // Reset storage và state
+        sessionStorage.removeItem(STORAGE_KEY);
+        setSelectedRouteId('');
+        setPagination(prev => ({ ...prev, page: 0 }));
+        setAssignedList([]);
         toast.info("Đã làm mới dữ liệu.", { autoClose: 1000, hideProgressBar: true });
     };
 
@@ -193,18 +225,15 @@ function RouteManagementPage() {
         }
     }
 
-    // --- 3. HÀM XỬ LÝ MỚI ---
-    
-    // Hàm 1: Khi bấm nút "Lưu Thay Đổi" -> Mở Modal hỏi
+    // Modal Logic
     const handlePreSave = () => {
         if (!selectedRouteId) {
             toast.warn("Vui lòng chọn một Tuyến đọc trước khi lưu.");
             return;
         }
-        setShowConfirmModal(true); // Mở Modal Xác nhận
+        setShowConfirmModal(true);
     };
 
-    // Hàm 2: Khi chọn "Có" trong Modal -> Gọi API thật
     const handleConfirmSave = () => {
         setSubmitting(true);
         
@@ -212,20 +241,12 @@ function RouteManagementPage() {
         
         updateRouteOrder(selectedRouteId, orderedIds)
             .then(() => {
-                // Đóng modal trước
                 setShowConfirmModal(false);
-                
-                // Hiện thông báo đẹp ở giữa trên cùng
-                toast.success("Lưu thứ tự tuyến thành công!", {
-                    position: "top-center",
-                    autoClose: 3000, // 3 giây tự tắt
-                });
+                toast.success("Lưu thứ tự tuyến thành công!", { position: "top-center", autoClose: 3000 });
             })
             .catch(err => {
                 setShowConfirmModal(false);
-                toast.error(err.response?.data?.message || "Lỗi khi lưu thay đổi.", {
-                    position: "top-center"
-                });
+                toast.error(err.response?.data?.message || "Lỗi khi lưu thay đổi.", { position: "top-center" });
             })
             .finally(() => setSubmitting(false));
     };
