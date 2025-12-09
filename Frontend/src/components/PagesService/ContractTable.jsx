@@ -213,7 +213,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-medium">{record.customerName}</div>
                     {record.isGuest ? (
-                       <Tag color="orange" className="mt-1 border-0">Khách vãng lai</Tag>
+                       <Tag color="orange" className="mt-1 border-0">Khách (Chưa có tài khoản)</Tag>
                     ) : (
                        <div className="text-xs text-gray-500">{record.customerCode}</div>
                     )}
