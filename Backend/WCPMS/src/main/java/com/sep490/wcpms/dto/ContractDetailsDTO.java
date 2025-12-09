@@ -1,43 +1,36 @@
 package com.sep490.wcpms.dto;
 
 import com.sep490.wcpms.entity.Contract;
-import com.sep490.wcpms.entity.ContractUsageDetail; // Để lấy priceType
+import com.sep490.wcpms.entity.ContractUsageDetail;
 import lombok.Data;
-import lombok.NoArgsConstructor; // Thêm cái này để tránh lỗi framework
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
-@NoArgsConstructor // Cần thiết cho Jackson (JSON parsing)
+@NoArgsConstructor
 public class ContractDetailsDTO {
     private Integer id;
     private String contractNumber;
     private Contract.ContractStatus contractStatus;
     private LocalDate applicationDate;
 
-    // Thông tin khách hàng
+    // Thông tin hiển thị
     private Integer customerId;
     private String customerName;
     private String customerAddress;
-    private String customerPhone; // <--- 1. THÊM TRƯỜNG NÀY
+    private String customerPhone;
 
-    // Thông tin kỹ thuật (từ Survey Form)
+    // Thông tin kỹ thuật
     private LocalDate surveyDate;
     private String technicalDesign;
     private BigDecimal estimatedCost;
-
-    // Thông tin bổ sung
     private String priceTypeName;
     private String routeName;
-
-    // Thông tin kỹ thuật viên
     private Integer technicalStaffId;
     private String technicalStaffName;
 
-    // =========================================================================
-    // 2. THÊM CONSTRUCTOR ĐỂ XỬ LÝ LOGIC GUEST VS USER
-    // =========================================================================
     public ContractDetailsDTO(Contract contract) {
         this.id = contract.getId();
         this.contractNumber = contract.getContractNumber();
@@ -47,39 +40,45 @@ public class ContractDetailsDTO {
         this.technicalDesign = contract.getTechnicalDesign();
         this.estimatedCost = contract.getEstimatedCost();
 
-        // --- XỬ LÝ THÔNG TIN KHÁCH HÀNG (QUAN TRỌNG) ---
-
+        // --- 1. XỬ LÝ KHÁCH HÀNG ---
         if (contract.getCustomer() != null) {
-            // >>> TRƯỜNG HỢP A: Đã là Customer (Có tài khoản)
+            // >>> TRƯỜNG HỢP A: USER ĐÃ ĐĂNG KÝ
             this.customerId = contract.getCustomer().getId();
             this.customerName = contract.getCustomer().getCustomerName();
-            this.customerAddress = contract.getCustomer().getAddress(); // Địa chỉ mặc định
-
-            // Lấy SĐT từ Account (nếu có)
+            this.customerAddress = contract.getCustomer().getAddress();
             if (contract.getCustomer().getAccount() != null) {
                 this.customerPhone = contract.getCustomer().getAccount().getPhone();
             }
         } else {
-            // >>> TRƯỜNG HỢP B: GUEST (Khách vãng lai - Chưa có Customer ID)
+            // >>> TRƯỜNG HỢP B: GUEST (Vãng lai)
             this.customerId = null;
 
-            // 1. Lấy Tên từ Notes (Format: "Tên Guest | Ghi chú")
+            // Xử lý Tên từ Notes: "KHÁCH: Đỗ Ngọc Đức | ..."
             String rawNotes = contract.getNotes();
-            if (rawNotes != null && rawNotes.contains("|")) {
-                String[] parts = rawNotes.split("\\|");
-                // Lấy phần đầu tiên làm tên, xóa khoảng trắng thừa
-                this.customerName = parts[0].trim();
+
+            if (rawNotes != null && !rawNotes.isEmpty()) {
+                // Nếu có dấu gạch đứng "|"
+                if (rawNotes.contains("|")) {
+                    String[] parts = rawNotes.split("\\|");
+                    String namePart = parts[0].trim(); // Lấy phần đầu: "KHÁCH: Đỗ Ngọc Đức"
+
+                    // Xóa chữ "KHÁCH:" nếu có để lấy tên sạch
+                    this.customerName = namePart.replace("KHÁCH:", "").trim();
+                } else {
+                    // Nếu không có dấu |, lấy toàn bộ note làm tên tạm
+                    this.customerName = rawNotes;
+                }
             } else {
-                // Nếu không đúng format, hiển thị thông báo hoặc lấy nguyên note
-                this.customerName = (rawNotes != null && !rawNotes.isEmpty()) ? rawNotes : "Khách vãng lai";
+                // Nếu note bị NULL (như dòng số 5 trong ảnh DB của bạn)
+                this.customerName = "Khách vãng lai (Chưa nhập tên)";
             }
 
-            // 2. Lấy SĐT từ cột riêng của Guest (contact_phone)
+            // Lấy SĐT Guest
             this.customerPhone = contract.getContactPhone();
         }
 
-        // --- XỬ LÝ ĐỊA CHỈ LẮP ĐẶT (ƯU TIÊN BẢNG ADDRESSES) ---
-        // Nếu Contract có liên kết với bảng Addresses (dù là Guest hay User) -> Lấy địa chỉ này
+        // --- 2. XỬ LÝ ĐỊA CHỈ (Ưu tiên lấy từ bảng Addresses linked với Contract) ---
+        // (Áp dụng cho cả Guest và User nếu đơn này có địa chỉ lắp đặt riêng)
         if (contract.getAddress() != null) {
             String street = (contract.getAddress().getStreet() != null) ? contract.getAddress().getStreet() : "";
             String ward = "";
@@ -89,28 +88,26 @@ public class ContractDetailsDTO {
                 ward = contract.getAddress().getWard().getWardName();
                 district = contract.getAddress().getWard().getDistrict();
             }
-            // Ghép chuỗi: Số 10, Phường A, Quận B
+
+            // Format: "Số nhà, Phường, Quận"
             this.customerAddress = String.format("%s, %s, %s", street, ward, district)
-                    .replace("null", "") // Xử lý rác nếu có
-                    .replaceAll("^, |^, |, $", ""); // Xóa dấu phẩy thừa ở đầu/cuối
+                    .replace("null", "")
+                    .replaceAll("^, |^, |, $", "");
+        } else if (this.customerAddress == null) {
+            // Fallback nếu không có gì cả
+            this.customerAddress = "Chưa cập nhật địa chỉ";
         }
 
-        // --- LẤY THÔNG TIN BỔ SUNG ---
-
-        // Lấy Price Type Name (từ contract_usage_details)
+        // --- 3. CÁC THÔNG TIN KHÁC ---
         if (contract.getContractUsageDetails() != null && !contract.getContractUsageDetails().isEmpty()) {
             ContractUsageDetail usage = contract.getContractUsageDetails().get(0);
             if (usage.getPriceType() != null) {
                 this.priceTypeName = usage.getPriceType().getTypeName();
             }
         }
-
-        // Lấy Route Name (từ reading_routes)
         if (contract.getReadingRoute() != null) {
             this.routeName = contract.getReadingRoute().getRouteName();
         }
-
-        // Thông tin Staff
         if (contract.getTechnicalStaff() != null) {
             this.technicalStaffId = contract.getTechnicalStaff().getId();
             this.technicalStaffName = contract.getTechnicalStaff().getFullName();
