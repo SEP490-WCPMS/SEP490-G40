@@ -258,6 +258,10 @@ export const getContractById = (contractId) => {
     return apiClient.get(`/service/contracts/${contractId}`);
 };
 
+export const searchContractRequests = (params) => {
+    return apiClient.get('/v1/contract-requests', { params });
+};
+
 export const updateContractStatus = (contractId, newStatus, reason) => {
     return apiClient.put(`/service/contracts/${contractId}/status`, {
         status: newStatus,

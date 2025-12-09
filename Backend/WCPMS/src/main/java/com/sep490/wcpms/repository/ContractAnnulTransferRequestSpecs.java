@@ -50,6 +50,8 @@ public class ContractAnnulTransferRequestSpecs {
 
     public static Specification<ContractAnnulTransferRequest> serviceStaffEq(Integer serviceStaffId) {
         return (root, cq, cb) ->
-                serviceStaffId == null ? null : cb.equal(root.get("contract").get("serviceStaff").get("id"), serviceStaffId);
+                serviceStaffId == null
+                        ? null
+                        : cb.equal(root.get("serviceStaff").get("id"), serviceStaffId);
     }
 }
