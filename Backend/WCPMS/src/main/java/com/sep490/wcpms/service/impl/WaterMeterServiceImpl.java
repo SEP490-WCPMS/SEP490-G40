@@ -8,12 +8,10 @@ import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.WaterMeterRepository;
 import com.sep490.wcpms.service.WaterMeterService;
 import lombok.RequiredArgsConstructor;
-// --- IMPORT ĐÚNG CHO PHÂN TRANG ---
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-// ----------------------------------
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,23 +21,19 @@ public class WaterMeterServiceImpl implements WaterMeterService {
 
     private final WaterMeterRepository repository;
 
+    // ... (Các hàm listAll, getById, create, update giữ nguyên như cũ) ...
+
     @Override
     public Page<WaterMeterAdminResponseDTO> listAll(boolean includeRetired, int page, int size) {
-        // Tạo Pageable từ Spring Data (không phải java.awt)
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-
         Page<WaterMeter> pageResult;
         if (includeRetired) {
             pageResult = repository.findAll(pageable);
         } else {
             pageResult = repository.findByMeterStatusNot(WaterMeter.MeterStatus.RETIRED, pageable);
         }
-
         return pageResult.map(this::toDto);
     }
-
-    // ... (Các hàm getById, create, update, setStatus, toDto GIỮ NGUYÊN NHƯ CŨ) ...
-    // Copy lại phần thân các hàm đó từ code tôi gửi trước đó.
 
     @Override
     public WaterMeterAdminResponseDTO getById(Integer id) {
@@ -102,17 +96,31 @@ public class WaterMeterServiceImpl implements WaterMeterService {
         return toDto(repository.save(w));
     }
 
+    // --- SỬA LOGIC HÀM NÀY ---
     @Override
     @Transactional
-    public WaterMeterAdminResponseDTO setStatus(Integer id, String status) {
-        WaterMeter w = repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found: " + id));
+    public WaterMeterAdminResponseDTO setStatus(Integer id, String statusStr) {
+        WaterMeter w = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("WaterMeter not found: " + id));
+
+        WaterMeter.MeterStatus newStatus;
         try {
-            w.setMeterStatus(WaterMeter.MeterStatus.valueOf(status));
-        } catch (Exception ex) {
-            throw new IllegalArgumentException("Invalid meter status: " + status);
+            newStatus = WaterMeter.MeterStatus.valueOf(statusStr);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ: " + statusStr);
         }
+
+        // LOGIC CHECK: Chỉ cho phép xóa (RETIRED) nếu đang là IN_STOCK
+        if (newStatus == WaterMeter.MeterStatus.RETIRED) {
+            if (w.getMeterStatus() != WaterMeter.MeterStatus.IN_STOCK) {
+                throw new IllegalArgumentException("Chỉ có thể xóa đồng hồ đang ở trạng thái 'Trong kho' (IN_STOCK). Đồng hồ này đang: " + w.getMeterStatus());
+            }
+        }
+
+        w.setMeterStatus(newStatus);
         return toDto(repository.save(w));
     }
+    // -------------------------
 
     private WaterMeterAdminResponseDTO toDto(WaterMeter w) {
         return WaterMeterAdminResponseDTO.builder()
