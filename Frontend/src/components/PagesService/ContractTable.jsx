@@ -1,6 +1,8 @@
 import React from 'react';
 import Pagination from '../common/Pagination';
 import { Loader2 } from 'lucide-react';
+import { Tag, Tooltip } from 'antd';
+import { PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons';
 
 // Helper: render trạng thái
 const renderStatus = (status) => {
@@ -54,6 +56,7 @@ const renderActions = (record, onViewDetails) => {
     );
   }
 
+  // --- SỬA LẠI ĐÚNG NHƯ CŨ: Nút "Tạo HĐ chính thức" ---
   if (status === 'PENDING_SURVEY_REVIEW') {
     actions.push(
       <button
@@ -62,6 +65,16 @@ const renderActions = (record, onViewDetails) => {
         onClick={() => onViewDetails(record, 'generateWater')}
       >
         Tạo HĐ chính thức
+      </button>
+    );
+    // Vẫn giữ nút Từ chối nếu cần thiết (theo code SurveyReviewPage của bạn)
+    actions.push(
+       <button
+        key="reject"
+        className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
+        onClick={() => onViewDetails(record, 'rejectSurvey')}
+      >
+        Từ chối
       </button>
     );
   }
@@ -162,10 +175,11 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                 Số Hợp đồng
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tên Khách hàng
+                Khách hàng
               </th>
+              {/* Cột mới: Liên hệ (Hiển thị SĐT/Địa chỉ cho Guest) */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mã Khách hàng
+                Liên hệ
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Trạng thái
@@ -191,15 +205,38 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {record.id}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {record.contractNumber}
                   </td>
+                  
+                  {/* --- LOGIC HIỂN THỊ TÊN VÀ BADGE GUEST --- */}
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {record.customerName}
+                    <div className="font-medium">{record.customerName}</div>
+                    {record.isGuest ? (
+                       <Tag color="orange" className="mt-1 border-0">Khách (Chưa có tài khoản)</Tag>
+                    ) : (
+                       <div className="text-xs text-gray-500">{record.customerCode}</div>
+                    )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {record.customerCode}
+
+                  {/* --- CỘT LIÊN HỆ (Cho Guest và cả Customer) --- */}
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                     <div className="flex flex-col gap-1">
+                        {record.contactPhone && (
+                            <div className="flex items-center gap-1">
+                                <PhoneOutlined className="text-xs text-blue-500"/> {record.contactPhone}
+                            </div>
+                        )}
+                        {record.address && (
+                            <Tooltip title={record.address}>
+                                <div className="flex items-center gap-1 max-w-[200px] truncate">
+                                    <EnvironmentOutlined className="text-xs text-red-500"/> {record.address}
+                                </div>
+                            </Tooltip>
+                        )}
+                     </div>
                   </td>
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {renderStatus(record.contractStatus)}
                   </td>

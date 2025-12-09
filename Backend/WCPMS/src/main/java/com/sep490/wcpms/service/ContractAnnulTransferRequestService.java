@@ -12,6 +12,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.util.Objects;
@@ -69,13 +71,12 @@ public class ContractAnnulTransferRequestService {
             if (dto.getFromCustomerId() == null || dto.getToCustomerId() == null) {
                 throw new IllegalArgumentException("fromCustomerId and toCustomerId are required for transfer.");
             }
-            Integer accoundId = dto.getRequestedById();
-            Optional<Customer> customer = customerRepository.findByAccount_Id(accoundId);
-            if (!customer.isPresent()) {
-                throw new ResourceNotFoundException("Customer not found with id: " + accoundId);
-            }
-
-            fromCustomer = customer.get();
+            // Use the explicit fromCustomerId provided by the client. The previous code attempted
+            // to look up a Customer by the requester's account id which is likely incorrect
+            // (and used a misspelled variable name). Replace with direct lookup by customer id.
+            Integer fromCustomerId = dto.getFromCustomerId();
+            fromCustomer = customerRepository.findById(fromCustomerId)
+                    .orElseThrow(() -> new ResourceNotFoundException("From-customer not found: " + fromCustomerId));
 
             toCustomer = customerRepository.findById(dto.getToCustomerId())
                     .orElseThrow(() -> new ResourceNotFoundException("To-customer not found: " + dto.getToCustomerId()));
@@ -104,7 +105,7 @@ public class ContractAnnulTransferRequestService {
              log.info("[REQUEST CREATED] id={}, contractId={}, type={}, requestedById={}", out.getId(), out.getContractId(), out.getRequestType(), out.getRequestedById());
              return out;
          } catch (Exception ex) {
-             log.error("[MAPPER ERROR] failed to map Entity -> DTO after save. entityId={}", entity != null ? entity.getId() : null, ex);
+             log.error("[MAPPER ERROR] failed to map Entity -> DTO after save. entityId={}", entity.getId(), ex);
              throw ex;
          }
      }
@@ -137,12 +138,51 @@ public class ContractAnnulTransferRequestService {
                 ContractAnnulTransferRequestSpecs.qLike(q)
         );
 
+        // If the current authenticated user is a Service Staff, restrict results to requests whose contract.serviceStaff = current user
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+                Object principal = auth.getPrincipal();
+                Integer currentUserId = null;
+                boolean isServiceStaff = false;
+
+                // Try to extract id from our custom UserDetailsImpl if available
+                try {
+                    if (principal instanceof com.sep490.wcpms.security.services.UserDetailsImpl ud) {
+                        currentUserId = ud.getId();
+                        // check authorities
+                        isServiceStaff = ud.getAuthorities().stream().anyMatch(a -> "SERVICE_STAFF".equals(a.getAuthority()));
+                    }
+                } catch (Exception ignored) {
+                }
+
+                // Fallback: when we don't have UserDetailsImpl, attempt to lookup account by username
+                if (currentUserId == null) {
+                    try {
+                        String username = auth.getName();
+                        Optional<Account> acc = accountRepository.findByUsername(username);
+                        if (acc.isPresent()) {
+                            currentUserId = acc.get().getId();
+                            isServiceStaff = acc.get().getRole() != null && acc.get().getRole().getRoleName() == Role.RoleName.SERVICE_STAFF;
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+
+                if (isServiceStaff && currentUserId != null) {
+                    spec = spec.and(ContractAnnulTransferRequestSpecs.serviceStaffEq(currentUserId));
+                }
+            }
+        } catch (Exception ignored) {
+            // swallow - if anything goes wrong we default to non-filtered behavior
+        }
+
         // Use service-level converter so we apply fallback logic (e.g. use contract.customer when fromCustomer is null)
         return repository.findAll(spec, pageable).map(entity -> {
             try {
                 return convertToAnnulTransferDTO(entity);
             } catch (Exception ex) {
-                log.error("[MAPPER ERROR] convertToAnnulTransferDTO failed during search mapping. entityId={}", entity != null ? entity.getId() : null, ex);
+                log.error("[MAPPER ERROR] convertToAnnulTransferDTO failed during search mapping. entityId={}", entity.getId(), ex);
                 throw new RuntimeException("Failed to map ContractAnnulTransferRequest entity to DTO", ex);
             }
         });
@@ -224,7 +264,7 @@ public class ContractAnnulTransferRequestService {
             // Use converter with fallback for customer names
             return convertToAnnulTransferDTO(entity);
         } catch (Exception ex) {
-            log.error("[MAPPER ERROR] toDTO failed after approval save for id={}", entity != null ? entity.getId() : null, ex);
+            log.error("[MAPPER ERROR] toDTO failed after approval save for id={}", entity.getId(), ex);
             throw ex;
         }
     }

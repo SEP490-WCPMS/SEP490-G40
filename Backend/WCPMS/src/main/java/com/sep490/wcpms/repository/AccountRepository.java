@@ -1,5 +1,6 @@
 package com.sep490.wcpms.repository;
 
+import com.sep490.wcpms.dto.AccountDTO;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Role;
 import org.springframework.data.domain.Pageable;
@@ -174,4 +175,21 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
         LIMIT 1
     """, nativeQuery = true)
     Optional<Account> findServiceStaffWithLeastTickets(@Param("roleId") int roleId);
+
+    /**
+     * Lấy danh sách nhân viên Kỹ thuật cùng với khối lượng công việc hiện tại.
+     * Khối lượng công việc được tính là số hợp đồng đang ở trạng thái
+     * PENDING, SIGNED, PENDING_SURVEY_REVIEW được phân công cho nhân viên đó.
+     * Kết quả được sắp xếp theo khối lượng công việc tăng dần.
+     */
+    @Query("SELECT new com.sep490.wcpms.dto.AccountDTO(a.id, a.fullName, COUNT(c)) " +
+            "FROM Account a " +
+            "LEFT JOIN Contract c ON c.technicalStaff.id = a.id " +
+            "    AND c.contractStatus IN ('PENDING', 'SIGNED', 'PENDING_SURVEY_REVIEW') " +
+            "WHERE a.role.roleName = 'TECHNICAL_STAFF' " +
+            "  AND a.status = 1 " +
+            "GROUP BY a.id, a.fullName " +
+            "ORDER BY COUNT(c) ASC, a.fullName ASC")
+    List<AccountDTO> findTechnicalStaffWithWorkload();
+
 }

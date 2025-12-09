@@ -21,6 +21,11 @@ public class ServiceStaffContractDTO {
     private String customerCode;
     private String customerName;
 
+    // --- THÊM MỚI ---
+    private String contactPhone; // SĐT liên hệ (quan trọng cho Guest)
+    private String address;      // Địa chỉ lắp đặt
+    private boolean guest;     // Cờ đánh dấu là Guest
+
     private Integer serviceStaffId;
     private String serviceStaffName;
 
@@ -34,4 +39,13 @@ public class ServiceStaffContractDTO {
 
     // Thêm: Ảnh chụp đồng hồ sau lắp đặt (base64) lấy từ bảng meter_installations
     private String installationImageBase64;
+
+    // Provide explicit aliases to be safe for any old calls to setIsGuest()/getIsGuest()
+    public boolean getIsGuest() {
+        return this.guest;
+    }
+
+    public void setIsGuest(boolean isGuest) {
+        this.guest = isGuest;
+    }
 }
