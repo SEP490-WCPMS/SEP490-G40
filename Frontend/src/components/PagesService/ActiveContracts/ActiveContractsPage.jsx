@@ -17,7 +17,7 @@ const { Search } = Input;
 const { TextArea } = FormInput;
 const { Option } = Select; // Import Option từ Select
 
-const ActiveContractsPage = () => {
+const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus }) => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
@@ -48,8 +48,8 @@ const ActiveContractsPage = () => {
     });
 
     const [filters, setFilters] = useState({
-        keyword: null,
-        status: 'ACTIVE', // Mặc định hiển thị Đang hoạt động
+        keyword: externalKeyword || null,
+        status: externalStatus || 'ACTIVE', // Mặc định hiển thị Đang hoạt động
     });
 
     const fetchContracts = async (params = {}) => {
@@ -57,11 +57,14 @@ const ActiveContractsPage = () => {
         try {
             const currentPage = params.page !== undefined ? params.page : pagination.page;
             const currentSize = params.size !== undefined ? params.size : pagination.size;
+            // Allow parent-provided keyword/status to override
+            const effectiveKeyword = externalKeyword !== undefined ? externalKeyword : filters.keyword;
+            const effectiveStatus = externalStatus !== undefined ? externalStatus : filters.status;
             const response = await getServiceContracts({
                 page: currentPage,
                 size: currentSize,
-                keyword: filters.keyword,
-                status: filters.status,
+                keyword: effectiveKeyword,
+                status: effectiveStatus,
                 sort: 'updatedAt,desc'
             });
             
@@ -86,7 +89,7 @@ const ActiveContractsPage = () => {
 
     useEffect(() => {
         fetchContracts();
-    }, []);
+    }, [externalKeyword, externalStatus]);
 
     // Highlight logic: if URL includes ?highlight=<id>, scroll to that contract after contracts load
     const location = useLocation();
@@ -684,35 +687,43 @@ const ActiveContractsPage = () => {
                 </Col>
                 <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
                     {/* --- BỘ LỌC TRẠNG THÁI MỚI --- */}
-                    <Space>
-                        <span className="text-gray-600 font-medium">Lọc theo:</span>
-                        <Select 
-                            defaultValue="ACTIVE" 
-                            style={{ width: 160, textAlign: 'left' }} 
-                            onChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
-                        >
-                            <Option value="ACTIVE">🟢 Đang hoạt động</Option>
-                            <Option value="SUSPENDED">🟠 Đang tạm ngưng</Option>
-                        </Select>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
-                            loading={loading}
-                        >
-                            Làm mới
-                        </Button>
-                    </Space>
+                        <Space>
+                            <span className="text-gray-600 font-medium">Lọc theo:</span>
+                            {externalStatus === undefined ? (
+                                <Select 
+                                    defaultValue={filters.status || 'ACTIVE'} 
+                                    style={{ width: 160, textAlign: 'left' }} 
+                                    onChange={(val) => setFilters(prev => ({ ...prev, status: val }))}
+                                >
+                                    <Option value="ACTIVE">🟢 Đang hoạt động</Option>
+                                    <Option value="SUSPENDED">🟠 Đang tạm ngưng</Option>
+                                </Select>
+                            ) : (
+                                <Tag color={externalStatus === 'ACTIVE' ? 'green' : 'orange'}>
+                                    {externalStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Đang tạm ngưng'}
+                                </Tag>
+                            )}
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
+                                loading={loading}
+                            >
+                                Làm mới
+                            </Button>
+                        </Space>
                 </Col>
             </Row>
 
             <Row gutter={16} className="mb-6">
                 <Col xs={24} md={12}>
-                    <Search
-                        placeholder="Tìm theo tên hoặc mã KH..."
-                        onSearch={handleFilterChange}
-                        enterButton
-                        allowClear
-                    />
+                        {externalKeyword === undefined && (
+                        <Search
+                            placeholder="Tìm theo tên hoặc mã KH..."
+                            onSearch={handleFilterChange}
+                            enterButton
+                            allowClear
+                        />
+                        )}
                 </Col>
             </Row>
 

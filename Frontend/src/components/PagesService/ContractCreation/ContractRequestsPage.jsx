@@ -13,7 +13,7 @@ import { getServiceContracts, getServiceContractDetail, updateServiceContract, s
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
 
-const ContractRequestsPage = () => {
+const ContractRequestsPage = ({ keyword: externalKeyword, status: externalStatus }) => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -28,31 +28,55 @@ const ContractRequestsPage = () => {
     });
 
     const [filters, setFilters] = useState({
-        keyword: null,
+        keyword: externalKeyword || null,
     });
 
     const fetchContracts = async (params = {}) => {
         setLoading(true);
         try {
             const currentPage = params.page !== undefined ? params.page : pagination.page;
-            const currentSize = params.size !== undefined ? params.size : pagination.size;
+            let currentSize = params.size !== undefined ? params.size : pagination.size;
+            // Nếu có keyword, lấy nhiều hơn để thực hiện lọc client-side (fallback khi BE không search đủ trường)
+            const effectiveKeyword = (externalKeyword !== undefined) ? externalKeyword : filters.keyword;
+            const requestedSize = effectiveKeyword ? Math.max(100, currentSize) : currentSize;
             const response = await getServiceContracts({
-                page: currentPage,
-                size: currentSize,
+                page: 0,
+                size: requestedSize,
                 status: 'DRAFT',
-                keyword: filters.keyword
+                keyword: effectiveKeyword
             });
-            
-            if (response.data) {
-                const data = response.data.content || [];
-                setContracts(data);
-                const pageInfo = response.data.page || response.data || {};
-                setPagination({
-                    page: pageInfo.number !== undefined ? pageInfo.number : currentPage,
-                    size: pageInfo.size || currentSize,
-                    totalElements: pageInfo.totalElements || 0,
-                });
+
+            let items = response.data?.content || response.data || [];
+
+            // Nếu có keyword, thực hiện lọc mở rộng client-side trên nhiều trường
+            if (effectiveKeyword && effectiveKeyword.toString().trim() !== '') {
+                const kw = effectiveKeyword.toString().toLowerCase();
+                const match = (it) => {
+                    return (
+                        String(it.contractNumber || '').toLowerCase().includes(kw) ||
+                        String(it.customerName || '').toLowerCase().includes(kw) ||
+                        String(it.customerCode || '').toLowerCase().includes(kw) ||
+                        String(it.contactPhone || it.phone || it.customerPhone || '').toLowerCase().includes(kw) ||
+                        String(it.address || it.contract?.address || it.customerAddress || '').toLowerCase().includes(kw) ||
+                        String(it.notes || it.note || it.contract?.notes || '').toLowerCase().includes(kw)
+                    );
+                };
+                items = (Array.isArray(items) ? items : []).filter(match);
             }
+
+            // Áp dụng phân trang client-side sau khi lọc
+            const total = Array.isArray(items) ? items.length : 0;
+            const page = currentPage || 0;
+            const size = params.size !== undefined ? params.size : pagination.size;
+            const start = page * size;
+            const paged = (items || []).slice(start, start + size);
+
+            setContracts(paged);
+            setPagination({
+                page: page,
+                size: size,
+                totalElements: total,
+            });
         } catch (error) {
             toast.error('Lỗi khi tải danh sách yêu cầu!');
             console.error("Fetch contracts error:", error);
@@ -65,7 +89,7 @@ const ContractRequestsPage = () => {
 
     useEffect(() => {
         fetchContracts();
-    }, []);
+    }, [externalKeyword]);
 
     const handlePageChange = (newPage) => {
         fetchContracts({ page: newPage });
@@ -170,6 +194,7 @@ const ContractRequestsPage = () => {
                 </Col>
             </Row>
 
+            {externalKeyword === undefined && (
             <Row gutter={16} className="mb-6">
                 <Col xs={24} md={12}>
                     <Search
@@ -180,6 +205,7 @@ const ContractRequestsPage = () => {
                     />
                 </Col>
             </Row>
+            )}
 
             {/* --- Bảng dữ liệu --- */}
             <Spin spinning={loading}>
