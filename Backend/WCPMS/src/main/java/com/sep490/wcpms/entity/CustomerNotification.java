@@ -84,6 +84,7 @@ public class CustomerNotification {
         LEAK_WARNING,
         INVOICE_PAYMENT_SUCCESS,
         LATE_PAYMENT_NOTICE,
+        ACCOUNT_CREATED,
         GENERAL
     }
 

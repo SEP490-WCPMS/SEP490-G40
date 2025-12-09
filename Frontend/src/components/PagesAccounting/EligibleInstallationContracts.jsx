@@ -72,7 +72,7 @@ function EligibleInstallationContracts() {
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <h2 className="text-xl font-semibold text-gray-800">
-                        Danh sách HĐ Chính thức chờ lập Hóa đơn
+                        Danh sách HĐ Chính thức chờ lập Hóa đơn lắp đặt
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
                         Các Hợp đồng đã hoàn tất lắp đặt, chưa phát hành Hóa đơn lắp đặt

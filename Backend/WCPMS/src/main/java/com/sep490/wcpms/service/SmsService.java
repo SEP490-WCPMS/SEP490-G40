@@ -1,93 +1,121 @@
 package com.sep490.wcpms.service;
 
-import lombok.RequiredArgsConstructor;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class SmsService {
 
-    private final RestTemplate restTemplate;
+    @Value("${httpsms.base-url}")
+    private String baseUrl;
 
-    @Value("${sms.provider.url}")
-    private String apiUrl;
+    @Value("${httpsms.api-key}")
+    private String apiKey;
 
-    @Value("${sms.provider.access-token}")
-    private String accessToken;
+    // Số SIM trên điện thoại cài app httpSMS
+    @Value("${httpsms.from-phone}")
+    private String fromPhone;
 
-    @Value("${sms.provider.sender-id}")
-    private String senderId;
+    // Bật/tắt gửi thật (mock khi false)
+    @Value("${httpsms.enabled:true}")
+    private boolean enabled;
 
-    @Value("${sms.provider.enabled}")
-    private boolean isEnabled;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     /**
-     * Gửi tin nhắn SMS bất đồng bộ (Async)
-     * @param toPhone Số điện thoại người nhận (VD: 0912345678)
-     * @param content Nội dung tin nhắn
+     * Gửi SMS cho số toPhone với nội dung content qua httpSMS.
      */
     @Async
     public void sendSms(String toPhone, String content) {
-        // 1. Chế độ Test (Không gửi thật)
-        if (!isEnabled) {
+        if (toPhone == null || toPhone.isBlank()) {
+            log.warn("[SMS] Không gửi SMS vì số điện thoại trống.");
+            return;
+        }
+
+        if (content == null || content.isBlank()) {
+            log.warn("[SMS] Không gửi SMS vì nội dung trống.");
+            return;
+        }
+
+        if (!enabled) {
+            // MOCK: chỉ log, không gọi API thật
             log.info("==================================================");
-            log.info("[SMS MOCK - GỬI GIẢ LẬP]");
+            log.info("[SMS MOCK - httpSMS]");
             log.info("TO      : {}", toPhone);
             log.info("CONTENT : {}", content);
             log.info("==================================================");
             return;
         }
 
-        // 2. Chế độ Gửi thật (Gọi API SpeedSMS)
+        if (baseUrl == null || baseUrl.isBlank() ||
+                apiKey == null || apiKey.isBlank() ||
+                fromPhone == null || fromPhone.isBlank()) {
+            log.error("[SMS] Cấu hình httpSMS thiếu (base-url/api-key/from-phone). Chỉ log, không gửi.");
+            log.info("[SMS FALLBACK LOG] TO={}, CONTENT={}", toPhone, content);
+            return;
+        }
+
         try {
-            // Tạo Header (Basic Auth cho SpeedSMS: username=token, password=x)
+            String normalizedTo = normalizePhone(toPhone);
+            String normalizedFrom = normalizePhone(fromPhone);
+
+            String url = baseUrl.endsWith("/")
+                    ? baseUrl + "messages/send"
+                    : baseUrl + "/messages/send";
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("x-api-key", apiKey);
 
-            String auth = accessToken + ":x";
-            byte[] encodedAuth = Base64.getEncoder().encode(auth.getBytes(StandardCharsets.UTF_8));
-            String authHeader = "Basic " + new String(encodedAuth);
-            headers.set("Authorization", authHeader);
+            HttpSmsRequest body = new HttpSmsRequest();
+            body.setContent(content);
+            body.setFrom(normalizedFrom);
+            body.setTo(normalizedTo);
+            body.setEncrypted(false);
 
-            // Tạo Body
-            Map<String, Object> body = new HashMap<>();
-            body.put("to", new String[]{toPhone}); // SpeedSMS nhận mảng số điện thoại
-            body.put("content", content);
-            body.put("sms_type", 2); // 2: Tin nhắn CSKH (đầu số ngẫu nhiên), 4: Brandname
+            HttpEntity<HttpSmsRequest> entity = new HttpEntity<>(body, headers);
 
-            if (senderId != null && !senderId.isEmpty()) {
-                body.put("sender", senderId);
-            }
+            log.info("[SMS] Gửi SMS qua httpSMS: {} -> {}", normalizedFrom, normalizedTo);
+            long start = System.currentTimeMillis();
 
-            // Đóng gói Request
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(url, entity, String.class);
 
-            // Gửi POST
-            log.info("Đang gửi SMS tới {} qua SpeedSMS...", toPhone);
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, request, String.class);
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Gửi SMS thành công: {}", response.getBody());
-            } else {
-                log.error("Gửi SMS thất bại. Status: {}, Body: {}", response.getStatusCode(), response.getBody());
-            }
-
+            long duration = System.currentTimeMillis() - start;
+            log.info("[SMS] httpSMS response: status={}, time={}ms, body={}",
+                    response.getStatusCode(), duration, response.getBody());
         } catch (Exception e) {
-            log.error("Lỗi khi gọi API SMS: {}", e.getMessage());
+            log.error("[SMS] Lỗi khi gửi SMS bằng httpSMS: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Chuẩn hoá số điện thoại về dạng +84xxxx...
+     */
+    private String normalizePhone(String phone) {
+        if (phone == null) return null;
+        String p = phone.trim().replace(" ", "");
+        if (p.startsWith("+")) {
+            return p;
+        }
+        if (p.startsWith("0")) {
+            return "+84" + p.substring(1);
+        }
+        return p;
+    }
+
+    @Data
+    private static class HttpSmsRequest {
+        private String content;
+        private boolean encrypted;
+        private String from;
+        private String to;
+        // Nếu sau này cần thêm request_id, send_at... thì bổ sung ở đây
     }
 }
