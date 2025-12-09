@@ -5,7 +5,7 @@ import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Pagination from '../../common/Pagination';
-import ContractTable from '../ContractTable';
+import ContractTable from '../ContractTable'; // Import bảng mới
 import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, submitContractForSurvey } from '../../Services/apiService';
@@ -71,10 +71,10 @@ const ContractRequestsPage = () => {
         fetchContracts({ page: newPage });
     };
 
-    const handleFilterChange = (filterName, value) => {
+    const handleFilterChange = (value) => {
         setFilters(prev => ({
             ...prev,
-            [filterName]: value
+            keyword: value
         }));
         setPagination(prev => ({ ...prev, page: 0 }));
         fetchContracts({ page: 0 });
@@ -85,7 +85,13 @@ const ContractRequestsPage = () => {
         setModalLoading(true);
         try {
             const response = await getServiceContractDetail(contract.id);
-            setSelectedContract(response.data);
+            const fullData = response.data;
+            
+            // --- THÊM LOGIC GUEST CHO MODAL (Nếu cần hiển thị chi tiết hơn) ---
+            // Nếu là Guest, form assign survey vẫn hoạt động bình thường
+            // vì backend đã map guestName/contactPhone vào DTO rồi.
+            
+            setSelectedContract(fullData);
             setModalMode(action === 'submit' ? 'edit' : 'view');
             setIsModalVisible(true);
         } catch (error) {
@@ -104,7 +110,7 @@ const ContractRequestsPage = () => {
         setModalMode('view');
     };
 
-    // Lưu thay đổi từ Modal
+    // Lưu thay đổi từ Modal (Gửi khảo sát)
     const handleSaveModal = async (formData) => {
         if (!selectedContract) return;
         setModalLoading(true);
@@ -157,6 +163,7 @@ const ContractRequestsPage = () => {
                     <Button
                         onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
                         loading={loading}
+                        icon={<ReloadOutlined />}
                     >
                         Làm mới
                     </Button>
@@ -167,7 +174,7 @@ const ContractRequestsPage = () => {
                 <Col xs={24} md={12}>
                     <Search
                         placeholder="Tìm theo tên hoặc mã KH..."
-                        onSearch={(value) => handleFilterChange('keyword', value)}
+                        onSearch={(value) => handleFilterChange(value)}
                         enterButton
                         allowClear
                     />
@@ -179,31 +186,24 @@ const ContractRequestsPage = () => {
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={false}
+                    pagination={pagination}
+                    onPageChange={handlePageChange}
                     onViewDetails={handleViewDetails}
                 />
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
-                </div>
             </Spin>
 
             {/* --- Modal chi tiết/cập nhật --- */}
             {isModalVisible && selectedContract && (
                 modalMode === 'view' ? (
                     <ContractViewModal
-                        visible={isModalVisible}
+                        open={isModalVisible}
                         onCancel={handleCancelModal}
                         initialData={selectedContract}
                         loading={modalLoading}
                     />
                 ) : (
                     <AssignSurveyModal
-                        visible={isModalVisible}
+                        open={isModalVisible}
                         onCancel={handleCancelModal}
                         onSave={handleSaveModal}
                         loading={modalLoading}
@@ -223,5 +223,3 @@ const ContractRequestsPage = () => {
 };
 
 export default ContractRequestsPage;
-
-

@@ -21,4 +21,17 @@ public interface ServiceStaffContractRepository extends JpaRepository<Contract, 
                               OR LOWER(cu.customerCode) LIKE LOWER(CONCAT('%', :keyword, '%')))
     """)
     Page<Contract> findByStatusAndKeyword(ContractStatus status, String keyword, Pageable pageable);
+
+    @Query("""
+        SELECT DISTINCT c FROM Contract c 
+        JOIN c.customer cu 
+        LEFT JOIN c.contractUsageDetails cud
+        LEFT JOIN cud.priceType pt
+        WHERE (:status IS NULL OR c.contractStatus = :status)
+          AND c.serviceStaff.id = :staffId
+          AND (:keyword IS NULL OR LOWER(cu.customerName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                              OR LOWER(cu.customerCode) LIKE LOWER(CONCAT('%', :keyword, '%')))
+    """)
+    Page<Contract> findByServiceStaffAndStatusAndKeyword(Integer staffId, ContractStatus status, String keyword, Pageable pageable);
+
 }
