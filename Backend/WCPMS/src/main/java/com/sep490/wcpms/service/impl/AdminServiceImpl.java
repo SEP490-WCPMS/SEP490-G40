@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -60,7 +61,16 @@ public class AdminServiceImpl implements AdminService {
     }
     @Override
     public List<GuestRequestResponseDTO> getPendingGuestRequests() {
-        List<Contract> contracts = contractRepository.findPendingGuestContracts();
+        // SỬA: Lấy các hợp đồng chưa có Customer và trạng thái là PENDING_SIGN_REVIEW hoặc APPROVED
+        // Bạn cần đảm bảo Repository có hỗ trợ method này hoặc dùng @Query tương ứng
+        List<Contract.ContractStatus> targetStatuses = Arrays.asList(
+                Contract.ContractStatus.PENDING_SURVEY_REVIEW,
+                Contract.ContractStatus.APPROVED
+        );
+
+        // Gọi hàm repository (Xem phần cập nhật Repository bên dưới)
+        List<Contract> contracts = contractRepository.findByCustomerIsNullAndContractStatusIn(targetStatuses);
+
         return contracts.stream().map(this::mapToGuestDTO).collect(Collectors.toList());
     }
 
@@ -71,8 +81,10 @@ public class AdminServiceImpl implements AdminService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hợp đồng không tồn tại"));
 
-        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_SURVEY_REVIEW) {
-            throw new IllegalStateException("Chỉ tạo tài khoản cho hợp đồng với trạng thái là PENDING_SURVEY_REVIEW.");
+        // SỬA: Kiểm tra trạng thái hợp lệ (PENDING_SIGN_REVIEW hoặc APPROVED)
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_SURVEY_REVIEW
+                && contract.getContractStatus() != Contract.ContractStatus.APPROVED) {
+            throw new IllegalStateException("Chỉ tạo tài khoản cho Guest khi hợp đồng đang chờ ký duyệt hoặc đã duyệt.");
         }
 
         if (contract.getCustomer() != null) {
@@ -128,8 +140,6 @@ public class AdminServiceImpl implements AdminService {
 
         // 6. Cập nhật Contract
         contract.setCustomer(savedCustomer);
-        // Chuyển trạng thái sang chờ ký hợp đồng (hoặc Approved tùy quy trình)
-        contract.setContractStatus(Contract.ContractStatus.PENDING_CUSTOMER_SIGN);
         contractRepository.save(contract);
 
         // Chuẩn bị thông tin chung dùng cho cả email & SMS
