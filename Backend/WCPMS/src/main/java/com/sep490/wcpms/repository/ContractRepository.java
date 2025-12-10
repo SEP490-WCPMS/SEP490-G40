@@ -71,6 +71,9 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
 
     List<Contract> findByCustomer_Account_IdOrderByIdDesc(Integer accountId);
 
+    // Tìm các hợp đồng chưa có khách hàng (Guest) và trạng thái nằm trong danh sách truyền vào
+    List<Contract> findByCustomerIsNullAndContractStatusIn(List<Contract.ContractStatus> statuses);
+
     // --- SERVICE STAFF METHODS ---
 
     /** Đếm số hợp đồng của service staff với trạng thái cụ thể */
@@ -193,10 +196,11 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     );
 
     /**
-     * Đếm số Hợp đồng ACTIVE nhưng chưa có hóa đơn lắp đặt.
+     * Đếm số Hợp đồng ACTIVE được gán cho Kế toán này nhưng chưa có hóa đơn lắp đặt.
      */
     @Query("SELECT COUNT(c) FROM Contract c " +
             "WHERE c.contractStatus = 'ACTIVE' " +
+            "AND c.accountingStaff.id = :staffId " + // <--- QUAN TRỌNG: Lọc theo staff
             "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.contract = c AND i.meterReading IS NULL)")
-    long countPendingInstallationBills();
+    long countPendingInstallationBillsByStaff(@Param("staffId") Integer staffId);
 }

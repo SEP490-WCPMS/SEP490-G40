@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -33,36 +34,36 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
-        List<Account> accounts = accountRepository.findByRole_RoleName(Role.RoleName.CUSTOMER);
+        // 1. Lấy toàn bộ dữ liệu từ bảng CUSTOMERS (đã JOIN account để tránh lazy loading)
+        List<Customer> customers = customerRepository.findAllWithAccount();
 
-        return accounts.stream().map(acc -> {
-            Customer cust = customerRepository.findByAccount_Id(acc.getId()).orElse(null);
-
-            // --- SỬA LOGIC LẤY TÊN VÀ MÃ ---
-            // Ưu tiên lấy từ bảng Customer, nếu không có thì lấy từ Account
-            String code = (cust != null && cust.getCustomerCode() != null) ? cust.getCustomerCode() : acc.getCustomerCode();
-            String name = (cust != null && cust.getCustomerName() != null) ? cust.getCustomerName() : acc.getFullName();
-            String addr = (cust != null) ? cust.getAddress() : "Chưa cập nhật";
-
-            // Mặc định status là 1 (Active) nếu null
-            Integer status = (acc.getStatus() != null) ? acc.getStatus() : 1;
+        return customers.stream().map(cust -> {
+            Account acc = cust.getAccount();
 
             return CustomerResponseDTO.builder()
-                    .accountId(acc.getId())
-                    .customerId(cust != null ? cust.getId() : null)
-                    .customerCode(code) // <--- Check kỹ dòng này
-                    .fullName(name)     // <--- Check kỹ dòng này
-                    .email(acc.getEmail())
-                    .phone(acc.getPhone())
-                    .address(addr)
-                    .status(status)
+                    .customerId(cust.getId())
+                    .accountId(acc != null ? acc.getId() : null)
+                    .customerCode(cust.getCustomerCode())
+                    .fullName(cust.getCustomerName())
+                    .address(cust.getAddress())
+                    .phone(cust.getContactPersonPhone() != null ? cust.getContactPersonPhone() : (acc != null ? acc.getPhone() : ""))
+                    .email(acc != null ? acc.getEmail() : "")
+                    .status(acc != null && acc.getStatus() != null ? acc.getStatus() : 1)
                     .build();
         }).collect(Collectors.toList());
     }
-
     @Override
     public List<GuestRequestResponseDTO> getPendingGuestRequests() {
-        List<Contract> contracts = contractRepository.findPendingGuestContracts();
+        // SỬA: Lấy các hợp đồng chưa có Customer và trạng thái là PENDING_SIGN_REVIEW hoặc APPROVED
+        // Bạn cần đảm bảo Repository có hỗ trợ method này hoặc dùng @Query tương ứng
+        List<Contract.ContractStatus> targetStatuses = Arrays.asList(
+                Contract.ContractStatus.PENDING_SURVEY_REVIEW,
+                Contract.ContractStatus.APPROVED
+        );
+
+        // Gọi hàm repository (Xem phần cập nhật Repository bên dưới)
+        List<Contract> contracts = contractRepository.findByCustomerIsNullAndContractStatusIn(targetStatuses);
+
         return contracts.stream().map(this::mapToGuestDTO).collect(Collectors.toList());
     }
 
@@ -73,8 +74,10 @@ public class AdminServiceImpl implements AdminService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hợp đồng không tồn tại"));
 
-        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_SURVEY_REVIEW) {
-            throw new IllegalStateException("Chỉ tạo tài khoản cho hợp đồng với trạng thái là PENDING_SURVEY_REVIEW.");
+        // SỬA: Kiểm tra trạng thái hợp lệ (PENDING_SIGN_REVIEW hoặc APPROVED)
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_SURVEY_REVIEW
+                && contract.getContractStatus() != Contract.ContractStatus.APPROVED) {
+            throw new IllegalStateException("Chỉ tạo tài khoản cho Guest khi hợp đồng đang chờ ký duyệt hoặc đã duyệt.");
         }
 
         if (contract.getCustomer() != null) {
@@ -130,8 +133,6 @@ public class AdminServiceImpl implements AdminService {
 
         // 6. Cập nhật Contract
         contract.setCustomer(savedCustomer);
-        // Chuyển trạng thái sang chờ ký hợp đồng (hoặc Approved tùy quy trình)
-        contract.setContractStatus(Contract.ContractStatus.PENDING_CUSTOMER_SIGN);
         contractRepository.save(contract);
 
         // Chuẩn bị thông tin chung dùng cho cả email & SMS
@@ -222,3 +223,4 @@ public class AdminServiceImpl implements AdminService {
         return s;
     }
 }
+

@@ -189,15 +189,15 @@ function CashierRouteList() {
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm">
+            {/* --- HEADER --- */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 bg-white p-4 rounded-lg shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Danh sách Ghi chỉ số theo Tuyến</h1>
-                    <p className="text-sm text-gray-600">Danh sách các hợp đồng (đã sắp xếp) thuộc tuyến bạn quản lý.</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">Ghi Chỉ Số Theo Tuyến</h1>
+                    <p className="text-sm text-gray-600">Danh sách hợp đồng theo lộ trình đọc số.</p>
                 </div>
                 <button
                     onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out disabled:opacity-50"
+                    className="flex items-center w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out disabled:opacity-50"
                     disabled={loading || !selectedRouteId}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -205,20 +205,19 @@ function CashierRouteList() {
                 </button>
             </div>
 
-            {/* Box Lọc Tuyến + Tìm kiếm */}
-            <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center border border-gray-200">
-                {/* Dropdown Tuyến */}
-                <div className="flex items-center gap-2 w-full md:w-1/3">
-                    <MapPin size={16} className="text-gray-600 flex-shrink-0" />
-                    <label htmlFor="routeSelect" className="text-sm font-medium text-gray-700 flex-shrink-0">
-                        Chọn Tuyến:
+            {/* --- BOX LỌC & TÌM KIẾM --- */}
+            <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col gap-4 border border-gray-200">
+                {/* 1. Dropdown Tuyến */}
+                <div className="flex flex-col md:flex-row md:items-center gap-2">
+                    <label htmlFor="routeSelect" className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                         <MapPin size={16} className="text-blue-600" /> Chọn Tuyến đọc:
                     </label>
                     <select
                         id="routeSelect"
                         value={selectedRouteId}
                         onChange={handleRouteChange}
                         disabled={loadingRoutes}
-                        className="flex-1 appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 appearance-none border border-gray-300 rounded-md py-2 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="">{loadingRoutes ? "Đang tải Tuyến..." : "-- Chọn Tuyến --"}</option>
                         {routes.map(route => (
@@ -229,8 +228,8 @@ function CashierRouteList() {
                     </select>
                 </div>
 
-                {/* 4. Thanh Tìm Kiếm */}
-                <div className="relative w-full md:w-1/2">
+                {/* 2. Thanh Tìm Kiếm */}
+                <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-5 w-5 text-gray-400" />
                     </div>
@@ -241,11 +240,11 @@ function CashierRouteList() {
                         value={searchTerm}
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        disabled={!selectedRouteId} // Khóa nếu chưa chọn tuyến
+                        disabled={!selectedRouteId}
                     />
                     <button
                         onClick={handleSearch}
-                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors disabled:opacity-50"
+                        className="absolute inset-y-0 right-0 px-4 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors disabled:opacity-50"
                         disabled={!selectedRouteId}
                     >
                         Tìm
@@ -253,25 +252,89 @@ function CashierRouteList() {
                 </div>
             </div>
 
-            {/* Bảng Dữ liệu */}
-            <div className="bg-white rounded-lg shadow border border-gray-200">
-                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {loading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-lg">
-                            <Loader2 size={32} className="animate-spin text-blue-600" />
+            {/* --- CONTAINER HIỂN THỊ DỮ LIỆU --- */}
+            <div className="bg-transparent md:bg-white md:rounded-lg md:shadow md:border md:border-gray-200 relative min-h-[200px]">
+                
+                 {/* Loading Overlay */}
+                 {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-20 rounded-lg">
+                        <Loader2 size={32} className="animate-spin text-blue-600" />
+                    </div>
+                )}
+
+                {/* --- 1. MOBILE VIEW: Dạng thẻ (Cards) --- */}
+                <div className="block md:hidden space-y-4">
+                     {!loading && contracts.length === 0 ? (
+                        <div className="text-center py-8 bg-white rounded-lg border border-gray-200 text-gray-500 italic px-4">
+                            {selectedRouteId
+                                ? (searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Tuyến này chưa có hợp đồng nào.')
+                                : 'Vui lòng chọn một tuyến đọc để bắt đầu.'}
                         </div>
+                    ) : (
+                        contracts.map((contract) => {
+                            const isCompleted = completedItems.has(contract.contractId);
+                            return (
+                                <div 
+                                    key={contract.contractId} 
+                                    className={`bg-white p-4 rounded-lg shadow-sm border ${isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200'} flex flex-col gap-3 relative`}
+                                >
+                                    {/* Checkbox "Đã xong" góc trên phải */}
+                                    <div className="absolute top-4 right-4 z-10">
+                                        <Checkbox
+                                            id={`cb-mobile-${contract.contractId}`}
+                                            checked={isCompleted}
+                                            onCheckedChange={() => toggleCompleted(contract.contractId)}
+                                            className="h-6 w-6 border-2 border-gray-400 data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                                        />
+                                    </div>
+
+                                    {/* Header: Số thứ tự + Mã Đồng hồ */}
+                                    <div className="flex items-center gap-3 pr-8">
+                                        <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold text-lg border-2 border-white shadow-sm">
+                                            {contract.routeOrder || '#'}
+                                        </div>
+                                        <div>
+                                            <span className="text-xs text-gray-500 uppercase font-semibold">Mã Đồng Hồ</span>
+                                            <div className="font-mono font-bold text-gray-800 text-base">{contract.meterCode}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Body: Thông tin khách hàng */}
+                                    <div className={`text-sm space-y-1 ${isCompleted ? 'opacity-60' : ''}`}>
+                                        <div className="font-semibold text-gray-900 text-base">{contract.customerName}</div>
+                                        <div className="text-gray-600 flex items-start gap-1">
+                                            <MapPin size={14} className="mt-1 flex-shrink-0" />
+                                            <span>{contract.customerAddress}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer: Nút Xem */}
+                                    <div className="pt-2">
+                                        <button
+                                            onClick={() => navigate(`/cashier/route-contract/${contract.contractId}`)}
+                                            className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md font-medium shadow hover:bg-blue-700 active:scale-95 transition-transform"
+                                        >
+                                            <Eye size={18} className="mr-2" />
+                                            Ghi Chỉ Số
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
                     )}
+                </div>
+
+                {/* --- 2. DESKTOP VIEW: Dạng bảng (Table) --- */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-2 py-3 w-12 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    <span className="sr-only">Xong</span>
-                                </th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Thứ Tự</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách Hàng</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Đồng Hồ</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ</th>
-                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao Tác</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-12">Xong</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase w-16">Thứ Tự</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách Hàng</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mã Đồng Hồ</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Địa chỉ</th>
+                                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -284,42 +347,27 @@ function CashierRouteList() {
                                     </td>
                                 </tr>
                             ) : (
-                                contracts.map((contract, index) => {
+                                contracts.map((contract) => {
                                     const isCompleted = completedItems.has(contract.contractId);
-
                                     return (
-                                        <tr
-                                            key={contract.contractId}
-                                            className={`transition-colors ${isCompleted ? 'bg-green-50 opacity-70' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <td className="px-2 py-4 text-center">
+                                        <tr key={contract.contractId} className={`transition-colors ${isCompleted ? 'bg-green-50' : 'hover:bg-gray-50'}`}>
+                                            <td className="px-4 py-4 text-center">
                                                 <Checkbox
                                                     id={`cb-${contract.contractId}`}
                                                     checked={isCompleted}
                                                     onCheckedChange={() => toggleCompleted(contract.contractId)}
                                                 />
                                             </td>
-                                            <td className="px-4 py-4 text-center font-bold text-blue-600">
-                                                {contract.routeOrder || '-'}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                <div className={`font-medium text-sm ${isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                                                    {contract.customerName}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
-                                                {contract.meterCode}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate" title={contract.customerAddress}>
-                                                {contract.customerAddress}
-                                            </td>
-                                            <td className="px-4 py-4 text-center whitespace-nowrap text-sm font-medium">
+                                            <td className="px-4 py-4 text-center font-bold text-blue-600">{contract.routeOrder || '-'}</td>
+                                            <td className="px-4 py-4 font-medium text-sm text-gray-900">{contract.customerName}</td>
+                                            <td className="px-4 py-4 text-sm text-gray-600 font-mono">{contract.meterCode}</td>
+                                            <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate" title={contract.customerAddress}>{contract.customerAddress}</td>
+                                            <td className="px-4 py-4 text-center">
                                                 <button
                                                     onClick={() => navigate(`/cashier/route-contract/${contract.contractId}`)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
+                                                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition"
                                                 >
-                                                    <Eye size={14} className="mr-1.5" />
-                                                    Xem
+                                                    <Eye size={14} className="mr-1.5" /> Xem
                                                 </button>
                                             </td>
                                         </tr>
@@ -330,14 +378,16 @@ function CashierRouteList() {
                     </table>
                 </div>
 
-                {/* Pagination */}
+                {/* --- Pagination --- */}
                 {!loading && contracts.length > 0 && (
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
+                     <div className="py-2">
+                        <Pagination
+                            currentPage={pagination.page}
+                            totalElements={pagination.totalElements}
+                            pageSize={pagination.size}
+                            onPageChange={handlePageChange}
+                        />
+                    </div>
                 )}
             </div>
         </div>
