@@ -34,27 +34,20 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
-        // 1. Lấy toàn bộ dữ liệu từ bảng CUSTOMERS
-        List<Customer> customers = customerRepository.findAll();
+        // 1. Lấy toàn bộ dữ liệu từ bảng CUSTOMERS (đã JOIN account để tránh lazy loading)
+        List<Customer> customers = customerRepository.findAllWithAccount();
 
         return customers.stream().map(cust -> {
             Account acc = cust.getAccount();
 
             return CustomerResponseDTO.builder()
                     .customerId(cust.getId())
-
-                    // Lấy trực tiếp từ Entity Customer
+                    .accountId(acc != null ? acc.getId() : null)
                     .customerCode(cust.getCustomerCode())
                     .fullName(cust.getCustomerName())
                     .address(cust.getAddress())
-
-                    // Lấy SĐT (Ưu tiên Customer -> Account)
                     .phone(cust.getContactPersonPhone() != null ? cust.getContactPersonPhone() : (acc != null ? acc.getPhone() : ""))
-
-                    // Lấy Email (Từ Account)
                     .email(acc != null ? acc.getEmail() : "")
-
-                    // Status
                     .status(acc != null && acc.getStatus() != null ? acc.getStatus() : 1)
                     .build();
         }).collect(Collectors.toList());
@@ -230,3 +223,4 @@ public class AdminServiceImpl implements AdminService {
         return s;
     }
 }
+
