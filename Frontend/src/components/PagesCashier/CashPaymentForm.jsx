@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { searchInvoices, processCashPayment } from '../Services/apiCashierStaff';
-import { Search, DollarSign, Receipt, User, FileText, ArrowRight, Droplets, Calendar, Phone, CreditCard, Mail, Gauge, Eye } from 'lucide-react';
+import { Search, DollarSign, User, FileText, Droplets, Calendar, Phone, Mail, Gauge, Eye, CreditCard, Loader2 } from 'lucide-react';
 import moment from 'moment';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -68,14 +68,11 @@ function CashPaymentForm() {
         setLoadingSubmit(true);
         setShowConfirmModal(false);
         try {
-            // Backend yêu cầu Body là { amountPaid: ... }
             const receipt = await processCashPayment(selectedInvoice.id, { amountPaid: selectedInvoice.totalAmount });
-
             toast.success(`Thanh toán thành công! Mã biên lai: ${receipt.data.receiptNumber}`, {
                 position: "top-center",
                 autoClose: 5000
             });
-
             setSelectedInvoice(null);
             setSearchResults([]);
             setKeyword('');
@@ -87,7 +84,7 @@ function CashPaymentForm() {
         }
     };
 
-    // Hàm helper chuyển đổi trạng thái sang tiếng Việt và class màu sắc
+    // Hàm helper chuyển đổi trạng thái
     const getStatusBadge = (status) => {
         switch (status) {
             case 'PENDING':
@@ -105,17 +102,17 @@ function CashPaymentForm() {
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-            {/* Header */}
+            {/* --- HEADER --- */}
             <div className="bg-white p-4 rounded-lg shadow-sm">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <DollarSign className="text-green-600" /> Thu Tiền Mặt
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">Tra cứu nợ theo Tên khách hàng, SĐT hoặc Số hóa đơn.</p>
             </div>
 
-            {/* Box Tìm kiếm */}
-            <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                <div className="flex gap-3">
+            {/* --- BOX TÌM KIẾM --- */}
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow border border-gray-200">
+                <div className="flex flex-col md:flex-row gap-3">
                     <div className="relative flex-1">
                         <input
                             type="text"
@@ -132,20 +129,70 @@ function CashPaymentForm() {
                     <button
                         onClick={handleSearch}
                         disabled={loadingSearch}
-                        className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50 flex items-center"
+                        className="w-full md:w-auto px-6 py-2.5 bg-blue-600 text-white font-medium rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50 flex justify-center items-center"
                     >
-                        {loadingSearch ? 'Đang tìm...' : 'Tìm kiếm'}
+                        {loadingSearch ? <Loader2 size={18} className="animate-spin" /> : 'Tìm kiếm'}
                     </button>
                 </div>
             </div>
 
-            {/* DANH SÁCH KẾT QUẢ TÌM KIẾM */}
+            {/* --- DANH SÁCH KẾT QUẢ TÌM KIẾM --- */}
             {searchResults.length > 0 && !selectedInvoice && (
-                <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <div className="bg-transparent md:bg-white md:rounded-lg md:shadow md:border md:border-gray-200 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="hidden md:block p-4 border-b border-gray-100 bg-gray-50">
                         <h3 className="font-semibold text-gray-700">Kết quả tìm kiếm ({searchResults.length})</h3>
                     </div>
-                    <div className="overflow-x-auto">
+
+                    {/* 1. MOBILE VIEW: CARDS */}
+                    <div className="block md:hidden space-y-4">
+                        {searchResults.map((inv) => {
+                             const statusInfo = getStatusBadge(inv.paymentStatus);
+                             return (
+                                <div key={inv.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-3">
+                                    {/* Header Card */}
+                                    <div className="flex justify-between items-start border-b border-gray-100 pb-2">
+                                        <div>
+                                            <span className="text-xs text-gray-500 block">Số hóa đơn</span>
+                                            <span className="font-bold text-blue-600 font-mono">{inv.invoiceNumber}</span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-xs font-bold border ${statusInfo.className}`}>
+                                            {statusInfo.label}
+                                        </span>
+                                    </div>
+
+                                    {/* Body Card */}
+                                    <div className="space-y-1 text-sm">
+                                        <div className="font-bold text-gray-800 text-base">{inv.customerName}</div>
+                                        <div className="text-gray-500 flex items-center gap-1">
+                                            <Phone size={14} /> {inv.customerPhone || '---'}
+                                        </div>
+                                        <div className="text-gray-500 flex items-center gap-1">
+                                             <Calendar size={14} /> Hạn: {moment(inv.dueDate).format('DD/MM/YYYY')}
+                                        </div>
+                                    </div>
+
+                                    {/* Footer Card: Total Amount + Button */}
+                                    <div className="flex justify-between items-center pt-2 mt-1 border-t border-gray-100">
+                                        <div>
+                                            <span className="text-xs text-gray-500 block">Tổng tiền</span>
+                                            <span className="font-extrabold text-gray-800 text-lg">
+                                                {inv.totalAmount?.toLocaleString('vi-VN')} đ
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleSelectInvoice(inv)}
+                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
+                                        >
+                                            Thu Tiền
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* 2. DESKTOP VIEW: TABLE */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
@@ -175,8 +222,7 @@ function CashPaymentForm() {
                                                 onClick={() => handleSelectInvoice(inv)}
                                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
                                             >
-                                                <Eye size={14} className="mr-1.5" />
-                                                Xem
+                                                <Eye size={14} className="mr-1.5" /> Xem
                                             </button>
                                         </td>
                                     </tr>
@@ -192,102 +238,78 @@ function CashPaymentForm() {
                 <div id="invoice-detail-section" className="bg-white rounded-lg shadow-lg border border-blue-200 overflow-hidden animate-in zoom-in duration-300">
 
                     {/* Header Hóa đơn */}
-                    <div className="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center flex-wrap gap-2">
+                    <div className="bg-blue-50 px-4 md:px-6 py-4 border-b border-blue-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                         <div>
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <h2 className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2">
                                 <FileText className="text-blue-600" />
-                                Chi Tiết Hóa Đơn: <span className="font-mono text-blue-700">{selectedInvoice.invoiceNumber}</span>
+                                Chi Tiết HĐ: <span className="font-mono text-blue-700">{selectedInvoice.invoiceNumber}</span>
                             </h2>
-                            {/* Lấy thông tin hiển thị từ hàm helper */}
                             {(() => {
                                 const statusInfo = getStatusBadge(selectedInvoice.paymentStatus);
                                 return (
-                                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                                        Trạng thái:
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-sm text-gray-500">Trạng thái:</span>
                                         <span className={`font-bold px-2 py-0.5 rounded text-xs border ${statusInfo.className}`}>
                                             {statusInfo.label}
                                         </span>
-                                    </p>
+                                    </div>
                                 );
                             })()}
                         </div>
-                        <button onClick={handleCancelSelection} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out">
+                        <button onClick={handleCancelSelection} className="w-full md:w-auto inline-flex justify-center items-center px-3 py-2 border border-gray-300 bg-white text-xs font-medium rounded-md shadow-sm text-gray-700 hover:bg-gray-50">
                             Chọn hóa đơn khác
                         </button>
                     </div>
 
-                    <div className="p-6">
+                    <div className="p-4 md:p-6">
+                        {/* Grid responsive: 1 cột mobile -> 3 cột desktop */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                             {/* Cột 1: Thông tin Khách hàng */}
                             <div className="lg:col-span-1 space-y-4">
                                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 h-full">
                                     <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                        <User size={18} /> Thông tin Khách hàng
+                                        <User size={18} /> Khách hàng
                                     </h3>
                                     <div className="space-y-3 text-sm">
                                         <div>
-                                            <p className="text-gray-500 text-xs">Tên khách hàng</p>
+                                            <p className="text-gray-500 text-xs">Họ tên</p>
                                             <p className="font-bold text-gray-900 text-base">{selectedInvoice.customerName}</p>
                                         </div>
-                                        <div>
-                                            <p className="text-gray-500 text-xs">Mã Khách hàng</p>
-                                            <p className="font-medium text-gray-900">{selectedInvoice.customerCode || '---'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 text-xs">Số điện thoại</p>
-                                            <p className="font-medium text-gray-900 flex items-center gap-1">
-                                                <Phone size={12} /> {selectedInvoice.customerPhone || 'Chưa cập nhật'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 text-xs">Email</p>
-                                            <p className="font-medium text-gray-900 flex items-center gap-1">
-                                                <Mail size={12} /> {selectedInvoice.customerEmail || 'Chưa cập nhật'}
-                                            </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <p className="text-gray-500 text-xs">Mã KH</p>
+                                                <p className="font-medium text-gray-900">{selectedInvoice.customerCode || '---'}</p>
+                                            </div>
+                                            <div>
+                                                 <p className="text-gray-500 text-xs">SĐT</p>
+                                                 <p className="font-medium text-gray-900">{selectedInvoice.customerPhone || '---'}</p>
+                                            </div>
                                         </div>
                                         <div>
                                             <p className="text-gray-500 text-xs">Địa chỉ</p>
-                                            <p className="font-medium text-gray-900">{selectedInvoice.customerAddress}</p>
-                                        </div>
-                                        <div className="pt-2 border-t border-gray-200">
-                                            <p className="text-gray-500 text-xs">Hợp Đồng Lắp Đặt (ID)</p>
-                                            <p className="font-bold text-blue-600">#{selectedInvoice.contractId || '---'}</p>
+                                            <p className="font-medium text-gray-900 break-words">{selectedInvoice.customerAddress}</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Cột 2: Thông tin Nước/Dịch vụ (Dựa vào meterReadingId) */}
+                            {/* Cột 2: Thông tin Nước */}
                             <div className="lg:col-span-1 space-y-4">
                                 <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 h-full">
                                     <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                        <Droplets size={18} className="text-blue-500" /> Chi tiết Sử dụng
+                                        <Droplets size={18} className="text-blue-500" /> Sử dụng
                                     </h3>
 
                                     {selectedInvoice.meterReadingId ? (
                                         <div className="space-y-4">
-                                            {/* --- THÊM PHẦN MÃ ĐỒNG HỒ TẠI ĐÂY --- */}
                                             <div className="bg-white p-2 rounded shadow-sm border border-blue-100 flex justify-between items-center">
                                                 <span className="text-gray-600 text-sm flex items-center gap-1">
-                                                    <Gauge size={14} /> Mã đồng hồ:
+                                                    <Gauge size={14} /> Mã ĐH:
                                                 </span>
                                                 <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-300">
                                                     {selectedInvoice.meterCode || 'N/A'}
                                                 </span>
-                                            </div>
-                                            {/* ------------------------------------ */}
-
-                                            <div className="flex justify-between items-center bg-white p-2 rounded shadow-sm border border-blue-100">
-                                                <span className="text-gray-600 text-sm flex items-center gap-1">
-                                                    <Calendar size={14} /> Kỳ ghi:
-                                                </span>
-                                                <div className="text-right">
-                                                    <span className="block font-bold text-blue-800 text-xs">
-                                                        {selectedInvoice.fromDate ? moment(selectedInvoice.fromDate).format('DD/MM') : '...'} -
-                                                        {selectedInvoice.toDate ? moment(selectedInvoice.toDate).format('DD/MM') : '...'}
-                                                    </span>
-                                                </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2 text-center">
@@ -309,9 +331,9 @@ function CashPaymentForm() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-40 text-center text-gray-500 text-sm italic bg-white rounded border border-dashed border-gray-300">
+                                        <div className="flex flex-col items-center justify-center h-32 text-center text-gray-500 text-sm italic bg-white rounded border border-dashed border-gray-300">
                                             <FileText size={24} className="mb-2 opacity-50" />
-                                            Đây là hóa đơn <br /> phí dịch vụ kiểm định / lắp đặt.
+                                            Hóa đơn dịch vụ <br/> (Không có chỉ số nước)
                                         </div>
                                     )}
                                 </div>
@@ -322,72 +344,47 @@ function CashPaymentForm() {
                                 <div className="bg-white p-4 rounded-lg border border-gray-200 h-full flex flex-col justify-between shadow-sm">
                                     <div>
                                         <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                                            <CreditCard size={18} /> Chi tiết Thanh toán
+                                            <CreditCard size={18} /> Thanh toán
                                         </h3>
                                         <div className="space-y-2 text-sm">
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">Thành tiền (Chưa thuế):</span>
-                                                <span className="font-medium">
-                                                    {selectedInvoice.subtotalAmount?.toLocaleString('vi-VN')} đ
-                                                </span>
+                                                <span className="text-gray-600">Thành tiền:</span>
+                                                <span className="font-medium">{selectedInvoice.subtotalAmount?.toLocaleString('vi-VN')} đ</span>
                                             </div>
                                             <div className="flex justify-between">
-                                                <span className="text-gray-600">Thuế GTGT (VAT):</span>
-                                                <span className="font-medium">
-                                                    {selectedInvoice.vatAmount?.toLocaleString('vi-VN')} đ
-                                                </span>
+                                                <span className="text-gray-600">VAT:</span>
+                                                <span className="font-medium">{selectedInvoice.vatAmount?.toLocaleString('vi-VN')} đ</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-600">Phí BVMT:</span>
-                                                <span className="font-medium">
-                                                    {selectedInvoice.environmentFeeAmount?.toLocaleString('vi-VN')} đ
-                                                </span>
+                                                <span className="font-medium">{selectedInvoice.environmentFeeAmount?.toLocaleString('vi-VN')} đ</span>
                                             </div>
                                             {selectedInvoice.latePaymentFee > 0 && (
                                                 <div className="flex justify-between text-red-600">
                                                     <span className="font-medium">Phí trễ hạn:</span>
-                                                    <span className="font-bold">
-                                                        {selectedInvoice.latePaymentFee?.toLocaleString('vi-VN')} đ
-                                                    </span>
+                                                    <span className="font-bold">{selectedInvoice.latePaymentFee?.toLocaleString('vi-VN')} đ</span>
                                                 </div>
                                             )}
-
-                                            <div className="border-t border-dashed border-gray-300 my-2 pt-2"></div>
-
-                                            <div className="flex justify-between">
-                                                <span className="font-bold text-gray-800">Hạn thanh toán:</span>
-                                                <span className={`font-bold ${moment(selectedInvoice.dueDate).isBefore(moment()) ? 'text-red-600' : 'text-green-600'}`}>
-                                                    {moment(selectedInvoice.dueDate).format('DD/MM/YYYY')}
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-6">
                                         <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-center mb-4">
-                                            <p className="text-xs text-green-700 uppercase font-semibold">TỔNG CỘNG PHẢI THU</p>
+                                            <p className="text-xs text-green-700 uppercase font-semibold">TỔNG CỘNG</p>
                                             <p className="text-3xl font-extrabold text-green-700">
                                                 {selectedInvoice.totalAmount?.toLocaleString('vi-VN')} đ
                                             </p>
                                         </div>
 
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={handleCancelSelection}
-                                                className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-md hover:bg-gray-200 transition-colors"
-                                            >
-                                                Hủy
-                                            </button>
-                                            <button
-                                                onClick={handlePreSubmit}
-                                                disabled={loadingSubmit}
-                                                className="flex-[2] py-2.5 bg-green-600 text-white font-bold rounded-md shadow hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
-                                            >
-                                                {loadingSubmit ? 'Đang xử lý...' : (
-                                                    <> <DollarSign size={18} /> Xác Nhận Thu </>
-                                                )}
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={handlePreSubmit}
+                                            disabled={loadingSubmit}
+                                            className="w-full py-3 bg-green-600 text-white font-bold rounded-md shadow hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 text-lg"
+                                        >
+                                            {loadingSubmit ? 'Đang xử lý...' : (
+                                                <> <DollarSign size={20} /> XÁC NHẬN THU </>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
