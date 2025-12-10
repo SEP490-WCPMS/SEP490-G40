@@ -1,5 +1,6 @@
 package com.sep490.wcpms.repository;
 
+import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.MeterReading;
@@ -436,4 +437,21 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
             "WHERE i.accountingStaff.id = :staffId " +
             "AND i.paymentStatus = 'OVERDUE'") // Hoặc check dueDate < today
     long countMyOverdueInvoices(@Param("staffId") Integer staffId);
+
+    /**
+     * Lấy dữ liệu biểu đồ doanh thu THEO STAFF (Chỉ tính hóa đơn do staff này tạo và đã được thanh toán).
+     * Group by ngày thanh toán (paidDate).
+     */
+    @Query("SELECT new com.sep490.wcpms.dto.dashboard.DailyRevenueDTO(i.paidDate, SUM(i.totalAmount)) " +
+            "FROM Invoice i " +
+            "WHERE i.accountingStaff.id = :staffId " +
+            "AND i.paymentStatus = 'PAID' " +
+            "AND i.paidDate BETWEEN :startDate AND :endDate " +
+            "GROUP BY i.paidDate " +
+            "ORDER BY i.paidDate ASC")
+    List<DailyRevenueDTO> getDailyRevenueReportByStaff(
+            @Param("staffId") Integer staffId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 }

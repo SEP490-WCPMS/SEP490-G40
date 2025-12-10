@@ -150,29 +150,30 @@ function RouteInvoiceList() {
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Hóa Đơn Theo Tuyến</h1>
-                    <p className="text-sm text-gray-600">
-                        Danh sách cần đi thu: <span className="font-semibold text-blue-600">Khách trả tiền mặt</span> & <span className="font-semibold text-red-600">Khách nợ quá hạn</span>.
-                    </p>
+            {/* --- HEADER --- */}
+            <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">Hóa Đơn Theo Tuyến</h1>
+                        <p className="text-sm text-gray-600">
+                            Danh sách cần thu: <span className="font-semibold text-blue-600">Tiền mặt</span> & <span className="font-semibold text-red-600">Nợ quá hạn</span>.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleRefresh}
+                        className="flex items-center w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition duration-150 ease-in-out disabled:opacity-50"
+                        disabled={loading}
+                    >
+                        <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Làm mới
+                    </button>
                 </div>
-                <button
-                    onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out disabled:opacity-50"
-                    disabled={loading}
-                >
-                    <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Làm mới
-                </button>
             </div>
 
             {/* --- THANH CÔNG CỤ (SEARCH & FILTER) --- */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-4 mb-4">
                 {/* Search Box */}
-                <div className="relative w-full md:w-1/2">
+                <div className="relative w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-5 w-5 text-gray-400" />
                     </div>
@@ -186,21 +187,21 @@ function RouteInvoiceList() {
                     />
                     <button
                         onClick={handleSearch}
-                        className="absolute inset-y-0 right-0 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
+                        className="absolute inset-y-0 right-0 px-4 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-r-md border-l border-gray-300 text-sm font-medium transition-colors"
                     >
                         Tìm
                     </button>
                 </div>
 
                 {/* Filter Box */}
-                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                    <Filter size={16} className="text-gray-600" />
-                    <label htmlFor="filterType" className="text-sm font-medium text-gray-700 whitespace-nowrap">Lọc theo:</label>
+                <div className="flex items-center gap-2">
+                    <Filter size={16} className="text-gray-600 flex-shrink-0" />
+                    <label htmlFor="filterType" className="text-sm font-medium text-gray-700 whitespace-nowrap flex-shrink-0">Lọc theo:</label>
                     <select
                         id="filterType"
                         value={filterType}
                         onChange={handleFilterChange}
-                        className="appearance-none border border-gray-300 rounded-md py-1.5 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-48"
+                        className="appearance-none border border-gray-300 rounded-md py-2 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
                     >
                         <option value="ALL">Tất cả</option>
                         <option value="CASH">Thu Tiền mặt (Pending)</option>
@@ -209,12 +210,82 @@ function RouteInvoiceList() {
                 </div>
             </div>
 
-            {/* Bảng Dữ liệu */}
-            <div className="bg-white rounded-lg shadow border border-gray-200">
-                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {loading && invoices.length === 0 && (
-                        <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
+            {/* --- DANH SÁCH HIỂN THỊ --- */}
+            <div className="bg-transparent md:bg-white md:rounded-lg md:shadow md:border md:border-gray-200">
+                
+                {/* 1. MOBILE VIEW: CARDS */}
+                <div className="block md:hidden space-y-4">
+                    {!loading && invoices.length === 0 ? (
+                        <div className="text-center py-8 bg-white rounded-lg border border-gray-200 text-gray-500 italic px-4">
+                            {searchTerm || filterType !== 'ALL'
+                                ? 'Không tìm thấy hóa đơn nào phù hợp với bộ lọc.'
+                                : 'Không tìm thấy hóa đơn nào cần thu trong tuyến của bạn.'}
+                        </div>
+                    ) : (
+                        invoices.map(invoice => {
+                            const isOverdue = invoice.paymentStatus === 'OVERDUE';
+                            const isToday = moment(invoice.dueDate).isSame(moment(), 'day');
+
+                            return (
+                                <div 
+                                    key={invoice.id} 
+                                    className={`bg-white p-4 rounded-lg shadow-sm border-l-4 ${isOverdue ? 'border-l-red-500 border-gray-200' : 'border-l-blue-500 border-gray-200'} flex flex-col gap-3`}
+                                >
+                                    {/* Header Card: Loại Thu & Mã HĐ */}
+                                    <div className="flex justify-between items-start border-b border-gray-100 pb-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-gray-500">Mã hóa đơn</span>
+                                            <span className="font-bold text-gray-800">{invoice.invoiceNumber}</span>
+                                        </div>
+                                        <div>{getCollectionType(invoice)}</div>
+                                    </div>
+
+                                    {/* Body Card: Thông tin khách & tiền */}
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-center">
+                                            <div className="font-bold text-base text-gray-900">{invoice.customerName}</div>
+                                            {!invoice.meterReadingId && <span className="text-[10px] bg-gray-100 px-1 rounded text-gray-500">Phí Lắp đặt</span>}
+                                        </div>
+                                        
+                                        <div className="text-sm text-gray-600 truncate">{invoice.customerAddress}</div>
+                                        
+                                        <div className="flex justify-between items-center mt-2 bg-gray-50 p-2 rounded">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs text-gray-500">Hạn thanh toán</span>
+                                                <span className={`text-sm font-semibold flex items-center gap-1 ${isOverdue || isToday ? 'text-red-600' : 'text-gray-700'}`}>
+                                                    {moment(invoice.dueDate).format('DD/MM/YYYY')}
+                                                    {(isOverdue || isToday) && <AlertCircle size={12} />}
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-xs text-gray-500 block">Tổng tiền phải thu</span>
+                                                <span className="text-lg font-extrabold text-red-600">
+                                                    {invoice.totalAmount.toLocaleString('vi-VN')} đ
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer Card: Button */}
+                                    <div className="pt-1">
+                                        <button
+                                            onClick={() => navigate(`/cashier/invoice-detail/${invoice.id}`)}
+                                            className={`w-full flex items-center justify-center px-4 py-2.5 text-white font-medium rounded-md shadow-sm transition-all active:scale-95 ${
+                                                isOverdue ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                                            }`}
+                                        >
+                                            <Banknote size={18} className="mr-2" />
+                                            Thu Tiền Ngay
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
                     )}
+                </div>
+
+                {/* 2. DESKTOP VIEW: TABLE */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -241,22 +312,18 @@ function RouteInvoiceList() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="font-medium text-sm text-gray-900">{invoice.customerName}</div>
                                             <div className="text-xs text-gray-500">{invoice.invoiceNumber}</div>
-                                            {!invoice.meterReadingId ? (
-                                                <span className="text-xs text-gray-400">Phí DV & Lắp đặt</span>
-                                            ) : (
-                                                <span className="text-xs text-indigo-600">Tiền Nước</span>
-                                            )}
+                                            {!invoice.meterReadingId && <span className="text-[10px] bg-gray-100 px-1 rounded text-gray-500 ml-1">Phí Lắp đặt</span>}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={invoice.customerAddress}>
                                             {invoice.customerAddress}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <span className={moment(invoice.dueDate).isBefore(moment(), 'day') ? 'text-red-600 font-bold flex items-center gap-1' : ''}>
+                                            <span className={moment(invoice.dueDate).isSameOrBefore(moment(), 'day') ? 'text-red-600 font-bold flex items-center gap-1' : ''}>
                                                 {moment(invoice.dueDate).format('DD/MM/YYYY')}
-                                                {moment(invoice.dueDate).isBefore(moment(), 'day') && <AlertCircle size={14} />}
+                                                {moment(invoice.dueDate).isSameOrBefore(moment(), 'day') && <AlertCircle size={14} />}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
                                             {invoice.totalAmount.toLocaleString('vi-VN')}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -278,13 +345,16 @@ function RouteInvoiceList() {
                     </table>
                 </div>
 
+                {/* --- Pagination --- */}
                 {!loading && invoices.length > 0 && (
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
+                     <div className="py-2">
+                        <Pagination
+                            currentPage={pagination.page}
+                            totalElements={pagination.totalElements}
+                            pageSize={pagination.size}
+                            onPageChange={handlePageChange}
+                        />
+                    </div>
                 )}
             </div>
         </div>

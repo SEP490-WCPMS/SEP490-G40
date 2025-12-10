@@ -88,7 +88,7 @@ public interface AccountingStaffService {
     /**
      * Lấy dữ liệu Báo cáo Doanh thu cho Dashboard.
      */
-    List<DailyRevenueDTO> getRevenueReport(LocalDate startDate, LocalDate endDate);
+    List<DailyRevenueDTO> getRevenueReport(Integer staffId, LocalDate startDate, LocalDate endDate);
     // --- HẾT PHẦN THÊM ---
 
     // --- SỬA LẠI CÁC HÀM NÀY ---

@@ -14,23 +14,6 @@ import java.util.List;
 
 @Repository
 public interface ReceiptRepository extends JpaRepository<Receipt, Integer> {
-    // (Không cần hàm tùy chỉnh)
-
-    // --- THÊM HÀM MỚI ---
-    /**
-     * Tính tổng doanh thu (paymentAmount) từ Bảng 19 (Receipts),
-     * nhóm theo ngày (paymentDate) và lọc trong một khoảng thời gian.
-     */
-    @Query("SELECT new com.sep490.wcpms.dto.dashboard.DailyRevenueDTO(r.paymentDate, SUM(r.paymentAmount)) " +
-            "FROM Receipt r " +
-            "WHERE r.paymentDate BETWEEN :startDate AND :endDate " +
-            "GROUP BY r.paymentDate " +
-            "ORDER BY r.paymentDate ASC")
-    List<DailyRevenueDTO> getDailyRevenueReport(
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate
-    );
-    // --- HẾT PHẦN THÊM ---
 
     // --- THÊM HÀM MỚI ---
     /**

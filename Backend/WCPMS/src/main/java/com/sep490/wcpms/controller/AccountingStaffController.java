@@ -237,14 +237,18 @@ public class AccountingStaffController {
     // --- THÊM API MỚI ---
     /**
      * API Lấy dữ liệu Doanh thu cho Biểu đồ Dashboard.
-     * Path: GET /api/accounting/dashboard/revenue-report?startDate=...&endDate=...
      */
     @GetMapping("/dashboard/revenue-report")
     public ResponseEntity<List<DailyRevenueDTO>> getRevenueReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
-        List<DailyRevenueDTO> report = accountingService.getRevenueReport(startDate, endDate);
+        // 1. Lấy ID nhân viên đang đăng nhập
+        Integer currentStaffId = getAuthenticatedStaffId();
+
+        // 2. Truyền ID vào Service
+        List<DailyRevenueDTO> report = accountingService.getRevenueReport(currentStaffId, startDate, endDate);
+
         return ResponseEntity.ok(report);
     }
     // --- HẾT PHẦN THÊM ---
