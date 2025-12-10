@@ -137,6 +137,21 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
       "GROUP BY a " +
       "ORDER BY COUNT(c) ASC")
   List<Object[]> findServiceStaffWorkloads();
+    // --- QUERY MỚI ĐỂ ASSIGN NHÂN VIÊN DỊCH VỤ ---
+    /**
+     * Tìm nhân viên dịch vụ:
+     * 1. Nằm trong danh sách serviceStaffs của Tuyến đọc (r.id = :routeId)
+     * 2. Có status = 1 (Active)
+     * 3. Sắp xếp theo số lượng hợp đồng đang phụ trách (COUNT c) tăng dần (ASC)
+     */
+    @Query("SELECT s FROM ReadingRoute r " +
+            "JOIN r.serviceStaffs s " +
+            "LEFT JOIN s.serviceContracts c " + // Join để đếm workload
+            "WHERE r.id = :routeId " +
+            "AND s.status = 1 " +
+            "GROUP BY s.id " +
+            "ORDER BY COUNT(c) ASC, s.id ASC")
+    List<Account> findLeastBusyStaffByRoute(@Param("routeId") Integer routeId, Pageable pageable);
 
 
     // THÊM: Tìm Kế toán đang có ít khoản phí "treo" nhất

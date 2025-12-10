@@ -3,6 +3,7 @@ import apiClient from '@/components/Services/apiClient';
 import {
     createReadingRoute,
     updateReadingRoute,
+    getReadingRoutes,
 } from '@/components/Services/apiAccountingReadingRoutes';
 
 const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
@@ -11,50 +12,120 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         routeName: '',
         areaCoverage: '',
         assignedReaderId: '',
+        serviceStaffIds: [],
     });
+
     const [readers, setReaders] = useState([]);
+    const [serviceCandidates, setServiceCandidates] = useState([]);
+
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
 
+    // --- 1. GIỮ NGUYÊN LOGIC LOAD THU NGÂN ---
     useEffect(() => {
-        // Load candidate readers (accounts) - reuse accounts endpoint and filter out customers
         const loadReaders = async () => {
             try {
-                // First try dedicated endpoint for cashiers added in backend
                 const res = await apiClient.get('/accounts/cashiers');
-                const candidates = (res.data || []);
-                setReaders(candidates);
-                return;
-            } catch {
-                // Fallback to older endpoint if new one not available
-            }
-
-            try {
-                const res2 = await apiClient.get('/accounts', { params: { department: 'CASHIER', status: 1 } });
-                let candidates = (res2.data || []);
-                // Client-side filter as safety: accept entries explicitly marked as department CASHIER or roleName containing 'CASHIER'
-                const cashierCandidates = candidates.filter(a => {
-                    const dept = (a.department || '').toString().toUpperCase();
-                    const role = (a.roleName || '').toString().toUpperCase();
-                    return dept === 'CASHIER' || role.includes('CASHIER');
-                });
-                if (cashierCandidates.length > 0) candidates = cashierCandidates;
-                setReaders(candidates);
+                setReaders(res.data || []);
             } catch (err) {
-                console.error('Failed to load readers', err);
+                console.debug('loadReaders primary error', err);
+                // Fallback: query accounts endpoint (supports paginated responses)
+                try {
+                    const res2 = await apiClient.get('/accounts', { params: { department: 'CASHIER', status: 1 } });
+                    const data2 = res2.data || res2;
+                    let candidates = Array.isArray(data2) ? data2 : (data2.content || []);
+                    const cashierCandidates = candidates.filter(a => {
+                        const dept = (a.department || '').toString().toUpperCase();
+                        const role = (a.roleName || '').toString().toUpperCase();
+                        return dept === 'CASHIER' || role.includes('CASHIER');
+                    });
+                    if (cashierCandidates.length > 0) candidates = cashierCandidates;
+                    setReaders(candidates);
+                } catch (err2) {
+                    console.debug('loadReaders fallback error', err2);
+                }
             }
         };
         loadReaders();
     }, [routeToEdit]);
 
+    // --- 2. SỬA LOGIC LOAD SERVICE STAFF (CHỈ LẤY DỊCH VỤ) ---
+    useEffect(() => {
+        const loadServiceStaff = async () => {
+            try {
+                // Lấy tất cả user active (backend might return array or paginated content)
+                const res = await apiClient.get('/accounts', { params: { status: 1 } });
+                const data = res.data || res;
+                const allAccounts = Array.isArray(data) ? data : (data.content || []);
+
+                // LỌC: cố gắng bắt mọi biến thể cho 'service'
+                const services = allAccounts.filter(a => {
+                    const dept = (a.department || '').toString().toUpperCase();
+                    const role = (a.roleName || '').toString().toUpperCase();
+                    const name = (a.fullName || '').toString().toUpperCase();
+                    const username = (a.username || '').toString().toUpperCase();
+
+                    // CHỈ GIỮ LẠI TỪ KHÓA DỊCH VỤ (mở rộng)
+                    const keywords = ['SERVICE', 'DICH VU', 'DỊCH VỤ', 'SERVICE_STAFF', 'SERVICE-STAFF', 'SERVICESTAFF', 'NV DỊCH VỤ', 'NV DICH VU', 'DV'];
+
+                    const normalize = (s) => (s || '').toString().replace(/[_\-\s]/g, '').toUpperCase();
+
+                    // Kiểm tra khớp trên các trường sau khi normalize để catch nhiều biến thể
+                    const isMatch = keywords.some(k => {
+                        const kk = k.toString().replace(/[_\-\s]/g, '').toUpperCase();
+                        return normalize(dept).includes(kk) || normalize(role).includes(kk) || normalize(name).includes(kk) || normalize(username).includes(kk);
+                    });
+
+                    // Loại trừ Admin, Thu ngân, Khách hàng, Kỹ thuật
+                    const isExcluded =
+                        role.includes('ADMIN') ||
+                        role.includes('CUSTOMER') ||
+                        dept.includes('CASHIER') ||
+                        dept.includes('TECHNICAL') || role.includes('TECHNICAL');
+
+                    return isMatch && !isExcluded;
+                });
+
+                // Nếu không tìm thấy, thử fallback bằng query role/department
+                if ((!services || services.length === 0)) {
+                    try {
+                        // Try role-based query first
+                        const resRole = await apiClient.get('/accounts', { params: { role: 'SERVICE_STAFF', status: 1 } });
+                        const dataRole = resRole.data || resRole;
+                        const roleList = Array.isArray(dataRole) ? dataRole : (dataRole.content || []);
+                        if (roleList && roleList.length > 0) {
+                            setServiceCandidates(roleList);
+                        } else {
+                            // Try department query
+                            const resDept = await apiClient.get('/accounts', { params: { department: 'SERVICE', status: 1 } });
+                            const dataDept = resDept.data || resDept;
+                            const deptList = Array.isArray(dataDept) ? dataDept : (dataDept.content || []);
+                            setServiceCandidates(deptList || []);
+                        }
+                    } catch (err2) {
+                        console.debug('fallback serviceStaff queries failed', err2);
+                        setServiceCandidates([]);
+                    }
+                } else {
+                    setServiceCandidates(services);
+                }
+
+            } catch (err) {
+                console.error('Failed to load service staff', err);
+                setServiceCandidates([]);
+            }
+        };
+        loadServiceStaff();
+    }, []);
+
     useEffect(() => {
         if (routeToEdit) {
-            // populate form (API no longer exposes description)
             setForm({
                 routeCode: routeToEdit.routeCode || '',
                 routeName: routeToEdit.routeName || '',
                 areaCoverage: routeToEdit.areaCoverage || '',
                 assignedReaderId: routeToEdit.assignedReaderId || '',
+                serviceStaffIds: routeToEdit.serviceStaffs ? routeToEdit.serviceStaffs.map(s => s.id) : [],
             });
         }
     }, [routeToEdit]);
@@ -64,25 +135,69 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         setForm(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleMultiSelectChange = (e) => {
+        const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
+        setForm(prev => ({ ...prev, serviceStaffIds: selectedOptions }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         setError(null);
         try {
+            // Validate: ensure selected service staff are not already assigned to other routes
+            if (form.serviceStaffIds && form.serviceStaffIds.length > 0) {
+                try {
+                    const res = await getReadingRoutes(false);
+                    const routes = res.data || [];
+                    // Build map staffId -> route
+                    const assigned = {};
+                    routes.forEach(r => {
+                        const sidList = r.serviceStaffs || [];
+                        sidList.forEach(s => {
+                            // s may be an object with id or just an id
+                            const sid = s && (s.id || s);
+                            if (sid) assigned[sid] = r;
+                        });
+                    });
+
+                    // Check conflicts, ignoring current route if editing
+                    const conflicts = form.serviceStaffIds.filter(id => {
+                        const existingRoute = assigned[id];
+                        if (!existingRoute) return false;
+                        if (routeToEdit && routeToEdit.id && existingRoute.id === routeToEdit.id) return false;
+                        return true;
+                    });
+
+                    if (conflicts.length > 0) {
+                        // Build readable message listing conflicts
+                        const messages = conflicts.map(id => {
+                            const r = assigned[id];
+                            const user = serviceCandidates.find(u => (u.id === id) || (u.id === Number(id))) || { fullName: `ID ${id}` };
+                            const routeInfo = r ? (r.routeCode || r.routeName || `ID ${r.id}`) : 'khác';
+                            return `${user.fullName} đã được gán cho tuyến đọc ${routeInfo}`;
+                        });
+                        setError(`Không thể lưu. Nhân viên đã bị trùng: ${messages.join('; ')}.`);
+                        setSaving(false);
+                        return;
+                    }
+                } catch (err) {
+                    console.debug('Could not validate service staff assignment', err);
+                    // Proceed with save if validation failed (avoid blocking user)
+                }
+            }
+            const payload = {
+                routeCode: form.routeCode,
+                routeName: form.routeName,
+                areaCoverage: form.areaCoverage,
+                assignedReaderId: form.assignedReaderId || null,
+                serviceStaffIds: form.serviceStaffIds
+            };
+
             if (routeToEdit && routeToEdit.id) {
-                await updateReadingRoute(routeToEdit.id, {
-                    routeCode: form.routeCode,
-                    routeName: form.routeName,
-                    areaCoverage: form.areaCoverage,
-                    assignedReaderId: form.assignedReaderId || null,
-                });
+                await updateReadingRoute(routeToEdit.id, payload);
             } else {
-                await createReadingRoute({
-                    routeCode: form.routeCode,
-                    routeName: form.routeName,
-                    areaCoverage: form.areaCoverage,
-                    assignedReaderId: form.assignedReaderId || null,
-                });
+                await createReadingRoute(payload);
             }
             refreshList?.();
             onClose(true);
@@ -93,6 +208,11 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         } finally {
             setSaving(false);
         }
+    };
+
+    const getDisplayName = (user) => {
+        const roleInfo = user.department || user.roleName;
+        return roleInfo ? `${user.fullName} (${roleInfo})` : user.fullName;
     };
 
     return (
@@ -113,14 +233,39 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                         <label>Area Coverage</label>
                         <input name="areaCoverage" value={form.areaCoverage} onChange={handleChange} />
                     </div>
+
                     <div className="form-row">
-                        <label>Assigned Reader</label>
+                        <label>Assigned Reader (Cashier)</label>
                         <select name="assignedReaderId" value={form.assignedReaderId || ''} onChange={handleChange}>
                             <option value="">Unassigned</option>
                             {readers.map(r => (
-                                <option key={r.id} value={r.id}>{r.fullName} ({r.username}) — {r.department || r.roleName}</option>
+                                <option key={r.id} value={r.id}>{r.fullName} ({r.department || r.roleName})</option>
                             ))}
                         </select>
+                    </div>
+
+                    <div className="form-row">
+                        <label>Service Staff (Hold Ctrl to select multiple)</label>
+                        <select
+                            multiple
+                            name="serviceStaffIds"
+                            value={form.serviceStaffIds}
+                            onChange={handleMultiSelectChange}
+                            style={{ height: '120px', padding: '5px', width: '100%', border: '1px solid #ccc' }}
+                        >
+                            {serviceCandidates.length === 0 ? (
+                                <option disabled>No Service Staff Found</option>
+                            ) : (
+                                serviceCandidates.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {getDisplayName(s)}
+                                    </option>
+                                ))
+                            )}
+                        </select>
+                        <small style={{ fontSize: '0.8em', color: '#666' }}>
+                            Selected: {form.serviceStaffIds.length}
+                        </small>
                     </div>
 
                     <div className="form-actions">
@@ -132,7 +277,5 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         </div>
     );
 };
-
-
 
 export default ReadingRouteForm;

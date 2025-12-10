@@ -49,8 +49,18 @@ export default function Login() {
 
   return (
     <div className="water-login-container">
+      <style>{`
+        .page-logo { position: absolute; left: 20px; top: 18px; display: flex; gap: 10px; align-items: center; cursor: pointer; }
+        .page-logo img { height: 36px; width: auto; }
+        .page-logo span { font-weight: 700; color: #0A77E2; letter-spacing: 0.5px; }
+        @media (max-width: 720px) {
+          .page-logo { position: static; margin: 0 auto 12px auto; }
+          .water-login-container { padding: 16px; }
+          .login-card-wrapper { width: 100%; max-width: 420px; margin: 0 auto; }
+        }
+      `}</style>
       {/* Logo góc trái màn hình (giống chữ Fastkart ở ảnh mẫu) */}
-      <div className="page-logo">
+      <div className="page-logo" onClick={() => navigate('/')} role="button" aria-label="Go to Home">
         <img
           src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
           alt="Logo"

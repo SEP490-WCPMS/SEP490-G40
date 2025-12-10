@@ -43,4 +43,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
 
     // Count customers created between datetimes
     long countByCreatedAtBetween(java.time.LocalDateTime from, java.time.LocalDateTime to);
+
+    // Fetch customers with their accounts to avoid lazy loading issues when building DTOs
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.account")
+    List<Customer> findAllWithAccount();
 }
