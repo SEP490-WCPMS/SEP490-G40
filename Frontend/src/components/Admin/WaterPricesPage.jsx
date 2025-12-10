@@ -140,6 +140,17 @@ export default function WaterPricesPage() {
 
     return (
         <div className="wp-page">
+            <style>{`
+                .table-responsive { overflow-x: auto; }
+                .responsive-table { width: 100%; border-collapse: collapse; }
+                .responsive-table th, .responsive-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+                @media (max-width: 720px) {
+                    .responsive-table thead { display: none; }
+                    .responsive-table tbody tr { display: block; margin-bottom: 12px; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; }
+                    .responsive-table tbody td { display: flex; justify-content: space-between; padding: 8px 12px; border: none; }
+                    .responsive-table tbody td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: #475569; }
+                }
+            `}</style>
             <ConfirmModal isOpen={confirmModal.isOpen} title="Xác nhận" message={confirmModal.message} onConfirm={handleConfirmAction} onCancel={() => setConfirmModal({ isOpen: false })} />
 
             <div className="wp-form-card">
@@ -178,28 +189,29 @@ export default function WaterPricesPage() {
                     <h2>Danh sách Giá nước</h2>
                     <Button variant="ghost" onClick={fetchData}>Tải lại</Button>
                 </div>
-                <table className="wp-table">
-                    <thead><tr><th>ID</th><th>Loại</th><th>Đơn giá</th><th>VAT</th><th>Hiệu lực</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
-                    <tbody>
-                        {(!Array.isArray(items) || items.length === 0) && <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>}
-                        {Array.isArray(items) && items.map(it => (
-                            <tr key={it.id} className={it.status === 'INACTIVE' ? 'inactive' : ''}>
-                                <td>{it.id}</td>
-                                <td>{it.typeName}</td>
-                                <td>{it.unitPrice?.toLocaleString()}</td>
-                                <td>{it.vatRate}%</td>
-                                <td>{it.effectiveDate}</td>
-                                <td>{it.status}</td>
-                                <td>
-                                    <Button size="sm" variant="outline" onClick={() => handleEdit(it)} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                        <Edit size={14} /> Sửa
-                                    </Button>
-                                    {/* BỎ NÚT XÓA Ở ĐÂY */}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <div className="table-responsive">
+                    <table className="responsive-table wp-table">
+                        <thead><tr><th>ID</th><th>Loại</th><th>Đơn giá</th><th>VAT</th><th>Hiệu lực</th><th>Trạng thái</th><th>Hành động</th></tr></thead>
+                        <tbody>
+                            {(!Array.isArray(items) || items.length === 0) && <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>}
+                            {Array.isArray(items) && items.map(it => (
+                                <tr key={it.id} className={it.status === 'INACTIVE' ? 'inactive' : ''}>
+                                    <td data-label="ID">{it.id}</td>
+                                    <td data-label="Loại">{it.typeName}</td>
+                                    <td data-label="Đơn giá">{it.unitPrice?.toLocaleString()}</td>
+                                    <td data-label="VAT">{it.vatRate}%</td>
+                                    <td data-label="Hiệu lực">{it.effectiveDate}</td>
+                                    <td data-label="Trạng thái">{it.status}</td>
+                                    <td data-label="Hành động">
+                                        <Button size="sm" variant="outline" onClick={() => handleEdit(it)} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                            <Edit size={14} /> Sửa
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
 
                 <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 10 }}>
                     <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}><ChevronLeft /></Button>
