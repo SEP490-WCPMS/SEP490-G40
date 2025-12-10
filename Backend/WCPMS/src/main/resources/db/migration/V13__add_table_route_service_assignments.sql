@@ -1,4 +1,4 @@
-CREATE TABLE route_service_assignments (
+CREATE TABLE IF NOT EXISTS route_service_assignments (
                                            route_id INT NOT NULL,
                                            account_id INT NOT NULL,
                                            PRIMARY KEY (route_id, account_id),
