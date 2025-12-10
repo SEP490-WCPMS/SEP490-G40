@@ -670,14 +670,14 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         stats.setTotalRevenue(revenue != null ? revenue : BigDecimal.ZERO); // <-- Cần thêm field này vào DTO
 
         // 2. Tổng Phí chờ lập Hóa đơn (Cả 3 loại)
-        long waterPending = meterReadingRepository.countPendingWaterBills();
-        long installPending = contractRepository.countPendingInstallationBills();
+        long waterPending = meterReadingRepository.countPendingWaterBillsByStaff(staffId);
+        long installPending = contractRepository.countPendingInstallationBillsByStaff(staffId);
         long calibrationPending = calibrationRepository.countUnbilledFeesByStaff(staffId);
 
         stats.setUnbilledFeesCount(waterPending + installPending + calibrationPending);
 
         // 3. HĐ chờ thanh toán (Của tôi)
-        List<PaymentStatus> pendingStatuses = List.of(PaymentStatus.PENDING, PaymentStatus.OVERDUE);
+        List<PaymentStatus> pendingStatuses = List.of(PaymentStatus.PENDING);
         stats.setPendingInvoicesCount(
                 invoiceRepository.countMyPendingInvoices(staffId, pendingStatuses)
         );
@@ -694,9 +694,11 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     // --- THÊM HÀM MỚI ---
     @Override
     @Transactional(readOnly = true)
-    public List<DailyRevenueDTO> getRevenueReport(LocalDate startDate, LocalDate endDate) {
-        // Gọi thẳng hàm Repository đã tạo
-        return receiptRepository.getDailyRevenueReport(startDate, endDate);
+    public List<DailyRevenueDTO> getRevenueReport(Integer staffId, LocalDate startDate, LocalDate endDate) {
+        // CŨ (Sai): return receiptRepository.getDailyRevenueReport(startDate, endDate);
+
+        // MỚI (Đúng): Gọi InvoiceRepository lọc theo staffId
+        return invoiceRepository.getDailyRevenueReportByStaff(staffId, startDate, endDate);
     }
     // --- HẾT PHẦN THÊM ---
 
