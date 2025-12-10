@@ -66,6 +66,10 @@ public class ContractAnnulTransferRequest {
     @Column(name = "approval_status", nullable = false, length = 20)
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_staff_id", foreignKey = @ForeignKey(name = "fk_annul_transfer_service_staff"))
+    private Account serviceStaff;
+
     // Transfer-only fields
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "from_customer_id",

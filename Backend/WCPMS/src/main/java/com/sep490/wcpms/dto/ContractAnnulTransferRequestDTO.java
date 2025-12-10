@@ -29,6 +29,10 @@ public class ContractAnnulTransferRequestDTO {
     private Integer approvedById;
     private String approvedByUsername;
 
+    // Nhân viên Service
+    private Integer serviceStaffId;
+    private String serviceStaffName;
+
     // Use LocalDateTime to match entity (approval_date is LocalDateTime)
     private LocalDateTime approvalDate;
     private String approvalStatus;

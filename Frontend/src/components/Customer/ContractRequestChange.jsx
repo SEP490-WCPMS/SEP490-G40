@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, Button, Row, Col, message, Spin, Typography, Divider, Upload, DatePicker } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import {createContractRequest, searchCustomers, getAllContracts, getContractsByCustomerId} from '../Services/apiService';
+import {createContractRequest, searchCustomers, getAllContracts, getContractsByCustomerId, searchContractRequests} from '../Services/apiService';
 import moment from 'moment';
 import './ContractRequestChange.css';
 
@@ -29,10 +29,42 @@ const ContractRequestChange = () => {
 
     // Lấy danh sách hợp đồng khi component mount
     useEffect(() => {
-        fetchContracts();
-        fetchCurrentCustomer();
         fetchCurrentCustomerAndContracts();
     }, []);
+
+    const fetchRequestedContractIds = async () => {
+        try {
+            const res = await searchContractRequests({
+                page: 0,
+                size: 1000,
+                // KHÔNG truyền status -> lấy mọi request, đúng nghĩa "đã tạo yêu cầu rồi"
+            });
+
+            const data = res.data;
+            console.log("RAW REQUEST DATA FROM BACKEND:", data);
+            const list = Array.isArray(data?.content)
+                ? data.content
+                : Array.isArray(data)
+                    ? data
+                    : [];
+
+            console.log("PARSED REQUEST LIST:", list);
+
+            const idSet = new Set(
+                list
+                    .map(r => r.contractId)
+                    .filter(id => id != null)
+            );
+            console.log("REQUESTED CONTRACT IDs:", idSet);
+
+            return idSet;
+        } catch (err) {
+            console.error('Fetch contract-requests error:', err);
+            return new Set(); // lỗi thì thôi, không chặn
+        }
+    };
+
+
 
     const fetchCurrentCustomerAndContracts = async () => {
         setLoading(true);
@@ -70,22 +102,33 @@ const ContractRequestChange = () => {
             let rawContracts = [];
 
             if (response.data) {
-                // Nếu backend trả về ApiResponse với structure: { success, message, data }
                 if (response.data.data && Array.isArray(response.data.data)) {
                     rawContracts = response.data.data;
-                }
-                // Nếu data trực tiếp là array
-                else if (Array.isArray(response.data)) {
+                } else if (Array.isArray(response.data)) {
                     rawContracts = response.data;
                 }
             }
 
-            // CHỈ LẤY HỢP ĐỒNG ĐANG ACTIVE
+            // 1) Chỉ lấy HĐ đang ACTIVE
             const activeContracts = rawContracts.filter(
                 (c) => c.contractStatus === 'ACTIVE'
             );
 
-            setContracts(activeContracts);
+            console.log("ACTIVE CONTRACTS:", activeContracts);
+
+            // 2) Lấy danh sách contractId đã TỪNG có yêu cầu (bất kể pending/approved/rejected)
+            const requestedIds = await fetchRequestedContractIds();
+
+            console.log("CONTRACT IDs ALREADY REQUESTED:", requestedIds);
+
+            // 3) Lọc bỏ HĐ đã tạo yêu cầu rồi
+            const eligibleContracts = activeContracts.filter(
+                (c) => !requestedIds.has(c.id)
+            );
+
+            console.log("ELIGIBLE CONTRACTS FOR DROPDOWN:", eligibleContracts);
+
+            setContracts(eligibleContracts);
         } catch (error) {
             console.error("Fetch contracts error:", error);
             message.error('Lỗi khi tải danh sách hợp đồng!');
@@ -93,34 +136,36 @@ const ContractRequestChange = () => {
         }
     };
 
-    const fetchContracts = async () => {
-        setLoading(true);
-        try {
-            const response = await getAllContracts();
-            if (response.data && Array.isArray(response.data)) {
-                setContracts(response.data);
-            }
-        } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng!');
-            console.error("Fetch contracts error:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const fetchCurrentCustomer = async () => {
-        try {
-            const user = JSON.parse(localStorage.getItem('user') || '{}');
-            console.log("User:", user);
-            const accountId = user?.id;
-            if (accountId) {
-                setFromCustomerId(accountId);
-                setFromCustomerFullName(user?.fullName);
-            }
-        } catch (error) {
-            console.error("Fetch current customer error:", error);
-        }
-    };
+
+    // const fetchContracts = async () => {
+    //     setLoading(true);
+    //     try {
+    //         const response = await getAllContracts();
+    //         if (response.data && Array.isArray(response.data)) {
+    //             setContracts(response.data);
+    //         }
+    //     } catch (error) {
+    //         message.error('Lỗi khi tải danh sách hợp đồng!');
+    //         console.error("Fetch contracts error:", error);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+    //
+    // const fetchCurrentCustomer = async () => {
+    //     try {
+    //         const user = JSON.parse(localStorage.getItem('user') || '{}');
+    //         console.log("User:", user);
+    //         const accountId = user?.id;
+    //         if (accountId) {
+    //             setFromCustomerId(accountId);
+    //             setFromCustomerFullName(user?.fullName);
+    //         }
+    //     } catch (error) {
+    //         console.error("Fetch current customer error:", error);
+    //     }
+    // };
 
     // Tự động generate request_number khi chọn contract và request type
     const generateRequestNumber = (contractId, type) => {
@@ -305,6 +350,7 @@ const ContractRequestChange = () => {
                                         filterOption={(input, option) =>
                                             option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                                         }
+                                        notFoundContent="Không còn hợp đồng nào đủ điều kiện"
                                     >
                                         {contracts.map(contract => (
                                             <Option key={contract.id} value={contract.id}>
