@@ -195,6 +195,17 @@ export default function WaterMetersPage() {
 
     return (
         <div className="watermeters-page">
+            <style>{`
+                .table-responsive { overflow-x: auto; }
+                .responsive-table { width: 100%; border-collapse: collapse; }
+                .responsive-table th, .responsive-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+                @media (max-width: 720px) {
+                    .responsive-table thead { display: none; }
+                    .responsive-table tbody tr { display: block; margin-bottom: 12px; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; }
+                    .responsive-table tbody td { display: flex; justify-content: space-between; padding: 8px 12px; border: none; }
+                    .responsive-table tbody td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: #475569; }
+                }
+            `}</style>
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 title="Xác nhận hành động"
@@ -249,57 +260,54 @@ export default function WaterMetersPage() {
 
                 {!loading && (
                     <>
-                        <table className="wm-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Mã</th>
-                                    <th>Serial</th>
-                                    <th>Tên</th>
-                                    <th>Loại</th>
-                                    <th>Trạng thái</th>
-                                    <th>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(!Array.isArray(meters) || meters.length === 0) && (
-                                    <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>
-                                )}
-                                {Array.isArray(meters) && meters.map((m) => {
-                                    // Logic kiểm tra quyền xóa
-                                    const canDelete = m.meterStatus === 'IN_STOCK' || m.meterStatus === 'RETIRED';
+                        <div className="table-responsive">
+                            <table className="responsive-table wm-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Mã</th>
+                                        <th>Serial</th>
+                                        <th>Tên</th>
+                                        <th>Loại</th>
+                                        <th>Trạng thái</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(!Array.isArray(meters) || meters.length === 0) && (
+                                        <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>
+                                    )}
+                                    {Array.isArray(meters) && meters.map((m) => {
+                                        // Logic kiểm tra quyền xóa
+                                        const canDelete = m.meterStatus === 'IN_STOCK' || m.meterStatus === 'RETIRED';
 
-                                    return (
-                                        <tr key={m.id} className={m.meterStatus === 'RETIRED' ? 'retired' : ''}>
-                                            <td>{m.id}</td>
-                                            <td>{m.meterCode}</td>
-                                            <td>{m.serialNumber}</td>
-                                            <td>{m.meterName}</td>
-                                            <td>{m.meterType}</td>
-                                            <td>
-                                                <span className={`status-badge status-${m.meterStatus?.toLowerCase()}`}>
-                                                    {m.meterStatus}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <Button size="sm" variant="outline" onClick={() => handleEdit(m)}>Sửa</Button>
+                                        return (
+                                            <tr key={m.id} className={m.meterStatus === 'RETIRED' ? 'retired' : ''}>
+                                                <td data-label="ID">{m.id}</td>
+                                                <td data-label="Mã">{m.meterCode}</td>
+                                                <td data-label="Serial">{m.serialNumber}</td>
+                                                <td data-label="Tên">{m.meterName}</td>
+                                                <td data-label="Loại">{m.meterType}</td>
+                                                <td data-label="Trạng thái"><span className={`status-badge status-${m.meterStatus?.toLowerCase()}`}>{m.meterStatus}</span></td>
+                                                <td data-label="Hành động">
+                                                    <Button size="sm" variant="outline" onClick={() => handleEdit(m)}>Sửa</Button>
 
-                                                {/* Nút Xóa/Khôi phục: Chỉ hiện/enable nếu là IN_STOCK hoặc RETIRED */}
-                                                <Button size="sm"
-                                                    variant={m.meterStatus === 'RETIRED' ? 'secondary' : 'destructive'}
-                                                    onClick={() => requestToggleRetire(m)}
-                                                    style={{ marginLeft: 8 }}
-                                                    disabled={!canDelete}
-                                                    title={!canDelete ? "Chỉ xóa được đồng hồ trong kho (IN_STOCK)" : ""}
-                                                >
-                                                    {m.meterStatus === 'RETIRED' ? 'Khôi phục' : 'Xóa'}
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                                    <Button size="sm"
+                                                        variant={m.meterStatus === 'RETIRED' ? 'secondary' : 'destructive'}
+                                                        onClick={() => requestToggleRetire(m)}
+                                                        style={{ marginLeft: 8 }}
+                                                        disabled={!canDelete}
+                                                        title={!canDelete ? "Chỉ xóa được đồng hồ trong kho (IN_STOCK)" : ""}
+                                                    >
+                                                        {m.meterStatus === 'RETIRED' ? 'Khôi phục' : 'Xóa'}
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
 
                         <div className="pagination-controls">
                             <Button

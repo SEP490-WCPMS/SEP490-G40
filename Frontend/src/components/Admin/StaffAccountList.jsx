@@ -106,6 +106,17 @@ const StaffAccountList = () => {
 
     return (
         <div className="admin-account-list-container">
+            <style>{`
+                .table-responsive { overflow-x: auto; }
+                .responsive-table { width: 100%; border-collapse: collapse; }
+                .responsive-table th, .responsive-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+                @media (max-width: 720px) {
+                    .responsive-table thead { display: none; }
+                    .responsive-table tbody tr { display: block; margin-bottom: 12px; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; }
+                    .responsive-table tbody td { display: flex; justify-content: space-between; padding: 8px 12px; border: none; }
+                    .responsive-table tbody td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: #475569; }
+                }
+            `}</style>
             <div className="list-header">
                 <h1>Quản lý Nhân viên</h1>
 
@@ -133,8 +144,8 @@ const StaffAccountList = () => {
                 </div>
             </div>
 
-            <div className="table-responsive-wrapper">
-                <table className="staff-table">
+            <div className="table-responsive">
+                <table className="responsive-table staff-table">
                     <thead>
                         <tr>
                             <th>Mã NV</th>
@@ -151,18 +162,14 @@ const StaffAccountList = () => {
                         {staffAccounts.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', padding: 20 }}>Không tìm thấy nhân viên nào.</td></tr>}
                         {staffAccounts.map(account => (
                             <tr key={account.id}>
-                                <td>{account.staffCode || '-'}</td>
-                                <td>{account.username}</td>
-                                <td>{account.fullName}</td>
-                                <td>{account.email}</td>
-                                <td>{account.roleName}</td>
-                                <td>{account.department || 'N/A'}</td>
-                                <td>
-                                    <span className={`status-badge ${account.status === 1 ? 'status-active' : 'status-inactive'}`}>
-                                        {account.status === 1 ? 'Hoạt động' : 'Vô hiệu hóa'}
-                                    </span>
-                                </td>
-                                <td className="action-cell">
+                                <td data-label="Mã NV">{account.staffCode || '-'}</td>
+                                <td data-label="Tên đăng nhập">{account.username}</td>
+                                <td data-label="Họ và Tên">{account.fullName}</td>
+                                <td data-label="Email">{account.email}</td>
+                                <td data-label="Vai trò">{account.roleName}</td>
+                                <td data-label="Phòng ban">{account.department || 'N/A'}</td>
+                                <td data-label="Trạng thái"><span className={`status-badge ${account.status === 1 ? 'status-active' : 'status-inactive'}`}>{account.status === 1 ? 'Hoạt động' : 'Vô hiệu hóa'}</span></td>
+                                <td data-label="Hành động" className="action-cell">
                                     <button onClick={() => handleEdit(account)} className="btn-icon btn-edit"><Edit size={16} /></button>
                                     <button onClick={() => handleToggleStatus(account)} className={`btn-icon ${account.status === 1 ? 'btn-deactivate' : 'btn-activate'}`}>
                                         {account.status === 1 ? <ToggleLeft size={16} /> : <ToggleRight size={16} />}
