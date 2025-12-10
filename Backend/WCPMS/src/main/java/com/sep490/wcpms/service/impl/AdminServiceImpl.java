@@ -33,33 +33,31 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
-        List<Account> accounts = accountRepository.findByRole_RoleName(Role.RoleName.CUSTOMER);
+        // 1. Lấy toàn bộ dữ liệu từ bảng CUSTOMERS
+        List<Customer> customers = customerRepository.findAll();
 
-        return accounts.stream().map(acc -> {
-            Customer cust = customerRepository.findByAccount_Id(acc.getId()).orElse(null);
-
-            // --- SỬA LOGIC LẤY TÊN VÀ MÃ ---
-            // Ưu tiên lấy từ bảng Customer, nếu không có thì lấy từ Account
-            String code = (cust != null && cust.getCustomerCode() != null) ? cust.getCustomerCode() : acc.getCustomerCode();
-            String name = (cust != null && cust.getCustomerName() != null) ? cust.getCustomerName() : acc.getFullName();
-            String addr = (cust != null) ? cust.getAddress() : "Chưa cập nhật";
-
-            // Mặc định status là 1 (Active) nếu null
-            Integer status = (acc.getStatus() != null) ? acc.getStatus() : 1;
+        return customers.stream().map(cust -> {
+            Account acc = cust.getAccount();
 
             return CustomerResponseDTO.builder()
-                    .accountId(acc.getId())
-                    .customerId(cust != null ? cust.getId() : null)
-                    .customerCode(code) // <--- Check kỹ dòng này
-                    .fullName(name)     // <--- Check kỹ dòng này
-                    .email(acc.getEmail())
-                    .phone(acc.getPhone())
-                    .address(addr)
-                    .status(status)
+                    .customerId(cust.getId())
+
+                    // Lấy trực tiếp từ Entity Customer
+                    .customerCode(cust.getCustomerCode())
+                    .fullName(cust.getCustomerName())
+                    .address(cust.getAddress())
+
+                    // Lấy SĐT (Ưu tiên Customer -> Account)
+                    .phone(cust.getContactPersonPhone() != null ? cust.getContactPersonPhone() : (acc != null ? acc.getPhone() : ""))
+
+                    // Lấy Email (Từ Account)
+                    .email(acc != null ? acc.getEmail() : "")
+
+                    // Status
+                    .status(acc != null && acc.getStatus() != null ? acc.getStatus() : 1)
                     .build();
         }).collect(Collectors.toList());
     }
-
     @Override
     public List<GuestRequestResponseDTO> getPendingGuestRequests() {
         List<Contract> contracts = contractRepository.findPendingGuestContracts();

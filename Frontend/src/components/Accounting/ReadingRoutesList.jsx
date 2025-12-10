@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit } from 'lucide-react';
 import { getReadingRoutes } from '@/components/Services/apiAccountingReadingRoutes';
 import ReadingRouteForm from './ReadingRouteForm';
 import './ReadingRoutesList.css';
 
 const ReadingRoutesList = () => {
+    // ... (Giữ nguyên các state và logic refreshList cũ)
     const [routes, setRoutes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [includeInactive, setIncludeInactive] = useState(false);
+    const [includeInactive] = useState(false);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [routeToEdit, setRouteToEdit] = useState(null);
@@ -29,7 +30,6 @@ const ReadingRoutesList = () => {
 
     useEffect(() => {
         refreshList();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [includeInactive]);
 
     const handleCreate = () => {
@@ -40,6 +40,12 @@ const ReadingRoutesList = () => {
     const handleEdit = (r) => {
         setRouteToEdit(r);
         setIsFormOpen(true);
+    };
+
+    // Helper để hiển thị list tên Service Staff
+    const renderServiceStaff = (staffList) => {
+        if (!staffList || staffList.length === 0) return '-';
+        return staffList.map(s => s.fullName).join(', ');
     };
 
     if (loading) return <div>Đang tải...</div>;
@@ -60,7 +66,8 @@ const ReadingRoutesList = () => {
                         <th>Code</th>
                         <th>Tên</th>
                         <th>Vùng</th>
-                        <th>Người đọc</th>
+                        <th>Người đọc (Thu ngân)</th>
+                        <th>NV Dịch vụ (Service)</th> {/* Cột Mới */}
                         <th>Trạng thái</th>
                         <th>Hành động</th>
                     </tr>
@@ -72,6 +79,8 @@ const ReadingRoutesList = () => {
                             <td>{r.routeName}</td>
                             <td>{r.areaCoverage}</td>
                             <td>{r.assignedReaderName || 'Unassigned'}</td>
+                            {/* Hiển thị list service staff */}
+                            <td>{renderServiceStaff(r.serviceStaffs)}</td>
                             <td>{r.status}</td>
                             <td>
                                 <button onClick={() => handleEdit(r)} disabled={r.status === 'INACTIVE'} title="Chỉnh sửa"><Edit /></button>

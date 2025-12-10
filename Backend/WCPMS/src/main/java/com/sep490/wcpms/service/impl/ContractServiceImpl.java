@@ -12,6 +12,7 @@ import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,8 +59,7 @@ public class ContractServiceImpl implements ContractService {
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tuyến đọc"));
         }
 
-        // Logic Auto-assign cho Customer (nếu muốn áp dụng)
-        Account assignedStaff = findLeastBusyServiceStaff();
+        Account assignedStaff = findAutoAssignedStaff(requestDTO.getRouteId());
 
         // 3. --- TẠO MỚI ADDRESS CHO HỢP ĐỒNG NÀY (GIỐNG GUEST) ---
         // Logic: Mỗi yêu cầu lắp đặt sẽ tạo ra một địa điểm (Address) mới gắn với Customer đó
@@ -131,7 +131,7 @@ public class ContractServiceImpl implements ContractService {
         WaterPriceType priceType = waterPriceTypeRepository.findById(requestDTO.getPriceTypeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Loại giá không tồn tại"));
 
-        Account assignedStaff = findLeastBusyServiceStaff();
+        Account assignedStaff = findAutoAssignedStaff(requestDTO.getRouteId());
 
         // A. TẠO & LƯU ADDRESS (Bỏ qua Ward/Customer)
         Address guestAddress = new Address();
@@ -186,6 +186,18 @@ public class ContractServiceImpl implements ContractService {
         publishContractCreatedEvent(savedContract, null, requestDTO.getFullName());
 
         return savedContract.getContractNumber();
+    }
+
+    // --- HELPER MỚI: Auto-assign theo Route ---
+    private Account findAutoAssignedStaff(Integer routeId) {
+        // Tìm 1 nhân viên (PageRequest.of(0, 1)) thuộc tuyến này, có ít việc nhất
+        List<Account> candidates = accountRepository.findLeastBusyStaffByRoute(routeId, PageRequest.of(0, 1));
+
+        if (candidates.isEmpty()) {
+            throw new ResourceNotFoundException("Tuyến đọc này hiện chưa có nhân viên dịch vụ nào phụ trách. Vui lòng liên hệ admin.");
+        }
+
+        return candidates.get(0);
     }
 
     // --- HELPER: Publish Event an toàn ---
