@@ -1,6 +1,7 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.*;
+import com.sep490.wcpms.entity.ContractAnnulTransferRequest;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.ServiceStaffContractService;
 import lombok.RequiredArgsConstructor;
@@ -10,11 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-// --- CÁC IMPORT BỊ THIẾU ---
-import org.springframework.data.domain.Pageable; // <-- Bị thiếu
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault; // <-- Bị thiếu
-import org.springframework.http.ResponseEntity; // <-- Bị thiếu
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
 import com.sep490.wcpms.service.CustomerFeedbackService;
 import org.springframework.security.core.Authentication;
 import com.sep490.wcpms.exception.AccessDeniedException;
@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.time.LocalDate; // for request param/body
 import java.util.HashMap;
-// --- HẾT PHẦN IMPORT ---
 
 @RestController
 @RequestMapping("/api/service/contracts")
@@ -39,8 +38,8 @@ public class ServiceStaffContractController {
             throw new AccessDeniedException("User is not authenticated.");
         }
         Object principal = authentication.getPrincipal();
-        if (principal instanceof UserDetailsImpl) { // SỬA TÊN NÀY
-            return ((UserDetailsImpl) principal).getId(); // SỬA TÊN NÀY
+        if (principal instanceof UserDetailsImpl) {
+            return ((UserDetailsImpl) principal).getId();
         }
         throw new IllegalStateException("Cannot determine user ID from Principal.");
     }
@@ -55,7 +54,7 @@ public class ServiceStaffContractController {
         return service.findContractsForServiceStaff(status, keyword, PageRequest.of(page, size));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ServiceStaffContractDTO getContract(@PathVariable Integer id) {
         return service.getContractDetailById(id);
     }
@@ -81,6 +80,7 @@ public class ServiceStaffContractController {
     ) {
         return service.getDraftContracts(keyword, PageRequest.of(page, size));
     }
+
     /**
      * Màn 1: Gửi hợp đồng cho Technical khảo sát (DRAFT → PENDING)
      * PUT /api/service/contracts/{id}/submit
@@ -176,6 +176,78 @@ public class ServiceStaffContractController {
         return service.terminateContract(id, reason);
     }
 
+    // === API CHO TAB ANNUL & TRANSFER (TÁCH RIÊNG) ===
+
+    /**
+     * Lấy danh sách yêu cầu HỦY hợp đồng
+     * GET /api/service/contracts/pending-annul-requests?keyword=...&page=0&size=10
+     * API chuyên biệt, gọi trực tiếp từ service
+     * Đã ORDER BY r.id ASC trong repository
+     */
+    @GetMapping({"/annul-requests", "/pending-annul-requests"})
+    public Page<ContractAnnulTransferRequestDTO> getAnnulRequests(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatus, // Nhận List
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return service.getAnnulRequests(keyword, PageRequest.of(page, size), approvalStatus);
+    }
+
+    /**
+     * Lấy danh sách yêu cầu CHUYỂN NHƯỢNG hợp đồng
+     * GET /api/service/contracts/pending-transfer-requests?keyword=...&page=0&size=10
+     * API chuyên biệt, gọi trực tiếp từ service
+     * Đã ORDER BY r.id ASC trong repository
+     */
+    @GetMapping({"/transfer-requests", "/pending-transfer-requests"})
+    public Page<ContractAnnulTransferRequestDTO> getTransferRequests(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatus, // Nhận List
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return service.getTransferRequests(keyword, PageRequest.of(page, size), approvalStatus);
+    }
+
+    /**
+     * Duyệt yêu cầu hủy/chuyển nhượng hợp đồng
+     * PUT /api/service/contracts/pending-annul-transfer-requests/{requestId}/approve
+     */
+    @PutMapping("/pending-annul-transfer-requests/{requestId}/approve")
+    public ResponseEntity<ContractAnnulTransferRequestDTO> approveAnnulTransferRequest(
+            @PathVariable Integer requestId
+    ) {
+        ContractAnnulTransferRequestDTO result = service.approveAnnulTransferRequest(requestId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Từ chối yêu cầu hủy/chuyển nhượng hợp đồng
+     * PUT /api/service/contracts/pending-annul-transfer-requests/{requestId}/reject
+     */
+    @PutMapping("/pending-annul-transfer-requests/{requestId}/reject")
+    public ResponseEntity<ContractAnnulTransferRequestDTO> rejectAnnulTransferRequest(
+            @PathVariable Integer requestId,
+            @RequestBody Map<String, String> body // <-- Sửa từ @RequestParam thành @RequestBody
+    ) {
+        String reason = body.get("reason");
+        ContractAnnulTransferRequestDTO result = service.rejectAnnulTransferRequest(requestId, reason);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Lấy chi tiết yêu cầu hủy/chuyển nhượng theo ID
+     * GET /api/service/contracts/pending-annul-transfer-requests/{requestId}
+     */
+    @GetMapping("/pending-annul-transfer-requests/{requestId}")
+    public ResponseEntity<ContractAnnulTransferRequestDTO> getAnnulTransferRequestDetail(@PathVariable Integer requestId) {
+        // Gọi hàm service (bạn đã thêm hàm này vào ServiceImpl ở bước trước)
+        ContractAnnulTransferRequestDTO dto = service.getAnnulTransferRequestDetail(requestId);
+        return ResponseEntity.ok(dto);
+    }
+
+    // === HẾT PHẦN API ANNUL/TRANSFER ===
 
     // === API MỚI CHO BƯỚC 2 (Quản lý Ticket) ===
     // (Lưu ý: Các API này sẽ có đường dẫn là /api/service/contracts/...)
@@ -201,13 +273,8 @@ public class ServiceStaffContractController {
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10, sort = "submittedDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        // 1. Lấy ID nhân viên đang đăng nhập (QUAN TRỌNG)
         Integer currentStaffId = getAuthenticatedStaffId();
-
-        // 2. Gọi hàm Service mới với ID này
-        // (Lưu ý: Tôi đã đổi tên hàm service thành getMySupportTickets cho rõ nghĩa)
         Page<SupportTicketDTO> tickets = service.getSupportTickets(currentStaffId, type, keyword, pageable);
-
         return ResponseEntity.ok(tickets);
     }
 
@@ -247,7 +314,6 @@ public class ServiceStaffContractController {
     }
     // --- HẾT PHẦN THÊM ---
 
-
     // === API MỚI CHO "CÁCH B" (Bước 8) ===
 
     /**
@@ -270,23 +336,6 @@ public class ServiceStaffContractController {
     public ResponseEntity<List<CustomerMeterDTO>> getCustomerActiveMeters(
             @PathVariable Integer customerId
     ) {
-        // Chúng ta cần thêm hàm này vào CustomerFeedbackService (hoặc ServiceStaffContractService)
-        // Giả sử chúng ta thêm nó vào CustomerFeedbackService (vì nó liên quan đến Customer)
-
-        // Tìm Account ID của khách hàng (Cách 1: nếu Customer entity có accountId)
-        // Customer customer = customerRepository.findById(customerId)...
-        // Integer customerAccountId = customer.getAccount().getId();
-        // (Cách 2: Giả sử CustomerFeedbackService đã có hàm lấy theo customerId)
-
-        // TẠM THỜI, chúng ta cần một hàm mới trong CustomerFeedbackService
-        // Hãy tạo hàm getCustomerActiveMetersByCustomerId(Integer customerId)
-
-        // (Giả sử CustomerFeedbackService đã có hàm getCustomerActiveMeters(Integer customerAccountId)
-        // và chúng ta cần tìm accountId từ customerId)
-        // Tạm thời gọi hàm cũ (nhưng hàm này lấy theo AccountID, không phải CustomerID)
-
-        // SỬA LẠI: Chúng ta cần một hàm mới trong Service/Repo
-        // Giả sử ServiceStaffContractService có hàm này:
         List<CustomerMeterDTO> meters = service.getCustomerActiveMetersByCustomerId(customerId);
         return ResponseEntity.ok(meters);
     }
@@ -348,7 +397,10 @@ public class ServiceStaffContractController {
         return ResponseEntity.ok(dto);
     }
 
-    // THÊM API TẠM NGƯNG
+    /**
+     * Tạm ngưng hợp đồng ACTIVE
+     * PUT /api/service/contracts/{id}/suspend
+     */
     @PutMapping("/{id}/suspend")
     public ServiceStaffContractDTO suspendContract(
             @PathVariable Integer id,
@@ -356,7 +408,10 @@ public class ServiceStaffContractController {
         return service.suspendContract(id, reason);
     }
 
-    // THÊM API KÍCH HOẠT LẠI
+    /**
+     * Kích hoạt lại hợp đồng đã tạm ngưng
+     * PUT /api/service/contracts/{id}/reactivate
+     */
     @PutMapping("/{id}/reactivate")
     public ServiceStaffContractDTO reactivateContract(@PathVariable Integer id) {
         return service.reactivateContract(id);

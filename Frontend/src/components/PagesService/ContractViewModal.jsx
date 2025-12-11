@@ -71,11 +71,11 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         >
             <Spin spinning={loading}>
                 <div className="space-y-4 pt-2">
-                    {/* Header: Số HĐ và Trạng thái */}
+                    {/* Header: Mã HĐ và Trạng thái */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Số Hợp đồng</div>
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã hợp đồng</div>
                                 <div className="text-2xl font-bold text-blue-700">{initialData?.contractNumber || '—'}</div>
                             </div>
                             <div className="text-right">

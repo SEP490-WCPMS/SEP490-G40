@@ -10,10 +10,10 @@ import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, submitContractForSurvey } from '../../Services/apiService';
 
-const { Title, Paragraph } = Typography;
+const { Paragraph } = Typography;
 const { Search } = Input;
 
-const ContractRequestsPage = ({ keyword: externalKeyword, status: externalStatus }) => {
+const ContractRequestsPage = ({ keyword: externalKeyword, status: externalStatus, refreshKey }) => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -91,8 +91,19 @@ const ContractRequestsPage = ({ keyword: externalKeyword, status: externalStatus
         fetchContracts();
     }, [externalKeyword]);
 
-    const handlePageChange = (newPage) => {
-        fetchContracts({ page: newPage });
+    useEffect(() => {
+        if (refreshKey !== undefined) fetchContracts();
+    }, [refreshKey]);
+
+    const handlePageChange = (newPageInfo) => {
+        // Accept either a number (0-index) or an object like { current: 1 }
+        let newPage0Based = 0;
+        if (typeof newPageInfo === 'number') {
+            newPage0Based = newPageInfo;
+        } else if (newPageInfo && newPageInfo.current) {
+            newPage0Based = Math.max(0, Number(newPageInfo.current) - 1);
+        }
+        fetchContracts({ page: newPage0Based });
     };
 
     const handleFilterChange = (value) => {
@@ -176,23 +187,7 @@ const ContractRequestsPage = ({ keyword: externalKeyword, status: externalStatus
                 theme="colored"
             />
             
-            <Row gutter={16} align="middle">
-                <Col xs={24} sm={12}>
-                    <div>
-                        <Title level={3} className="!mb-2">Đơn từ khách hàng</Title>
-                        <Paragraph className="!mb-0">Danh sách các đơn yêu cầu hợp đồng từ khách hàng (chưa gửi khảo sát).</Paragraph>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-                    <Button
-                        onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
-                        loading={loading}
-                        icon={<ReloadOutlined />}
-                    >
-                        Làm mới
-                    </Button>
-                </Col>
-            </Row>
+            {/* Refresh controlled by parent manager (moved up) */}
 
             {externalKeyword === undefined && (
             <Row gutter={16} className="mb-6">
@@ -212,7 +207,7 @@ const ContractRequestsPage = ({ keyword: externalKeyword, status: externalStatus
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={pagination}
+                    pagination={{ current: pagination.page + 1, pageSize: pagination.size, total: pagination.totalElements }}
                     onPageChange={handlePageChange}
                     onViewDetails={handleViewDetails}
                 />

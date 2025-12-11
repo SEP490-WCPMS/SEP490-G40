@@ -5,17 +5,18 @@ import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import Pagination from '../../common/Pagination';
+// Không cần import Pagination ở đây nữa vì ContractTable đã lo rồi
+// import Pagination from '../../common/Pagination'; 
 import ContractTable from '../ContractTable';
 import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
-import { getServiceContracts, getServiceContractDetail, submitContractForSurvey, approveServiceContract, rejectSurveyReport } from '../../Services/apiService';
+import { getServiceContracts, getServiceContractDetail, submitContractForSurvey, approveServiceContract } from '../../Services/apiService';
 
-const { Title, Paragraph } = Typography;
+const { Paragraph } = Typography;
 const { Search } = Input;
 
-const SurveyReviewPage = () => {
+const SurveyReviewPage = ({ refreshKey }) => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [contracts, setContracts] = useState([]);
@@ -26,9 +27,6 @@ const SurveyReviewPage = () => {
     const [stats, setStats] = useState({
         pendingSurveyReviewCount: 0
     });
-    const [rejectModalOpen, setRejectModalOpen] = useState(false);
-    const [rejectingContract, setRejectingContract] = useState(null);
-    const [rejectForm] = Form.useForm();
     
     const [showApproveConfirm, setShowApproveConfirm] = useState(false);
     const [approvingContract, setApprovingContract] = useState(null);
@@ -36,7 +34,7 @@ const SurveyReviewPage = () => {
 
     const [pagination, setPagination] = useState({
         page: 0,
-        size: 10,
+        size: 10, 
         totalElements: 0,
     });
 
@@ -53,7 +51,8 @@ const SurveyReviewPage = () => {
                 page: currentPage,
                 size: currentSize,
                 status: 'PENDING_SURVEY_REVIEW',
-                keyword: filters.keyword
+                keyword: filters.keyword,
+                sort: 'updatedAt,desc'
             });
             
             if (response.data) {
@@ -80,8 +79,19 @@ const SurveyReviewPage = () => {
         fetchContracts();
     }, []);
 
-    const handlePageChange = (newPage) => {
-        fetchContracts({ page: newPage });
+    useEffect(() => {
+        if (refreshKey !== undefined) fetchContracts();
+    }, [refreshKey]);
+
+    const handlePageChange = (newPageInfo) => {
+        // Xử lý cả 2 trường hợp: số nguyên hoặc object từ Antd Table
+        let newPage0Based = 0;
+        if (typeof newPageInfo === 'number') {
+            newPage0Based = newPageInfo; 
+        } else if (newPageInfo && newPageInfo.current) {
+            newPage0Based = newPageInfo.current - 1; 
+        }
+        fetchContracts({ page: newPage0Based });
     };
 
     const handleFilter = (filterName, value) => {
@@ -102,15 +112,9 @@ const SurveyReviewPage = () => {
             setShowApproveConfirm(true);
             return;
         }
-        if (actionType === 'rejectSurvey') {
-            setRejectingContract(contract);
-            rejectForm.resetFields();
-            setRejectModalOpen(true);
-            return;
-        }
+
         if (actionType === 'generateWater') {
             // Điều hướng sang trang tạo hợp đồng (trang riêng)
-            // Truyền theo sourceContractId để trang tạo biết lấy thông tin gốc nếu cần
             navigate('/service/contract-create', { state: { sourceContractId: contract.id } });
             return;
         }
@@ -196,58 +200,21 @@ const SurveyReviewPage = () => {
                 theme="colored"
             />
             
-            <Row gutter={16} align="middle">
-                <Col xs={24} sm={12}>
-                    <div>
-                        <Title level={3} className="!mb-2">Quản lý Khảo sát</Title>
-                        <Paragraph className="!mb-0">Quản lý danh sách hợp đồng chờ khảo sát và báo cáo khảo sát.</Paragraph>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-                    <Button
-                        onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
-                        loading={loading}
-                    >
-                        Làm mới
-                    </Button>
-                </Col>
-            </Row>
-
-            <Row gutter={16} className="mb-6">
-                <Col xs={24} md={12}>
-                    <Search
-                        placeholder="Tìm theo tên hoặc mã KH..."
-                        onSearch={(value) => handleFilterChange('keyword', value)}
-                        enterButton
-                        allowClear
-                    />
-                </Col>
-            </Row>
-
-            {/* Tiêu đề */}
-            <div className="mb-4">
-                <span className="text-lg font-semibold text-gray-700">
-                    Hợp đồng đã khảo sát
-                </span>
-            </div>
-
-            {/* Bảng danh sách */}
             <Spin spinning={loading}>
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={false}
+                    // --- SỬA Ở ĐÂY: Truyền pagination vào để Table tự render ---
+                    pagination={{ 
+                        current: pagination.page + 1, 
+                        pageSize: pagination.size, 
+                        total: pagination.totalElements 
+                    }}
+                    onPageChange={handlePageChange} // Truyền hàm xử lý chuyển trang
+                    // -----------------------------------------------------------
                     onViewDetails={handleViewDetails}
                     showStatusFilter={false}
                 />
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
-                </div>
             </Spin>
 
             {/* --- Modal chi tiết/cập nhật --- */}
@@ -277,67 +244,6 @@ const SurveyReviewPage = () => {
                 )
             )}
 
-            {/* --- Modal từ chối báo cáo khảo sát --- */}
-            <Modal
-                title={<span style={{display:'flex',alignItems:'center',gap:8}}>🚫 <span>Từ chối báo cáo khảo sát #{rejectingContract?.contractNumber || ''}</span></span>}
-                open={rejectModalOpen}
-                onCancel={() => setRejectModalOpen(false)}
-                okText="Từ chối"
-                cancelText="Hủy"
-                width={640}
-                destroyOnClose
-                onOk={async () => {
-                    try {
-                        const values = await rejectForm.validateFields();
-                        await rejectSurveyReport(rejectingContract.id, values.reason);
-                        toast.success('Đã từ chối báo cáo khảo sát.');
-                        setRejectModalOpen(false);
-                        setRejectingContract(null);
-                        fetchContracts(pagination.current, pagination.pageSize);
-                    } catch (err) {
-                        if (err?.errorFields) return; // validation error -> keep modal open
-                        toast.error('Từ chối báo cáo thất bại.');
-                        console.error(err);
-                    }
-                }}
-            >
-                <div className="contract-modal__summary" style={{marginBottom:12}}>
-                    <div className="summary-item">
-                        <span className="summary-icon">#</span>
-                        <div>
-                            <div className="summary-label">Số hợp đồng</div>
-                            <div className="summary-value">{rejectingContract?.contractNumber || 'N/A'}</div>
-                        </div>
-                    </div>
-                    <div className="summary-item">
-                        <span className="summary-icon">👤</span>
-                        <div>
-                            <div className="summary-label">Khách hàng</div>
-                            <div className="summary-value">{rejectingContract?.customerName || 'N/A'}</div>
-                        </div>
-                    </div>
-                </div>
-                <Form form={rejectForm} layout="vertical">
-                    <Form.Item
-                        label="Lý do từ chối"
-                        name="reason"
-                        rules={[
-                            { required: true, message: 'Vui lòng nhập lý do từ chối' },
-                            { min: 5, message: 'Lý do tối thiểu 5 ký tự' }
-                        ]}
-                    >
-                        <Input.TextArea rows={4} placeholder="Nhập lý do (ví dụ: bổ sung bản vẽ, thiếu thông tin đo đạc, ...)" />
-                    </Form.Item>
-                    <div className="contract-modal__info warning">
-                        <p className="info-title">Lưu ý</p>
-                        <ul>
-                            <li>Lý do sẽ được lưu lại để đối soát sau.</li>
-                            <li>Hợp đồng sẽ quay lại trạng thái <strong>Chờ khảo sát</strong>.</li>
-                        </ul>
-                    </div>
-                </Form>
-            </Modal>
-
             {/* Modal xác nhận Duyệt */}
             <ConfirmModal 
                 isOpen={showApproveConfirm}
@@ -352,5 +258,3 @@ const SurveyReviewPage = () => {
 };
 
 export default SurveyReviewPage;
-
-

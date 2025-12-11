@@ -148,7 +148,7 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs text-gray-500 mb-1">Số hợp đồng</div>
+              <div className="text-xs text-gray-500 mb-1">Mã hợp đồng</div>
               <div className="font-semibold text-gray-800">{data.contractNumber || '—'}</div>
             </div>
             <div>

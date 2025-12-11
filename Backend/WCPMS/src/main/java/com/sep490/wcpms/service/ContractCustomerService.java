@@ -125,17 +125,30 @@ public class ContractCustomerService {
 
     @Transactional
     public ContractDTO createContract(ContractCreateDTO createDTO) {
-        // Check if contract number already exists
-        if (contractRepository.existsByContractNumber(createDTO.getContractNumber())) {
+        // Trường hợp GUEST: customerId = null → bắt buộc có contactPhone
+        if (createDTO.getCustomerId() == null) {
+            if (createDTO.getContactPhone() == null || createDTO.getContactPhone().isBlank()) {
+                throw new IllegalArgumentException("Contact phone is required for guest contracts");
+            }
+        }
+
+        // Nếu FE vẫn gửi contractNumber lên thì cứ check như cũ (không ảnh hưởng GUEST)
+        if (createDTO.getContractNumber() != null
+                && contractRepository.existsByContractNumber(createDTO.getContractNumber())) {
             throw new DuplicateResourceException("Contract number already exists: " + createDTO.getContractNumber());
         }
 
         Contract contract = new Contract();
+        // Không copy 3 trường quan hệ
         BeanUtils.copyProperties(createDTO, contract, "customerId", "serviceStaffId", "technicalStaffId");
 
         // --- Map relations ---
-        Customer customer = customerRepository.findById(createDTO.getCustomerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        Customer customer = null;
+        if (createDTO.getCustomerId() != null) {
+            // Trường hợp KH đã có tài khoản
+            customer = customerRepository.findById(createDTO.getCustomerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+        }
 
         Account serviceStaff = accountRepository.findById(createDTO.getServiceStaffId())
                 .orElseThrow(() -> new ResourceNotFoundException("Service staff not found"));
@@ -143,46 +156,47 @@ public class ContractCustomerService {
         Account technicalStaff = accountRepository.findById(createDTO.getTechnicalStaffId())
                 .orElseThrow(() -> new ResourceNotFoundException("Technical staff not found"));
 
-        contract.setCustomer(customer);
+        // Gán quan hệ
+        contract.setCustomer(customer);          // GUEST → null, CUSTOMER → không null
         contract.setServiceStaff(serviceStaff);
         contract.setTechnicalStaff(technicalStaff);
 
+        // Giữ nguyên kỹ thuật generate số hợp đồng như cũ
         contract.setContractNumber("temp");
-
         Contract savedContract = contractRepository.save(contract);
 
         String contractNumber = generateContractNumber(savedContract.getId(), savedContract.getStartDate());
-
         if (contractRepository.existsByContractNumber(contractNumber)) {
             throw new DuplicateResourceException("Contract number already exists: " + contractNumber);
         }
         savedContract.setContractNumber(contractNumber);
         savedContract = contractRepository.save(savedContract);
 
-        // Persist activity log: record that customer created contract (actor is CUSTOMER)
+        // Activity log
         try {
             ActivityLog log = new ActivityLog();
             log.setSubjectType("CONTRACT");
-            String subj = savedContract.getContractNumber() != null ? savedContract.getContractNumber() : String.valueOf(savedContract.getId());
+            String subj = savedContract.getContractNumber() != null
+                    ? savedContract.getContractNumber()
+                    : String.valueOf(savedContract.getId());
             log.setSubjectId(subj);
             log.setAction("CONTRACT_CREATED_BY_CUSTOMER");
             if (customer != null) {
                 log.setActorType("CUSTOMER");
                 log.setActorId(customer.getId());
                 log.setActorName(customer.getCustomerName());
-                log.setInitiatorType("CUSTOMER");
                 log.setInitiatorId(customer.getId());
                 log.setInitiatorName(customer.getCustomerName());
-            } else {
-                log.setActorType("SYSTEM");
             }
+            log.setPayload(null);
             activityLogService.save(log);
         } catch (Exception e) {
-            // swallow errors to not break main flow
+            // ignore để không làm lỗi business chính
         }
 
         return convertToDTO(savedContract);
     }
+
 
     private String generateContractNumber(Integer contractId, LocalDate startDate) {
         String dateStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE); // yyyy-MM-dd

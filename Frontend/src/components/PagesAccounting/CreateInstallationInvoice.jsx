@@ -336,11 +336,11 @@ function CreateInstallationInvoice() {
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none ${
+                                className={`inline-flex justify-center w-full sm:w-auto items-center text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none ${
                                     submitting ? 'opacity-50' : ''
                                 }`}
                             >
-                                <Save size={18} className="mr-2" />
+                            <Save size={18} className="mr-2" />
                                 {submitting ? 'Đang phát hành...' : 'Xác nhận & Phát hành Hóa đơn lắp đặt'}
                             </button>
                         </div>

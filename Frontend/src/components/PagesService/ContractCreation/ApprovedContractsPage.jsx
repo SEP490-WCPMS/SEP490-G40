@@ -6,17 +6,16 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Pagination from '../../common/Pagination';
 import ContractTable from '../ContractTable';
-import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../../Services/apiService';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 
-const { Title, Paragraph } = Typography;
+const { Paragraph } = Typography;
 const { Search } = Input;
 
-const ApprovedContractsPage = () => {
+const ApprovedContractsPage = ({ refreshKey }) => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -49,7 +48,8 @@ const ApprovedContractsPage = () => {
                 page: currentPage,
                 size: currentSize,
                 status: 'APPROVED',
-                keyword: filters.keyword
+                keyword: filters.keyword,
+                sort: 'updatedAt,desc'
             });
             
             if (response.data) {
@@ -76,7 +76,16 @@ const ApprovedContractsPage = () => {
         fetchContracts();
     }, []);
 
-    const handlePageChange = (newPage) => {
+    useEffect(() => {
+        if (refreshKey !== undefined) fetchContracts();
+    }, [refreshKey]);
+
+    const handlePageChange = (newPageInfo) => {
+        // Xử lý cả 2 format pagination (từ Antd Table hoặc custom Pagination)
+        let newPage = 0;
+        if (typeof newPageInfo === 'number') newPage = newPageInfo;
+        else if (newPageInfo?.current) newPage = newPageInfo.current - 1;
+        
         fetchContracts({ page: newPage });
     };
 
@@ -110,10 +119,27 @@ const ApprovedContractsPage = () => {
         }
     };
 
-    // Mở Modal
+// Mở Modal / Xử lý Action
     const handleViewDetails = async (contract, actionType) => {
-        // Hành động không cần modal chi tiết
+        
+        // --- 1. LOGIC CHẶN GUEST KHI GỬI KÝ (Mới thêm) ---
         if (actionType === 'sendToSign') {
+            // Kiểm tra: Nếu là Guest hoặc chưa có customerCode -> Chặn
+            if (contract.isGuest || !contract.customerCode) {
+                Modal.warning({
+                    title: 'Chưa thể gửi ký',
+                    content: (
+                        <div>
+                            <p>Khách hàng <b>{contract.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                            <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
+                        </div>
+                    ),
+                    okText: 'Đã hiểu',
+                });
+                return;
+            }
+
+            // Nếu ok thì mở popup xác nhận
             setSendingContract(contract);
             setShowSendToSignConfirm(true);
             return;
@@ -177,51 +203,18 @@ const ApprovedContractsPage = () => {
                 theme="colored"
             />
             
-            <Row gutter={16} align="middle">
-                <Col xs={24} sm={12}>
-                    <div>
-                        <Title level={3} className="!mb-2">Hợp đồng đã duyệt</Title>
-                        <Paragraph className="!mb-0">Danh sách các hợp đồng đã được duyệt, sẵn sàng gửi ký cho khách hàng.</Paragraph>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-                    <Button
-                        onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
-                        loading={loading}
-                    >
-                        Làm mới
-                    </Button>
-                </Col>
-            </Row>
-
-            <Row gutter={16} className="mb-6">
-                <Col xs={24} md={12}>
-                    <Search
-                        placeholder="Tìm theo tên hoặc mã KH..."
-                        onSearch={(value) => handleFilterChange('keyword', value)}
-                        enterButton
-                        allowClear
-                    />
-                </Col>
-            </Row>
+            {/* Refresh moved to parent manager */}
 
             {/* --- Bảng dữ liệu --- */}
             <Spin spinning={loading}>
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={false}
+                    pagination={{ current: pagination.page + 1, pageSize: pagination.size, total: pagination.totalElements }}
+                    onPageChange={({ current }) => handlePageChange({ current })}
                     onViewDetails={handleViewDetails}
                     showStatusFilter={false}
                 />
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
-                </div>
             </Spin>
 
             {/* --- Modal xem chi tiết (đọc-only) --- */}
@@ -240,7 +233,7 @@ const ApprovedContractsPage = () => {
                     <Spin spinning={modalLoading}>
                         <Descriptions bordered size="small" column={1}>
                             {/* PHẦN 1: THÔNG TIN KHÁCH HÀNG */}
-                            <Descriptions.Item label="Số Hợp đồng" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
+                            <Descriptions.Item label="Mã Hợp đồng" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
                                 {selectedContract.contractNumber || '—'}
                             </Descriptions.Item>
                             <Descriptions.Item label="Khách hàng">
