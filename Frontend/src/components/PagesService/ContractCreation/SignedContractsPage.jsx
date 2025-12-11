@@ -10,10 +10,10 @@ import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
 import { getServiceContracts, getServiceContractDetail, sendContractToInstallation } from '../../Services/apiService';
 
-const { Title, Paragraph } = Typography;
+const { Paragraph } = Typography;
 const { Search } = Input;
 
-const SignedContractsPage = () => {
+const SignedContractsPage = ({ refreshKey }) => {
     const [contracts, setContracts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -75,6 +75,10 @@ const SignedContractsPage = () => {
     useEffect(() => {
         fetchContracts();
     }, []);
+
+    useEffect(() => {
+        if (refreshKey !== undefined) fetchContracts();
+    }, [refreshKey]);
 
     const handlePageChange = (newPage) => {
         fetchContracts({ page: newPage });
@@ -178,51 +182,18 @@ const SignedContractsPage = () => {
                 theme="colored"
             />
             
-            <Row gutter={16} align="middle">
-                <Col xs={24} sm={12}>
-                    <div>
-                        <Title level={3} className="!mb-2">Hợp đồng đã ký</Title>
-                        <Paragraph className="!mb-0">Danh sách các hợp đồng mà khách hàng đã ký, sẵn sàng gửi kỹ thuật lắp đặt.</Paragraph>
-                    </div>
-                </Col>
-                <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
-                    <Button
-                        onClick={() => fetchContracts(pagination.current, pagination.pageSize)}
-                        loading={loading}
-                    >
-                        Làm mới
-                    </Button>
-                </Col>
-            </Row>
-
-            <Row gutter={16} className="mb-6">
-                <Col xs={24} md={12}>
-                    <Search
-                        placeholder="Tìm theo tên hoặc mã KH..."
-                        onSearch={(value) => handleFilterChange('keyword', value)}
-                        enterButton
-                        allowClear
-                    />
-                </Col>
-            </Row>
+            {/* Refresh moved to parent manager */}
 
             {/* --- Bảng dữ liệu --- */}
             <Spin spinning={loading}>
                 <ContractTable
                     data={contracts}
                     loading={loading}
-                    pagination={false}
+                    pagination={{ current: pagination.page + 1, pageSize: pagination.size, total: pagination.totalElements }}
+                    onPageChange={({ current }) => handlePageChange({ current })}
                     onViewDetails={handleViewDetails}
                     showStatusFilter={false}
                 />
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
-                </div>
             </Spin>
 
             {/* --- Modal chi tiết (đọc-only) --- */}

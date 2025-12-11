@@ -103,8 +103,31 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     public Page<ServiceStaffContractDTO> findContractsForServiceStaff(String status, String keyword, Pageable pageable) {
+
+        Integer currentUserId = getCurrentUserId();
+
+        // --- LOGIC MỚI: XỬ LÝ NHÓM TRẠNG THÁI CHO TAB ACTIVE ---
+        if ("ACTIVE_TAB_ALL".equalsIgnoreCase(status)) {
+            // Định nghĩa nhóm 4 trạng thái
+            List<ContractStatus> activeGroup = List.of(
+                    ContractStatus.ACTIVE,
+                    ContractStatus.SUSPENDED,
+                    ContractStatus.TERMINATED,
+                    ContractStatus.EXPIRED
+            );
+
+            if (currentUserId != null) {
+                return contractRepository.findByServiceStaffAndStatusInAndKeyword(currentUserId, activeGroup, keyword, pageable)
+                        .map(this::convertToDTO);
+            }
+            return contractRepository.findByStatusInAndKeyword(activeGroup, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
+        // -------------------------------------------------------
+
+        // --- LOGIC CŨ ---
         ContractStatus contractStatus = null;
-        if (status != null && !status.isBlank()) {
+        if (status != null && !status.isBlank() && !status.equalsIgnoreCase("all")) {
             try {
                 contractStatus = ContractStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
@@ -112,14 +135,10 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             }
         }
 
-        // If current authenticated user is a Service Staff, filter results to only their contracts
-        Integer currentUserId = getCurrentUserId();
-
         if (currentUserId != null) {
             return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, contractStatus, keyword, pageable)
                     .map(this::convertToDTO);
         }
-
         return contractRepository.findByStatusAndKeyword(contractStatus, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -324,24 +343,77 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
 
-        // Chỉ cho phép gia hạn hợp đồng ACTIVE
-        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
-            throw new RuntimeException("Only ACTIVE contracts can be renewed. Current status: " + contract.getContractStatus());
+        //Chỉ cho phép gia hạn EXPIRED (Hết hạn)
+        if (contract.getContractStatus() != ContractStatus.EXPIRED) {
+            throw new RuntimeException("Only EXPIRED contracts can be renewed. Current status: " + contract.getContractStatus());
         }
 
         // Cập nhật ngày kết thúc mới
         if (renewRequest.getEndDate() != null) {
+            // Kiểm tra: Ngày kết thúc mới phải sau ngày hiện tại
+            if (renewRequest.getEndDate().isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("New end date must be in the future.");
+            }
             contract.setEndDate(renewRequest.getEndDate());
         } else {
             throw new IllegalArgumentException("End date is required for renewal");
         }
 
         if (renewRequest.getNotes() != null) {
-            contract.setNotes(renewRequest.getNotes());
+            // Nối thêm ghi chú gia hạn thay vì ghi đè (tuỳ chọn)
+            String oldNote = contract.getNotes() == null ? "" : contract.getNotes();
+            contract.setNotes(oldNote + "\n[Renewed]: " + renewRequest.getNotes());
         }
 
+        //Chuyển trạng thái trở lại ACTIVE sau khi gia hạn thành công
+        contract.setContractStatus(ContractStatus.ACTIVE);
+
         Contract updated = contractRepository.save(contract);
+        // Ghi log
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            log.setSubjectId(String.valueOf(updated.getId()));
+            log.setAction("CONTRACT_RENEWED");
+            // Set actor info...
+            activityLogService.save(log);
+        } catch (Exception e) {}
+
         return convertToDTO(updated);
+    }
+
+    // === THÊM HÀM MỚI ===
+    @Override
+    @Transactional
+    public void scanAndExpireContracts() {
+        LocalDate today = LocalDate.now();
+        // Tìm tất cả hợp đồng ACTIVE mà ngày kết thúc < hôm nay
+        List<Contract> expiredContracts = contractRepository.findByContractStatusAndEndDateBefore(ContractStatus.ACTIVE, today);
+
+        if (expiredContracts.isEmpty()) {
+            return;
+        }
+
+        log.info("Found {} contracts to expire.", expiredContracts.size());
+
+        for (Contract c : expiredContracts) {
+            c.setContractStatus(ContractStatus.EXPIRED);
+
+            // Ghi log hệ thống
+            try {
+                ActivityLog log = new ActivityLog();
+                log.setSubjectType("CONTRACT");
+                log.setSubjectId(c.getContractNumber());
+                log.setAction("AUTO_EXPIRED");
+                log.setActorType("SYSTEM");
+                log.setPayload("Contract expired on " + today);
+                activityLogService.save(log);
+            } catch (Exception e) {
+                log.error("Failed to save activity log for expired contract " + c.getId());
+            }
+        }
+
+        contractRepository.saveAll(expiredContracts);
     }
 
     //LOGIC TẠM NGƯNG
@@ -419,45 +491,66 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null);
         dto.setNotes(c.getNotes());
 
-        // --- MAP CUSTOMER / GUEST ---
+        // --- XỬ LÝ QUAN TRỌNG: GUEST vs CUSTOMER ---
         if (c.getCustomer() != null) {
-            // Trường hợp Khách hàng có tài khoản
+            // >>> TRƯỜNG HỢP A: Đã là Customer (Có tài khoản)
             dto.setCustomerId(c.getCustomer().getId());
             dto.setCustomerName(c.getCustomer().getCustomerName());
             dto.setCustomerCode(c.getCustomer().getCustomerCode());
-            dto.setContactPhone(c.getCustomer().getContactPersonPhone());
-            dto.setAddress(c.getCustomer().getAddress());
-            dto.setIsGuest(false);
-        } else {
-            // Trường hợp Khách vãng lai (Guest) -> Lấy tên từ Notes
-            dto.setIsGuest(true);
-            dto.setCustomerCode(null);
 
-            // 1. Lấy SĐT từ Contract (vì Guest lưu ở đây)
-            dto.setContactPhone(c.getContactPhone());
-
-            // 2. Lấy Địa chỉ
-            if (c.getAddress() != null) {
-                dto.setAddress(c.getAddress().getAddress());
+            // Lấy SĐT từ Account của Customer
+            if (c.getCustomer().getAccount() != null) {
+                dto.setContactPhone(c.getCustomer().getAccount().getPhone());
             }
 
-            // 3. Bóc tách tên từ Notes
-            String note = c.getNotes();
-            if (note != null && note.startsWith("KHÁCH:")) {
-                try {
-                    int pipeIndex = note.indexOf("|");
-                    if (pipeIndex > 0) {
-                        dto.setCustomerName(note.substring(7, pipeIndex).trim());
-                    } else {
-                        dto.setCustomerName(note.substring(7).trim());
-                    }
-                } catch (Exception e) {
-                    dto.setCustomerName("Khách vãng lai");
+            // Lấy địa chỉ từ Customer (hoặc địa chỉ lắp đặt riêng nếu có)
+            if (c.getAddress() != null && c.getAddress().getAddress() != null) {
+                dto.setAddress(c.getAddress().getAddress());
+            } else {
+                dto.setAddress(c.getCustomer().getAddress());
+            }
+
+            dto.setIsGuest(false);
+        } else {
+            // >>> TRƯỜNG HỢP B: GUEST (Khách vãng lai)
+            dto.setIsGuest(true);
+            dto.setCustomerCode(null); // Guest không có mã KH
+
+            // 1. Lấy SĐT Guest (Lưu trực tiếp trên Contract)
+            dto.setContactPhone(c.getContactPhone());
+
+            // 2. Xử lý Tên từ Notes (Logic: "KHÁCH: Tên | Ghi chú")
+            String rawNotes = c.getNotes();
+            if (rawNotes != null && !rawNotes.isEmpty()) {
+                if (rawNotes.contains("|")) {
+                    String[] parts = rawNotes.split("\\|");
+                    String namePart = parts[0].trim();
+                    // Loại bỏ chữ "KHÁCH:" để lấy tên sạch
+                    dto.setCustomerName(namePart.replace("KHÁCH:", "").trim());
+                } else {
+                    // Nếu không đúng format thì lấy tạm cả chuỗi
+                    dto.setCustomerName(rawNotes);
                 }
             } else {
                 dto.setCustomerName("Khách vãng lai");
             }
+
+            // 3. Xử lý Địa chỉ (Lấy từ bảng Address linked với Contract)
+            if (c.getAddress() != null) {
+                String displayAddress = c.getAddress().getAddress();
+                // Nếu trường address full bị null, tự ghép từ Street/Ward/District
+                if (displayAddress == null || displayAddress.isEmpty()) {
+                    String street = c.getAddress().getStreet() != null ? c.getAddress().getStreet() : "";
+                    String ward = c.getAddress().getWard() != null ? c.getAddress().getWard().getWardName() : "";
+                    String dist = c.getAddress().getWard() != null ? c.getAddress().getWard().getDistrict() : "";
+                    displayAddress = String.format("%s, %s, %s", street, ward, dist)
+                            .replace("null", "")
+                            .replaceAll("^, |^, |, $", "");
+                }
+                dto.setAddress(displayAddress);
+            }
         }
+        // ----------------------------------------------
 
         dto.setSurveyDate(c.getSurveyDate());
         dto.setTechnicalDesign(c.getTechnicalDesign());
@@ -727,22 +820,63 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 .map(this::convertToDTO);
     }
 
+    // === CẬP NHẬT HÀM getAnnulRequests ===
     @Override
     @Transactional(readOnly = true)
-    public Page<ContractAnnulTransferRequestDTO> getPendingAnnulTransferRequests(String keyword, Pageable pageable) {
+    public Page<ContractAnnulTransferRequestDTO> getAnnulRequests(String keyword, Pageable pageable, List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses) {
         Integer currentUserId = getCurrentUserId();
+        ContractAnnulTransferRequest.RequestType type = ContractAnnulTransferRequest.RequestType.ANNUL;
+
+        if (approvalStatuses != null && approvalStatuses.isEmpty()) approvalStatuses = null;
+
+        // Xử lý keyword: trim khoảng trắng (nếu có)
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+
         if (currentUserId != null) {
             return contractAnnulTransferRequestRepository
-                    .findWithCustomersByApprovalStatusAndServiceStaff(ContractAnnulTransferRequest.ApprovalStatus.PENDING, currentUserId, pageable)
+                    .findByStaffAndStatusInAndTypeAndKeyword(currentUserId, approvalStatuses, type, searchKeyword, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        } else {
+            return contractAnnulTransferRequestRepository
+                    .findByApprovalStatusInAndTypeAndKeyword(approvalStatuses, type, searchKeyword, pageable)
                     .map(this::convertToAnnulTransferDTO);
         }
-        return contractAnnulTransferRequestRepository.findWithCustomersByApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING, pageable)
-                .map(this::convertToAnnulTransferDTO);
+    }
+
+    // === CẬP NHẬT HÀM getTransferRequests ===
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ContractAnnulTransferRequestDTO> getTransferRequests(String keyword, Pageable pageable, List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses) {
+        Integer currentUserId = getCurrentUserId();
+        ContractAnnulTransferRequest.RequestType type = ContractAnnulTransferRequest.RequestType.TRANSFER;
+
+        if (approvalStatuses != null && approvalStatuses.isEmpty()) approvalStatuses = null;
+
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+
+        if (currentUserId != null) {
+            return contractAnnulTransferRequestRepository
+                    .findByStaffAndStatusInAndTypeAndKeyword(currentUserId, approvalStatuses, type, searchKeyword, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        } else {
+            return contractAnnulTransferRequestRepository
+                    .findByApprovalStatusInAndTypeAndKeyword(approvalStatuses, type, searchKeyword, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContractAnnulTransferRequestDTO getAnnulTransferRequestDetail(Integer requestId) {
+        ContractAnnulTransferRequest request = contractAnnulTransferRequestRepository.findWithRelationsById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu với ID: " + requestId));
+        return convertToAnnulTransferDTO(request);
     }
 
     @Override
     @Transactional
     public ContractAnnulTransferRequestDTO approveAnnulTransferRequest(Integer requestId) {
+        // Logic duyệt: Chuyển trạng thái sang APPROVED, ngày duyệt là hôm nay
         ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
                 .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.APPROVED)
                 .approvalDate(LocalDate.now())
@@ -763,10 +897,13 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional
     public ContractAnnulTransferRequestDTO rejectAnnulTransferRequest(Integer requestId, String reason) {
+        // Logic từ chối: Chuyển trạng thái sang REJECTED, lưu lý do vào rejectionReason
         ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
                 .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED)
                 .approvalDate(LocalDate.now())
-                .notes(reason)
+                // --- SỬA Ở ĐÂY: Lưu vào rejectionReason thay vì notes ---
+                .rejectionReason(reason)
+                // --------------------------------------------------------
                 .build();
 
         try {
@@ -780,7 +917,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         return contractAnnulTransferRequestService.updateApproval(requestId, dto);
     }
-
     private ContractAnnulTransferRequestDTO convertToAnnulTransferDTO(ContractAnnulTransferRequest request) {
         ContractAnnulTransferRequestDTO dto = new ContractAnnulTransferRequestDTO();
         dto.setId(request.getId());

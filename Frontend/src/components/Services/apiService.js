@@ -269,47 +269,75 @@ export const updateContractStatus = (contractId, newStatus, reason) => {
     });
 };
 
-export const getTransferRequests = (params) => {
-    const queryParams = {
-        page: params.page || 0,
-        size: params.size || 10,
-        requestType: 'TRANSFER', // Lọc loại yêu cầu = transfer (đưa về UPPERCASE để tránh lệch enum)
-        // Thêm alias 'type' để tương thích BE nếu tham số là 'type'
-        type: 'TRANSFER'
-    };
-    return apiClient.get(`/service/requests`, { params: queryParams });
-};
-
+// ✅ TÁCH RIÊNG 2 API CHO ANNUL VÀ TRANSFER
+/**
+ * Lấy danh sách yêu cầu HỦY hợp đồng (PENDING status)
+ * GET /api/service/contracts/pending-annul-requests
+ */
 export const getAnnulRequests = (params) => {
     const queryParams = {
         page: params.page || 0,
         size: params.size || 10,
-        requestType: 'ANNUL', // Lọc loại yêu cầu = annul (đưa về UPPERCASE để tránh lệch enum)
-        // Alias 'type' đề phòng BE dùng tên tham số khác
-        type: 'ANNUL'
+        keyword: params.keyword,
+        approvalStatus: params.status // optional: 'PENDING' | 'APPROVED' | 'REJECTED'
     };
-    return apiClient.get(`/service/requests`, { params: queryParams });
+    Object.keys(queryParams).forEach(key => (queryParams[key] == null || queryParams[key] === '') && delete queryParams[key]);
+    return apiClient.get(`/service/contracts/pending-annul-requests`, { params: queryParams });
 };
 
-export const approveTransferRequest = (requestId) => {
-    return apiClient.post(`/service/requests/${requestId}/approve`, { approvalStatus: 'APPROVED' });
+/**
+ * Lấy danh sách yêu cầu CHUYỂN NHƯỢNG hợp đồng (PENDING status)
+ * GET /api/service/contracts/pending-transfer-requests
+ */
+export const getTransferRequests = (params) => {
+    const queryParams = {
+        page: params. page || 0,
+        size: params.size || 10,
+        keyword: params.keyword,
+        approvalStatus: params.status // optional: 'PENDING' | 'APPROVED' | 'REJECTED'
+    };
+    Object.keys(queryParams).forEach(key => (queryParams[key] == null || queryParams[key] === '') && delete queryParams[key]);
+    return apiClient.get(`/service/contracts/pending-transfer-requests`, { params: queryParams });
 };
 
-export const rejectTransferRequest = (requestId, reason) => {
-    return apiClient.post(`/service/requests/${requestId}/reject`, { reason });
-};
-
+/**
+ * Duyệt yêu cầu HỦY hợp đồng
+ * PUT /api/service/contracts/pending-annul-transfer-requests/{requestId}/approve
+ */
 export const approveAnnulRequest = (requestId) => {
-    return apiClient.post(`/service/requests/${requestId}/approve`, { approvalStatus: 'APPROVED' });
+    return apiClient.put(`/service/contracts/pending-annul-transfer-requests/${requestId}/approve`);
 };
 
+/**
+ * Từ chối yêu cầu HỦY hợp đồng
+ * PUT /api/service/contracts/pending-annul-transfer-requests/{requestId}/reject
+ */
 export const rejectAnnulRequest = (requestId, reason) => {
-    return apiClient.post(`/service/requests/${requestId}/reject`, { reason });
+    return apiClient.put(`/service/contracts/pending-annul-transfer-requests/${requestId}/reject`, { reason });
 };
 
-/** Lấy chi tiết một yêu cầu hủy/chuyển nhượng cho Service */
+/**
+ * Duyệt yêu cầu CHUYỂN NHƯỢNG hợp đồng
+ * PUT /api/service/contracts/pending-annul-transfer-requests/{requestId}/approve
+ */
+export const approveTransferRequest = (requestId) => {
+    return apiClient.put(`/service/contracts/pending-annul-transfer-requests/${requestId}/approve`);
+};
+
+/**
+ * Từ chối yêu cầu CHUYỂN NHƯỢNG hợp đồng
+ * PUT /api/service/contracts/pending-annul-transfer-requests/{requestId}/reject
+ */
+export const rejectTransferRequest = (requestId, reason) => {
+    return apiClient.put(`/service/contracts/pending-annul-transfer-requests/${requestId}/reject`, { reason });
+};
+
+/**
+ * Lấy chi tiết một yêu cầu hủy/chuyển nhượng
+ * GET /api/service/contracts/pending-annul-transfer-requests/{requestId}
+ */
 export const getServiceRequestDetail = (requestId) => {
-    return apiClient.get(`/service/requests/${requestId}`);
+    return apiClient.get(`/service/contracts/pending-annul-transfer-requests/${requestId}`);
 };
 
 // === API CHO SERVICE STAFF ===
