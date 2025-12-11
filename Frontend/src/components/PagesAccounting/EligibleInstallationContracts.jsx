@@ -69,10 +69,10 @@ function EligibleInstallationContracts() {
     return (
         <div className="p-4 sm:p-6">
             {/* Header giống style InvoiceList / UnbilledFeesList */}
-            <div className="flex items-center justify-between mb-4">
-                <div>
-                    <h2 className="text-xl font-semibold text-gray-800">
-                        Danh sách HĐ Chính thức chờ lập Hóa đơn lắp đặt
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
+                Danh sách HĐ Chính thức chờ lập Hóa đơn lắp đặt
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
                         Các Hợp đồng đã hoàn tất lắp đặt, chưa phát hành Hóa đơn lắp đặt
@@ -81,9 +81,9 @@ function EligibleInstallationContracts() {
                 </div>
                 <button
                     onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700"
+                    className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700"
                 >
-                    <RefreshCw size={16} className="mr-1" />
+                <RefreshCw size={16} className="mr-1" />
                     Làm mới
                 </button>
             </div>

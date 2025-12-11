@@ -215,7 +215,7 @@ const ContractDetail = () => {
                 <Spin spinning={loading}>
                     {contract && (
                         <Card>
-                            <Descriptions bordered column={2}>
+                            <Descriptions bordered column={{ xs: 1, sm: 1, md: 2 }}>
                                 <Descriptions.Item label="Số Hợp đồng" span={2}>
                                     <strong>{contract.contractNumber}</strong>
                                 </Descriptions.Item>
@@ -281,12 +281,13 @@ const ContractDetail = () => {
                                         <Image
                                             src={`data:image/jpeg;base64,${waterMeterData.installationImageBase64}`}
                                             alt="Ảnh lắp đặt đồng hồ"
-                                            style={{ maxWidth: '400px', maxHeight: '300px' }}
+                                            style={{ maxWidth: '100%', maxHeight: 300, height: 'auto' }}
                                             placeholder={
                                                 <div
                                                     style={{
-                                                        width: '400px',
-                                                        height: '300px',
+                                                        width: '100%',
+                                                        maxWidth: '400px',
+                                                        height: '200px',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
