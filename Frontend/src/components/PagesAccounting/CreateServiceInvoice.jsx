@@ -286,7 +286,7 @@ function CreateServiceInvoice() {
                             className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-medium"
                         />
                     </div>
-                    {/* VAT */}
+                    {/* 2. Tiền VAT (5%) - ĐÃ SỬA: READ ONLY */}
                     <div>
                         <label htmlFor="vatAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền VAT (5%)</label>
                         <input
@@ -294,12 +294,14 @@ function CreateServiceInvoice() {
                             id="vatAmount"
                             name="vatAmount"
                             value={formData.vatAmount ? Number(formData.vatAmount).toLocaleString('en-US') : ''}
-                            onChange={handleMoneyChange}
-                            required
-                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-medium"
+                            readOnly // <--- Thêm dòng này
+                            // onChange={handleMoneyChange} <--- Bỏ dòng này
+                            className="block w-full border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed rounded-md py-2 px-3 text-sm font-medium"
+                        // ^^^ Đã sửa className: thêm bg-gray-100, text-gray-500, cursor-not-allowed
                         />
                     </div>
-                    {/* Tổng cộng */}
+
+                    {/* 3. Tổng cộng - ĐÃ SỬA: READ ONLY */}
                     <div>
                         <label htmlFor="totalAmount" className="block mb-1.5 text-sm font-bold text-gray-800">Tổng Tiền (VNĐ)</label>
                         <input
@@ -307,9 +309,10 @@ function CreateServiceInvoice() {
                             id="totalAmount"
                             name="totalAmount"
                             value={formData.totalAmount ? Number(formData.totalAmount).toLocaleString('en-US') : ''}
-                            onChange={handleMoneyChange}
-                            required
-                            className="block w-full border border-blue-300 bg-white rounded-md py-2 px-3 text-base font-bold text-red-600 shadow-sm"
+                            readOnly // <--- Thêm dòng này
+                            // onChange={handleMoneyChange} <--- Bỏ dòng này
+                            className="block w-full border border-blue-300 bg-gray-100 cursor-not-allowed rounded-md py-2 px-3 text-base font-bold text-red-600 shadow-sm"
+                        // ^^^ Đã sửa className: thay bg-white thành bg-gray-100, thêm cursor-not-allowed
                         />
                     </div>
                 </div>
