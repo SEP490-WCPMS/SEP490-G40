@@ -25,10 +25,8 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
     @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer"})
     Optional<ContractAnnulTransferRequest> findWithRelationsById(Integer id);
 
-// === CẬP NHẬT: Thêm tham số KEYWORD và logic tìm kiếm ===
-
-    // 1. Admin/General
-    @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer"})
+    // 1. Admin/General: Tìm theo Type + List Status + Keyword
+    @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer", "serviceStaff"})
     @Query("SELECT r FROM ContractAnnulTransferRequest r " +
             "WHERE ((:approvalStatuses) IS NULL OR r.approvalStatus IN (:approvalStatuses)) " +
             "AND r.requestType = :requestType " +
@@ -41,14 +39,16 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
     Page<ContractAnnulTransferRequest> findByApprovalStatusInAndTypeAndKeyword(
             @Param("approvalStatuses") List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses,
             @Param("requestType") ContractAnnulTransferRequest.RequestType requestType,
-            @Param("keyword") String keyword, // <-- Thêm tham số này
+            @Param("keyword") String keyword,
             Pageable pageable);
 
-    // 2. Service Staff
-    @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer"})
+    // 2. Service Staff: Tìm theo Staff (NGƯỜI ĐƯỢC GÁN) + Type + List Status + Keyword
+    @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer", "serviceStaff"})
     @Query("SELECT r FROM ContractAnnulTransferRequest r " +
             "WHERE ((:approvalStatuses) IS NULL OR r.approvalStatus IN (:approvalStatuses)) " +
-            "AND r.contract.serviceStaff.id = :serviceStaffId " +
+            // --- SỬA Ở ĐÂY: Lọc theo người được phân công xử lý yêu cầu (r.serviceStaff) ---
+            "AND r.serviceStaff.id = :serviceStaffId " +
+            // -------------------------------------------------------------------------------
             "AND r.requestType = :requestType " +
             "AND (:keyword IS NULL OR " +
             "   LOWER(r.contract.contractNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
@@ -60,6 +60,6 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
             @Param("serviceStaffId") Integer serviceStaffId,
             @Param("approvalStatuses") List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses,
             @Param("requestType") ContractAnnulTransferRequest.RequestType requestType,
-            @Param("keyword") String keyword, // <-- Thêm tham số này
+            @Param("keyword") String keyword,
             Pageable pageable);
 }

@@ -176,7 +176,8 @@ const ContractAnnulList = ({ refreshKey, keyword }) => {
         page: page,
         size: currentSize,
         status: currentStatus, 
-        keyword: keyword, // Truyền keyword xuống API
+        keyword: keyword,
+        sort: 'updatedAt,desc'
       });
 
       const data = response?.data || {};

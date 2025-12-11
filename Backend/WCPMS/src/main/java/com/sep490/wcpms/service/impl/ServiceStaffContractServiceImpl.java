@@ -491,45 +491,66 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null);
         dto.setNotes(c.getNotes());
 
-        // --- MAP CUSTOMER / GUEST ---
+        // --- XỬ LÝ QUAN TRỌNG: GUEST vs CUSTOMER ---
         if (c.getCustomer() != null) {
-            // Trường hợp Khách hàng có tài khoản
+            // >>> TRƯỜNG HỢP A: Đã là Customer (Có tài khoản)
             dto.setCustomerId(c.getCustomer().getId());
             dto.setCustomerName(c.getCustomer().getCustomerName());
             dto.setCustomerCode(c.getCustomer().getCustomerCode());
-            dto.setContactPhone(c.getCustomer().getContactPersonPhone());
-            dto.setAddress(c.getCustomer().getAddress());
-            dto.setIsGuest(false);
-        } else {
-            // Trường hợp Khách vãng lai (Guest) -> Lấy tên từ Notes
-            dto.setIsGuest(true);
-            dto.setCustomerCode(null);
 
-            // 1. Lấy SĐT từ Contract (vì Guest lưu ở đây)
-            dto.setContactPhone(c.getContactPhone());
-
-            // 2. Lấy Địa chỉ
-            if (c.getAddress() != null) {
-                dto.setAddress(c.getAddress().getAddress());
+            // Lấy SĐT từ Account của Customer
+            if (c.getCustomer().getAccount() != null) {
+                dto.setContactPhone(c.getCustomer().getAccount().getPhone());
             }
 
-            // 3. Bóc tách tên từ Notes
-            String note = c.getNotes();
-            if (note != null && note.startsWith("KHÁCH:")) {
-                try {
-                    int pipeIndex = note.indexOf("|");
-                    if (pipeIndex > 0) {
-                        dto.setCustomerName(note.substring(7, pipeIndex).trim());
-                    } else {
-                        dto.setCustomerName(note.substring(7).trim());
-                    }
-                } catch (Exception e) {
-                    dto.setCustomerName("Khách vãng lai");
+            // Lấy địa chỉ từ Customer (hoặc địa chỉ lắp đặt riêng nếu có)
+            if (c.getAddress() != null && c.getAddress().getAddress() != null) {
+                dto.setAddress(c.getAddress().getAddress());
+            } else {
+                dto.setAddress(c.getCustomer().getAddress());
+            }
+
+            dto.setIsGuest(false);
+        } else {
+            // >>> TRƯỜNG HỢP B: GUEST (Khách vãng lai)
+            dto.setIsGuest(true);
+            dto.setCustomerCode(null); // Guest không có mã KH
+
+            // 1. Lấy SĐT Guest (Lưu trực tiếp trên Contract)
+            dto.setContactPhone(c.getContactPhone());
+
+            // 2. Xử lý Tên từ Notes (Logic: "KHÁCH: Tên | Ghi chú")
+            String rawNotes = c.getNotes();
+            if (rawNotes != null && !rawNotes.isEmpty()) {
+                if (rawNotes.contains("|")) {
+                    String[] parts = rawNotes.split("\\|");
+                    String namePart = parts[0].trim();
+                    // Loại bỏ chữ "KHÁCH:" để lấy tên sạch
+                    dto.setCustomerName(namePart.replace("KHÁCH:", "").trim());
+                } else {
+                    // Nếu không đúng format thì lấy tạm cả chuỗi
+                    dto.setCustomerName(rawNotes);
                 }
             } else {
                 dto.setCustomerName("Khách vãng lai");
             }
+
+            // 3. Xử lý Địa chỉ (Lấy từ bảng Address linked với Contract)
+            if (c.getAddress() != null) {
+                String displayAddress = c.getAddress().getAddress();
+                // Nếu trường address full bị null, tự ghép từ Street/Ward/District
+                if (displayAddress == null || displayAddress.isEmpty()) {
+                    String street = c.getAddress().getStreet() != null ? c.getAddress().getStreet() : "";
+                    String ward = c.getAddress().getWard() != null ? c.getAddress().getWard().getWardName() : "";
+                    String dist = c.getAddress().getWard() != null ? c.getAddress().getWard().getDistrict() : "";
+                    displayAddress = String.format("%s, %s, %s", street, ward, dist)
+                            .replace("null", "")
+                            .replaceAll("^, |^, |, $", "");
+                }
+                dto.setAddress(displayAddress);
+            }
         }
+        // ----------------------------------------------
 
         dto.setSurveyDate(c.getSurveyDate());
         dto.setTechnicalDesign(c.getTechnicalDesign());

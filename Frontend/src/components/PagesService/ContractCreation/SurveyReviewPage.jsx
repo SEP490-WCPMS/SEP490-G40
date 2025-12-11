@@ -51,7 +51,8 @@ const SurveyReviewPage = ({ refreshKey }) => {
                 page: currentPage,
                 size: currentSize,
                 status: 'PENDING_SURVEY_REVIEW',
-                keyword: filters.keyword
+                keyword: filters.keyword,
+                sort: 'updatedAt,desc'
             });
             
             if (response.data) {

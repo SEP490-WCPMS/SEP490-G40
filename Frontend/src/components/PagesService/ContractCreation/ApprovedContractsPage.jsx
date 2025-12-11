@@ -6,7 +6,6 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Pagination from '../../common/Pagination';
 import ContractTable from '../ContractTable';
-import AssignSurveyModal from './AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../../Services/apiService';
@@ -49,7 +48,8 @@ const ApprovedContractsPage = ({ refreshKey }) => {
                 page: currentPage,
                 size: currentSize,
                 status: 'APPROVED',
-                keyword: filters.keyword
+                keyword: filters.keyword,
+                sort: 'updatedAt,desc'
             });
             
             if (response.data) {
@@ -80,7 +80,12 @@ const ApprovedContractsPage = ({ refreshKey }) => {
         if (refreshKey !== undefined) fetchContracts();
     }, [refreshKey]);
 
-    const handlePageChange = (newPage) => {
+    const handlePageChange = (newPageInfo) => {
+        // Xử lý cả 2 format pagination (từ Antd Table hoặc custom Pagination)
+        let newPage = 0;
+        if (typeof newPageInfo === 'number') newPage = newPageInfo;
+        else if (newPageInfo?.current) newPage = newPageInfo.current - 1;
+        
         fetchContracts({ page: newPage });
     };
 
@@ -114,10 +119,27 @@ const ApprovedContractsPage = ({ refreshKey }) => {
         }
     };
 
-    // Mở Modal
+// Mở Modal / Xử lý Action
     const handleViewDetails = async (contract, actionType) => {
-        // Hành động không cần modal chi tiết
+        
+        // --- 1. LOGIC CHẶN GUEST KHI GỬI KÝ (Mới thêm) ---
         if (actionType === 'sendToSign') {
+            // Kiểm tra: Nếu là Guest hoặc chưa có customerCode -> Chặn
+            if (contract.isGuest || !contract.customerCode) {
+                Modal.warning({
+                    title: 'Chưa thể gửi ký',
+                    content: (
+                        <div>
+                            <p>Khách hàng <b>{contract.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                            <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
+                        </div>
+                    ),
+                    okText: 'Đã hiểu',
+                });
+                return;
+            }
+
+            // Nếu ok thì mở popup xác nhận
             setSendingContract(contract);
             setShowSendToSignConfirm(true);
             return;
