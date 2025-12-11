@@ -215,9 +215,18 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
     const handleSubmit = async () => {
         try {
             if (modalType === 'reactivate') { setShowReactivateConfirm(true); return; }
+            
             const values = await form.validateFields();
+            
             if (modalType === 'renew') {
-                setRenewData({ endDate: values.newEndDate ? values.newEndDate.format('YYYY-MM-DD') : null, notes: values.notes });
+                const newDate = values.newEndDate;
+                // Kiểm tra ngày: Nếu nhỏ hơn hoặc bằng hôm nay -> Báo lỗi
+                if (newDate && newDate.isBefore(dayjs(), 'day')) {
+                    toast.error('Ngày kết thúc mới phải sau ngày hôm nay!');
+                    return; 
+                }
+
+                setRenewData({ endDate: newDate ? newDate.format('YYYY-MM-DD') : null, notes: values.notes });
                 setShowRenewConfirm(true);
             } else if (modalType === 'terminate' || modalType === 'suspend') {
                 setConfirmData({ reason: values.reason, actionType: modalType });
@@ -232,9 +241,11 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
             setConfirmLoading(true);
             if (confirmAction === 'terminate') {
                 await terminateContract(selectedContract.id, confirmData.reason);
+                // --- THÊM TOAST THÀNH CÔNG ---
                 toast.success('Chấm dứt hợp đồng thành công!');
             } else if (confirmAction === 'suspend') {
                 await suspendContract(selectedContract.id, confirmData.reason);
+                // --- THÊM TOAST THÀNH CÔNG ---
                 toast.success('Tạm ngưng hợp đồng thành công!');
             }
             setConfirmModalVisible(false);
@@ -254,6 +265,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         try {
             await reactivateContract(selectedContract.id);
             setShowReactivateConfirm(false);
+            // --- THÊM TOAST THÀNH CÔNG ---
             toast.success('Đã kích hoạt lại hợp đồng thành công!');
             handleCloseModal();
             fetchContracts();
@@ -271,6 +283,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         try {
             await renewContract(selectedContract.id, renewData);
             setShowRenewConfirm(false);
+            // --- THÊM TOAST THÀNH CÔNG ---
             toast.success('Gia hạn hợp đồng thành công!');
             handleCloseModal();
             fetchContracts();
