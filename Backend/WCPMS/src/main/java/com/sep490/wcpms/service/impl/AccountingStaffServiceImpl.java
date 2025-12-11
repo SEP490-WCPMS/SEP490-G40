@@ -89,6 +89,13 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         return staffList.get(0); // Người đầu tiên là người ít việc nhất
     }
 
+    // --- [HÀM MỚI THÊM] Helper tìm Kế toán ít việc nhất (dựa trên số hóa đơn PENDING) ---
+    private Account getAutoAssignedAccountingStaff() {
+        return accountRepository.findAccountingStaffWithLeastPendingInvoices()
+                .orElseThrow(() -> new IllegalStateException("Lỗi hệ thống: Không tìm thấy nhân viên Kế toán nào đang hoạt động để phân công hóa đơn."));
+    }
+    // -----------------------------------------------------------------------------------
+
     @Override
     @Transactional(readOnly = true)
     public Page<CalibrationFeeDTO> getMyUnbilledCalibrationFees(Integer staffId, String keyword, Pageable pageable) {
@@ -482,7 +489,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         // ✅ MỚI: Chỉ lấy reading được ASSIGN cho Accounting Staff hiện tại
         Integer currentAccountingStaffId = getCurrentAccountingStaffId();
         Page<MeterReading> readingsPage = meterReadingRepository
-            .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);
+                .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);
 
         // 2. Map sang DTO (Constructor đã có accountingStaffId và accountingStaffName)
         return readingsPage.map(PendingReadingDTO::new);
@@ -505,6 +512,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         throw new IllegalStateException("Không thể xác định Accounting Staff hiện tại.");
     }
 
+    // --- [ĐÃ SỬA] HÀM TẠO HÓA ĐƠN NƯỚC: AUTO ASSIGN THEO SỐ INVOICE PENDING ÍT NHẤT ---
     @Override
     @Transactional
     public InvoiceDTO generateWaterBill(Integer meterReadingId, Integer accountingStaffId) {
@@ -528,8 +536,12 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         }
         Customer customer = serviceContract.getCustomer();
         WaterPriceType priceType = serviceContract.getPriceType();
-        Account accountingStaff = accountRepository.findById(accountingStaffId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản Kế toán: " + accountingStaffId));
+
+        // --- [LOGIC GÁN VIỆC MỚI] ---
+        // Tự động tìm nhân viên kế toán rảnh nhất (dựa trên số lượng Invoice Pending)
+        // Bỏ qua tham số accountingStaffId cũ
+        Account assignedStaff = getAutoAssignedAccountingStaff();
+        // ---------------------------
 
         // 4. Tìm biểu giá chính xác tại ngày đọc số
         WaterPrice price = waterPriceRepository.findActivePriceForDate(priceType, reading.getReadingDate())
@@ -571,7 +583,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setInvoiceDate(LocalDate.now());
         invoice.setDueDate(LocalDate.now().plusDays(10)); // (Cần logic lấy hạn TT từ HĐ)
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
-        invoice.setAccountingStaff(accountingStaff);
+
+        // [QUAN TRỌNG] Gán nhân viên vừa tìm được vào Hóa đơn
+        invoice.setAccountingStaff(assignedStaff);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
@@ -584,16 +598,11 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             al.setSubjectType("INVOICE");
             al.setSubjectId(savedInvoice.getInvoiceNumber() != null ? savedInvoice.getInvoiceNumber() : String.valueOf(savedInvoice.getId()));
             al.setAction("WATER_INVOICE_GENERATED");
-            if (accountingStaff != null) {
-                al.setActorType("STAFF");
-                al.setActorId(accountingStaff.getId());
-                al.setActorName(accountingStaff.getFullName());
-                al.setInitiatorType("STAFF");
-                al.setInitiatorId(accountingStaff.getId());
-                al.setInitiatorName(accountingStaff.getFullName());
-            } else {
-                al.setActorType("SYSTEM");
-            }
+
+            // Log thông tin người được gán tự động
+            al.setActorType("SYSTEM");
+            al.setPayload("Tự động gán cho Kế toán: " + assignedStaff.getFullName() + " (ID: " + assignedStaff.getId() + ")");
+
             activityLogService.save(al);
         } catch (Exception ex) {
             // swallow
@@ -601,6 +610,12 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         // 8. Cập nhật trạng thái bản ghi đọc số
         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
+
+        // --- [QUAN TRỌNG] Cập nhật ngược lại nhân viên quản lý vào bản ghi Reading ---
+        // Để đồng bộ dữ liệu: Hóa đơn của ai thì Reading của người đó
+        reading.setAccountingStaff(assignedStaff);
+        // ---------------------------------------------------------------------------
+
         meterReadingRepository.save(reading);
 
         // 9. Trả về DTO của Hóa đơn vừa tạo
@@ -770,4 +785,3 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
     // === HẾT PHẦN SỬA ===
 }
-
