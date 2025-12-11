@@ -25,6 +25,11 @@ const mainMenuItems = [
     url: '/service/contracts',
     icon: FileText,
   },
+  {
+    title: 'Tạo Hợp đồng',
+    url: '/service/contract-create',
+    icon: FilePlus,
+  },
     // --- THÊM MENU MỚI ---
   {
     title: 'Yêu Cầu Hỗ Trợ', // (Ticket Hỏng/Kiểm định 5 năm)

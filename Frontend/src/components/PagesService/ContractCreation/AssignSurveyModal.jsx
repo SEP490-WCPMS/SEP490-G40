@@ -128,7 +128,7 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="text-xs text-gray-500 mb-1">Số Hợp đồng</div>
+                <div className="text-xs text-gray-500 mb-1">Mã Hợp đồng</div>
                 <div className="font-semibold text-gray-800 text-base">{initialData?.contractNumber || 'N/A'}</div>
               </div>
               <div>

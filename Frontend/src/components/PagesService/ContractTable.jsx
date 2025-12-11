@@ -1,25 +1,24 @@
 import React from 'react';
 import Pagination from '../common/Pagination';
 import { Loader2 } from 'lucide-react';
-import { Tag, Tooltip } from 'antd';
+import { Tag, Tooltip, Space } from 'antd'; // Import thêm Space nếu cần, hoặc dùng div gap
 import { PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons';
 
-// Helper: render trạng thái
+// Helper: render trạng thái (Giữ nguyên style cũ)
 const renderStatus = (status) => {
   const s = status?.toUpperCase();
   const map = {
     DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
-    PENDING: { text: 'Đang chờ khảo sát', cls: 'bg-yellow-100 text-yellow-800' },
     PENDING_SURVEY_REVIEW: { text: 'Đã khảo sát', cls: 'bg-orange-100 text-orange-800' },
     APPROVED: { text: 'Đã duyệt', cls: 'bg-cyan-100 text-cyan-800' },
     PENDING_SIGN: { text: 'Khách đã ký', cls: 'bg-indigo-100 text-indigo-800' },
-    SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
     ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
     EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
     TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
     SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
   };
   const cfg = map[s] || { text: (status || 'N/A'), cls: 'bg-gray-100 text-gray-800' };
+
   return (
     <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
       {cfg.text}
@@ -27,113 +26,92 @@ const renderStatus = (status) => {
   );
 };
 
-// Helper: render actions
+// --- FIX: VIẾT LẠI HÀM renderActions (Logic chặt chẽ theo từng trạng thái) ---
 const renderActions = (record, onViewDetails) => {
   const status = record.contractStatus?.toUpperCase();
   const actions = [];
 
-  // Chi tiết button (luôn có)
+  // 1. Luôn hiện nút "Chi tiết" cho mọi trạng thái
   actions.push(
     <button
       key="detail"
-      onClick={() => onViewDetails(record)}
+      onClick={() => onViewDetails(record, 'view')}
       className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
     >
       Chi tiết
     </button>
   );
 
-  // Action buttons theo trạng thái
-  if (status === 'DRAFT') {
-    actions.push(
-      <button
-        key="submit"
-        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'submit')}
-      >
-        Gửi khảo sát
-      </button>
-    );
-  }
+  // 2. Logic hiển thị nút theo từng trạng thái cụ thể
+  switch (status) {
+    case 'DRAFT': // Yêu cầu tạo đơn
+      actions.push(
+        <button key="submit" onClick={() => onViewDetails(record, 'submit')} className="font-semibold text-indigo-600 hover:text-indigo-900">
+          Gửi khảo sát
+        </button>
+      );
+      break;
 
-  // --- SỬA LẠI ĐÚNG NHƯ CŨ: Nút "Tạo HĐ chính thức" ---
-  if (status === 'PENDING_SURVEY_REVIEW') {
-    actions.push(
-      <button
-        key="generate"
-        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'generateWater')}
-      >
-        Tạo HĐ chính thức
-      </button>
-    );
-    // Vẫn giữ nút Từ chối nếu cần thiết (theo code SurveyReviewPage của bạn)
-    actions.push(
-       <button
-        key="reject"
-        className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'rejectSurvey')}
-      >
-        Từ chối
-      </button>
-    );
-  }
+    case 'PENDING_SURVEY_REVIEW': // Đã khảo sát
+      actions.push(
+        <button key="generate" onClick={() => onViewDetails(record, 'generateWater')} className="font-semibold text-indigo-600 hover:text-indigo-900">
+          Tạo HĐ chính thức
+        </button>
+      );
+      break;
 
-  if (status === 'APPROVED') {
-    actions.push(
-      <button
-        key="sendToSign"
-        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'sendToSign')}
-      >
-        Gửi ký
-      </button>
-    );
-  }
+    case 'APPROVED': // Đã duyệt
+      actions.push(
+        <button key="sendToSign" onClick={() => onViewDetails(record, 'sendToSign')} className="font-semibold text-indigo-600 hover:text-indigo-900">
+          Gửi ký
+        </button>
+      );
+      break;
+    
+    case 'PENDING_SIGN': // Khách đã ký (Chờ gửi lắp đặt)
+      actions.push(
+        <button key="install" onClick={() => onViewDetails(record, 'sendToInstallation')} className="font-semibold text-indigo-600 hover:text-indigo-900">
+          Gửi lắp đặt
+        </button>
+      );
+      break;
 
-  if (status === 'PENDING_SIGN') {
-    actions.push(
-      <button
-        key="sendToInstall"
-        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'sendToInstallation')}
-      >
-        Gửi lắp đặt
-      </button>
-    );
-  }
+    case 'ACTIVE': // Đang hoạt động
+      actions.push(
+        <button key="suspend" onClick={() => onViewDetails(record, 'suspend')} className="font-semibold text-amber-600 hover:text-amber-800">
+          Tạm ngưng
+        </button>
+      );
+      actions.push(
+        <button key="terminate" onClick={() => onViewDetails(record, 'terminate')} className="font-semibold text-red-600 hover:text-red-800">
+          Chấm dứt
+        </button>
+      );
+      break;
 
-  if (status === 'ACTIVE') {
-    actions.push(
-      <button
-        key="suspend"
-        className="font-semibold text-gray-700 hover:text-gray-900 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'suspend')}
-      >
-        Tạm ngưng
-      </button>
-    );
-    actions.push(
-      <button
-        key="terminate"
-        className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'terminate')}
-      >
-        Chấm dứt
-      </button>
-    );
-  }
+    case 'SUSPENDED': // Đang tạm ngưng
+      actions.push(
+        <button key="reactivate" onClick={() => onViewDetails(record, 'reactivate')} className="font-semibold text-green-600 hover:text-green-800">
+          Kích hoạt lại
+        </button>
+      );
+      break;
 
-  if (status === 'SUSPENDED') {
-    actions.push(
-      <button
-        key="reactivate"
-        className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'reactivate')}
-      >
-        Kích hoạt lại
-      </button>
-    );
+    case 'EXPIRED': // Hết hạn
+      actions.push(
+        <button key="renew" onClick={() => onViewDetails(record, 'renew')} className="font-semibold text-indigo-600 hover:text-indigo-900">
+          Gia hạn
+        </button>
+      );
+      break;
+
+    case 'TERMINATED': // Đã chấm dứt
+      // Không hiện thêm nút gì (chỉ hiện nút Chi tiết đã có ở trên)
+      break;
+      
+    default:
+      // Các trạng thái khác (PENDING, PENDING_CUSTOMER_SIGN...) chỉ hiện Chi tiết
+      break;
   }
 
   return (
@@ -147,10 +125,11 @@ const renderActions = (record, onViewDetails) => {
     </div>
   );
 };
+// -------------------------------------------------------------------------
 
-const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, showStatusFilter = false }) => {
+const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, showStatusFilter = false, showActionsForAll = false }) => {
   // Convert pagination từ Ant Design format sang Pagination component format
-  const currentPage = pagination?.current ? pagination.current - 1 : 0; // Ant Design dùng 1-indexed, Pagination dùng 0-indexed
+  const currentPage = pagination?.current ? pagination.current - 1 : 0; 
   const pageSize = pagination?.pageSize || 10;
   const totalElements = pagination?.total || 0;
 
@@ -161,6 +140,9 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
     }
   };
 
+  // Logic lọc cũ (defensive) có thể bỏ qua vì renderActions giờ đã chặt chẽ
+  const filteredData = data; 
+
   return (
     <div className="bg-white rounded-lg shadow mt-5">
       {/* Table */}
@@ -169,15 +151,11 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                #
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Số Hợp đồng
+                Mã hợp đồng
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Khách hàng
               </th>
-              {/* Cột mới: Liên hệ (Hiển thị SĐT/Địa chỉ cho Guest) */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Liên hệ
               </th>
@@ -192,24 +170,20 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center">
+                <td colSpan="5" className="px-6 py-12 text-center">
                   <div className="flex justify-center items-center gap-2 text-gray-500">
                     <Loader2 className="animate-spin" size={20} />
                     <span>Đang tải...</span>
                   </div>
                 </td>
               </tr>
-            ) : data && data.length > 0 ? (
-              data.map((record) => (
+            ) : filteredData && filteredData.length > 0 ? (
+              filteredData.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50" data-contract-id={record.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {record.id}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {record.contractNumber}
                   </td>
                   
-                  {/* --- LOGIC HIỂN THỊ TÊN VÀ BADGE GUEST --- */}
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-medium">{record.customerName}</div>
                     {record.isGuest ? (
@@ -219,9 +193,8 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                     )}
                   </td>
 
-                  {/* --- CỘT LIÊN HỆ (Cho Guest và cả Customer) --- */}
                   <td className="px-6 py-4 text-sm text-gray-500">
-                     <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1">
                         {record.contactPhone && (
                             <div className="flex items-center gap-1">
                                 <PhoneOutlined className="text-xs text-blue-500"/> {record.contactPhone}
@@ -234,20 +207,21 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                                 </div>
                             </Tooltip>
                         )}
-                     </div>
+                      </div>
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {renderStatus(record.contractStatus)}
                   </td>
                   <td className="px-6 py-4 text-sm">
+                    {/* Render action buttons theo logic mới */}
                     {renderActions(record, onViewDetails)}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="px-6 py-12 text-center text-sm text-gray-500">
+                <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500">
                   Không có dữ liệu
                 </td>
               </tr>
