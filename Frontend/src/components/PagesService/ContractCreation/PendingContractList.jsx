@@ -24,7 +24,7 @@ const PendingContractList = () => {
       width: 60,
     },
     {
-      title: 'Số Hợp đồng',
+      title: 'Mã Hợp đồng',
       dataIndex: 'contractNumber',
       key: 'contractNumber',
     },

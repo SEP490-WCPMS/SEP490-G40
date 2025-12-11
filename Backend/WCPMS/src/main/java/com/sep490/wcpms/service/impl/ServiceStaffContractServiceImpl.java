@@ -103,8 +103,31 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
     @Override
     public Page<ServiceStaffContractDTO> findContractsForServiceStaff(String status, String keyword, Pageable pageable) {
+
+        Integer currentUserId = getCurrentUserId();
+
+        // --- LOGIC MỚI: XỬ LÝ NHÓM TRẠNG THÁI CHO TAB ACTIVE ---
+        if ("ACTIVE_TAB_ALL".equalsIgnoreCase(status)) {
+            // Định nghĩa nhóm 4 trạng thái
+            List<ContractStatus> activeGroup = List.of(
+                    ContractStatus.ACTIVE,
+                    ContractStatus.SUSPENDED,
+                    ContractStatus.TERMINATED,
+                    ContractStatus.EXPIRED
+            );
+
+            if (currentUserId != null) {
+                return contractRepository.findByServiceStaffAndStatusInAndKeyword(currentUserId, activeGroup, keyword, pageable)
+                        .map(this::convertToDTO);
+            }
+            return contractRepository.findByStatusInAndKeyword(activeGroup, keyword, pageable)
+                    .map(this::convertToDTO);
+        }
+        // -------------------------------------------------------
+
+        // --- LOGIC CŨ ---
         ContractStatus contractStatus = null;
-        if (status != null && !status.isBlank()) {
+        if (status != null && !status.isBlank() && !status.equalsIgnoreCase("all")) {
             try {
                 contractStatus = ContractStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
@@ -112,14 +135,10 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             }
         }
 
-        // If current authenticated user is a Service Staff, filter results to only their contracts
-        Integer currentUserId = getCurrentUserId();
-
         if (currentUserId != null) {
             return contractRepository.findByServiceStaffAndStatusAndKeyword(currentUserId, contractStatus, keyword, pageable)
                     .map(this::convertToDTO);
         }
-
         return contractRepository.findByStatusAndKeyword(contractStatus, keyword, pageable)
                 .map(this::convertToDTO);
     }
@@ -780,22 +799,63 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 .map(this::convertToDTO);
     }
 
+    // === CẬP NHẬT HÀM getAnnulRequests ===
     @Override
     @Transactional(readOnly = true)
-    public Page<ContractAnnulTransferRequestDTO> getPendingAnnulTransferRequests(String keyword, Pageable pageable) {
+    public Page<ContractAnnulTransferRequestDTO> getAnnulRequests(String keyword, Pageable pageable, List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses) {
         Integer currentUserId = getCurrentUserId();
+        ContractAnnulTransferRequest.RequestType type = ContractAnnulTransferRequest.RequestType.ANNUL;
+
+        if (approvalStatuses != null && approvalStatuses.isEmpty()) approvalStatuses = null;
+
+        // Xử lý keyword: trim khoảng trắng (nếu có)
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+
         if (currentUserId != null) {
             return contractAnnulTransferRequestRepository
-                    .findWithCustomersByApprovalStatusAndServiceStaff(ContractAnnulTransferRequest.ApprovalStatus.PENDING, currentUserId, pageable)
+                    .findByStaffAndStatusInAndTypeAndKeyword(currentUserId, approvalStatuses, type, searchKeyword, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        } else {
+            return contractAnnulTransferRequestRepository
+                    .findByApprovalStatusInAndTypeAndKeyword(approvalStatuses, type, searchKeyword, pageable)
                     .map(this::convertToAnnulTransferDTO);
         }
-        return contractAnnulTransferRequestRepository.findWithCustomersByApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING, pageable)
-                .map(this::convertToAnnulTransferDTO);
+    }
+
+    // === CẬP NHẬT HÀM getTransferRequests ===
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ContractAnnulTransferRequestDTO> getTransferRequests(String keyword, Pageable pageable, List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses) {
+        Integer currentUserId = getCurrentUserId();
+        ContractAnnulTransferRequest.RequestType type = ContractAnnulTransferRequest.RequestType.TRANSFER;
+
+        if (approvalStatuses != null && approvalStatuses.isEmpty()) approvalStatuses = null;
+
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+
+        if (currentUserId != null) {
+            return contractAnnulTransferRequestRepository
+                    .findByStaffAndStatusInAndTypeAndKeyword(currentUserId, approvalStatuses, type, searchKeyword, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        } else {
+            return contractAnnulTransferRequestRepository
+                    .findByApprovalStatusInAndTypeAndKeyword(approvalStatuses, type, searchKeyword, pageable)
+                    .map(this::convertToAnnulTransferDTO);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ContractAnnulTransferRequestDTO getAnnulTransferRequestDetail(Integer requestId) {
+        ContractAnnulTransferRequest request = contractAnnulTransferRequestRepository.findWithRelationsById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy yêu cầu với ID: " + requestId));
+        return convertToAnnulTransferDTO(request);
     }
 
     @Override
     @Transactional
     public ContractAnnulTransferRequestDTO approveAnnulTransferRequest(Integer requestId) {
+        // Logic duyệt: Chuyển trạng thái sang APPROVED, ngày duyệt là hôm nay
         ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
                 .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.APPROVED)
                 .approvalDate(LocalDate.now())
@@ -816,10 +876,13 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     @Override
     @Transactional
     public ContractAnnulTransferRequestDTO rejectAnnulTransferRequest(Integer requestId, String reason) {
+        // Logic từ chối: Chuyển trạng thái sang REJECTED, lưu lý do vào rejectionReason
         ContractAnnulTransferRequestUpdateDTO dto = ContractAnnulTransferRequestUpdateDTO.builder()
                 .approvalStatus(ContractAnnulTransferRequest.ApprovalStatus.REJECTED)
                 .approvalDate(LocalDate.now())
-                .notes(reason)
+                // --- SỬA Ở ĐÂY: Lưu vào rejectionReason thay vì notes ---
+                .rejectionReason(reason)
+                // --------------------------------------------------------
                 .build();
 
         try {
@@ -833,7 +896,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         return contractAnnulTransferRequestService.updateApproval(requestId, dto);
     }
-
     private ContractAnnulTransferRequestDTO convertToAnnulTransferDTO(ContractAnnulTransferRequest request) {
         ContractAnnulTransferRequestDTO dto = new ContractAnnulTransferRequestDTO();
         dto.setId(request.getId());

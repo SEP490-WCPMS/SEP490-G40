@@ -18,13 +18,7 @@ const ActiveContractList = () => {
 
   const columns = [
     {
-      title: '#',
-      dataIndex: 'id',
-      key: 'id',
-      width: 60,
-    },
-    {
-      title: 'Số Hợp đồng',
+      title: 'Mã Hợp đồng',
       dataIndex: 'contractNumber',
       key: 'contractNumber',
     },
@@ -116,7 +110,7 @@ const ActiveContractList = () => {
         loading={loading}
         rowKey="id"
       />
-      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
         <Pagination
           currentPage={pagination.page}
           totalElements={pagination.totalElements}

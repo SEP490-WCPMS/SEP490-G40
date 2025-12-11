@@ -3,6 +3,7 @@ package com.sep490.wcpms.service;
 import com.sep490.wcpms.dto.AccountDTO; // <-- THÊM
 import com.sep490.wcpms.dto.ServiceStaffContractDTO;
 import com.sep490.wcpms.dto.ServiceStaffUpdateContractRequestDTO;
+import com.sep490.wcpms.entity.ContractAnnulTransferRequest;
 import com.sep490.wcpms.entity.CustomerFeedback;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -130,9 +131,18 @@ public interface ServiceStaffContractService {
     // === Annul/Transfer Contract Requests Management ===
 
     /**
-     * Lấy danh sách yêu cầu hủy/chuyển nhượng hợp đồng đang PENDING (chờ duyệt)
+     * Lấy danh sách yêu cầu HỦY hợp đồng (Hỗ trợ lọc theo status)
      */
-    Page<ContractAnnulTransferRequestDTO> getPendingAnnulTransferRequests(String keyword, Pageable pageable);
+    Page<ContractAnnulTransferRequestDTO> getTransferRequests(String keyword, Pageable pageable, List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses);
+    /**
+     * Lấy danh sách yêu cầu CHUYỂN NHƯỢNG hợp đồng (Hỗ trợ lọc theo status)
+     */
+    Page<ContractAnnulTransferRequestDTO> getAnnulRequests(String keyword, Pageable pageable, List<ContractAnnulTransferRequest.ApprovalStatus> approvalStatuses);
+
+    /**
+     * Lấy chi tiết yêu cầu hủy/chuyển nhượng
+     */
+    ContractAnnulTransferRequestDTO getAnnulTransferRequestDetail(Integer requestId);
 
     /**
      * Duyệt yêu cầu hủy/chuyển nhượng hợp đồng: chuyển trạng thái sang APPROVED
