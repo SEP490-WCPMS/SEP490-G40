@@ -138,7 +138,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             return;
         }
 
-        // --- 1. GỬI KÝ  ---
+        // --- GỬI KÝ  ---
         if (action === 'sendToSign') {
             setSelectedContract(record);
             setConfirmConfig({
@@ -153,7 +153,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             return;
         }
 
-        // --- 2. GỬI LẮP ĐẶT ---
+        // --- GỬI LẮP ĐẶT ---
         if (action === 'sendToInstallation') {
             setSelectedContract(record);
             setConfirmConfig({
@@ -167,7 +167,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             setConfirmVisible(true);
             return;
         }
-        // --- 3. KÍCH HOẠT LẠI ---
+        // --- KÍCH HOẠT LẠI ---
         if (action === 'reactivate') {
           setSelectedContract(record);
           setConfirmConfig({

@@ -241,11 +241,9 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
             setConfirmLoading(true);
             if (confirmAction === 'terminate') {
                 await terminateContract(selectedContract.id, confirmData.reason);
-                // --- THÊM TOAST THÀNH CÔNG ---
                 toast.success('Chấm dứt hợp đồng thành công!');
             } else if (confirmAction === 'suspend') {
                 await suspendContract(selectedContract.id, confirmData.reason);
-                // --- THÊM TOAST THÀNH CÔNG ---
                 toast.success('Tạm ngưng hợp đồng thành công!');
             }
             setConfirmModalVisible(false);
@@ -265,7 +263,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         try {
             await reactivateContract(selectedContract.id);
             setShowReactivateConfirm(false);
-            // --- THÊM TOAST THÀNH CÔNG ---
             toast.success('Đã kích hoạt lại hợp đồng thành công!');
             handleCloseModal();
             fetchContracts();
@@ -283,7 +280,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         try {
             await renewContract(selectedContract.id, renewData);
             setShowRenewConfirm(false);
-            // --- THÊM TOAST THÀNH CÔNG ---
             toast.success('Gia hạn hợp đồng thành công!');
             handleCloseModal();
             fetchContracts();
