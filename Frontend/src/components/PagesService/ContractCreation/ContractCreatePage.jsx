@@ -23,6 +23,7 @@ const ContractCreate = () => {
     const [sourceContract, setSourceContract] = useState(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingValues, setPendingValues] = useState(null);
+    const [isGuestContract, setIsGuestContract] = useState(false);
 
     // Lấy sourceContractId từ navigation state
     const sourceContractId = location.state?.sourceContractId;
@@ -43,6 +44,11 @@ const ContractCreate = () => {
                 if (contractResponse.data) {
                     const contractData = contractResponse.data;
                     setSourceContract(contractData);
+
+                    // Xác định đây có phải hợp đồng GUEST không
+                    // BE đã có field guest / isGuest trong ServiceStaffContractDTO
+                    const guestFlag = contractData.guest === true || contractData.isGuest === true;
+                    setIsGuestContract(guestFlag || !contractData.customerId);
 
                     // Đặt các giá trị vào form
                     form.setFieldsValue({
@@ -196,7 +202,11 @@ const ContractCreate = () => {
                                 <Form.Item
                                     name="customerId"
                                     hidden
-                                    rules={[{ required: true, message: 'Thiếu thông tin khách hàng!' }]}
+                                    rules={
+                                        isGuestContract
+                                            ? [] // GUEST: không yêu cầu customerId
+                                            : [{ required: true, message: 'Thiếu thông tin khách hàng!' }]
+                                    }
                                 >
                                     <Input />
                                 </Form.Item>
