@@ -7,6 +7,7 @@ import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.repository.InvoiceRepository;
 import com.sep490.wcpms.service.CustomerNotificationEmailService;
 import com.sep490.wcpms.repository.MeterCalibrationRepository;
+import com.sep490.wcpms.service.CustomerNotificationSmsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +29,7 @@ public class InvoicePaymentReminderScheduler {
     private final CustomerNotificationRepository notificationRepository;
     private final CustomerNotificationEmailService emailService;
     private final MeterCalibrationRepository calibrationRepository;
+    private final CustomerNotificationSmsService smsNotificationService;
 
     // nhắc trước hạn 5 ngày
     private static final int REMIND_DAYS_BEFORE_DUE = 5;
@@ -158,6 +160,7 @@ public class InvoicePaymentReminderScheduler {
 
             notificationRepository.save(n);
             emailService.sendEmail(n);
+            smsNotificationService.sendForNotification(n);
 
         } catch (Exception ex) {
             log.error("[INVOICE-PAYMENT-REMINDER] Error processing invoice id={}: {}",

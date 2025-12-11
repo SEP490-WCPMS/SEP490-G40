@@ -27,6 +27,9 @@ public interface ContractAnnulTransferRequestMapper {
     @Mapping(source = "approvedBy.id",           target = "approvedById")
     @Mapping(source = "approvedBy.username",     target = "approvedByUsername")
 
+    @Mapping(source = "serviceStaff.id",         target = "serviceStaffId")
+    @Mapping(source = "serviceStaff.fullName",   target = "serviceStaffName")
+
     @Mapping(source = "approvalDate",            target = "approvalDate")
     @Mapping(source = "approvalStatus",          target = "approvalStatus")
 
@@ -60,6 +63,7 @@ public interface ContractAnnulTransferRequestMapper {
     @Mapping(target = "attachedEvidence",  source = "dto.attachedEvidence")
     @Mapping(target = "notes",          source = "dto.notes")
 
+    @Mapping(target = "serviceStaff",   ignore = true)
     @Mapping(target = "approvedBy",     ignore = true)
     @Mapping(target = "approvalDate",   ignore = true)
     @Mapping(target = "approvalStatus", constant = "PENDING")

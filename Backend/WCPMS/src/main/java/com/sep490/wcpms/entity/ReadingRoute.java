@@ -1,17 +1,19 @@
 package com.sep490.wcpms.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 @Entity
 @Table(name = "reading_routes")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReadingRoute {
@@ -38,6 +40,16 @@ public class ReadingRoute {
             foreignKey = @ForeignKey(name = "fk_reading_routes_accounts"))
     private Account assignedReader;
 
+    // --- LOGIC MỚI (SERVICE STAFF - MANY TO MANY) ---
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "route_service_assignments",
+            joinColumns = @JoinColumn(name = "route_id"),
+            inverseJoinColumns = @JoinColumn(name = "account_id")
+    )
+    // Bỏ @ToString.Exclude ở đây nếu dùng @Getter/@Setter, nhưng giữ lại cũng không sao
+    private Set<Account> serviceStaffs = new HashSet<>();
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private Status status;
@@ -51,4 +63,19 @@ public class ReadingRoute {
     private LocalDateTime updatedAt;
 
     public enum Status { ACTIVE, INACTIVE }
+
+    // --- QUAN TRỌNG: SỬA EQUALS VÀ HASHCODE ---
+    // Chỉ so sánh dựa trên ID để Set hoạt động đúng với Hibernate
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ReadingRoute)) return false;
+        ReadingRoute that = (ReadingRoute) o;
+        return getId() != null && Objects.equals(getId(), that.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

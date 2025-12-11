@@ -122,18 +122,17 @@ function SurveyContractsList() {
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-            {/* Header */}
+            {/* --- HEADER --- */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Khảo Sát</h1>
-                    <p className="text-sm text-gray-600">Danh sách các hợp đồng đang chờ khảo sát (Trạng thái: PENDING).</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Khảo Sát</h1>
+                    <p className="text-sm text-gray-600">Danh sách hợp đồng chờ khảo sát (PENDING).</p>
                 </div>
                 <button
                     onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
+                    className="flex items-center w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -141,7 +140,7 @@ function SurveyContractsList() {
                 </button>
             </div>
 
-            {/* 4. THANH TÌM KIẾM */}
+            {/* --- THANH TÌM KIẾM --- */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="relative w-full md:w-1/2">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -150,7 +149,7 @@ function SurveyContractsList() {
                     <input
                         type="text"
                         className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        placeholder="Tìm theo Mã HĐ, Tên KH hoặc Địa chỉ..."
+                        placeholder="Mã HĐ, Tên KH hoặc Địa chỉ..."
                         value={searchTerm}
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -164,12 +163,62 @@ function SurveyContractsList() {
                 </div>
             </div>
 
-            {/* Bảng dữ liệu */}
-            <div className="bg-white rounded-lg shadow border border-gray-200">
-                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {loading && contracts.length === 0 && (
+            {/* --- CONTAINER HIỂN THỊ DỮ LIỆU --- */}
+            <div className="bg-transparent md:bg-white md:rounded-lg md:shadow md:border md:border-gray-200">
+                
+                {/* 1. MOBILE VIEW: Dạng thẻ (Cards) - Hiện trên Mobile, Ẩn trên Desktop (md) */}
+                <div className="block md:hidden space-y-4">
+                    {loading && contracts.length === 0 ? (
                         <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
+                    ) : !loading && contracts.length === 0 ? (
+                        <div className="text-center py-8 bg-white rounded-lg border border-gray-200 text-gray-500 italic">
+                            {searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không có yêu cầu nào.'}
+                        </div>
+                    ) : (
+                        contracts.map(contract => (
+                            <div key={contract.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-3">
+                                {/* Header Card: Mã HĐ + Trạng thái */}
+                                <div className="flex justify-between items-start border-b border-gray-100 pb-2">
+                                    <span className="font-bold text-gray-800 text-lg">#{contract.contractNumber}</span>
+                                    <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Chờ KS
+                                    </span>
+                                </div>
+                                
+                                {/* Body Card: Thông tin khách hàng */}
+                                <div className="text-sm text-gray-600 space-y-1.5">
+                                    <p className="flex gap-2">
+                                        <span className="font-semibold w-20 shrink-0">Khách hàng:</span>
+                                        <span>{contract.customerName}</span>
+                                    </p>
+                                    <p className="flex gap-2">
+                                        <span className="font-semibold w-20 shrink-0">Địa chỉ:</span>
+                                        <span className="truncate-2-lines">{contract.customerAddress}</span>
+                                    </p>
+                                    <p className="flex gap-2">
+                                        <span className="font-semibold w-20 shrink-0">Ngày YC:</span>
+                                        <span>{contract.applicationDate || '-'}</span>
+                                    </p>
+                                </div>
+
+                                {/* Footer Card: Nút thao tác */}
+                                <div className="pt-2">
+                                    <button
+                                        onClick={() => handleViewDetails(contract.id)}
+                                        className="w-full flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-sm font-medium transition-colors"
+                                    >
+                                        <Eye size={16} className="mr-2" />
+                                        Khảo sát / Báo giá
+                                    </button>
+                                </div>
+                            </div>
+                        ))
                     )}
+                </div>
+
+                {/* 2. DESKTOP VIEW: Dạng bảng (Table) - Ẩn trên Mobile, Hiện trên Desktop (md) */}
+                <div className={`hidden md:block overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                     {/* ... GIỮ NGUYÊN CODE TABLE CŨ CỦA BẠN Ở ĐÂY ... */}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -182,6 +231,7 @@ function SurveyContractsList() {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
+                            {/* Logic render bảng cũ giữ nguyên */}
                             {!loading && contracts.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500 italic">
@@ -216,14 +266,16 @@ function SurveyContractsList() {
                     </table>
                 </div>
 
-                {/* Component Phân trang */}
+                {/* --- PHÂN TRANG (Dùng chung) --- */}
                 {!loading && contracts.length > 0 && (
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
+                    <div className="py-2"> {/* Thêm padding để tách biệt */}
+                        <Pagination
+                            currentPage={pagination.page}
+                            totalElements={pagination.totalElements}
+                            pageSize={pagination.size}
+                            onPageChange={handlePageChange}
+                        />
+                    </div>
                 )}
             </div>
         </div>

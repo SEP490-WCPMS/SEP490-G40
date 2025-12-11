@@ -125,15 +125,15 @@ function MaintenanceRequestList() {
 
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-            {/* Header */}
+            {/* --- HEADER --- */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Bảo Trì</h1>
-                    <p className="text-sm text-gray-600">Danh sách các công việc đã được gán cho bạn (Trạng thái: IN_PROGRESS).</p>
+                    <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">Yêu Cầu Bảo Trì</h1>
+                    <p className="text-sm text-gray-600">Danh sách công việc đã gán (IN_PROGRESS).</p>
                 </div>
                 <button
                     onClick={handleRefresh}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
+                    className="flex items-center w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
                     disabled={loading}
                 >
                     <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -141,7 +141,7 @@ function MaintenanceRequestList() {
                 </button>
             </div>
 
-            {/* 4. THANH CÔNG CỤ (SEARCH) */}
+            {/* --- THANH TÌM KIẾM --- */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="relative w-full md:w-1/2">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -150,7 +150,7 @@ function MaintenanceRequestList() {
                     <input
                         type="text"
                         className="block w-full pl-10 pr-16 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        placeholder="Tìm theo Mã Ticket, Nội dung hoặc Tên KH..."
+                        placeholder="Mã Ticket, Nội dung hoặc Tên KH..."
                         value={searchTerm}
                         onChange={handleSearchInputChange}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -164,10 +164,57 @@ function MaintenanceRequestList() {
                 </div>
             </div>
 
-            {/* Bảng Dữ liệu */}
-            <div className="bg-white rounded-lg shadow border border-gray-200">
-                <div className={`overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {loading && tickets.length === 0 && <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>}
+            {/* --- CONTAINER HIỂN THỊ DỮ LIỆU --- */}
+            <div className="bg-transparent md:bg-white md:rounded-lg md:shadow md:border md:border-gray-200">
+                
+                {/* 1. MOBILE VIEW: Dạng thẻ (Cards) */}
+                <div className="block md:hidden space-y-4">
+                    {loading && tickets.length === 0 ? (
+                        <div className="text-center py-10 text-gray-500">Đang tải danh sách...</div>
+                    ) : !loading && tickets.length === 0 ? (
+                        <div className="text-center py-8 bg-white rounded-lg border border-gray-200 text-gray-500 italic">
+                            {searchTerm ? 'Không tìm thấy kết quả phù hợp.' : 'Không có yêu cầu bảo trì nào được gán.'}
+                        </div>
+                    ) : (
+                        tickets.map(ticket => (
+                            <div key={ticket.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-3">
+                                {/* Header Card: Mã Ticket + Ngày giờ */}
+                                <div className="flex justify-between items-start border-b border-gray-100 pb-2">
+                                    <span className="font-bold text-gray-800 text-lg">#{ticket.feedbackNumber}</span>
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                        {moment(ticket.submittedDate).format('HH:mm DD/MM')}
+                                    </span>
+                                </div>
+                                
+                                {/* Body Card: Thông tin chi tiết */}
+                                <div className="text-sm text-gray-600 space-y-2">
+                                    <p className="flex gap-2">
+                                        <span className="font-semibold w-20 shrink-0">Khách hàng:</span>
+                                        <span>{ticket.customerName}</span>
+                                    </p>
+                                    <div className="bg-gray-50 p-2 rounded-md border border-gray-100">
+                                        <span className="font-semibold block mb-1 text-gray-700">Nội dung yêu cầu:</span>
+                                        <p className="italic text-gray-600 line-clamp-3">{ticket.description}</p>
+                                    </div>
+                                </div>
+
+                                {/* Footer Card: Nút thao tác */}
+                                <div className="pt-1">
+                                    <button
+                                        onClick={() => handleViewDetails(ticket.id)}
+                                        className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white hover:bg-blue-700 rounded-md text-sm font-medium transition-colors shadow-sm"
+                                    >
+                                        <Eye size={16} className="mr-2" />
+                                        Xem Chi Tiết & Xử Lý
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* 2. DESKTOP VIEW: Dạng bảng (Table) */}
+                <div className={`hidden md:block overflow-x-auto relative ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -192,12 +239,10 @@ function MaintenanceRequestList() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.customerName}</td>
                                         <td className="px-6 py-4 text-sm text-gray-500 max-w-md truncate" title={ticket.description}>{ticket.description}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(ticket.submittedDate).format('HH:mm DD/MM/YYYY')}</td>
-
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => handleViewDetails(ticket.id)}
                                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out"
-                                                title="Xem chi tiết thông tin khách hàng, đồng hồ"
                                             >
                                                 <Eye size={14} className="mr-1.5" />
                                                 Chi tiết
@@ -210,14 +255,16 @@ function MaintenanceRequestList() {
                     </table>
                 </div>
 
-                {/* Component Phân trang */}
+                {/* --- PHÂN TRANG --- */}
                 {!loading && tickets.length > 0 && (
-                    <Pagination
-                        currentPage={pagination.page}
-                        totalElements={pagination.totalElements}
-                        pageSize={pagination.size}
-                        onPageChange={handlePageChange}
-                    />
+                     <div className="py-2">
+                        <Pagination
+                            currentPage={pagination.page}
+                            totalElements={pagination.totalElements}
+                            pageSize={pagination.size}
+                            onPageChange={handlePageChange}
+                        />
+                    </div>
                 )}
             </div>
         </div>

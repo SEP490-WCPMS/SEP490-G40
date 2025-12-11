@@ -8,6 +8,7 @@ import com.sep490.wcpms.service.CustomerNotificationEmailService;
 import com.sep490.wcpms.service.InvoiceNotificationService;
 import com.sep490.wcpms.service.LeakDetectionNotificationService;
 import com.sep490.wcpms.service.PaymentService;
+import com.sep490.wcpms.service.CustomerNotificationSmsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,7 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
     private final MeterCalibrationRepository calibrationRepository;
     private final LeakDetectionNotificationService leakDetectionNotificationService;
     private final PaymentService paymentService;
+    private final CustomerNotificationSmsService smsNotificationService;
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter MONTH_YEAR_FMT = DateTimeFormatter.ofPattern("MM/yyyy");
@@ -140,6 +142,8 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
 
         notificationRepository.save(n);
         emailService.sendEmail(n);
+        // Gửi SMS ngắn gọn cho hóa đơn tiền nước (template trong CustomerNotificationSmsService)
+        smsNotificationService.sendForNotification(n);
 
         // Kiểm tra cảnh báo rò rỉ nước cho hóa đơn nước hiện tại
         leakDetectionNotificationService.checkAndSendLeakWarning(invoice);
@@ -166,7 +170,7 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
         // EXPORT PDF
         String pdfPath = invoicePdfExportService.exportInstallationInvoicePdf(
                 invoice,
-                contract.getContractNumber(),      // <--- CHỈNH LẠI
+                contract.getContractNumber(),
                 contract.getCreatedAt() != null ?
                         contract.getCreatedAt().toLocalDate() : LocalDate.now(),
                 COMPANY_ADDR,
@@ -210,8 +214,9 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
 
         notificationRepository.save(n);
         emailService.sendEmail(n);
+        // Gửi SMS ngắn cho hóa đơn lắp đặt
+        smsNotificationService.sendForNotification(n);
     }
-
 
     // ---------------------------
     // 3. HÓA ĐƠN DỊCH VỤ PHÁT SINH
@@ -274,6 +279,8 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
 
         notificationRepository.save(n);
         emailService.sendEmail(n);
+        // Gửi SMS cho hóa đơn dịch vụ
+        smsNotificationService.sendForNotification(n);
     }
 
     // =========================
@@ -349,6 +356,8 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
 
         notificationRepository.save(n);
         emailService.sendEmail(n);
+        // Gửi SMS xác nhận thanh toán (BANK_TRANSFER hoặc CASH đều dùng messageType này)
+        smsNotificationService.sendForNotification(n);
     }
 
     // Helper nội bộ: dùng chung nhãn loại hóa đơn

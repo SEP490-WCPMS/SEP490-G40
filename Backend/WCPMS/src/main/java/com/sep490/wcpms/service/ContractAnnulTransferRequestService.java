@@ -16,8 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +27,49 @@ public class ContractAnnulTransferRequestService {
     private final ContractRepository contractRepository;
     private final AccountRepository accountRepository;
     private final CustomerRepository customerRepository; // cần nếu validate from/to
+    private final RoleRepository roleRepository;
     private final ContractAnnulTransferRequestMapper mapper;
+
+    // Helper: chọn Service Staff ít việc nhất (dựa trên bảng annul_transfer_contract_requests)
+    private Account pickLeastBusyServiceStaffForAnnulTransfer() {
+        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
+                .orElseThrow(() ->
+                        new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+
+        return accountRepository.findServiceStaffWithLeastAnnulTransferWorkload(serviceRole.getId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE để phân công xử lý yêu cầu hủy/chuyển."
+                ));
+    }
+
+    /**
+     * Helper: từ một ID FE gửi lên (có thể là customerId HOẶC accountId),
+     * cố gắng resolve ra Customer:
+     *  1) thử coi là customers.id
+     *  2) nếu không có, thử coi là customers.account.id
+     */
+    private Customer resolveCustomerFlexible(Integer idFromDto, String contextLabel) {
+        if (idFromDto == null) {
+            throw new IllegalArgumentException(contextLabel + "CustomerId is required.");
+        }
+
+        // 1) Thử tìm theo customer.id
+        Optional<Customer> byCustomerId = customerRepository.findById(idFromDto);
+        if (byCustomerId.isPresent()) {
+            return byCustomerId.get();
+        }
+
+        // 2) Không có → thử theo account.id
+        Optional<Customer> byAccountId = customerRepository.findByAccount_Id(idFromDto);
+        if (byAccountId.isPresent()) {
+            return byAccountId.get();
+        }
+
+        // 3) Không tìm được
+        throw new ResourceNotFoundException(
+                contextLabel + "-customer not found by customerId/accountId: " + idFromDto
+        );
+    }
 
     // CREATE (annul/transfer)
     @Transactional
@@ -71,15 +112,15 @@ public class ContractAnnulTransferRequestService {
             if (dto.getFromCustomerId() == null || dto.getToCustomerId() == null) {
                 throw new IllegalArgumentException("fromCustomerId and toCustomerId are required for transfer.");
             }
-            // Use the explicit fromCustomerId provided by the client. The previous code attempted
-            // to look up a Customer by the requester's account id which is likely incorrect
-            // (and used a misspelled variable name). Replace with direct lookup by customer id.
-            Integer fromCustomerId = dto.getFromCustomerId();
-            fromCustomer = customerRepository.findById(fromCustomerId)
-                    .orElseThrow(() -> new ResourceNotFoundException("From-customer not found: " + fromCustomerId));
+            // TỪ ĐÂY TRỞ ĐI:
+            // fromCustomerId / toCustomerId có thể là:
+            //  - customers.id
+            //  - accounts.id (account của khách)
+            Integer fromId = dto.getFromCustomerId();
+            Integer toId   = dto.getToCustomerId();
 
-            toCustomer = customerRepository.findById(dto.getToCustomerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("To-customer not found: " + dto.getToCustomerId()));
+            fromCustomer = resolveCustomerFlexible(fromId, "From");
+            toCustomer   = resolveCustomerFlexible(toId,   "To");
         }
 
         ContractAnnulTransferRequest entity;
@@ -91,11 +132,15 @@ public class ContractAnnulTransferRequestService {
             throw ex;
         }
 
-// đảm bảo default
+        // đảm bảo default
         entity.setRequestType(ContractAnnulTransferRequest.RequestType.valueOf(type.toUpperCase()));
         if (entity.getApprovalStatus() == null) {
             entity.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING);
         }
+
+        // NEW: tự động phân công nhân viên Service ít việc nhất
+        Account assignedServiceStaff = pickLeastBusyServiceStaffForAnnulTransfer();
+        entity.setServiceStaff(assignedServiceStaff);
 
         entity = repository.save(entity);
 
@@ -123,12 +168,12 @@ public class ContractAnnulTransferRequestService {
 
     @Transactional
     public Page<ContractAnnulTransferRequestDTO> search(Integer contractId,
-                                                         String requestType,
-                                                         String status,
-                                                         LocalDate from,
-                                                         LocalDate to,
-                                                         String q,
-                                                         Pageable pageable) {
+                                                        String requestType,
+                                                        String status,
+                                                        LocalDate from,
+                                                        LocalDate to,
+                                                        String q,
+                                                        Pageable pageable) {
         Specification<ContractAnnulTransferRequest> spec = Specification.allOf(
                 ContractAnnulTransferRequestSpecs.contractIdEq(contractId),
                 ContractAnnulTransferRequestSpecs.typeEq(requestType),
@@ -138,32 +183,35 @@ public class ContractAnnulTransferRequestService {
                 ContractAnnulTransferRequestSpecs.qLike(q)
         );
 
-        // If the current authenticated user is a Service Staff, restrict results to requests whose contract.serviceStaff = current user
+        // Nếu user hiện tại là Service Staff thì chỉ xem được những request do mình xử lý
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+            if (auth != null && auth.isAuthenticated()
+                    && auth.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+
                 Object principal = auth.getPrincipal();
                 Integer currentUserId = null;
                 boolean isServiceStaff = false;
 
-                // Try to extract id from our custom UserDetailsImpl if available
+                // Ưu tiên lấy từ UserDetailsImpl
                 try {
                     if (principal instanceof com.sep490.wcpms.security.services.UserDetailsImpl ud) {
                         currentUserId = ud.getId();
-                        // check authorities
-                        isServiceStaff = ud.getAuthorities().stream().anyMatch(a -> "SERVICE_STAFF".equals(a.getAuthority()));
+                        isServiceStaff = ud.getAuthorities().stream()
+                                .anyMatch(a -> "SERVICE_STAFF".equals(a.getAuthority()));
                     }
                 } catch (Exception ignored) {
                 }
 
-                // Fallback: when we don't have UserDetailsImpl, attempt to lookup account by username
+                // Fallback: lookup Account theo username
                 if (currentUserId == null) {
                     try {
                         String username = auth.getName();
                         Optional<Account> acc = accountRepository.findByUsername(username);
                         if (acc.isPresent()) {
                             currentUserId = acc.get().getId();
-                            isServiceStaff = acc.get().getRole() != null && acc.get().getRole().getRoleName() == Role.RoleName.SERVICE_STAFF;
+                            isServiceStaff = acc.get().getRole() != null
+                                    && acc.get().getRole().getRoleName() == Role.RoleName.SERVICE_STAFF;
                         }
                     } catch (Exception ignored) {
                     }
@@ -174,16 +222,38 @@ public class ContractAnnulTransferRequestService {
                 }
             }
         } catch (Exception ignored) {
-            // swallow - if anything goes wrong we default to non-filtered behavior
+            // Nếu có lỗi ở đoạn xác định user/role thì bỏ qua, trả full như cũ
         }
 
-        // Use service-level converter so we apply fallback logic (e.g. use contract.customer when fromCustomer is null)
-        return repository.findAll(spec, pageable).map(entity -> {
+        Page<ContractAnnulTransferRequest> page = repository.findAll(spec, pageable);
+
+        // Map entity -> DTO với fallback, tránh nổ 500 chỉ vì 1 record lỗi
+        return page.map(entity -> {
             try {
                 return convertToAnnulTransferDTO(entity);
             } catch (Exception ex) {
-                log.error("[MAPPER ERROR] convertToAnnulTransferDTO failed during search mapping. entityId={}", entity.getId(), ex);
-                throw new RuntimeException("Failed to map ContractAnnulTransferRequest entity to DTO", ex);
+                log.error("[MAPPER ERROR] convertToAnnulTransferDTO failed during search mapping. entityId={}",
+                        entity.getId(), ex);
+
+                // Fallback DTO tối thiểu để FE vẫn dùng được contractId cho việc lọc
+                ContractAnnulTransferRequestDTO dto = new ContractAnnulTransferRequestDTO();
+                dto.setId(entity.getId());
+
+                if (entity.getContract() != null) {
+                    dto.setContractId(entity.getContract().getId());
+                    dto.setContractNumber(entity.getContract().getContractNumber());
+                }
+
+                if (entity.getRequestType() != null) {
+                    dto.setRequestType(entity.getRequestType().name());
+                }
+                if (entity.getApprovalStatus() != null) {
+                    dto.setApprovalStatus(entity.getApprovalStatus().name());
+                }
+
+                // Các field khác (from/toCustomer, requestedBy, serviceStaff, ...) để null cũng được
+                // vì mục đích của FE đang là chỉ cần contractId để loại ra khỏi dropdown.
+                return dto;
             }
         });
     }
@@ -336,6 +406,11 @@ public class ContractAnnulTransferRequestService {
         if (request.getApprovedBy() != null) {
             dto.setApprovedById(request.getApprovedBy().getId());
             dto.setApprovedByUsername(request.getApprovedBy().getUsername());
+        }
+        // NEW: nhân viên Service xử lý
+        if (request.getServiceStaff() != null) {
+            dto.setServiceStaffId(request.getServiceStaff().getId());
+            dto.setServiceStaffName(request.getServiceStaff().getFullName());
         }
         return dto;
     }

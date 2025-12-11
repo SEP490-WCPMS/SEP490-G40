@@ -145,6 +145,17 @@ export default function WaterPriceTypesPage() {
 
     return (
         <div className="water-price-types-page" style={{ padding: 20, backgroundColor: '#f4f7fc' }}>
+            <style>{`
+                .table-responsive { overflow-x: auto; }
+                .responsive-table { width: 100%; border-collapse: collapse; }
+                .responsive-table th, .responsive-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+                @media (max-width: 720px) {
+                    .responsive-table thead { display: none; }
+                    .responsive-table tbody tr { display: block; margin-bottom: 12px; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; }
+                    .responsive-table tbody td { display: flex; justify-content: space-between; padding: 8px 12px; border: none; }
+                    .responsive-table tbody td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: #475569; }
+                }
+            `}</style>
 
             {/* MODAL */}
             <ConfirmModal
@@ -194,41 +205,41 @@ export default function WaterPriceTypesPage() {
 
                 {!loading && (
                     <>
-                        <table className="wpt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                                <tr style={{ background: '#f9f9f9' }}>
-                                    <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>ID</th>
-                                    <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Tên</th>
-                                    <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Mã</th>
-                                    <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Tỷ lệ</th>
-                                    <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Trạng thái</th>
-                                    <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(!Array.isArray(items) || items.length === 0) && (
-                                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: 20 }}>Không có dữ liệu</td></tr>
-                                )}
-                                {Array.isArray(items) && items.map(it => (
-                                    <tr key={it.id}>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.id}</td>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.typeName}</td>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.typeCode}</td>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.percentageRate}%</td>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>
-                                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: '#dcfce7', color: '#166534' }}>
-                                                {it.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: 12, borderBottom: '1px solid #eee' }}>
-                                            <Button size="sm" variant="outline" onClick={() => handleEdit(it)} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                                <Edit size={14} /> Sửa
-                                            </Button>
-                                        </td>
+                        <div className="table-responsive">
+                            <table className="responsive-table wpt-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#f9f9f9' }}>
+                                        <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>ID</th>
+                                        <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Tên</th>
+                                        <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Mã</th>
+                                        <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Tỷ lệ</th>
+                                        <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Trạng thái</th>
+                                        <th style={{ padding: 12, textAlign: 'left', borderBottom: '1px solid #eee' }}>Hành động</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {(!Array.isArray(items) || items.length === 0) && (
+                                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: 20 }}>Không có dữ liệu</td></tr>
+                                    )}
+                                    {Array.isArray(items) && items.map(it => (
+                                        <tr key={it.id}>
+                                            <td data-label="ID" style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.id}</td>
+                                            <td data-label="Tên" style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.typeName}</td>
+                                            <td data-label="Mã" style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.typeCode}</td>
+                                            <td data-label="Tỷ lệ" style={{ padding: 12, borderBottom: '1px solid #eee' }}>{it.percentageRate}%</td>
+                                            <td data-label="Trạng thái" style={{ padding: 12, borderBottom: '1px solid #eee' }}>
+                                                <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backgroundColor: '#dcfce7', color: '#166534' }}>{it.status}</span>
+                                            </td>
+                                            <td data-label="Hành động" style={{ padding: 12, borderBottom: '1px solid #eee' }}>
+                                                <Button size="sm" variant="outline" onClick={() => handleEdit(it)} style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                                    <Edit size={14} /> Sửa
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
 
                         <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 20, padding: 10 }}>
                             <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}>

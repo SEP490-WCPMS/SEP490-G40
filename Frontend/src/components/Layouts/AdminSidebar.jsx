@@ -33,7 +33,7 @@ const adminMenuItems = [
   },
 
   {
-    title: 'Quản lý Tài khoản',
+    title: 'Quản lý Nhân Viên',
     url: '/admin/users',
     icon: Users,
   },

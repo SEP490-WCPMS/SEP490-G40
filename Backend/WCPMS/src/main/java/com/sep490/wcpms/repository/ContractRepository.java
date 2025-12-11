@@ -71,6 +71,9 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
 
     List<Contract> findByCustomer_Account_IdOrderByIdDesc(Integer accountId);
 
+    // Tìm các hợp đồng chưa có khách hàng (Guest) và trạng thái nằm trong danh sách truyền vào
+    List<Contract> findByCustomerIsNullAndContractStatusIn(List<Contract.ContractStatus> statuses);
+
     // --- SERVICE STAFF METHODS ---
 
     /** Đếm số hợp đồng của service staff với trạng thái cụ thể */
@@ -170,14 +173,21 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
      * Tìm Hợp đồng được gán cho Technical Staff cụ thể, theo Trạng thái
      * VÀ tìm kiếm theo Keyword (Mã HĐ, Tên KH, Địa chỉ)
      */
+    // === SỬA LẠI QUERY ĐỂ FIX LỖI CLOB/TEXT ===
     @Query("SELECT c FROM Contract c " +
+            "LEFT JOIN c.customer cu " +   // <--- QUAN TRỌNG: LEFT JOIN để lấy cả Guest
+            "LEFT JOIN c.address ad " +    // LEFT JOIN bảng Address
             "WHERE c.technicalStaff.id = :staffId " +
             "AND c.contractStatus = :status " +
             "AND (:keyword IS NULL OR :keyword = '' OR " +
-            "     LOWER(c.contractNumber) LIKE %:keyword% OR " +
-            "     LOWER(c.customer.customerName) LIKE %:keyword% OR " +
-            "     LOWER(c.customer.account.phone) LIKE %:keyword% OR " +
-            "     LOWER(c.customer.address) LIKE %:keyword%)")
+            "    (cu IS NOT NULL AND LOWER(cu.customerName) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "    (cu IS NOT NULL AND LOWER(cu.address) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "    (LOWER(c.contractNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            // Tìm kiếm trong cột Notes (nơi chứa tên Guest), dùng CAST để tránh lỗi CLOB
+            "    (LOWER(CAST(c.notes AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "    (c.contactPhone LIKE CONCAT('%', :keyword, '%')) OR " +
+            "    (ad IS NOT NULL AND LOWER(ad.address) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            ")")
     Page<Contract> findByTechnicalStaffAndStatusWithSearch(
             @Param("staffId") Integer staffId,
             @Param("status") Contract.ContractStatus status,
@@ -186,10 +196,11 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     );
 
     /**
-     * Đếm số Hợp đồng ACTIVE nhưng chưa có hóa đơn lắp đặt.
+     * Đếm số Hợp đồng ACTIVE được gán cho Kế toán này nhưng chưa có hóa đơn lắp đặt.
      */
     @Query("SELECT COUNT(c) FROM Contract c " +
             "WHERE c.contractStatus = 'ACTIVE' " +
+            "AND c.accountingStaff.id = :staffId " + // <--- QUAN TRỌNG: Lọc theo staff
             "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.contract = c AND i.meterReading IS NULL)")
-    long countPendingInstallationBills();
+    long countPendingInstallationBillsByStaff(@Param("staffId") Integer staffId);
 }

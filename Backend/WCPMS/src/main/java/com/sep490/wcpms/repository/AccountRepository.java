@@ -3,6 +3,7 @@ package com.sep490.wcpms.repository;
 import com.sep490.wcpms.dto.AccountDTO;
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.Role;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -46,12 +47,20 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
   @Query("SELECT a.customerCode FROM Account a WHERE a.customerCode IS NOT NULL AND a.customerCode LIKE 'KH%' ORDER BY a.customerCode DESC LIMIT 1")
   Optional<String> findMaxCustomerCode();
 
-  /**
-   * Tìm tất cả các tài khoản KHÔNG PHẢI là CUSTOMER hoặc GUEST
-   */
-  List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
-
   boolean existsByStaffCode(String staffCode);
+
+    // 1. Lấy danh sách nhân viên (Trừ Admin, Guest, Customer) - Có phân trang
+    @Query("SELECT a FROM Account a WHERE a.role.roleName NOT IN :roles")
+    Page<Account> findStaffAccounts(@Param("roles") Collection<Role.RoleName> roles, Pageable pageable);
+
+    // 2. Lấy danh sách nhân viên theo Phòng ban - Có phân trang
+    @Query("SELECT a FROM Account a WHERE a.department = :department AND a.role.roleName NOT IN :roles")
+    Page<Account> findStaffAccountsByDepartment(@Param("department") Account.Department department,
+                                                @Param("roles") Collection<Role.RoleName> roles,
+                                                Pageable pageable);
+
+    // Hàm này dùng cho dropdown (không phân trang)
+    List<Account> findByRole_RoleNameNotIn(Collection<Role.RoleName> roles);
 
   // Tìm 1 tài khoản thu ngân (department = CASHIER) có status = 1 (active)
   Optional<Account> findFirstByDepartmentAndStatus(Account.Department department, Integer status);
@@ -128,6 +137,21 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
       "GROUP BY a " +
       "ORDER BY COUNT(c) ASC")
   List<Object[]> findServiceStaffWorkloads();
+    // --- QUERY MỚI ĐỂ ASSIGN NHÂN VIÊN DỊCH VỤ ---
+    /**
+     * Tìm nhân viên dịch vụ:
+     * 1. Nằm trong danh sách serviceStaffs của Tuyến đọc (r.id = :routeId)
+     * 2. Có status = 1 (Active)
+     * 3. Sắp xếp theo số lượng hợp đồng đang phụ trách (COUNT c) tăng dần (ASC)
+     */
+    @Query("SELECT s FROM ReadingRoute r " +
+            "JOIN r.serviceStaffs s " +
+            "LEFT JOIN s.serviceContracts c " + // Join để đếm workload
+            "WHERE r.id = :routeId " +
+            "AND s.status = 1 " +
+            "GROUP BY s.id " +
+            "ORDER BY COUNT(c) ASC, s.id ASC")
+    List<Account> findLeastBusyStaffByRoute(@Param("routeId") Integer routeId, Pageable pageable);
 
 
     // THÊM: Tìm Kế toán đang có ít khoản phí "treo" nhất
@@ -182,14 +206,35 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
      * PENDING, SIGNED, PENDING_SURVEY_REVIEW được phân công cho nhân viên đó.
      * Kết quả được sắp xếp theo khối lượng công việc tăng dần.
      */
-    @Query("SELECT new com.sep490.wcpms.dto.AccountDTO(a.id, a.fullName, COUNT(c)) " +
+    @Query("SELECT new com.sep490.wcpms.dto.AccountDTO(a.id, a.fullName, " +
+            "(COUNT(DISTINCT c.id) + COUNT(DISTINCT t.id)) ) " + // Tổng số việc
             "FROM Account a " +
             "LEFT JOIN Contract c ON c.technicalStaff.id = a.id " +
-            "    AND c.contractStatus IN ('PENDING', 'SIGNED', 'PENDING_SURVEY_REVIEW') " +
+            "    AND c.contractStatus IN ('PENDING', 'SIGNED', 'PENDING_SURVEY_REVIEW') " + // Việc khảo sát/lắp đặt
+            "LEFT JOIN CustomerFeedback t ON t.assignedTo.id = a.id " +
+            "    AND t.status = 'IN_PROGRESS' " + // Việc sửa chữa/hỗ trợ
             "WHERE a.role.roleName = 'TECHNICAL_STAFF' " +
             "  AND a.status = 1 " +
             "GROUP BY a.id, a.fullName " +
-            "ORDER BY COUNT(c) ASC, a.fullName ASC")
+            "ORDER BY (COUNT(DISTINCT c.id) + COUNT(DISTINCT t.id)) ASC, a.fullName ASC")
     List<AccountDTO> findTechnicalStaffWithWorkload();
+
+  /**
+   * Tìm Service Staff đang có ít yêu cầu hủy/chuyển hợp đồng (PENDING) nhất.
+   * Dùng cho bảng annul_transfer_contract_requests.
+   */
+  @Query(value = """
+        SELECT a.* 
+        FROM accounts a
+        LEFT JOIN annul_transfer_contract_requests atr
+               ON atr.service_staff_id = a.id
+              AND atr.approval_status = 'PENDING'   -- chỉ đếm yêu cầu chưa xử lý
+        WHERE a.role_id = :roleId
+          AND a.status = 1                         -- chỉ lấy account đang ACTIVE
+        GROUP BY a.id
+        ORDER BY COUNT(atr.id) ASC, a.id ASC
+        LIMIT 1
+        """, nativeQuery = true)
+  Optional<Account> findServiceStaffWithLeastAnnulTransferWorkload(@Param("roleId") int roleId);
 
 }
