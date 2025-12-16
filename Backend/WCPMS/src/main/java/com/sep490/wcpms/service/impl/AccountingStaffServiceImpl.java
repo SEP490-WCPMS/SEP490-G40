@@ -336,44 +336,27 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     @Override
     public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable,
                                                                           Integer accountingStaffId) {
-        Page<Contract> activeContracts =
-                contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
 
-        List<ContractDTO> list = activeContracts.getContent().stream()
-                // chỉ HĐ được assign cho kế toán hiện tại
-                .filter(c -> c.getAccountingStaff() != null
-                        && c.getAccountingStaff().getId().equals(accountingStaffId))
-                // chưa có hóa đơn lắp đặt (CN*, meterReading null)
-                .filter(c -> !invoiceRepository
-                        .existsByContract_IdAndMeterReadingIsNullAndInvoiceNumberStartingWith(
-                                c.getId(), "CN"
-                        ))
-                .map(contract -> {
-                    ContractDTO dto = new ContractDTO();
-                    BeanUtils.copyProperties(contract, dto);
+        Page<Contract> page = contractRepository
+                .findActiveContractsWithoutInstallationInvoiceByStaff(accountingStaffId, pageable);
 
-                    dto.setCustomerId(
-                            contract.getCustomer() != null ? contract.getCustomer().getId() : null
-                    );
-                    dto.setServiceStaffId(
-                            contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
-                    );
-                    dto.setTechnicalStaffId(
-                            contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
-                    );
-                    dto.setAccountingStaffId(
-                            contract.getAccountingStaff() != null
-                                    ? contract.getAccountingStaff().getId()
-                                    : null
-                    );
+        return page.map(contract -> {
+            ContractDTO dto = new ContractDTO();
+            dto.setId(contract.getId());
+            dto.setContractNumber(contract.getContractNumber());
+            dto.setCustomerId(contract.getCustomer() != null ? contract.getCustomer().getId() : null);
+            dto.setServiceStaffId(contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null);
+            dto.setTechnicalStaffId(contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null);
+            dto.setAccountingStaffId(contract.getAccountingStaff() != null ? contract.getAccountingStaff().getId() : null);
 
-                    return dto;
-                })
-                .toList();
+            // QUAN TRỌNG: để FE hiển thị và đồng bộ điều kiện >0
+            dto.setContractValue(contract.getContractValue());
+            dto.setContractStatus(contract.getContractStatus() != null ? Contract.ContractStatus.valueOf(contract.getContractStatus().name()) : null);
+            dto.setInstallationDate(contract.getInstallationDate());
 
-        return new PageImpl<>(list, pageable, list.size());
+            return dto;
+        });
     }
-
 
     @Override
     @Transactional
@@ -388,11 +371,14 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             throw new IllegalStateException("Chỉ tạo hóa đơn lắp đặt cho HĐ đang ACTIVE");
         }
 
+        if (contract.getContractValue() == null || contract.getContractValue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Hợp đồng không có giá trị hợp lệ để lập hóa đơn lắp đặt.");
+        }
+
         // 3. Kiểm tra đã có HĐ lắp đặt chưa
-        boolean exists = invoiceRepository.existsByContract_Id(
-                contract.getId()
-        );
-        if (exists) {
+        boolean existsInstallationInvoice =
+                invoiceRepository.existsInstallationInvoiceByContractId(contract.getId());
+        if (existsInstallationInvoice) {
             throw new IllegalStateException("Hợp đồng này đã có hóa đơn lắp đặt");
         }
 
@@ -400,6 +386,19 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         BigDecimal subtotal = request.getSubtotalAmount();
         BigDecimal vatAmount = request.getVatAmount();
         BigDecimal total = request.getTotalAmount();
+
+        if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tiền lắp đặt (chưa VAT) phải lớn hơn 0");
+        }
+        if (vatAmount == null || vatAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Tiền VAT không được âm");
+        }
+        if (total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tổng tiền hóa đơn phải lớn hơn 0");
+        }
+        if (subtotal.add(vatAmount).compareTo(total) != 0) {
+            throw new IllegalArgumentException("Tổng tiền không hợp lệ (subtotal + VAT phải bằng total)");
+        }
 
         LocalDate invoiceDate = request.getInvoiceDate();
         LocalDate dueDate = request.getDueDate();

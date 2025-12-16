@@ -28,6 +28,8 @@ function CreateInstallationInvoice() {
         notes: ''
     });
 
+    const isInvalidAmount = Number(formData.subtotalAmount || 0) <= 0;
+
     useEffect(() => {
         if (!contractFromState) {
             setError('Không tìm thấy dữ liệu Hợp đồng. Vui lòng quay lại danh sách.');
@@ -170,6 +172,13 @@ function CreateInstallationInvoice() {
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
+
+                            const subtotal = Number(formData.subtotalAmount || 0);
+                            if (subtotal <= 0) {
+                                setError('Không thể phát hành hóa đơn: Tiền lắp đặt phải lớn hơn 0.');
+                                return;
+                            }
+
                             setConfirmOpen(true);
                         }}
                         className="bg-white p-4 sm:p-6 rounded-lg shadow space-y-5"
@@ -335,10 +344,17 @@ function CreateInstallationInvoice() {
                         <div className="pt-4 border-t">
                             <button
                                 type="submit"
-                                disabled={submitting}
-                                className={`inline-flex justify-center w-full sm:w-auto items-center text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none ${
-                                    submitting ? 'opacity-50' : ''
-                                }`}
+                                disabled={submitting || isInvalidAmount}
+                                className={`inline-flex items-center justify-center gap-2
+                                  w-full sm:w-auto
+                                  px-5 py-3
+                                  rounded-lg
+                                  text-sm font-semibold
+                                  bg-emerald-600 hover:bg-emerald-700
+                                  shadow-sm
+                                  focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2
+                                  ${(submitting || isInvalidAmount) ? 'opacity-50 cursor-not-allowed' : ''}
+                                `}
                             >
                             <Save size={18} className="mr-2" />
                                 {submitting ? 'Đang phát hành...' : 'Xác nhận & Phát hành Hóa đơn lắp đặt'}
