@@ -454,4 +454,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    @Query("""
+    SELECT CASE WHEN COUNT(i) > 0 THEN true ELSE false END
+    FROM Invoice i
+    WHERE i.contract.id = :contractId
+      AND i.meterReading IS NULL
+      AND UPPER(i.invoiceNumber) LIKE 'CN%'
+""")
+    boolean existsInstallationInvoiceByContractId(@Param("contractId") Integer contractId);
 }
