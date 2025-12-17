@@ -89,6 +89,13 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         return staffList.get(0); // Người đầu tiên là người ít việc nhất
     }
 
+    // --- [HÀM MỚI THÊM] Helper tìm Kế toán ít việc nhất (dựa trên số hóa đơn PENDING) ---
+    private Account getAutoAssignedAccountingStaff() {
+        return accountRepository.findAccountingStaffWithLeastPendingInvoices()
+                .orElseThrow(() -> new IllegalStateException("Lỗi hệ thống: Không tìm thấy nhân viên Kế toán nào đang hoạt động để phân công hóa đơn."));
+    }
+    // -----------------------------------------------------------------------------------
+
     @Override
     @Transactional(readOnly = true)
     public Page<CalibrationFeeDTO> getMyUnbilledCalibrationFees(Integer staffId, String keyword, Pageable pageable) {
@@ -329,44 +336,27 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     @Override
     public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable,
                                                                           Integer accountingStaffId) {
-        Page<Contract> activeContracts =
-                contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
 
-        List<ContractDTO> list = activeContracts.getContent().stream()
-                // chỉ HĐ được assign cho kế toán hiện tại
-                .filter(c -> c.getAccountingStaff() != null
-                        && c.getAccountingStaff().getId().equals(accountingStaffId))
-                // chưa có hóa đơn lắp đặt (CN*, meterReading null)
-                .filter(c -> !invoiceRepository
-                        .existsByContract_IdAndMeterReadingIsNullAndInvoiceNumberStartingWith(
-                                c.getId(), "CN"
-                        ))
-                .map(contract -> {
-                    ContractDTO dto = new ContractDTO();
-                    BeanUtils.copyProperties(contract, dto);
+        Page<Contract> page = contractRepository
+                .findActiveContractsWithoutInstallationInvoiceByStaff(accountingStaffId, pageable);
 
-                    dto.setCustomerId(
-                            contract.getCustomer() != null ? contract.getCustomer().getId() : null
-                    );
-                    dto.setServiceStaffId(
-                            contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
-                    );
-                    dto.setTechnicalStaffId(
-                            contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
-                    );
-                    dto.setAccountingStaffId(
-                            contract.getAccountingStaff() != null
-                                    ? contract.getAccountingStaff().getId()
-                                    : null
-                    );
+        return page.map(contract -> {
+            ContractDTO dto = new ContractDTO();
+            dto.setId(contract.getId());
+            dto.setContractNumber(contract.getContractNumber());
+            dto.setCustomerId(contract.getCustomer() != null ? contract.getCustomer().getId() : null);
+            dto.setServiceStaffId(contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null);
+            dto.setTechnicalStaffId(contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null);
+            dto.setAccountingStaffId(contract.getAccountingStaff() != null ? contract.getAccountingStaff().getId() : null);
 
-                    return dto;
-                })
-                .toList();
+            // QUAN TRỌNG: để FE hiển thị và đồng bộ điều kiện >0
+            dto.setContractValue(contract.getContractValue());
+            dto.setContractStatus(contract.getContractStatus() != null ? Contract.ContractStatus.valueOf(contract.getContractStatus().name()) : null);
+            dto.setInstallationDate(contract.getInstallationDate());
 
-        return new PageImpl<>(list, pageable, list.size());
+            return dto;
+        });
     }
-
 
     @Override
     @Transactional
@@ -381,11 +371,14 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             throw new IllegalStateException("Chỉ tạo hóa đơn lắp đặt cho HĐ đang ACTIVE");
         }
 
+        if (contract.getContractValue() == null || contract.getContractValue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Hợp đồng không có giá trị hợp lệ để lập hóa đơn lắp đặt.");
+        }
+
         // 3. Kiểm tra đã có HĐ lắp đặt chưa
-        boolean exists = invoiceRepository.existsByContract_Id(
-                contract.getId()
-        );
-        if (exists) {
+        boolean existsInstallationInvoice =
+                invoiceRepository.existsInstallationInvoiceByContractId(contract.getId());
+        if (existsInstallationInvoice) {
             throw new IllegalStateException("Hợp đồng này đã có hóa đơn lắp đặt");
         }
 
@@ -393,6 +386,19 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         BigDecimal subtotal = request.getSubtotalAmount();
         BigDecimal vatAmount = request.getVatAmount();
         BigDecimal total = request.getTotalAmount();
+
+        if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tiền lắp đặt (chưa VAT) phải lớn hơn 0");
+        }
+        if (vatAmount == null || vatAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Tiền VAT không được âm");
+        }
+        if (total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tổng tiền hóa đơn phải lớn hơn 0");
+        }
+        if (subtotal.add(vatAmount).compareTo(total) != 0) {
+            throw new IllegalArgumentException("Tổng tiền không hợp lệ (subtotal + VAT phải bằng total)");
+        }
 
         LocalDate invoiceDate = request.getInvoiceDate();
         LocalDate dueDate = request.getDueDate();
@@ -482,7 +488,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         // ✅ MỚI: Chỉ lấy reading được ASSIGN cho Accounting Staff hiện tại
         Integer currentAccountingStaffId = getCurrentAccountingStaffId();
         Page<MeterReading> readingsPage = meterReadingRepository
-            .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);
+                .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);
 
         // 2. Map sang DTO (Constructor đã có accountingStaffId và accountingStaffName)
         return readingsPage.map(PendingReadingDTO::new);
@@ -505,6 +511,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         throw new IllegalStateException("Không thể xác định Accounting Staff hiện tại.");
     }
 
+    // --- [ĐÃ SỬA] HÀM TẠO HÓA ĐƠN NƯỚC: AUTO ASSIGN THEO SỐ INVOICE PENDING ÍT NHẤT ---
     @Override
     @Transactional
     public InvoiceDTO generateWaterBill(Integer meterReadingId, Integer accountingStaffId) {
@@ -528,8 +535,12 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         }
         Customer customer = serviceContract.getCustomer();
         WaterPriceType priceType = serviceContract.getPriceType();
-        Account accountingStaff = accountRepository.findById(accountingStaffId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản Kế toán: " + accountingStaffId));
+
+        // --- [LOGIC GÁN VIỆC MỚI] ---
+        // Tự động tìm nhân viên kế toán rảnh nhất (dựa trên số lượng Invoice Pending)
+        // Bỏ qua tham số accountingStaffId cũ
+        Account assignedStaff = getAutoAssignedAccountingStaff();
+        // ---------------------------
 
         // 4. Tìm biểu giá chính xác tại ngày đọc số
         WaterPrice price = waterPriceRepository.findActivePriceForDate(priceType, reading.getReadingDate())
@@ -571,7 +582,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setInvoiceDate(LocalDate.now());
         invoice.setDueDate(LocalDate.now().plusDays(10)); // (Cần logic lấy hạn TT từ HĐ)
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
-        invoice.setAccountingStaff(accountingStaff);
+
+        // [QUAN TRỌNG] Gán nhân viên vừa tìm được vào Hóa đơn
+        invoice.setAccountingStaff(assignedStaff);
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
@@ -584,16 +597,11 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             al.setSubjectType("INVOICE");
             al.setSubjectId(savedInvoice.getInvoiceNumber() != null ? savedInvoice.getInvoiceNumber() : String.valueOf(savedInvoice.getId()));
             al.setAction("WATER_INVOICE_GENERATED");
-            if (accountingStaff != null) {
-                al.setActorType("STAFF");
-                al.setActorId(accountingStaff.getId());
-                al.setActorName(accountingStaff.getFullName());
-                al.setInitiatorType("STAFF");
-                al.setInitiatorId(accountingStaff.getId());
-                al.setInitiatorName(accountingStaff.getFullName());
-            } else {
-                al.setActorType("SYSTEM");
-            }
+
+            // Log thông tin người được gán tự động
+            al.setActorType("SYSTEM");
+            al.setPayload("Tự động gán cho Kế toán: " + assignedStaff.getFullName() + " (ID: " + assignedStaff.getId() + ")");
+
             activityLogService.save(al);
         } catch (Exception ex) {
             // swallow
@@ -601,6 +609,12 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         // 8. Cập nhật trạng thái bản ghi đọc số
         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
+
+        // --- [QUAN TRỌNG] Cập nhật ngược lại nhân viên quản lý vào bản ghi Reading ---
+        // Để đồng bộ dữ liệu: Hóa đơn của ai thì Reading của người đó
+        reading.setAccountingStaff(assignedStaff);
+        // ---------------------------------------------------------------------------
+
         meterReadingRepository.save(reading);
 
         // 9. Trả về DTO của Hóa đơn vừa tạo
@@ -770,4 +784,3 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     }
     // === HẾT PHẦN SỬA ===
 }
-

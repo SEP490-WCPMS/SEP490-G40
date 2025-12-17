@@ -196,11 +196,45 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
     );
 
     /**
-     * Đếm số Hợp đồng ACTIVE được gán cho Kế toán này nhưng chưa có hóa đơn lắp đặt.
+     * Đếm số Hợp đồng ACTIVE được gán cho Kế toán này nhưng chưa có hóa đơn lắp đặt (CN%, meterReading NULL)
+     * và hợp đồng có contractValue > 0
      */
-    @Query("SELECT COUNT(c) FROM Contract c " +
-            "WHERE c.contractStatus = 'ACTIVE' " +
-            "AND c.accountingStaff.id = :staffId " + // <--- QUAN TRỌNG: Lọc theo staff
-            "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.contract = c AND i.meterReading IS NULL)")
+    @Query("""
+    SELECT COUNT(c) FROM Contract c
+    WHERE c.contractStatus = 'ACTIVE'
+      AND c.accountingStaff.id = :staffId
+      AND c.contractValue IS NOT NULL
+      AND c.contractValue > 0
+      AND NOT EXISTS (
+          SELECT 1 FROM Invoice i
+          WHERE i.contract = c
+            AND i.meterReading IS NULL
+            AND UPPER(i.invoiceNumber) LIKE 'CN%'
+      )
+""")
     long countPendingInstallationBillsByStaff(@Param("staffId") Integer staffId);
+
+
+    /**
+     * Lấy danh sách hợp đồng đủ điều kiện lập hóa đơn lắp đặt:
+     * ACTIVE + assigned staff + contractValue > 0 + chưa có invoice lắp đặt CN% (meterReading NULL)
+     */
+    @Query("""
+    SELECT c FROM Contract c
+    WHERE c.contractStatus = 'ACTIVE'
+      AND c.accountingStaff.id = :staffId
+      AND c.contractValue IS NOT NULL
+      AND c.contractValue > 0
+      AND NOT EXISTS (
+          SELECT 1 FROM Invoice i
+          WHERE i.contract = c
+            AND i.meterReading IS NULL
+            AND UPPER(i.invoiceNumber) LIKE 'CN%'
+      )
+""")
+    Page<Contract> findActiveContractsWithoutInstallationInvoiceByStaff(
+            @Param("staffId") Integer staffId,
+            Pageable pageable
+    );
+
 }

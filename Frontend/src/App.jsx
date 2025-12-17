@@ -62,7 +62,7 @@ import MyInvoiceListPage from "./components/Customer/MyInvoice/MyInvoiceListPage
 import MyInvoiceDetail from "./components/Customer/MyInvoice/MyInvoiceDetail";
 import CreateInstallationInvoice from "./components/PagesAccounting/CreateInstallationInvoice"; // Sửa đường dẫn
 import EligibleInstallationContracts from "./components/PagesAccounting/EligibleInstallationContracts.jsx"; // Sửa đường dẫn
-import GenerateWaterInvoice from './components/PagesAccounting/GenerateWaterInvoice'; // Sửa đường dẫn
+import WaterInvoiceManagementPage from './components/PagesAccounting/WaterInvoiceManagementPage'; // Sửa đường dẫn
 import RouteInvoiceList from './components/PagesCashier/RouteInvoiceList';
 import RouteInvoiceDetail from './components/PagesCashier/RouteInvoiceDetail';
 import AccountingDashboard from './components/PagesAccounting/AccountingDashboard';
@@ -80,6 +80,7 @@ import WaterMetersPage from './components/Admin/WaterMetersPage';
 import WaterPriceTypesPage from './components/Admin/WaterPriceTypesPage';
 import WaterPricesPage from './components/Admin/WaterPricesPage';
 import { VerifyAccountPage } from './components/Authentication/VerifyAccount';
+import CreateWaterInvoicePage from './components/PagesAccounting/CreateWaterInvoicePage';
 
 // Wrapper cho các trang Public (có Header/Footer chung)
 const PublicLayout = ({ children, isAuthenticated, user }) => (
@@ -239,7 +240,8 @@ function App() {
             <Route path="contracts/:contractId/installation-invoice" element={<CreateInstallationInvoice />} />
             <Route path="*" element={<div>Lỗi 404: Trang không tồn tại</div>} />
             {/* ROUTE CHO HÓA ĐƠN TIỀN NƯỚC */}
-            <Route path="billing/pending-readings" element={<GenerateWaterInvoice />} />
+            <Route path="billing/pending-readings" element={<WaterInvoiceManagementPage/>} />
+            <Route path="billing/create-invoice/:readingId" element={<CreateWaterInvoicePage />} />
           </Route>
         </Route>
         {/* --- HẾT --- */}

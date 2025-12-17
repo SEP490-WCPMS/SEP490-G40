@@ -138,36 +138,49 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             return;
         }
 
+        // --- GỬI KÝ  ---
         if (action === 'sendToSign') {
             setSelectedContract(record);
             setConfirmConfig({
                 title: 'Gửi khách hàng ký',
                 message: `Bạn có chắc chắn muốn gửi hợp đồng ${record.contractNumber} cho khách ký?`,
-                action: async () => await sendContractToSign(record.id)
+                action: async () => {
+                    await sendContractToSign(record.id);
+                    toast.success('Gửi yêu cầu ký thành công!'); // <--- THÊM DÒNG NÀY
+                }
             });
             setConfirmVisible(true);
             return;
         }
+
+        // --- GỬI LẮP ĐẶT ---
         if (action === 'sendToInstallation') {
             setSelectedContract(record);
             setConfirmConfig({
                 title: 'Gửi lắp đặt',
                 message: `Bạn có chắc chắn muốn gửi hợp đồng ${record.contractNumber} đi lắp đặt?`,
-                action: async () => await sendContractToInstallation(record.id)
+                action: async () => {
+                    await sendContractToInstallation(record.id);
+                    toast.success('Đã gửi yêu cầu lắp đặt thành công!'); // <--- THÊM DÒNG NÀY
+                }
             });
             setConfirmVisible(true);
             return;
         }
+        // --- KÍCH HOẠT LẠI ---
         if (action === 'reactivate') {
-            setSelectedContract(record);
-            setConfirmConfig({
-                title: 'Kích hoạt lại',
-                message: `Kích hoạt lại hợp đồng ${record.contractNumber}?`,
-                action: async () => await reactivateContract(record.id)
-            });
-            setConfirmVisible(true);
-            return;
-        }
+          setSelectedContract(record);
+          setConfirmConfig({
+              title: 'Kích hoạt lại',
+              message: `Kích hoạt lại hợp đồng ${record.contractNumber}?`,
+              action: async () => {
+                  await reactivateContract(record.id);
+                  toast.success('Kích hoạt lại hợp đồng thành công!'); // <--- THÊM TOAST
+              }
+          });
+          setConfirmVisible(true);
+          return;
+      }
 
         // Các hành động cần Modal Form
         setModalLoading(true);
@@ -206,13 +219,23 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
           const values = await form.validateFields();
           
           if (modalType === 'renew') {
+              // Thêm validate ngày giống trang Active
+              const newDate = values.newEndDate;
+              if (newDate && newDate.isBefore(dayjs(), 'day')) {
+                  toast.error('Ngày kết thúc mới phải sau ngày hôm nay!');
+                  return; 
+              }
+
               setConfirmConfig({
                   title: 'Xác nhận gia hạn',
                   message: 'Bạn có chắc chắn muốn gia hạn hợp đồng này?',
-                  action: async () => await renewContract(selectedContract.id, {
-                      endDate: values.newEndDate.format('YYYY-MM-DD'),
-                      notes: values.notes
-                  })
+                  action: async () => {
+                      await renewContract(selectedContract.id, {
+                          endDate: values.newEndDate.format('YYYY-MM-DD'),
+                          notes: values.notes
+                      });
+                      toast.success('Gia hạn hợp đồng thành công!'); // <--- THÊM TOAST
+                  }
               });
               setConfirmVisible(true);
           } 
@@ -221,8 +244,14 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                   title: modalType === 'suspend' ? 'Xác nhận tạm ngưng' : 'Xác nhận chấm dứt',
                   message: `Bạn có chắc chắn muốn ${modalType === 'suspend' ? 'tạm ngưng' : 'chấm dứt'} hợp đồng này?`,
                   action: async () => {
-                      if (modalType === 'suspend') return await suspendContract(selectedContract.id, values.reason);
-                      else return await terminateContract(selectedContract.id, values.reason);
+                      if (modalType === 'suspend') {
+                          await suspendContract(selectedContract.id, values.reason);
+                          toast.success('Tạm ngưng hợp đồng thành công!'); // <--- THÊM TOAST
+                      }
+                      else {
+                          await terminateContract(selectedContract.id, values.reason);
+                          toast.success('Chấm dứt hợp đồng thành công!'); // <--- THÊM TOAST
+                      }
                   }
               });
               setConfirmVisible(true);
