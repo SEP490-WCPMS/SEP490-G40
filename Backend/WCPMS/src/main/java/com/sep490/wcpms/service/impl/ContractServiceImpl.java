@@ -270,7 +270,7 @@ public class ContractServiceImpl implements ContractService {
         meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(contract)
                 .ifPresent(mi -> {
                     dto.setInstallationImageBase64(mi.getInstallationImageBase64());
-                    if (mi.getWaterMeter() != null && String.valueOf(mi.getWaterMeter().getMeterStatus()).equalsIgnoreCase("INSTALLED")) {
+                    if (mi.getWaterMeter() != null) {
                         dto.setInstalledMeterCode(mi.getWaterMeter().getMeterCode());
                     }
                 });
