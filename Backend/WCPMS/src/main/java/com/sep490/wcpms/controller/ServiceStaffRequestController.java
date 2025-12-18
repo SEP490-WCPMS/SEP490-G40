@@ -65,7 +65,7 @@ public class ServiceStaffRequestController {
 
         Pageable pageable = PageRequest.of(page, size, parseSort(sort));
         Page<ContractAnnulTransferRequestDTO> result = service.search(
-                contractId, requestType, status, from, to, q, pageable);
+                null, contractId, requestType, status, from, to, q, pageable);
 
         return ResponseEntity.ok(
             ApiResponse.<Page<ContractAnnulTransferRequestDTO>>builder()
@@ -110,7 +110,7 @@ public class ServiceStaffRequestController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         // Status phải là lowercase string
         Page<ContractAnnulTransferRequestDTO> result = service.search(
-                null, requestType, "pending", null, null, null, pageable);
+                null, null, requestType, "pending", null, null, null, pageable);
 
         return ResponseEntity.ok(
             ApiResponse.<Page<ContractAnnulTransferRequestDTO>>builder()
@@ -224,7 +224,7 @@ public class ServiceStaffRequestController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         // Status: lowercase
         Page<ContractAnnulTransferRequestDTO> result = service.search(
-                null, "annul", "approved", null, null, null, pageable);
+                null, null, "annul", "approved", null, null, null, pageable);
 
         return ResponseEntity.ok(
             ApiResponse.<Page<ContractAnnulTransferRequestDTO>>builder()
@@ -248,7 +248,7 @@ public class ServiceStaffRequestController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "approvalDate"));
         // Status: lowercase
         Page<ContractAnnulTransferRequestDTO> result = service.search(
-                null, "transfer", "approved", null, null, null, pageable);
+                null, null, "transfer", "approved", null, null, null, pageable);
 
         return ResponseEntity.ok(
             ApiResponse.<Page<ContractAnnulTransferRequestDTO>>builder()

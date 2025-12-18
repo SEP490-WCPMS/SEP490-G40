@@ -99,12 +99,12 @@ public class ContractAnnulTransferRequestService {
             );
         }
 
-        // Không cho 2 request PENDING cùng loại trên 1 contract
-        if (repository.existsByContractIdAndRequestTypeAndApprovalStatus(
+        // Không cho tạo thêm khi hợp đồng đang có request PENDING (tránh spam),
+        // nhưng sau khi APPROVED/REJECTED thì hợp đồng vẫn có thể tạo request mới.
+        if (repository.existsByContractIdAndApprovalStatus(
                 contract.getId(),
-                ContractAnnulTransferRequest.RequestType.valueOf(type.toUpperCase()),
                 ContractAnnulTransferRequest.ApprovalStatus.PENDING)) {
-            throw new IllegalStateException("A pending request of the same type already exists for this contract.");
+            throw new IllegalStateException("This contract already has a pending annul/transfer request.");
         }
 
         Customer fromCustomer = null, toCustomer = null;
@@ -167,7 +167,8 @@ public class ContractAnnulTransferRequestService {
      }
 
     @Transactional
-    public Page<ContractAnnulTransferRequestDTO> search(Integer contractId,
+    public Page<ContractAnnulTransferRequestDTO> search(Integer requestedById,
+                                                        Integer contractId,
                                                         String requestType,
                                                         String status,
                                                         LocalDate from,
@@ -175,6 +176,7 @@ public class ContractAnnulTransferRequestService {
                                                         String q,
                                                         Pageable pageable) {
         Specification<ContractAnnulTransferRequest> spec = Specification.allOf(
+                ContractAnnulTransferRequestSpecs.requestedByEq(requestedById),
                 ContractAnnulTransferRequestSpecs.contractIdEq(contractId),
                 ContractAnnulTransferRequestSpecs.typeEq(requestType),
                 ContractAnnulTransferRequestSpecs.statusEq(status),

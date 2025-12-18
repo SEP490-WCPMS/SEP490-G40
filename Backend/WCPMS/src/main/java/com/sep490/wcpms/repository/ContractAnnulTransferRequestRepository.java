@@ -62,4 +62,8 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
             @Param("requestType") ContractAnnulTransferRequest.RequestType requestType,
             @Param("keyword") String keyword,
             Pageable pageable);
+
+    // NEW: chỉ chặn khi còn request PENDING trên hợp đồng (tránh spam nhưng vẫn cho tạo lại sau khi APPROVED/REJECTED)
+    boolean existsByContractIdAndApprovalStatus(Integer contractId, ContractAnnulTransferRequest.ApprovalStatus approvalStatus);
+
 }
