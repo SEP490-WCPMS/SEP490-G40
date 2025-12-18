@@ -600,12 +600,17 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         WaterMeter meter = waterMeterRepository.findByMeterCode(dto.getMeterCode())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đồng hồ với mã: " + dto.getMeterCode()));
 
-        // --- THÊM KIỂM TRA STATUS ---
-        // Chỉ cho phép thao tác nếu đồng hồ đang được lắp đặt
-//        if (meter.getMeterStatus() != WaterMeter.MeterStatus.INSTALLED) {
-//            throw new IllegalStateException("Đồng hồ này không ở trạng thái 'Đã Lắp Đặt' (INSTALLED). Trạng thái hiện tại: " + meter.getMeterStatus());
-//        }
-        // --- HẾT PHẦN THÊM ---
+        // --- [CẬP NHẬT] THÊM KIỂM TRA STATUS ---
+        // Chỉ cho phép thao tác nếu đồng hồ là INSTALLED hoặc BROKEN
+        // Nếu KHÔNG PHẢI (INSTALLED) VÀ KHÔNG PHẢI (BROKEN) -> Báo lỗi
+        if (meter.getMeterStatus() != WaterMeter.MeterStatus.INSTALLED
+                && meter.getMeterStatus() != WaterMeter.MeterStatus.BROKEN) {
+
+            throw new IllegalStateException(
+                    "Không thể kiểm định tại chỗ. Đồng hồ phải ở trạng thái 'Đã Lắp Đặt' hoặc 'Bị Hỏng'. Trạng thái hiện tại: " + meter.getMeterStatus()
+            );
+        }
+        // --- HẾT PHẦN KIỂM TRA ---
 
         // 2. TẠO BẢN GHI KIỂM ĐỊNH MỚI (Bảng 14)
         MeterCalibration calibration = new MeterCalibration();

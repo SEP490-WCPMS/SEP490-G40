@@ -142,7 +142,7 @@ function OnSiteCalibrationForm() {
 
         } catch (err) {
             console.error("Lỗi khi gửi kết quả kiểm định:", err);
-            toast.error(err.response?.data?.message || "Lỗi khi xử lý yêu cầu.", {
+            toast.error(err.response?.data?.message || "Lỗi khi xử lý yêu cầu. Không được lấy đồng hồ vẫn đang trong kho.", {
                 position: "top-center"
             });
         } finally {
