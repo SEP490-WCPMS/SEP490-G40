@@ -336,6 +336,47 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         return "CN" + contractId + month + year;
     }
 
+    private String parseGuestName(String notes) {
+        if (notes == null || notes.isBlank()) return "Khách vãng lai";
+
+        // Notes thường dạng: "KHÁCH: Nguyễn Văn A | Tôi muốn đăng kí..."
+        String raw = notes.trim();
+        if (raw.contains("|")) {
+            raw = raw.split("\\|", 2)[0].trim();
+        }
+        raw = raw.replace("KHÁCH:", "").trim();
+        return raw.isBlank() ? "Khách vãng lai" : raw;
+    }
+
+    private String formatContractAddress(Contract contract) {
+        if (contract == null) return null;
+
+        // Ưu tiên địa chỉ lắp đặt gắn với hợp đồng
+        if (contract.getAddress() != null) {
+            String street = contract.getAddress().getStreet() != null ? contract.getAddress().getStreet() : "";
+            String ward = "";
+            String district = "";
+
+            if (contract.getAddress().getWard() != null) {
+                ward = contract.getAddress().getWard().getWardName();
+                district = contract.getAddress().getWard().getDistrict();
+            }
+
+            String formatted = String.format("%s, %s, %s", street, ward, district)
+                    .replace("null", "")
+                    .replaceAll("^, |, $", "")
+                    .trim();
+            return formatted.isBlank() ? "Chưa cập nhật địa chỉ" : formatted;
+        }
+
+        // Fallback: nếu hợp đồng có customer và customer có address (chuỗi thô)
+        if (contract.getCustomer() != null && contract.getCustomer().getAddress() != null) {
+            return contract.getCustomer().getAddress();
+        }
+
+        return "Chưa cập nhật địa chỉ";
+    }
+
     @Override
     public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable,
                                                                           Integer accountingStaffId) {
@@ -348,13 +389,29 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             dto.setId(contract.getId());
             dto.setContractNumber(contract.getContractNumber());
             dto.setCustomerId(contract.getCustomer() != null ? contract.getCustomer().getId() : null);
+
             dto.setServiceStaffId(contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null);
             dto.setTechnicalStaffId(contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null);
             dto.setAccountingStaffId(contract.getAccountingStaff() != null ? contract.getAccountingStaff().getId() : null);
 
-            // QUAN TRỌNG: để FE hiển thị và đồng bộ điều kiện >0
+            dto.setApplicationDate(contract.getApplicationDate());
+
+            // Thông tin KH
+            if (contract.getCustomer() != null) {
+                dto.setCustomerName(contract.getCustomer().getCustomerName());
+                if (contract.getCustomer().getAccount() != null) {
+                    dto.setCustomerPhone(contract.getCustomer().getAccount().getPhone());
+                }
+            } else {
+                dto.setCustomerName(parseGuestName(contract.getNotes()));
+                dto.setCustomerPhone(contract.getContactPhone());
+            }
+
+            // Địa chỉ lắp đặt
+            dto.setCustomerAddress(formatContractAddress(contract));
+
             dto.setContractValue(contract.getContractValue());
-            dto.setContractStatus(contract.getContractStatus() != null ? Contract.ContractStatus.valueOf(contract.getContractStatus().name()) : null);
+            dto.setContractStatus(contract.getContractStatus());
             dto.setInstallationDate(contract.getInstallationDate());
 
             return dto;
