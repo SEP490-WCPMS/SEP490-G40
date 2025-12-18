@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, Button, Row, Col, message, Spin, Typography, Divider, Upload, DatePicker } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import {createContractRequest, searchCustomers, getAllContracts, getContractsByCustomerId, searchContractRequests} from '../Services/apiService';
+import {createContractRequest, searchCustomers, getContractsByCustomerId, searchContractRequests} from '../Services/apiService';
 import moment from 'moment';
 import './ContractRequestChange.css';
 
@@ -38,6 +38,8 @@ const ContractRequestChange = () => {
                 page: 0,
                 size: 1000,
                 // KHÔNG truyền status -> lấy mọi request, đúng nghĩa "đã tạo yêu cầu rồi"
+                // Chỉ chặn những hợp đồng đang có request PENDING (đang xử lý).
+                status: "PENDING",
             });
 
             const data = res.data;
@@ -172,7 +174,7 @@ const ContractRequestChange = () => {
         if (!contractId || !type) return '';
 
         const typeCode = type === 'ANNUL' ? 'A' : 'T';
-        const dateStr = moment().format('YYYY-MM-DD');
+        const dateStr = moment().format("YYYYMMDD_HHmmss_SSS");
         return `${contractId}_${typeCode}_${dateStr}`;
     };
 
