@@ -185,7 +185,7 @@ function MeterReplacementForm() {
 
         } catch (err) {
             console.error("Lỗi khi gửi yêu cầu thay thế:", err);
-            toast.error(err.response?.data?.message || "Lỗi khi xử lý yêu cầu thay thế.", {
+            toast.error(err.response?.data?.message || "Lỗi khi xử lý yêu cầu thay thế. Đồng hồ phải là đồng hồ còn trong kho.", {
                 position: "top-center"
             });
         } finally {

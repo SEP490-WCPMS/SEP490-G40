@@ -282,4 +282,32 @@ public class AccountingStaffController {
         return ResponseEntity.ok().build();
     }
     // === HẾT PHẦN SỬA ===
+
+
+    // 1. Tạo hàng loạt Hóa đơn Nước
+    // POST /api/accounting/billing/bulk-generate
+    // Body: [1, 2, 3, 4, 5] (Danh sách ID của MeterReading)
+    @PostMapping("/billing/bulk-generate")
+    public ResponseEntity<BulkInvoiceResponseDTO> bulkGenerateWaterBills(@RequestBody List<Integer> readingIds) {
+        Integer staffId = getAuthenticatedStaffId();
+        return ResponseEntity.ok(accountingService.generateBulkWaterBills(readingIds, staffId));
+    }
+
+    // 2. Tạo hàng loạt Hóa đơn Lắp đặt
+    // POST /api/accounting/invoices/installation/bulk
+    // Body: [10, 11, 12] (Danh sách ID của Contract)
+    @PostMapping("/invoices/installation/bulk")
+    public ResponseEntity<BulkInvoiceResponseDTO> bulkCreateInstallationInvoices(@RequestBody List<Integer> contractIds) {
+        Integer staffId = getAuthenticatedStaffId();
+        return ResponseEntity.ok(accountingService.createBulkInstallationInvoices(contractIds, staffId));
+    }
+
+    // 3. Tạo hàng loạt Hóa đơn Dịch vụ (Kiểm định)
+    // POST /api/accounting/invoices/service/bulk
+    // Body: [5, 6, 7] (Danh sách ID của MeterCalibration)
+    @PostMapping("/invoices/service/bulk")
+    public ResponseEntity<BulkInvoiceResponseDTO> bulkCreateServiceInvoices(@RequestBody List<Integer> calibrationIds) {
+        Integer staffId = getAuthenticatedStaffId();
+        return ResponseEntity.ok(accountingService.createBulkServiceInvoices(calibrationIds, staffId));
+    }
 }

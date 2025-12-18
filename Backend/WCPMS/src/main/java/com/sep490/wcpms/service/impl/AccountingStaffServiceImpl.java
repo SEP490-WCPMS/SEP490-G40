@@ -38,6 +38,9 @@ import java.time.LocalDateTime;
 import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
 import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import com.sep490.wcpms.entity.Invoice.PaymentStatus;
+import com.sep490.wcpms.dto.BulkInvoiceResponseDTO; // Import DTO mới
+import java.util.ArrayList;
+import java.time.format.DateTimeFormatter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -783,4 +786,179 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         waterServiceContractRepository.saveAll(contractsToUpdate);
     }
     // === HẾT PHẦN SỬA ===
+
+
+    // =================================================================
+    // === TÍNH NĂNG LẬP HÓA ĐƠN HÀNG LOẠT (BULK ACTIONS) ===
+    // =================================================================
+
+    /**
+     * 1. Lập hàng loạt Hóa đơn Tiền Nước
+     */
+    @Override
+    @Transactional
+    public BulkInvoiceResponseDTO generateBulkWaterBills(List<Integer> readingIds, Integer staffId) {
+        int success = 0;
+        int fail = 0;
+
+        for (Integer readingId : readingIds) {
+            try {
+                // Gọi lại hàm tạo đơn lẻ đã có
+                generateWaterBill(readingId, staffId);
+                success++;
+            } catch (Exception e) {
+                System.err.println("Lỗi tạo HĐ nước ID " + readingId + ": " + e.getMessage());
+                fail++;
+            }
+        }
+        return new BulkInvoiceResponseDTO(success, fail, "Hoàn tất xử lý " + (success + fail) + " chỉ số nước.");
+    }
+
+    /**
+     * 2. Lập hàng loạt Hóa đơn Lắp Đặt
+     * (Lưu ý: Hàm này sẽ tự tính toán tiền dựa trên giá trị hợp đồng, không cần FE gửi tiền lên)
+     */
+    @Override
+    @Transactional
+    public BulkInvoiceResponseDTO createBulkInstallationInvoices(List<Integer> contractIds, Integer staffId) {
+        int success = 0;
+        int fail = 0;
+        Account staff = accountRepository.findById(staffId).orElse(null);
+
+        for (Integer contractId : contractIds) {
+            try {
+                Contract contract = contractRepository.findById(contractId)
+                        .orElseThrow(() -> new RuntimeException("Contract not found"));
+
+                // Kiểm tra điều kiện
+                if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE ||
+                        invoiceRepository.existsByContract_Id(contract.getId())) {
+                    fail++;
+                    continue;
+                }
+
+                // Tự động tính toán tiền (Giả sử ContractValue là Tổng tiền đã bao gồm VAT)
+                // Hoặc tùy logic doanh nghiệp của bạn. Ở đây giả sử:
+                BigDecimal totalAmount = contract.getContractValue();
+                // Tính ngược ra VAT (Ví dụ VAT 5% thì chia 1.05, ở đây giả sử VAT lấy từ Config hoặc mặc định)
+                BigDecimal vatRate = new BigDecimal("0.05"); // 5%
+                BigDecimal subtotal = totalAmount.divide(BigDecimal.ONE.add(vatRate), 0, RoundingMode.HALF_UP);
+                BigDecimal vatAmount = totalAmount.subtract(subtotal);
+
+                // Tạo hóa đơn
+                Invoice invoice = new Invoice();
+                invoice.setInvoiceNumber(generateContractInvoiceNumber(LocalDate.now(), contractId));
+                invoice.setCustomer(contract.getCustomer());
+                invoice.setContract(contract);
+                invoice.setMeterReading(null);
+
+                // Set ngày
+                LocalDate today = LocalDate.now();
+                invoice.setFromDate(contract.getInstallationDate() != null ? contract.getInstallationDate() : today);
+                invoice.setToDate(today);
+                invoice.setInvoiceDate(today);
+                invoice.setDueDate(today.plusDays(7)); // Hạn 7 ngày
+
+                // Set tiền
+                invoice.setTotalConsumption(BigDecimal.ZERO);
+                invoice.setSubtotalAmount(subtotal);
+                invoice.setVatAmount(vatAmount);
+                invoice.setTotalAmount(totalAmount);
+
+                invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
+                invoice.setAccountingStaff(staff); // Gán người đang bấm nút
+
+                Invoice saved = invoiceRepository.save(invoice);
+
+                // Gửi thông báo
+                invoiceNotificationService.sendInstallationInvoiceIssued(saved, contract);
+
+                success++;
+            } catch (Exception e) {
+                e.printStackTrace();
+                fail++;
+            }
+        }
+        return new BulkInvoiceResponseDTO(success, fail, "Hoàn tất xử lý " + (success + fail) + " hợp đồng.");
+    }
+
+    /**
+     * 3. Lập hàng loạt Hóa đơn Phí Kiểm Định (Dịch vụ)
+     */
+    @Override
+    @Transactional
+    public BulkInvoiceResponseDTO createBulkServiceInvoices(List<Integer> calibrationIds, Integer staffId) {
+        int success = 0;
+        int fail = 0;
+        Account staff = accountRepository.findById(staffId).orElse(null);
+        // Tạo formatter ngày tháng: MMyyyy (Ví dụ: 122025)
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMyyyy");
+
+        for (Integer calibId : calibrationIds) {
+            try {
+                MeterCalibration calibration = calibrationRepository.findById(calibId).orElse(null);
+                if (calibration == null || calibration.getInvoice() != null) {
+                    fail++; continue;
+                }
+
+                // Tìm Customer thông qua Meter -> Installation
+                // (Logic này copy từ hàm đơn lẻ, hoặc bạn có thể trích xuất ra hàm private để tái sử dụng)
+                MeterInstallation installation = calibration.getMeter().getInstallations().stream()
+                        .sorted((a, b) -> b.getInstallationDate().compareTo(a.getInstallationDate()))
+                        .findFirst().orElse(null);
+
+                if (installation == null || installation.getCustomer() == null) {
+                    fail++; continue;
+                }
+
+                // Tạo Invoice
+                Invoice invoice = new Invoice();
+                // === SỬA TẠI ĐÂY: Format DVKD + ID + MMyyyy ===
+                String datePart = LocalDate.now().format(formatter);
+                String invoiceNum = "DVKD" + calibId + datePart;
+                invoice.setInvoiceNumber(invoiceNum);
+                // ==============================================
+                invoice.setCustomer(installation.getCustomer());
+                invoice.setContract(installation.getContract());
+                invoice.setMeterReading(null);
+
+                LocalDate today = LocalDate.now();
+                invoice.setInvoiceDate(today);
+                invoice.setDueDate(today.plusDays(7));
+                invoice.setFromDate(today);
+                invoice.setToDate(today);
+
+                // === SỬA LỖI TẠI ĐÂY: Thêm dòng này ===
+                invoice.setTotalConsumption(BigDecimal.ZERO); // Mặc định là 0 cho hóa đơn dịch vụ
+                // ======================================
+
+                // Tiền
+                BigDecimal cost = calibration.getCalibrationCost();
+                BigDecimal subtotal = cost; // Giả sử phí kiểm định chưa thuế hoặc đã gồm thuế tùy quy định
+                BigDecimal vat = cost.multiply(new BigDecimal("0.05")); // VAT 5%
+                BigDecimal total = cost.add(vat);
+
+                invoice.setSubtotalAmount(subtotal);
+                invoice.setVatAmount(vat);
+                invoice.setTotalAmount(total);
+
+                invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
+                invoice.setAccountingStaff(staff);
+
+                Invoice savedInvoice = invoiceRepository.save(invoice);
+
+                // Link ngược lại
+                calibration.setInvoice(savedInvoice);
+                calibrationRepository.save(calibration);
+
+                // Gửi noti
+                invoiceNotificationService.sendServiceInvoiceIssued(savedInvoice, "Phí kiểm định định kỳ", "5%");
+
+                success++;
+            } catch (Exception e) {
+                fail++;
+            }
+        }
+        return new BulkInvoiceResponseDTO(success, fail, "Hoàn tất xử lý " + (success + fail) + " phí dịch vụ.");
+    }
 }

@@ -9,4 +9,5 @@ public class SurveyReportRequestDTO {
     private LocalDate surveyDate;
     private String technicalDesign;
     private BigDecimal estimatedCost;
+    private String notes;
 }
