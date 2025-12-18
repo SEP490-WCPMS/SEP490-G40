@@ -211,3 +211,32 @@ export const getWaterBillCalculation = (meterReadingId) => {
     // Nếu không có serviceApiClient, bạn có thể dùng apiClient chung.
     return apiClient.get(`/accounting/billing/calculate-bill/${meterReadingId}`);
 };
+
+
+// =================================================================
+// === API LẬP HÓA ĐƠN HÀNG LOẠT (BULK ACTIONS) ===
+// =================================================================
+
+/**
+ * 1. Lập hàng loạt Hóa đơn Tiền Nước
+ * @param {Array<number>} readingIds - Danh sách ID chỉ số nước (MeterReading IDs)
+ */
+export const bulkGenerateWaterBills = (readingIds) => {
+    return apiClient.post('/accounting/billing/bulk-generate', readingIds);
+};
+
+/**
+ * 2. Lập hàng loạt Hóa đơn Lắp đặt
+ * @param {Array<number>} contractIds - Danh sách ID hợp đồng (Contract IDs)
+ */
+export const bulkCreateInstallationInvoices = (contractIds) => {
+    return apiClient.post('/accounting/invoices/installation/bulk', contractIds);
+};
+
+/**
+ * 3. Lập hàng loạt Hóa đơn Dịch vụ (Kiểm định)
+ * @param {Array<number>} calibrationIds - Danh sách ID kiểm định (MeterCalibration IDs)
+ */
+export const bulkCreateServiceInvoices = (calibrationIds) => {
+    return apiClient.post('/accounting/invoices/service/bulk', calibrationIds);
+};
