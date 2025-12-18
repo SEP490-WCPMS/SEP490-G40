@@ -77,7 +77,7 @@ const ContractDetail = () => {
                 break;
             case 'PENDING_SIGN':
                 color = 'geekblue';
-                displayText = 'Đang chờ khách ký';
+                displayText = 'Khách đã ký';
                 break;
             case 'SIGNED':
                 color = 'purple';
