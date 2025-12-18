@@ -24,11 +24,7 @@ function EligibleInstallationContracts() {
             .then((res) => {
                 const data = res.data;
                 const content = data.content || [];
-
-                // Sắp xếp lại theo id ASC để hiển thị cùng thứ tự với SQL
-                const sorted = [...content].sort((a, b) => (a.id || 0) - (b.id || 0));
-
-                setContracts(sorted);
+                setContracts(content);
                 setPagination({
                     page: data.number ?? page,
                     size: data.size ?? size,

@@ -185,6 +185,21 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
     List<Account> findAccountingStaffOrderedByWorkload(Pageable pageable);
 
 
+    // TÌM KẾ TOÁN ÍT VIỆC NHẤT DỰA TRÊN TỔNG SỐ HÓA ĐƠN PENDING
+    @Query(value = """
+        SELECT a.*
+        FROM accounts a
+        JOIN roles r ON a.role_id = r.id
+        LEFT JOIN invoices i ON i.accounting_staff_id = a.id 
+                             AND i.payment_status = 'PENDING' -- Chỉ đếm hóa đơn chưa xong việc
+        WHERE r.role_name = 'ACCOUNTING_STAFF'
+          AND a.status = 1 
+        GROUP BY a.id
+        ORDER BY COUNT(i.id) ASC, a.id ASC
+        LIMIT 1
+    """, nativeQuery = true)
+    Optional<Account> findAccountingStaffWithLeastPendingInvoices();
+
     /**
      * Tìm nhân viên Dịch vụ (Service Staff) đang có ít ticket (PENDING/IN_PROGRESS) nhất.
      * Logic: Join với bảng feedback, đếm số lượng ticket đang xử lý, sắp xếp tăng dần -> lấy người đầu tiên.

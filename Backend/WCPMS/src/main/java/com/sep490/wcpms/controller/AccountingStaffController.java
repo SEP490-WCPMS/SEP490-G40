@@ -8,6 +8,7 @@ import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.entity.ReadingRoute;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.AccountingStaffService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -173,7 +174,7 @@ public class AccountingStaffController {
      */
     @PostMapping("/invoices/installation")
     public ResponseEntity<InvoiceDTO> createInstallationInvoice(
-            @RequestBody ContractInstallationInvoiceCreateDTO body
+            @Valid @RequestBody ContractInstallationInvoiceCreateDTO body
     ) {
         Integer staffId = getAuthenticatedStaffId();
         InvoiceDTO dto = accountingService.createInstallationInvoice(body, staffId);

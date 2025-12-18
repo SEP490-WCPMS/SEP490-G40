@@ -215,9 +215,18 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
     const handleSubmit = async () => {
         try {
             if (modalType === 'reactivate') { setShowReactivateConfirm(true); return; }
+            
             const values = await form.validateFields();
+            
             if (modalType === 'renew') {
-                setRenewData({ endDate: values.newEndDate ? values.newEndDate.format('YYYY-MM-DD') : null, notes: values.notes });
+                const newDate = values.newEndDate;
+                // Kiểm tra ngày: Nếu nhỏ hơn hoặc bằng hôm nay -> Báo lỗi
+                if (newDate && newDate.isBefore(dayjs(), 'day')) {
+                    toast.error('Ngày kết thúc mới phải sau ngày hôm nay!');
+                    return; 
+                }
+
+                setRenewData({ endDate: newDate ? newDate.format('YYYY-MM-DD') : null, notes: values.notes });
                 setShowRenewConfirm(true);
             } else if (modalType === 'terminate' || modalType === 'suspend') {
                 setConfirmData({ reason: values.reason, actionType: modalType });
