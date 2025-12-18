@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { message, Modal, Form, Input, DatePicker, Input as FormInput } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // --- IMPORT ĐÚNG THEO FILE BẠN GỬI ---
 import ContractTable from './ContractTable';      
@@ -140,6 +141,17 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
 
         // --- GỬI KÝ  ---
         if (action === 'sendToSign') {
+            // Block guest customers from sending to sign
+            if (record.isGuest || !record.customerCode) {
+                const contentNode = (
+                    <div>
+                        <p>Khách hàng <b>{record.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                        <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
+                    </div>
+                );
+                toast.error(contentNode, { position: 'top-center', autoClose: 5000 });
+                return;
+            }
             setSelectedContract(record);
             setConfirmConfig({
                 title: 'Gửi khách hàng ký',
@@ -343,6 +355,18 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
 
   return (
     <div>
+            <ToastContainer 
+                                position="top-center"
+                                autoClose={5000}
+                                hideProgressBar={false}
+                                newestOnTop={false}
+                                closeOnClick
+                                rtl={false}
+                                pauseOnFocusLoss
+                                draggable
+                                pauseOnHover
+                                theme="colored"
+                        />
       <ContractTable
         data={data}
         loading={loading}

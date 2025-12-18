@@ -3,6 +3,7 @@ import Pagination from '../common/Pagination';
 import { Loader2 } from 'lucide-react';
 import { Tag, Tooltip, Space } from 'antd'; 
 import { PhoneOutlined, EnvironmentOutlined, UserOutlined } from '@ant-design/icons'; 
+import { toast } from 'react-toastify';
 
 // Helper: render trạng thái
 const renderStatus = (status) => {
@@ -67,16 +68,6 @@ const renderActions = (record, onViewDetails) => {
         Tạo HĐ chính thức
       </button>
     );
-    // Vẫn giữ nút Từ chối nếu cần thiết (theo code SurveyReviewPage của bạn)
-    actions.push(
-       <button
-        key="reject"
-        className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'rejectSurvey')}
-      >
-        Từ chối
-      </button>
-    );
   }
 
   if (status === 'APPROVED') {
@@ -84,7 +75,21 @@ const renderActions = (record, onViewDetails) => {
       <button
         key="sendToSign"
         className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'sendToSign')}
+        onClick={() => {
+          // Block guest customers from sending to sign with a warning + red toast
+          if (record.isGuest || !record.customerCode) {
+            const contentNode = (
+              <div>
+                <p>Khách hàng <b>{record.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
+              </div>
+            );
+            // Show only a react-toastify error toast (no modal)
+            toast.error(contentNode, { position: 'top-center', autoClose: 5000 });
+            return;
+          }
+          onViewDetails(record, 'sendToSign');
+        }}
       >
         Gửi ký
       </button>
@@ -169,10 +174,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                #
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Số Hợp đồng
+                Mã Hợp đồng
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Khách hàng
