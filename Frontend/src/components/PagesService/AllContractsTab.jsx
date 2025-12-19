@@ -215,7 +215,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
 
         form.resetFields();
         if (action === 'renew') {
-             form.setFieldsValue({ newEndDate: null, notes: '' });
+             form.setFieldsValue({ newEndDate: null});
         } else if (action === 'terminate' || action === 'suspend') {
              form.setFieldsValue({
                 contractNumber: fullData.contractNumber,
@@ -253,8 +253,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                   message: 'Bạn có chắc chắn muốn gia hạn hợp đồng này?',
                   action: async () => {
                       await renewContract(selectedContract.id, {
-                          endDate: values.newEndDate.format('YYYY-MM-DD'),
-                          notes: values.notes
+                          endDate: values.newEndDate.format('YYYY-MM-DD')
                       });
                       toast.success('Gia hạn hợp đồng thành công!'); // <--- THÊM TOAST
                   }
@@ -333,7 +332,6 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" 
                            disabledDate={d => d && d.isBefore(dayjs(selectedContract?.endDate).add(1, 'day'))} />
                    </Form.Item>
-                   <Form.Item name="notes" label="Ghi chú"><TextArea rows={3} /></Form.Item>
               </Form>
           );
       }
@@ -341,7 +339,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
           return (
               <Form form={form} layout="vertical">
                   <div className={`p-3 mb-4 rounded ${modalType === 'terminate' ? 'bg-red-50 text-red-800' : 'bg-yellow-50 text-yellow-800'}`}>
-                      <strong>{modalType === 'terminate' ? '⚠️ Chấm dứt hợp đồng' : '⏸️ Tạm ngưng hợp đồng'}</strong>
+                      <strong>{modalType === 'terminate' ? 'Chấm dứt hợp đồng' : 'Tạm ngưng hợp đồng'}</strong>
                   </div>
                   <Form.Item label="Mã Hợp đồng">
                       <FormInput disabled value={selectedContract?.contractNumber} style={{backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9'}} />
@@ -422,10 +420,11 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                     onCancel={() => setModalVisible(false)}
                     onOk={handleModalSubmit}
                     confirmLoading={modalLoading}
-                    destroyOnClose
+                    destroyOnHidden
                     okText={modalType === 'renew' ? 'Xác nhận Gia hạn' : (modalType === 'terminate' ? 'Chấm dứt' : (modalType === 'suspend' ? 'Tạm ngưng' : 'Xác nhận'))}
                     cancelText="Hủy"
                     okButtonProps={{ danger: modalType === 'terminate' }}
+                    destroyOnClose
                 >
                     {renderFormContent()}
                 </Modal>

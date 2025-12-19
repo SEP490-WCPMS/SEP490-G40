@@ -132,6 +132,19 @@ const renderActions = (record, onViewDetails) => {
     );
   }
 
+  // --- NÚT GIA HẠN ---
+  if (status === 'EXPIRED') {
+    actions.push(
+      <button
+        key="renew"
+        className="font-semibold text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out"
+        onClick={() => onViewDetails(record, 'renew')}
+      >
+        Gia hạn
+      </button>
+    );
+  }
+
   if (status === 'SUSPENDED') {
     actions.push(
       <button

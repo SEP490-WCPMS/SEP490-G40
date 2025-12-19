@@ -22,7 +22,6 @@ const ApprovedContractsPage = ({ refreshKey }) => {
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [generateModalOpen, setGenerateModalOpen] = useState(false);
-    const [generateForm] = Form.useForm();
     const navigate = useNavigate();
     
     const [showSendToSignConfirm, setShowSendToSignConfirm] = useState(false);

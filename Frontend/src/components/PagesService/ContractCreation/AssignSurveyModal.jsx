@@ -1,16 +1,14 @@
-﻿// File: src/component/PagesService/ContractManagement/AssignSurveyModal.jsx
-
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Modal, Form, Select, Input, Spin, message, Divider, Row, Col, Tag } from 'antd';
 import { FileTextOutlined, UserOutlined, AppstoreOutlined, InfoCircleOutlined, TeamOutlined } from '@ant-design/icons';
 import { toast, ToastContainer } from 'react-toastify';
 import { getAvailableTechStaff } from '../../Services/apiService';
 import ConfirmModal from '../../common/ConfirmModal';
-import './AssignSurveyModal.css'; // ✨ SỬA LỖI 1: Đổi tên file CSS import cho khớp
+import './AssignSurveyModal.css'; 
 
 const { TextArea } = Input;
 
-// ✨ SỬA LỖI 2: Đổi tên Component cho khớp với tên file
+
 const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialData, onSuccess }) => {
   const [form] = Form.useForm();
   const [technicalStaff, setTechnicalStaff] = useState([]);
@@ -25,7 +23,6 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
       setStaffLoading(true);
       getAvailableTechStaff()
         .then((response) => {
-          console.log('Phản hồi nhân viên kỹ thuật:', response);
           // Backend may return list in various shapes: { data }, { content }, or raw array
           const payload = response?.data ?? [];
           const staff = payload?.data ?? payload?.content ?? payload;
@@ -43,7 +40,6 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
 
   useEffect(() => {
     if (isOpen && initialData) {
-      console.log('AssignSurveyModal - initialData:', initialData); // Sửa tên log
       form.setFieldsValue({
         contractNumber: initialData.contractNumber,
         customerName: initialData.customerName,
@@ -59,7 +55,6 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
   const handleOk = async () => {
     form.validateFields(['technicalStaffId']).then(() => {
       const formValues = form.getFieldsValue(['technicalStaffId']);
-      console.log('Form values:', formValues);
       
       if (!formValues.technicalStaffId) {
         toast.warning('Vui lòng chọn NV Kỹ thuật!');
@@ -78,22 +73,28 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
     
     setSubmitLoading(true);
     try {
-      await onSave({
-        ...initialData,
+      // Chuẩn bị payload đúng chuẩn để gửi lên cha (ServiceDashboardPage)
+      const payload = {
+        id: initialData?.id, 
+        contractNumber: initialData?.contractNumber,
         technicalStaffId: formValues.technicalStaffId,
-      });
+        notes: initialData?.notes 
+      };
+
+      await onSave(payload);
       
       // Đóng confirm modal
       setShowConfirm(false);
       
-      // Đóng modal chính
-      onCancel();
+      // Đóng modal chính (nếu parent không tự đóng)
+      // onCancel();
       
       // Gọi callback để parent xử lý toast + refresh
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
+      // Chỉ log lỗi quan trọng, toast lỗi do parent hoặc apiService xử lý
       console.error('Error in handleConfirmSubmit:', error);
       setShowConfirm(false);
       // Lỗi thì không đóng modal
@@ -115,11 +116,12 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
       onOk={handleOk}
       confirmLoading={submitLoading || loading}
       width={800}
-      destroyOnClose
+      destroyOnClose // Dùng đúng prop của Antd v5
       okText="Gửi Khảo Sát"
       cancelText="Hủy"
       centered
-      bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+      //Sửa bodyStyle thành styles theo chuẩn Antd v5 để tránh warning
+      styles={{ body: { maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' } }}
       style={{ top: 20 }}
     >
       <Spin spinning={loading}>
@@ -169,8 +171,8 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
           >
             <Select 
               placeholder="Chọn nhân viên kỹ thuật để thực hiện khảo sát..." 
-              loading={staffLoading}
-              size="large"
+              loading={staffLoading} 
+              size="large" 
               showSearch
               // Logic lọc tìm kiếm theo tên
               filterOption={(input, option) =>
@@ -247,4 +249,4 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
   );
 };
 
-export default AssignSurveyModal; // ✨ SỬA LỖI 3: Đổi tên export
+export default AssignSurveyModal; 

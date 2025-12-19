@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 // Icons Lucide
-import { 
+import {
     FilePlus,       // Yêu cầu mới
     Search,         // Đã khảo sát
     FileCheck,      // Đã duyệt
@@ -34,7 +34,7 @@ import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
 
 // API Services
-import { 
+import {
     getServiceStaffChartData,
     getServiceContracts,
     getServiceContractDetail,
@@ -62,33 +62,37 @@ const chartOptions = {
 
 const ServiceDashboardPage = () => {
     const navigate = useNavigate();
-    
+
     // --- States ---
     const [stats, setStats] = useState({
         draftCount: 0,
         pendingSurveyCount: 0,
         approvedCount: 0,
-        pendingSignCount: 0, // Thay thế signedCount bằng pendingSignCount (Khách đã ký -> Chờ gửi lắp)
+        pendingSignCount: 0,
     });
 
     const [recentContracts, setRecentContracts] = useState([]);
     const [loadingRecent, setLoadingRecent] = useState(false);
     const [recentPagination, setRecentPagination] = useState({ current: 1, pageSize: 5, total: 0 });
-    
-    // Filter mặc định là 'action_required' (Chỉ hiện việc cần làm)
+
     const [filterStatus, setFilterStatus] = useState('action_required');
 
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalMode, setModalMode] = useState('view');
-    // Confirm send-to-install states
+
+    // --- State cho Modal Gửi Lắp Đặt ---
     const [showSendToInstallConfirm, setShowSendToInstallConfirm] = useState(false);
     const [installingContract, setInstallingContract] = useState(null);
     const [installing, setInstalling] = useState(false);
 
+    // --- State cho Modal Gửi Ký (MỚI THÊM ĐỂ FIX LỖI KHÔNG HIỆN) ---
+    const [showSendToSignConfirm, setShowSendToSignConfirm] = useState(false);
+    const [signingContract, setSigningContract] = useState(null);
+    const [isSigning, setIsSigning] = useState(false);
+
     const [chartData, setChartData] = useState({ labels: [], datasets: [] });
-    // Date Range cho biểu đồ
     const [dateRange, setDateRange] = useState([moment().subtract(6, 'days'), moment()]);
     const [loadingChart, setLoadingChart] = useState(false);
 
@@ -104,49 +108,60 @@ const ServiceDashboardPage = () => {
         return labels;
     };
 
+    // --- XỬ LÝ GỬI LẮP ĐẶT ---
     const handleConfirmSendToInstall = async () => {
         if (!installingContract) return;
         setInstalling(true);
 
-        // optimistic update: remove item locally
-        const prevContracts = recentContracts;
-        const prevTotal = recentPagination.total || 0;
-        setRecentContracts(prev => prev.filter(c => c.id !== installingContract.id));
-        setRecentPagination(prev => ({ ...prev, total: Math.max(0, (prev.total || 1) - 1) }));
-        setIsModalVisible(false);
-        setSelectedContract(null);
-        setShowSendToInstallConfirm(false);
-
         try {
             await sendContractToInstallation(installingContract.id);
-            toast.success('Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".');
-            // refresh to sync
+            toast.success('Đã gửi lắp đặt thành công!');
+
+            setShowSendToInstallConfirm(false);
+            setInstallingContract(null);
+
+            // Refresh dữ liệu (false = không hiện toast "Đang cập nhật")
             fetchRecentContracts(recentPagination.current, recentPagination.pageSize);
+            fetchStats();
         } catch (error) {
-            // rollback
-            setRecentContracts(prevContracts);
-            setRecentPagination(prev => ({ ...prev, total: prevTotal }));
             toast.error('Gửi lắp đặt thất bại!');
             console.error('Send to install error:', error);
         } finally {
             setInstalling(false);
-            setInstallingContract(null);
+        }
+    };
+
+    // --- XỬ LÝ GỬI KÝ (FIX LỖI) ---
+    const handleConfirmSendToSign = async () => {
+        if (!signingContract) return;
+        setIsSigning(true);
+        try {
+            await sendContractToSign(signingContract.id);
+            toast.success('Đã gửi hợp đồng cho khách ký!');
+
+            setShowSendToSignConfirm(false);
+            setSigningContract(null);
+
+            // Refresh dữ liệu (false = không hiện toast "Đang cập nhật")
+            handleRefresh(false);
+        } catch (error) {
+            toast.error('Gửi ký thất bại');
+            console.error(error);
+        } finally {
+            setIsSigning(false);
         }
     };
 
     // --- Fetch Data ---
     const fetchStats = async () => {
         try {
-            // Gọi song song các API đếm số lượng
-            // Lưu ý: Đảm bảo backend trả về đúng cấu trúc response.data.totalElements hoặc response.data.page.totalElements
             const [draftRes, surveyRes, approvedRes, pendingSignRes] = await Promise.all([
                 getServiceContracts({ page: 0, size: 1, status: 'DRAFT' }),
-                getServiceContracts({ page: 0, size: 1, status: 'PENDING_SURVEY_REVIEW' }), // Đã KS, chờ duyệt
-                getServiceContracts({ page: 0, size: 1, status: 'APPROVED' }), // Đã duyệt, chờ gửi ký
-                getServiceContracts({ page: 0, size: 1, status: 'PENDING_SIGN' }) // Khách đã ký, chờ gửi lắp (QUAN TRỌNG)
+                getServiceContracts({ page: 0, size: 1, status: 'PENDING_SURVEY_REVIEW' }),
+                getServiceContracts({ page: 0, size: 1, status: 'APPROVED' }),
+                getServiceContracts({ page: 0, size: 1, status: 'PENDING_SIGN' })
             ]);
 
-            // Helper để lấy total an toàn từ response
             const getTotal = (res) => res?.data?.totalElements || res?.data?.page?.totalElements || 0;
 
             setStats({
@@ -165,41 +180,40 @@ const ServiceDashboardPage = () => {
         try {
             const startDate = moment.isMoment(start) ? start.toDate() : new Date(start);
             const endDate = moment.isMoment(end) ? end.toDate() : new Date(end);
-            
+
             const response = await getServiceStaffChartData(startDate, endDate);
             const data = response?.data || {};
 
             const beLabels = data.labels;
             const beSent = data.surveyCompletedCounts;
             const beApproved = data.installationCompletedCounts;
-            const bePendingSign = data.pendingSignCounts || []; 
+            const bePendingSign = data.pendingSignCounts || [];
 
             const labels = beLabels?.length ? beLabels : buildLabels(startDate, endDate);
-            
-            // Biểu đồ: Bỏ Active, chỉ giữ 3 đường quan trọng của Service Staff
+
             setChartData({
                 labels,
                 datasets: [
-                    { 
-                        label: 'Gửi khảo sát', 
-                        data: beSent?.length ? beSent : labels.map(() => 0), 
-                        borderColor: '#1890ff', 
-                        backgroundColor: '#1890ff', 
-                        tension: 0.3 
+                    {
+                        label: 'Gửi khảo sát',
+                        data: beSent?.length ? beSent : labels.map(() => 0),
+                        borderColor: '#1890ff',
+                        backgroundColor: '#1890ff',
+                        tension: 0.3
                     },
-                    { 
-                        label: 'Đã duyệt', 
-                        data: beApproved?.length ? beApproved : labels.map(() => 0), 
-                        borderColor: '#52c41a', 
-                        backgroundColor: '#52c41a', 
-                        tension: 0.3 
+                    {
+                        label: 'Đã duyệt',
+                        data: beApproved?.length ? beApproved : labels.map(() => 0),
+                        borderColor: '#52c41a',
+                        backgroundColor: '#52c41a',
+                        tension: 0.3
                     },
-                    { 
-                        label: 'Gửi ký', 
-                        data: bePendingSign?.length ? bePendingSign : labels.map(() => 0), 
-                        borderColor: '#722ed1', 
-                        backgroundColor: '#722ed1', 
-                        tension: 0.3 
+                    {
+                        label: 'Gửi ký',
+                        data: bePendingSign?.length ? bePendingSign : labels.map(() => 0),
+                        borderColor: '#722ed1',
+                        backgroundColor: '#722ed1',
+                        tension: 0.3
                     },
                 ],
             });
@@ -213,7 +227,6 @@ const ServiceDashboardPage = () => {
     const fetchRecentContracts = async (page = 1, pageSize = 5) => {
         setLoadingRecent(true);
         try {
-            // If showing 'action_required' we want to fetch a larger block and paginate client-side
             if (filterStatus === 'action_required') {
                 const fetchSize = Math.max(200, pageSize * 10);
                 const response = await getServiceContracts({ page: 0, size: fetchSize, status: null, sort: 'updatedAt,desc' });
@@ -232,7 +245,6 @@ const ServiceDashboardPage = () => {
                 return;
             }
 
-            // Otherwise ask backend for paged results by status
             const params = { page: page - 1, size: pageSize, sort: 'updatedAt,desc' };
             if (filterStatus && filterStatus !== 'all') params.status = filterStatus;
 
@@ -249,7 +261,6 @@ const ServiceDashboardPage = () => {
         }
     };
 
-    // Dashboard-only stat card (local) - không ảnh hưởng component chung `StatisticCard`
     const DashboardStat = ({ title, value, suffix, color = '#1890ff', onClick }) => (
         <div onClick={onClick} className="cursor-pointer hover:translate-y-[-2px] transition-transform">
             <Card bordered={false} className="statistic-card">
@@ -274,7 +285,6 @@ const ServiceDashboardPage = () => {
         fetchRecentContracts(1, recentPagination.pageSize);
     }, [filterStatus]);
 
-    // --- Handlers ---
     const handleCardClick = (path) => navigate(path);
 
     const handleRecentTableChange = (pagination) => {
@@ -298,45 +308,52 @@ const ServiceDashboardPage = () => {
         }
     };
 
-    const handleRefresh = () => {
+    // --- SỬA LẠI: Hàm refresh nhận tham số showToast ---
+    // Mặc định là true (hiện toast) khi bấm nút Làm mới
+    // Khi gọi tự động sau các action thì truyền false để ẩn toast
+    const handleRefresh = (showToast = true) => {
         fetchStats();
         if (dateRange[0] && dateRange[1]) fetchChartData(dateRange[0], dateRange[1]);
         fetchRecentContracts(recentPagination.current, recentPagination.pageSize);
-        toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
+        if (showToast) {
+            toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
+        }
     };
 
     // Action handlers (Tương tác nút bấm trên bảng)
     const handleViewDetails = async (record, action = 'view') => {
         setModalLoading(true);
         try {
-            // Shortcut: navigate to contract-create when requested from dashboard
             if (action === 'generateWater') {
                 navigate('/service/contract-create', { state: { sourceContractId: record.id } });
                 return;
             }
 
+            // --- SỬA LẠI: NÚT GỬI KÝ ---
             if (action === 'sendToSign') {
-                // Confirm trước khi gửi ký
-                Modal.confirm({
-                    title: 'Xác nhận gửi ký',
-                    content: `Bạn có chắc chắn muốn gửi hợp đồng ${record.contractNumber} cho khách hàng ký?`,
-                    onOk: async () => {
-                        try {
-                            await sendContractToSign(record.id);
-                            toast.success('Đã gửi hợp đồng cho khách ký!');
-                            handleRefresh();
-                        } catch (e) {
-                            toast.error('Gửi ký thất bại');
-                        }
-                    }
-                });
+                // Kiểm tra điều kiện Guest
+                if (record.isGuest || !record.customerCode) {
+                    toast.error(
+                        <div>
+                            <p>Khách hàng <b>{record.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                            <p>Vui lòng liên hệ Admin để tạo tài khoản trước khi gửi ký.</p>
+                        </div>
+                    );
+                    setModalLoading(false);
+                    return;
+                }
+
+                // Mở Modal Confirm thay vì gọi API ngay
+                setSigningContract(record);
+                setShowSendToSignConfirm(true);
+                setModalLoading(false);
                 return;
             }
 
             if (action === 'sendToInstallation') {
-                // Use ConfirmModal flow with optimistic update similar to SignedContractsPage
                 setInstallingContract(record);
                 setShowSendToInstallConfirm(true);
+                setModalLoading(false);
                 return;
             }
 
@@ -346,34 +363,34 @@ const ServiceDashboardPage = () => {
                     title: 'Xác nhận chấm dứt hợp đồng',
                     content: (
                         <div className="space-y-2">
-                             <p>Hành động này không thể hoàn tác. Vui lòng nhập lý do:</p>
-                             <Input.TextArea 
-                                rows={3} 
-                                onChange={(e) => { reason = e.target.value; }} 
-                                placeholder="Nhập lý do chấm dứt..." 
-                             />
+                            <p>Hành động này không thể hoàn tác. Vui lòng nhập lý do:</p>
+                            <Input.TextArea
+                                rows={3}
+                                onChange={(e) => { reason = e.target.value; }}
+                                placeholder="Nhập lý do chấm dứt..."
+                            />
                         </div>
                     ),
                     onOk: async () => {
                         if (!reason.trim()) {
                             toast.warning('Vui lòng nhập lý do!');
-                            return Promise.reject(); // Prevent modal close
+                            return Promise.reject();
                         }
                         try {
                             await terminateContract(record.id, reason);
                             toast.success('Đã chấm dứt hợp đồng');
-                            handleRefresh();
+                            handleRefresh(false); // Ẩn toast loading
                         } catch (e) {
                             toast.error('Chấm dứt thất bại');
                         }
                     }
                 });
+                setModalLoading(false);
                 return;
             }
 
             // --- GỬI KHẢO SÁT (submit) ---
             if (action === 'submit') {
-                // Open assign survey modal (same as other pages)
                 const res = await getServiceContractDetail(record.id);
                 setSelectedContract(res.data || record);
                 setModalMode('edit');
@@ -388,77 +405,85 @@ const ServiceDashboardPage = () => {
             setIsModalVisible(true);
         } catch (error) {
             console.error(error);
+            toast.error('Có lỗi xảy ra khi tải dữ liệu!');
         } finally {
-            setModalLoading(false);
+            // Chỉ tắt loading nếu chưa tắt ở trên (tránh tắt sớm khi đang chuyển modal)
+            if (action !== 'sendToSign' && action !== 'sendToInstallation') {
+                setModalLoading(false);
+            }
         }
     };
 
     // Confirm + submit for AssignSurveyModal save
     const handleModalSave = async (values) => {
         try {
-            // Confirm before sending survey
-            Modal.confirm({
-                title: 'Xác nhận gửi khảo sát',
-                content: `Bạn có chắc chắn muốn gửi hợp đồng ${values.contractNumber || values.id} cho khảo sát?`,
-                onOk: async () => {
-                    setModalLoading(true);
-                    try {
-                        await submitContractForSurvey(values.id, {
-                            technicalStaffId: values.technicalStaffId,
-                            notes: values.notes
-                        });
-                        toast.success('Gửi yêu cầu khảo sát thành công!');
-                        setIsModalVisible(false);
-                        handleRefresh();
-                    } catch (err) {
-                        toast.error('Gửi thất bại');
-                    } finally {
-                        setModalLoading(false);
-                    }
-                }
+            // Gọi API trực tiếp và chờ kết quả
+            await submitContractForSurvey(values.id, {
+                technicalStaffId: values.technicalStaffId,
+                notes: values.notes
             });
-        } catch (error) {
-            console.error(error);
+
+            toast.success('Gửi yêu cầu khảo sát thành công!');
+            setIsModalVisible(false);
+            handleRefresh(false);
+
+            // QUAN TRỌNG: Phải return Promise để Modal con biết là đã xong và tắt loading
+            return Promise.resolve();
+        } catch (err) {
+            console.error(err);
+            toast.error('Gửi thất bại: ' + (err.message || 'Lỗi hệ thống'));
+            // Ném lỗi ra để Modal con bắt được và tắt loading nhưng không đóng modal
+            return Promise.reject(err);
         }
     };
 
     return (
         <div className="bg-gray-50 min-h-screen space-y-6">
-            <ToastContainer autoClose={2000} />
-            
-            {/* --- SECTION 1: STATISTICS CARDS (4 Cards - Bỏ Active) --- */}
-            {/*Mobile (mặc định): 1 cột. Sm: 2 cột. Lg: 4 cột.*/}
+            {/* --- FIX: THÊM theme="colored" ĐỂ HIỆN MÀU XANH/ĐỎ --- */}
+            <ToastContainer
+                position="top-center"
+                autoClose={2000}
+                theme="colored"
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+
+            {/* --- SECTION 1: STATISTICS CARDS --- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div onClick={() => handleCardClick('/service/requests')} className="cursor-pointer hover:translate-y-[-2px] transition-transform">
-                    <StatisticCard 
-                        title="Yêu cầu mới" 
-                        value={stats.draftCount} 
-                        icon={<FilePlus size={24} className="text-blue-500" />} 
+                    <StatisticCard
+                        title="Yêu cầu mới"
+                        value={stats.draftCount}
+                        icon={<FilePlus size={24} className="text-blue-500" />}
                         suffix=" hợp đồng"
                     />
                 </div>
                 <div onClick={() => handleCardClick('/service/survey-reviews')} className="cursor-pointer hover:translate-y-[-2px] transition-transform">
-                    <StatisticCard 
-                        title="Đã khảo sát" 
-                        value={stats.pendingSurveyCount} 
-                        icon={<Search size={24} className="text-yellow-500" />} 
+                    <StatisticCard
+                        title="Đã khảo sát"
+                        value={stats.pendingSurveyCount}
+                        icon={<Search size={24} className="text-yellow-500" />}
                         suffix=" hợp đồng"
                     />
                 </div>
                 <div onClick={() => handleCardClick('/service/approved-contracts')} className="cursor-pointer hover:translate-y-[-2px] transition-transform">
-                    <StatisticCard 
-                        title="Đã duyệt" 
-                        value={stats.approvedCount} 
-                        icon={<FileCheck size={24} className="text-green-500" />} 
+                    <StatisticCard
+                        title="Đã duyệt"
+                        value={stats.approvedCount}
+                        icon={<FileCheck size={24} className="text-green-500" />}
                         suffix=" hợp đồng"
                     />
                 </div>
-                {/* Thay "Chờ lắp đặt" bằng "Đã ký" (Khách đã ký - Chờ gửi lắp) */}
                 <div onClick={() => handleCardClick('/service/signed-contracts')} className="cursor-pointer hover:translate-y-[-2px] transition-transform">
-                    <StatisticCard 
-                        title="Đã ký" 
-                        value={stats.pendingSignCount} 
-                        icon={<PenTool size={24} className="text-purple-500" />} 
+                    <StatisticCard
+                        title="Đã ký"
+                        value={stats.pendingSignCount}
+                        icon={<PenTool size={24} className="text-purple-500" />}
                         suffix=" hợp đồng"
                     />
                 </div>
@@ -468,7 +493,7 @@ const ServiceDashboardPage = () => {
             <Card className="shadow-sm border border-gray-200">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                     <Title level={5} style={{ margin: 0 }}>Hiệu suất xử lý yêu cầu</Title>
-                    
+
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                         <div className="flex items-center gap-2">
                             <input
@@ -486,9 +511,9 @@ const ServiceDashboardPage = () => {
                                 min={dateRange[0].format('YYYY-MM-DD')}
                             />
                         </div>
-                        
+
                         <button
-                            onClick={handleRefresh}
+                            onClick={() => handleRefresh(true)} // Bấm nút thì HIỆN toast
                             className="flex items-center justify-center px-3 py-1.5 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition text-sm font-medium"
                             disabled={loadingRecent}
                         >
@@ -524,7 +549,7 @@ const ServiceDashboardPage = () => {
                             <Select.Option value="PENDING_SIGN">Cần gửi lắp</Select.Option>
                         </Select>
                     </div>
-                    
+
                     {/* Link đến trang All Contracts để xem toàn bộ lịch sử */}
                     <Button
                         type="primary"
@@ -540,32 +565,40 @@ const ServiceDashboardPage = () => {
 
                 <Spin spinning={loadingRecent}>
                     {/* Bảng full tính năng, hỗ trợ phân trang, hành động */}
-                    <ContractTable 
-                        data={recentContracts} 
-                        loading={loadingRecent} 
+                    <ContractTable
+                        data={recentContracts}
+                        loading={loadingRecent}
                         pagination={recentPagination}
                         onPageChange={handleRecentTableChange}
                         onViewDetails={handleViewDetails}
-                        showStatusFilter={false} 
+                        showStatusFilter={false}
                     />
                 </Spin>
             </Card>
 
             {/* --- MODALS --- */}
             <ContractViewModal
-                visible={isModalVisible && modalMode === 'view'}
+                open={isModalVisible && modalMode === 'view'}
                 onCancel={() => setIsModalVisible(false)}
                 initialData={selectedContract}
                 loading={modalLoading}
             />
 
+            {/* SỬA LẠI CÁCH GỌI MODAL:
+                1. Dùng `open` thay vì `visible` (Antd v5)
+                2. Nếu component modal cũ của bạn dùng `visible`, ta truyền cả 2 cho chắc chắn.
+                3. QUAN TRỌNG: Không dùng && để ẩn hiện, để Modal quản lý đóng mở mượt mà
+            */}
             <AssignSurveyModal
-                visible={isModalVisible && modalMode === 'edit'}
+                open={isModalVisible && modalMode === 'edit'}
+                visible={isModalVisible && modalMode === 'edit'} // Fallback cho modal cũ
                 onCancel={() => setIsModalVisible(false)}
-                onSave={handleModalSave}
+                onSave={handleModalSave} // Hàm này giờ chỉ gọi API, không confirm nữa
                 initialData={selectedContract}
                 loading={modalLoading}
             />
+
+            {/* Modal Xác nhận Gửi Lắp Đặt */}
             <ConfirmModal
                 isOpen={showSendToInstallConfirm}
                 onClose={() => setShowSendToInstallConfirm(false)}
@@ -573,6 +606,16 @@ const ServiceDashboardPage = () => {
                 title="Xác nhận gửi lắp đặt"
                 message={`Bạn có chắc chắn muốn gửi hợp đồng ${installingContract?.contractNumber} đến bộ phận lắp đặt không?`}
                 isLoading={installing}
+            />
+
+            {/* Modal Xác nhận Gửi Ký (ĐÃ THÊM MỚI) */}
+            <ConfirmModal
+                isOpen={showSendToSignConfirm}
+                onClose={() => setShowSendToSignConfirm(false)}
+                onConfirm={handleConfirmSendToSign}
+                title="Xác nhận gửi hợp đồng cho khách ký"
+                message={`Bạn có chắc chắn muốn gửi hợp đồng ${signingContract?.contractNumber} cho khách hàng ký không?`}
+                isLoading={isSigning}
             />
         </div>
     );
