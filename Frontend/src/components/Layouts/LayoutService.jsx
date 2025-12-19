@@ -1,16 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import { Home, LogOut } from 'lucide-react';
 import { ServiceSidebar } from './ServiceSidebar';
 import './LayoutService.css';
+import axios from 'axios'; // Import axios để gọi API lấy thông tin tuyến
 
 const LayoutService = () => {
   const [activeContractStatus, setActiveContractStatus] = useState('ALL');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // State mới để lưu tên tuyến đọc
+  const [assignedRouteName, setAssignedRouteName] = useState('');
+
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  // Lấy thông tin user từ context để hiển thị tên nhân viên trong header
+  const { logout, user } = useAuth();
+
+  // --- LOGIC MỚI: Gọi API lấy thông tin profile chi tiết (kèm tuyến đọc) ---
+  useEffect(() => {
+    const fetchStaffProfile = async () => {
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('accessToken'); 
+        if (!token) return;
+
+        // Gọi API backend 
+        const response = await axios.get('http://localhost:8080/api/staff/profile/me', {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Backend trả về StaffProfileDTO, lấy trường routeName
+        if (response.data && response.data.routeName) {
+            setAssignedRouteName(response.data.routeName);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin tuyến của nhân viên:", error);
+      }
+    };
+
+    fetchStaffProfile();
+  }, []);
 
   const handleContractStatusChange = (status) => {
     setActiveContractStatus(status);
@@ -40,11 +73,21 @@ const LayoutService = () => {
         {/* Header */}
         <header className="px-6 py-4 bg-white border-b flex items-center sticky top-0 z-40 shadow-sm">
           <SidebarTrigger className="mr-4 lg:hidden" />
-          <h2 className="text-xl font-semibold text-gray-800">Nhân viên Dịch Vụ</h2>
+          
+          {/* --- CẬP NHẬT: Hiển thị tên tuyến bên cạnh tiêu đề --- */}
+          <div className="flex flex-col">
+              <h2 className="text-xl font-semibold text-gray-800 leading-tight">Nhân viên Dịch Vụ</h2>
+              {/* Nếu có tuyến thì hiển thị, không thì thôi hoặc hiện text mặc định */}
+              {assignedRouteName && (
+                  <span className="text-sm text-blue-600 font-medium mt-0.5">
+                      (Phụ trách: {assignedRouteName})
+                  </span>
+              )}
+          </div>
           
           {/* User Menu bên phải */}
           <div className="ml-auto flex items-center gap-4 relative">
-            <span className="text-gray-700">Xin chào, Dịch Vụ</span>
+            <span className="text-gray-700">Xin chào, {user?.fullName || 'Dịch Vụ'}</span>
             
             <button 
               className="menu-button"

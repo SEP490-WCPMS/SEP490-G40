@@ -54,6 +54,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
   const [renewData, setRenewData] = useState(null);
 
   // --- FETCH DATA ---
+    // Lấy danh sách hợp đồng từ backend và xử lý phân trang
+    // - Nếu đang xem tab 'all' (status null) thì fetch 1 block lớn để lọc client-side
+    // - Ngược lại gọi API theo trang/size/status
     const fetchContracts = useCallback(async (pageIndex, pageSize, currentKeyword, currentStatus) => {
     setLoading(true);
     try {
@@ -68,7 +71,8 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                 let items = payload?.content ?? payload ?? [];
 
                 // Exclude internal intermediate statuses from the "All" tab
-                const excludeStatuses = new Set(['PENDING','SIGNED','PENDING_SIGN','PENDING_CUSTOMER_SIGN']);
+                // NOTE: keep PENDING_SIGN included in the All tab (do not exclude)
+                const excludeStatuses = new Set(['PENDING','SIGNED','PENDING_CUSTOMER_SIGN']);
                 items = (Array.isArray(items) ? items : []).filter(it => {
                         const s = (it.contractStatus || '').toUpperCase();
                         if (excludeStatuses.has(s)) return false;
@@ -115,7 +119,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
     }, [refreshKey]);
 
   // --- HÀM CHUYỂN TRANG ---
-  const handlePageChange = (newPageInfo) => {
+    // Xử lý khi người dùng chuyển trang từ component Pagination
+    // Nhận vào newPageInfo có thể là số hoặc object, chuẩn hóa về 0-based page
+    const handlePageChange = (newPageInfo) => {
     let newPage0Based = 0;
     // Kiểm tra định dạng dữ liệu trả về từ component Pagination
     if (typeof newPageInfo === 'number') {
@@ -132,7 +138,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
   };
 
   // --- XỬ LÝ HÀNH ĐỘNG (Nút bấm từ Table) ---
-  const handleViewDetails = async (record, action = 'view') => {
+    // Xử lý các hành động từ các nút trong ContractTable
+    // action có thể: 'view', 'submit', 'sendToSign', 'sendToInstallation', 'reactivate', 'generateWater', ...
+    const handleViewDetails = async (record, action = 'view') => {
     try {
         if (action === 'generateWater') {
             navigate('/service/contract-create', { state: { sourceContractId: record.id } });
@@ -226,7 +234,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
   };
 
   // --- XỬ LÝ SUBMIT FORM ---
-  const handleModalSubmit = async () => {
+    // Xử lý submit từ modal (gia hạn/tạm ngưng/chấm dứt)
+    // Kiểm tra validate, sau đó bật ConfirmModal với action tương ứng
+    const handleModalSubmit = async () => {
       try {
           const values = await form.validateFields();
           
@@ -273,7 +283,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
       }
   };
 
-  const handleConfirmAction = async () => {
+    // Thực hiện action đã cấu hình trong confirmConfig (gửi ký, gửi lắp, gia hạn, tạm ngưng, chấm dứt...)
+    // Thực hiện API call và reload danh sách khi thành công
+    const handleConfirmAction = async () => {
       if (!confirmConfig.action) return;
       setConfirmLoading(true);
       try {
@@ -290,7 +302,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
       }
   };
 
-  const handleAssignSurveySave = async (formData) => {
+    // Gọi API gửi khảo sát khi người dùng xác nhận assign survey từ AssignSurveyModal
+    // formData chứa technicalStaffId, notes
+    const handleAssignSurveySave = async (formData) => {
       setModalLoading(true);
       try {
           await submitContractForSurvey(selectedContract.id, {

@@ -22,6 +22,7 @@ public class StaffProfileDTO {
     private Integer status;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
+    private String routeName;
 
     // Hàm tiện ích để chuyển đổi từ Entity sang DTO
     public static StaffProfileDTO fromEntity(Account account) {
@@ -38,7 +39,8 @@ public class StaffProfileDTO {
                 account.getDepartment(),
                 account.getStatus(),
                 account.getLastLogin(),
-                account.getCreatedAt()
+                account.getCreatedAt(),
+                null // routeName sẽ được set sau trong Service
         );
     }
 }

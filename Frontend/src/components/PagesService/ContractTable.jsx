@@ -6,6 +6,7 @@ import { PhoneOutlined, EnvironmentOutlined, UserOutlined } from '@ant-design/ic
 import { toast } from 'react-toastify';
 
 // Helper: render trạng thái
+// Trả về một badge nhỏ (styled span) mô tả trạng thái hợp đồng
 const renderStatus = (status) => {
   const s = status?.toUpperCase();
   const map = {
@@ -29,6 +30,8 @@ const renderStatus = (status) => {
 };
 
 // Helper: render actions
+// Sinh các nút hành động phù hợp với `record.contractStatus`.
+// Các nút sẽ gọi `onViewDetails(record, action)` với action tương ứng.
 const renderActions = (record, onViewDetails) => {
   const status = record.contractStatus?.toUpperCase();
   const actions = [];
@@ -112,7 +115,7 @@ const renderActions = (record, onViewDetails) => {
     actions.push(
       <button
         key="suspend"
-        className="font-semibold text-gray-700 hover:text-gray-900 transition duration-150 ease-in-out"
+        className="font-semibold text-orange-600 hover:text-orange-800 transition duration-150 ease-in-out"
         onClick={() => onViewDetails(record, 'suspend')}
       >
         Tạm ngưng
@@ -153,6 +156,9 @@ const renderActions = (record, onViewDetails) => {
   );
 };
 
+// Component ContractTable
+// - Hiển thị hàng hợp đồng, trạng thái, thông tin liên hệ và các hành động.
+// - `onPageChange` nhận object pagination (AntD-style) hoặc số trang.
 const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, showStatusFilter = false }) => {
   // Convert pagination từ Ant Design format sang Pagination component format
   const currentPage = pagination?.current ? pagination.current - 1 : 0; // Ant Design dùng 1-indexed, Pagination dùng 0-indexed

@@ -371,7 +371,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                <Form form={form} layout="vertical">
                    <div className={`p-3 mb-4 rounded ${modalType === 'terminate' ? 'bg-red-50 border-red-400' : 'bg-yellow-50 border-yellow-400'} border-l-4`}>
                        <div className={`font-semibold text-sm ${modalType === 'terminate' ? 'text-red-900' : 'text-yellow-900'}`}>
-                           {modalType === 'terminate' ? '⚠️ Chấm dứt hợp đồng' : '⏸️ Tạm ngưng hợp đồng'}
+                           {modalType === 'terminate' ? 'Chấm dứt hợp đồng' : 'Tạm ngưng hợp đồng'}
                        </div>
                    </div>
                    <Form.Item label="Số Hợp đồng"><Input value={selectedContract?.contractNumber} disabled style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} /></Form.Item>
@@ -491,7 +491,22 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                 />
             </div>
             
-            <Modal title={getModalTitle()} open={isModalVisible} onCancel={handleCloseModal} onOk={modalType === 'view' ? handleCloseModal : handleSubmit} confirmLoading={modalLoading} okText={modalType === 'view' ? 'Đóng' : modalType === 'renew' ? 'Xác nhận Gia hạn' : modalType === 'terminate' ? 'Chấm dứt' : modalType === 'suspend' ? 'Tạm ngưng' : modalType === 'reactivate' ? 'Kích hoạt ngay' : 'Xác nhận'} cancelText={modalType === 'view' ? undefined : 'Hủy'} cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined} destroyOnClose width={modalType === 'reactivate' ? 400 : 700} okButtonProps={{ danger: modalType === 'terminate', className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : '' }} centered>
+            <Modal
+                title={getModalTitle()}
+                open={isModalVisible}
+                onCancel={handleCloseModal}
+                onOk={modalType === 'view' ? handleCloseModal : handleSubmit}
+                confirmLoading={modalLoading}
+                okText={modalType === 'view' ? 'Đóng' : modalType === 'renew' ? 'Xác nhận Gia hạn' : modalType === 'terminate' ? 'Chấm dứt' : modalType === 'suspend' ? 'Tạm ngưng' : modalType === 'reactivate' ? 'Kích hoạt ngay' : 'Xác nhận'}
+                cancelText={modalType === 'view' ? undefined : 'Hủy'}
+                cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined}
+                destroyOnClose
+                width={modalType === 'reactivate' ? 400 : 700}
+                okButtonProps={{ danger: modalType === 'terminate', className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : '' }}
+                centered
+                bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+                style={{ top: 20 }}
+            >
                 {renderModalContent()}
             </Modal>
             <ConfirmModal isOpen={confirmModalVisible} onClose={() => setConfirmModalVisible(false)} onConfirm={handleConfirmAction} title={confirmAction === 'terminate' ? 'Xác nhận chấm dứt hợp đồng' : 'Xác nhận tạm ngưng hợp đồng'} message="Bạn có chắc chắn muốn thực hiện hành động này?" isLoading={confirmLoading} />

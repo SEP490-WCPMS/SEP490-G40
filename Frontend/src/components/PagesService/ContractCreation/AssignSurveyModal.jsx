@@ -118,6 +118,9 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
       destroyOnClose
       okText="Gửi Khảo Sát"
       cancelText="Hủy"
+      centered
+      bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+      style={{ top: 20 }}
     >
       <Spin spinning={loading}>
         <Form form={form} layout="vertical" className="pt-2">

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, Input, Select, Row, Col, Typography, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 // Icons cho Tablist
@@ -36,12 +37,22 @@ const tabs = [
 ];
 
 const ServiceContractsManager = ({ initialTab }) => {
-  const [active, setActive] = useState(initialTab || 'all');
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initial = initialTab || (location.state && location.state.initialTab) || searchParams.get('tab') || 'all';
+  const [active, setActive] = useState(initial);
+
+  useEffect(() => {
+    // Khi `initialTab` hoặc query/location.state thay đổi thì cập nhật tab active tương ứng
+    const newInit = initialTab || (location.state && location.state.initialTab) || new URLSearchParams(location.search).get('tab') || 'all';
+    setActive(newInit);
+  }, [initialTab, location.search, location.state]);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleTabClick = (key) => {
+    // Khi click tab - cập nhật active và ánh xạ sang `status` cho trang con
     setActive(key);
     // Logic map tab -> status
     if (key === 'requests') setStatus('DRAFT');
@@ -74,6 +85,7 @@ const ServiceContractsManager = ({ initialTab }) => {
   };
 
   const renderContent = () => {
+    // Chọn component phù hợp cho tab hiện thời và truyền props chung
     const props = { keyword, status, refreshKey };
     switch (active) {
       case 'all': return <AllContractsTab {...props} />;
