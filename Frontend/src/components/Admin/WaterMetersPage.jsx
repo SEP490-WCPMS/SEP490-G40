@@ -8,7 +8,8 @@ import {
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import './WaterMetersPage.css';
-import { AlertCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
+import Pagination from '../common/Pagination';
 
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
@@ -53,6 +54,7 @@ export default function WaterMetersPage() {
 
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
     const pageSize = 10;
 
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', meter: null, message: '' });
@@ -65,16 +67,16 @@ export default function WaterMetersPage() {
         try {
             const resp = await getAdminWaterMeters(includeRetired, currentPage, pageSize);
             const data = resp.data || resp;
+            const hasContentArray = data && Array.isArray(data.content);
+            const resolvedMeters = hasContentArray ? data.content : (Array.isArray(data) ? data : []);
 
-            if (data && Array.isArray(data.content)) {
-                setMeters(data.content);
-                setTotalPages(data.totalPages);
-            } else if (Array.isArray(data)) {
-                setMeters(data);
-                setTotalPages(0);
-            } else {
-                setMeters([]);
-            }
+            setMeters(resolvedMeters);
+
+            const inferredTotalElements = data?.totalElements ?? data?.totalCount ?? data?.total ?? (hasContentArray ? data.content.length : resolvedMeters.length);
+            const inferredTotalPages = data?.totalPages ?? (inferredTotalElements ? Math.ceil(inferredTotalElements / pageSize) : (resolvedMeters.length ? 1 : 0));
+
+            setTotalElements(inferredTotalElements);
+            setTotalPages(inferredTotalPages);
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Lỗi khi tải danh sách');
             setMeters([]);
@@ -87,6 +89,12 @@ export default function WaterMetersPage() {
         fetchList();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [includeRetired, currentPage]);
+
+    useEffect(() => {
+        if (totalPages > 0 && currentPage > totalPages - 1) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [currentPage, totalPages]);
 
     const handleChange = (e) => {
         const { id, value } = e.target;
@@ -193,6 +201,12 @@ export default function WaterMetersPage() {
         setError(null);
     };
 
+    const handlePageChange = (page) => {
+        const maxPage = Math.max(totalPages - 1, 0);
+        const clamped = Math.min(Math.max(page, 0), maxPage);
+        setCurrentPage(clamped);
+    };
+
     return (
         <div className="watermeters-page">
             <style>{`
@@ -237,7 +251,6 @@ export default function WaterMetersPage() {
                     </div>
                     <div className="row">
                         <div className="field"><label>Bảo trì tiếp theo</label><Input id="nextMaintenanceDate" value={form.nextMaintenanceDate} onChange={handleChange} type="date" /></div>
-                        <div className="field"><label>Chỉ số max</label><Input id="maxReading" value={form.maxReading} onChange={handleChange} type="number" /></div>
                     </div>
 
                     <div className="wm-form-actions">
@@ -309,23 +322,12 @@ export default function WaterMetersPage() {
                             </table>
                         </div>
 
-                        <div className="pagination-controls">
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                                disabled={currentPage === 0}
-                            >
-                                <ChevronLeft size={16} /> Trước
-                            </Button>
-                            <span className="page-info">Trang {currentPage + 1} / {totalPages || 1}</span>
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                                disabled={currentPage >= (totalPages - 1)}
-                            >
-                                Sau <ChevronRight size={16} />
-                            </Button>
-                        </div>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalElements={totalElements}
+                            pageSize={pageSize}
+                            onPageChange={handlePageChange}
+                        />
                     </>
                 )}
             </div>

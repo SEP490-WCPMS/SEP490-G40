@@ -13,7 +13,7 @@ const getInitialAuthState = () => {
         isAuthenticated: true,
         token: token,
         // Chuyển chuỗi JSON thành đối tượng
-        user: JSON.parse(user), 
+        user: JSON.parse(user),
         loading: false
       };
     } catch (e) {
@@ -36,11 +36,12 @@ export const AuthProvider = ({ children }) => {
 
       // Lọc thông tin cần thiết và lưu vào localStorage
       const userInfo = {
-          id: data.id,
-          username: data.username,
-          fullName: data.fullName,
-          roleName: data.roleName,
-          department: data.department
+        id: data.id,
+        username: data.username,
+        fullName: data.fullName,
+        phone: data.phone,
+        roleName: data.roleName,
+        department: data.department
       };
 
       localStorage.setItem('token', data.token);
@@ -57,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       setAuthState(prev => ({ ...prev, loading: false }));
       // Ném lỗi để Login.jsx có thể hiển thị thông báo
-      throw error; 
+      throw error;
     }
   };
 
