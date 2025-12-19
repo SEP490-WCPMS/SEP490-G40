@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/use-auth';
 import { Home, LogOut } from 'lucide-react';
 import { ServiceSidebar } from './ServiceSidebar';
 import './LayoutService.css';
-import axios from 'axios'; // Import axios để gọi API lấy thông tin tuyến
+import axios from 'axios';
 
 const LayoutService = () => {
   const [activeContractStatus, setActiveContractStatus] = useState('ALL');
@@ -13,7 +13,7 @@ const LayoutService = () => {
   
   // State mới để lưu tên tuyến đọc
   const [assignedRouteName, setAssignedRouteName] = useState('');
-
+  
   const navigate = useNavigate();
   // Lấy thông tin user từ context để hiển thị tên nhân viên trong header
   const { logout, user } = useAuth();
@@ -38,94 +38,85 @@ const LayoutService = () => {
             setAssignedRouteName(response.data.routeName);
         }
       } catch (error) {
-        console.error("Lỗi khi lấy thông tin tuyến của nhân viên:", error);
+        console.error("Lỗi khi lấy thông tin tuyến:", error);
       }
     };
-
     fetchStaffProfile();
   }, []);
 
-  const handleContractStatusChange = (status) => {
-    setActiveContractStatus(status);
-  };
-
-  const handleHome = () => {
-    navigate('/');
-    setIsDropdownOpen(false);
-  };
-
-  const handleLogout = () => {
-    logout(); // Gọi logout từ AuthContext
-    navigate('/');
-    setIsDropdownOpen(false);
-  };
+  const handleContractStatusChange = (status) => setActiveContractStatus(status);
+  const handleHome = () => { navigate('/'); setIsDropdownOpen(false); };
+  const handleLogout = () => { logout(); navigate('/'); setIsDropdownOpen(false); };
 
   return (
-    <SidebarProvider style={{ width: '100%', height: '100%' }}>
+    <SidebarProvider style={{ width: '100%', height: '100%', overflowX: 'hidden' }}>
       <ServiceSidebar 
         activeContractStatus={activeContractStatus}
         onContractStatusChange={handleContractStatusChange}
       />
 
-      {/* Phần Nội dung chính (Header + Main) */}
-      <div className="flex flex-col flex-1" style={{ width: 'calc(100% - YOUR_SIDEBAR_WIDTH)' }}>
+      <div className="flex flex-col flex-1" style={{ width: '100%', overflowX: 'hidden' }}>
         
-        {/* Header */}
-        <header className="px-6 py-4 bg-white border-b flex items-center sticky top-0 z-40 shadow-sm">
-          <SidebarTrigger className="mr-4 lg:hidden" />
+        {/* --- HEADER MOBILE RESPONSIVE --- */}
+        <header className="px-4 py-3 bg-white border-b flex items-center justify-between sticky top-0 z-40 shadow-sm gap-2">
           
-          {/* --- CẬP NHẬT: Hiển thị tên tuyến bên cạnh tiêu đề --- */}
-          <div className="flex flex-col">
-              <h2 className="text-xl font-semibold text-gray-800 leading-tight">Nhân viên Dịch Vụ</h2>
-              {/* Nếu có tuyến thì hiển thị, không thì thôi hoặc hiện text mặc định */}
-              {assignedRouteName && (
-                  <span className="text-sm text-blue-600 font-medium mt-0.5">
-                      (Phụ trách: {assignedRouteName})
-                  </span>
-              )}
+          <div className="flex items-center gap-3 overflow-hidden">
+              {/* Nút Sidebar */}
+              <SidebarTrigger className="lg:hidden shrink-0" />
+              
+              <div className="flex flex-col min-w-0">
+                  {/* Tiêu đề tự co nhỏ trên mobile */}
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-800 leading-tight truncate">
+                      Nhân viên Dịch Vụ
+                  </h2>
+                  
+                  {/* Tên tuyến hiển thị nhỏ hơn */}
+                  {assignedRouteName ? (
+                      <span className="text-xs sm:text-sm text-blue-600 font-medium truncate block" title={assignedRouteName}>
+                          (Phụ trách: {assignedRouteName})
+                      </span>
+                  ) : (
+                      <span className="text-xs text-gray-400 mt-0.5 italic truncate">
+                          (Đang tải tuyến...)
+                      </span>
+                  )}
+              </div>
           </div>
           
-          {/* User Menu bên phải */}
-          <div className="ml-auto flex items-center gap-4 relative">
-            <span className="text-gray-700">Xin chào, {user?.fullName || 'Dịch Vụ'}</span>
+          {/* User Menu */}
+          <div className="ml-auto flex items-center gap-3 relative shrink-0">
+            <div className="text-right">
+                <div className="text-sm text-gray-900 truncate">Xin chào, {user?.fullName || 'Dịch Vụ'}</div>
+            </div>
             
-            <button 
-              className="menu-button"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              title="Menu"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="18" x2="20" y2="18" />
-              </svg>
-            </button>
+            <div className="relative">
+                <button 
+                  className="menu-button flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 transition-colors border border-gray-200"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </button>
 
-            {isDropdownOpen && (
-              <div className="service-dropdown-menu">
-                <button 
-                  className="dropdown-item"
-                  onClick={handleHome}
-                >
-                  <Home size={16} />
-                  <span>Về trang chủ</span>
-                </button>
-                <hr className="dropdown-divider" />
-                <button 
-                  className="dropdown-item logout"
-                  onClick={handleLogout}
-                >
-                  <LogOut size={16} />
-                  <span>Đăng xuất</span>
-                </button>
-              </div>
-            )}
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-100 z-50 origin-top-right">
+                    <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2" onClick={handleHome}>
+                      <Home size={16} /> <span>Về trang chủ</span>
+                    </button>
+                    <div className="h-px bg-gray-100 my-1" />
+                    <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2" onClick={handleLogout}>
+                      <LogOut size={16} /> <span>Đăng xuất</span>
+                    </button>
+                  </div>
+                )}
+            </div>
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-gray-50" style={{ padding: 0, width: '100%' }}>
-          <div style={{ padding: '24px', minHeight: '100%', width: '100%' }}>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
+          <div className="p-4 sm:p-6 min-h-full">
             <Outlet context={{ activeContractStatus, onContractStatusChange: handleContractStatusChange }} />
           </div>
         </main>

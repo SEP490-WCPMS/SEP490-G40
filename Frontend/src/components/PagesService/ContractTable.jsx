@@ -1,6 +1,6 @@
 import React from 'react';
 import Pagination from '../common/Pagination';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import { Tag, Tooltip, Space } from 'antd'; 
 import { PhoneOutlined, EnvironmentOutlined, UserOutlined } from '@ant-design/icons'; 
 import { toast } from 'react-toastify';
@@ -60,7 +60,7 @@ const renderActions = (record, onViewDetails) => {
     );
   }
 
-  // --- SỬA LẠI ĐÚNG NHƯ CŨ: Nút "Tạo HĐ chính thức" ---
+  // --- Nút "Tạo HĐ chính thức" ---
   if (status === 'PENDING_SURVEY_REVIEW') {
     actions.push(
       <button
@@ -172,102 +172,126 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow mt-5">
-      {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Mã Hợp đồng
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Khách hàng
-              </th>
-              {/* Cột mới: Liên hệ (Hiển thị SĐT/Địa chỉ cho Guest) */}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Liên hệ
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hành động
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
-              <tr>
-                <td colSpan="6" className="px-6 py-12 text-center">
-                  <div className="flex justify-center items-center gap-2 text-gray-500">
-                    <Loader2 className="animate-spin" size={20} />
-                    <span>Đang tải...</span>
-                  </div>
-                </td>
-              </tr>
-            ) : data && data.length > 0 ? (
-              data.map((record) => (
-                <tr key={record.id} className="hover:bg-gray-50" data-contract-id={record.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {record.contractNumber}
-                  </td>
-                  
-                  {/* --- FIX: CỘT KHÁCH HÀNG (Hiển thị Tag "Chưa có tài khoản" nếu là Guest) --- */}
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="flex items-center gap-2">
-                        <UserOutlined className="text-gray-400" />
-                        <div>
-                            <div className="font-medium">{record.customerName || 'Khách vãng lai'}</div>
-                            
-                            {(record.isGuest || !record.customerCode) ? (
-                                <Tag color="orange" className="mt-1 border-0 text-[10px] px-1">Chưa có tài khoản</Tag>
-                            ) : (
-                                <div className="text-xs text-gray-500">{record.customerCode}</div>
-                            )}
-                        </div>
-                    </div>
-                  </td>
-                  {/* -------------------------------------------------------------------------- */}
-
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="flex flex-col gap-1">
-                        {record.contactPhone && (
-                            <div className="flex items-center gap-1">
-                                <PhoneOutlined className="text-xs text-blue-500"/> {record.contactPhone}
-                            </div>
-                        )}
-                        {record.address && (
-                            <Tooltip title={record.address}>
-                                <div className="flex items-center gap-1 max-w-[200px] truncate">
-                                    <EnvironmentOutlined className="text-xs text-red-500"/> {record.address}
-                                </div>
-                            </Tooltip>
-                        )}
-                      </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {renderStatus(record.contractStatus)}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {/* Render action buttons theo logic mới */}
-                    {renderActions(record, onViewDetails)}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500">
-                  Không có dữ liệu
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+// --- CARD VIEW CHO MOBILE ---
+  const MobileCard = ({ record }) => (
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
+      {/* Hàng 1: Mã HĐ + Status */}
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2 text-blue-700 font-semibold">
+          <FileText size={16} />
+          <span>{record.contractNumber}</span>
+        </div>
+        {renderStatus(record.contractStatus)}
       </div>
 
+      {/* Hàng 2: Khách hàng */}
+      <div className="flex items-start gap-2 mt-1">
+        <User size={16} className="text-gray-400 mt-1 shrink-0" />
+        <div>
+          <div className="font-medium text-gray-800">{record.customerName || 'Khách vãng lai'}</div>
+          {(record.isGuest || !record.customerCode) ? (
+             <span className="text-xs text-orange-500 bg-orange-50 px-1 rounded">Chưa có TK</span>
+          ) : (
+             <div className="text-xs text-gray-500">{record.customerCode}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Hàng 3: Liên hệ (Phone + Address) */}
+      <div className="pl-6 space-y-1 text-sm text-gray-600">
+        {record.contactPhone && (
+          <div className="flex items-center gap-2">
+            <Phone size={14} className="text-gray-400" />
+            <span>{record.contactPhone}</span>
+          </div>
+        )}
+        {record.address && (
+          <div className="flex items-start gap-2">
+            <MapPin size={14} className="text-gray-400 mt-1 shrink-0" />
+            <span className="line-clamp-2">{record.address}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Hàng 4: Actions (Footer) */}
+      <div className="border-t border-gray-100 pt-3 mt-2">
+        {renderActions(record, onViewDetails)}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="mt-5">
+      {loading ? (
+        <div className="py-12 text-center">
+          <div className="flex justify-center items-center gap-2 text-gray-500">
+            <Loader2 className="animate-spin" size={20} />
+            <span>Đang tải...</span>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 1. MOBILE VIEW: Hiện danh sách thẻ khi màn hình < sm (640px) */}
+          <div className="block sm:hidden">
+            {data && data.length > 0 ? (
+              data.map(record => <MobileCard key={record.id} record={record} />)
+            ) : (
+              <div className="text-center text-gray-500 py-8 bg-white rounded-lg border border-dashed">Không có dữ liệu</div>
+            )}
+          </div>
+
+          {/* 2. DESKTOP VIEW: Hiện bảng khi màn hình >= sm */}
+          <div className="hidden sm:block bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Hợp đồng</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data && data.length > 0 ? (
+                    data.map((record) => (
+                      <tr key={record.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.contractNumber}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="text-gray-400" />
+                            <div>
+                              <div className="font-medium">{record.customerName || 'Khách vãng lai'}</div>
+                              {(record.isGuest || !record.customerCode) ? (
+                                <Tag color="orange" className="mt-1 border-0 text-[10px] px-1">Chưa có tài khoản</Tag>
+                              ) : (
+                                <div className="text-xs text-gray-500">{record.customerCode}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <div className="flex flex-col gap-1">
+                            {record.contactPhone && <div className="flex items-center gap-1"><PhoneOutlined className="text-xs text-blue-500"/> {record.contactPhone}</div>}
+                            {record.address && <Tooltip title={record.address}><div className="flex items-center gap-1 max-w-[200px] truncate"><EnvironmentOutlined className="text-xs text-red-500"/> {record.address}</div></Tooltip>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{renderStatus(record.contractStatus)}</td>
+                        <td className="px-6 py-4 text-sm">{renderActions(record, onViewDetails)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500">Không có dữ liệu</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
       {/* Pagination */}
       <Pagination
         currentPage={currentPage}

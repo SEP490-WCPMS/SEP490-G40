@@ -1,10 +1,14 @@
+/* =========================================
+   1. BASE HEADER STYLES (DESKTOP)
+   ========================================= */
 .header {
-  background: linear-gradient(to right, #1e40af, #1e3a8a);
+  background: linear-gradient(to right, #1e40af, #1e3a8a); /* Giữ màu xanh thương hiệu */
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
+  width: 100%;
 }
 
 .header-container {
@@ -18,7 +22,7 @@
   gap: 20px;
 }
 
-/* Logo and Company Name */
+/* --- Logo Section --- */
 .header-logo {
   display: flex;
   align-items: center;
@@ -50,21 +54,30 @@
   font-size: 18px;
   font-weight: 700;
   color: white;
+  line-height: 1.2;
 }
 
 .company-tagline {
   margin: 0;
   font-size: 12px;
   color: #93c5fd;
+  line-height: 1.2;
 }
 
-/* Navigation Menu */
+/* --- Desktop Navigation --- */
 .nav-menu {
   display: flex;
-  gap: 30px;
+  gap: 25px;
   flex: 1;
   justify-content: center;
   align-items: center;
+}
+
+/* Ẩn menu desktop trên màn hình nhỏ */
+@media (max-width: 1024px) {
+  .nav-menu {
+    display: none;
+  }
 }
 
 .nav-item {
@@ -74,6 +87,13 @@
   font-weight: 500;
   transition: color 0.3s ease;
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 5px 0;
+  cursor: pointer;
 }
 
 .nav-item:hover {
@@ -83,7 +103,7 @@
 .nav-item::after {
   content: '';
   position: absolute;
-  bottom: -5px;
+  bottom: -2px;
   left: 0;
   width: 0;
   height: 2px;
@@ -95,16 +115,136 @@
   width: 100%;
 }
 
-/* Header Right Section */
+/* --- Desktop Dropdowns --- */
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-dropdown-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.nav-dropdown:hover .nav-dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+/* 1. KHUNG MENU CON (DROPDOWN) - Hiệu ứng từ dưới đi lên */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  
+  /* TRẠNG THÁI ẨN (Ban đầu) */
+  /* translateY(20px): Đẩy xuống dưới 20px để lát nữa trượt lên */
+  transform: translateX(-50%) translateY(20px); 
+  
+  background-color: white;
+  min-width: 240px;
+  border-radius: 4px; /* Bo góc nhẹ thôi cho giống web cty */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  padding: 0; /* Bỏ padding bao quanh để item sát lề */
+  list-style: none;
+  
+  opacity: 0;
+  visibility: hidden;
+  
+  /* Transition: Tạo chuyển động mượt mà trong 0.3 giây */
+  transition: all 0.3s ease-in-out;
+  
+  z-index: 1100;
+  border-top: 3px solid #1e40af; /* Thêm viền trên màu xanh cho điểm nhấn */
+}
+
+/* TRẠNG THÁI HIỆN (Khi Hover) */
+.nav-dropdown:hover .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  
+  /* translateY(0): Trượt từ dưới (20px) về vị trí gốc (0) -> Cảm giác đi lên */
+  transform: translateX(-50%) translateY(0); 
+}
+
+/* Bỏ cái mũi tên tam giác đi cho giống phong cách doanh nghiệp phẳng */
+.dropdown-menu::before {
+  display: none;
+}
+
+/* 2. CÁC MỤC CON (ITEMS) */
+.dropdown-menu li a {
+  display: block;
+  padding: 12px 20px 12px 20px; /* Padding mặc định */
+  color: #333;
+  text-decoration: none;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+  
+  position: relative; /* Để căn chỉnh icon tuyệt đối */
+  transition: all 0.2s ease-in-out;
+}
+
+/* Bỏ gạch chân item cuối */
+.dropdown-menu li:last-child a {
+  border-bottom: none;
+}
+
+/* 3. HIỆU ỨNG HOVER: TRƯỢT + ICON MŨI TÊN */
+.dropdown-menu li a:hover {
+  background-color: #f9f9f9;
+  color: #1e40af;
+  font-weight: 600;
+  
+  /* Đẩy chữ sang phải nhiều hơn để chừa chỗ cho icon */
+  padding-left: 35px; 
+  
+  /* Border trái giữ nguyên nếu muốn, hoặc bỏ đi tùy thích */
+  /* border-left: 4px solid #1e40af; */
+}
+
+/* TẠO ICON MŨI TÊN BẰNG CSS (Pseudo-element) */
+.dropdown-menu li a:hover::before {
+  content: '›'; /* Dấu mũi tên */
+  position: absolute;
+  left: 15px; /* Vị trí icon bên trái */
+  top: 50%;
+  transform: translateY(-50%); /* Căn giữa dọc */
+  
+  /* Style cho vòng tròn chứa mũi tên (nếu muốn giống mobile) */
+  /* Hoặc chỉ để mũi tên trần cho gọn gàng trên desktop */
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  color: #1e40af;
+  
+  /* Hiệu ứng hiện dần */
+  animation: fadeInIconDesktop 0.2s ease forwards;
+}
+
+/* Animation nhẹ cho icon */
+@keyframes fadeInIconDesktop {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+/* --- Header Right (Login/Avatar) --- */
 .header-right {
   display: flex;
   align-items: center;
   gap: 15px;
 }
 
-
-
-/* Login Button */
 .login-button {
   background-color: #22c55e;
   color: white;
@@ -123,7 +263,7 @@
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
 }
 
-/* Avatar Dropdown */
+/* Avatar Styles */
 .avatar-dropdown-container {
   position: relative;
 }
@@ -136,11 +276,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
-}
-
-.avatar-button:hover {
-  transform: scale(1.1);
 }
 
 .avatar-circle {
@@ -151,70 +286,46 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
   color: white;
-  border: 2px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
   overflow: hidden;
-  flex-shrink: 0;
-}
-
-.avatar-circle img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .avatar-icon {
   width: 24px;
   height: 24px;
-  color: white;
 }
 
-.avatar-initials {
-  font-size: 16px;
-}
-
-/* Avatar Dropdown Menu */
+/* Avatar Dropdown Menu (User Menu) */
 .avatar-dropdown-menu {
   position: absolute;
-  top: 100%;
+  top: 55px;
   right: 0;
-  margin-top: 10px;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   min-width: 220px;
-  z-index: 1000;
-  overflow: hidden;
-  animation: slideDown 0.2s ease;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  z-index: 1100;
+  padding: 8px 0;
+  border: 1px solid #e5e7eb;
 }
 
 .dropdown-header {
   padding: 12px 16px;
+  background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  margin-bottom: 8px;
 }
 
 .user-name {
-  font-weight: 600;
+  display: block;
+  font-weight: 700;
   color: #1f2937;
   font-size: 14px;
 }
 
 .user-role {
+  display: block;
   font-size: 12px;
   color: #6b7280;
 }
@@ -228,15 +339,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #1f2937;
+  color: #4b5563;
   font-size: 14px;
-  transition: all 0.3s ease;
   text-align: left;
+  transition: all 0.2s;
 }
 
 .dropdown-item:hover {
   background-color: #f3f4f6;
-  color: #1e40af;
+  color: #111827;
 }
 
 .dropdown-item.logout {
@@ -244,8 +355,7 @@
 }
 
 .dropdown-item.logout:hover {
-  background-color: #fee2e2;
-  color: #dc2626;
+  background-color: #fef2f2;
 }
 
 .dropdown-divider {
@@ -254,7 +364,11 @@
   border-top: 1px solid #e5e7eb;
 }
 
-/* Mobile Menu Toggle */
+/* =========================================
+   2. MOBILE MENU STYLES (CẬP NHẬT HIỆU ỨNG ICON)
+   ========================================= */
+
+/* Nút Toggle Hamburger */
 .mobile-menu-toggle {
   display: none;
   background: none;
@@ -262,232 +376,169 @@
   color: white;
   cursor: pointer;
   padding: 8px;
-  transition: transform 0.3s ease;
 }
 
-.mobile-menu-toggle:hover {
-  transform: scale(1.1);
-}
-
-/* Mobile Navigation */
-.mobile-nav-menu {
-  display: none;
-  background-color: rgba(30, 58, 138, 0.95);
-  padding: 10px 0;
-  flex-direction: column;
-}
-
-.mobile-nav-item {
-  padding: 12px 20px;
-  color: white;
-  text-decoration: none;
-  font-size: 15px;
-  font-weight: 500;
-  transition: background-color 0.3s ease;
-  border-left: 3px solid transparent;
-}
-
-.mobile-nav-item:hover {
-  background-color: rgba(96, 165, 250, 0.2);
-  border-left-color: #60a5fa;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .header-container {
-    height: auto;
-    padding: 12px 15px;
-    gap: 10px;
-  }
-
-  .nav-menu {
-    display: none;
-  }
-
+@media (max-width: 1024px) {
   .mobile-menu-toggle {
     display: block;
   }
-
-  .mobile-nav-menu {
-    display: flex;
-  }
-
-  .company-name {
-    font-size: 16px;
-  }
-
-  .company-tagline {
-    font-size: 11px;
-  }
-
-  .logo-image {
-    width: 40px;
-    height: 40px;
-  }
-
-  .avatar-dropdown-menu {
-    position: fixed;
-    top: auto;
-    right: 15px;
-    left: 15px;
-    margin-top: 0;
-    min-width: auto;
-  }
 }
 
-@media (max-width: 480px) {
-  .header-logo {
-    gap: 8px;
-  }
-
-  .company-info {
-    gap: 0;
-  }
-
-  .company-name {
-    font-size: 14px;
-  }
-
-  .company-tagline {
-    display: none;
-  }
-
-  .avatar-circle {
-    width: 36px;
-    height: 36px;
-  }
-
-  .login-button {
-    padding: 6px 14px;
-    font-size: 13px;
-  }
-}
-
-
-/* --- BẮT ĐẦU: CSS NÂNG CẤP CHO DROPDOWN --- */
-/* (Tôi đã xóa phiên bản CSS dropdown cũ bị trùng lặp của bạn) */
-
-/* 1. Class cha ("Hỗ Trợ", "Hợp đồng") */
-.nav-item.nav-dropdown {
-  position: relative;
-  /* Bỏ style flex/height cũ để dùng trigger */
-}
-
-/* 2. Trigger (Bao gồm chữ "Hỗ Trợ" + icon) */
-.nav-dropdown-trigger {
-  display: flex;
-  align-items: center;
-  gap: 6px; /* Khoảng cách giữa chữ và icon */
-  cursor: pointer;
-  
-  /* Kế thừa style của .nav-item */
-  color: white;
-  font-size: 15px;
-  font-weight: 500;
-  transition: color 0.3s ease;
-  position: relative;
-  padding-bottom: 5px; 
-}
-
-/* 3. Icon chevron (mũi tên) */
-.nav-dropdown-chevron {
-  transition: transform 0.3s ease;
-  margin-top: 2px; /* Căn chỉnh icon một chút */
-}
-
-/* 4. Menu con (danh sách xổ xuống) - Cải tiến animation */
-.nav-dropdown .dropdown-menu {
-  display: block; /* Luôn là block để animation hoạt động */
+/* Container Menu Mobile */
+.mobile-nav-menu {
   position: absolute;
-  top: 100%; /* Ngay dưới phần tử cha */
-  left: 50%; /* Bắt đầu từ giữa */
-  transform: translateX(-50%); /* Căn ra giữa */
-  margin-top: 10px; /* Khoảng hở đẹp mắt */
-
-  background-color: #ffffff;
-  min-width: 240px; /* Tăng độ rộng một chút cho đẹp */
-  border-radius: 8px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1); /* Shadow đẹp hơn */
-  z-index: 1000;
-  padding: 8px; /* Padding cho cả menu */
-  list-style: none;
-  
-  /* Ghi đè các thuộc tính kế thừa không mong muốn */
-  flex-direction: column;
-  height: auto;
-  margin-left: 0;
-
-  /* --- ANIMATION --- */
-  opacity: 0;
-  transform: translateX(-50%) translateY(10px); /* Bắt đầu từ dưới 10px */
-  visibility: hidden; /* Quan trọng: ẩn khỏi DOM */
-  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
-}
-
-/* 5. Hiển thị menu con khi di chuột */
-.nav-dropdown:hover .dropdown-menu {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0); /* Về vị trí 0 */
-  visibility: visible; /* Hiện ra */
-}
-
-/* 6. Xoay icon chevron khi hover */
-.nav-dropdown:hover .nav-dropdown-chevron {
-  transform: rotate(180deg);
-}
-
-/* 7. Đồng bộ hover effect cho trigger (Giống .nav-item:hover) */
-.nav-dropdown:hover .nav-dropdown-trigger {
-  color: #93c5fd;
-}
-
-/* 8. Thêm đường gạch chân (Giống .nav-item::after) */
-.nav-dropdown-trigger::after {
-  content: '';
-  position: absolute;
-  bottom: 0; 
+  top: 70px;
   left: 0;
-  width: 0;
-  height: 2px;
-  background-color: #60a5fa;
-  transition: width 0.3s ease;
+  width: 100%;
+  background-color: white;
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
+  z-index: 999;
 }
 
-/* 9. Hiện đường gạch chân khi hover (Giống .nav-item:hover::after) */
-.nav-dropdown:hover .nav-dropdown-trigger::after {
+/* --- STYLE CHUNG CHO CÁC MỤC (LINK & BUTTON) --- */
+.mobile-nav-item, 
+button.mobile-nav-item {
+  display: block;
+  padding: 16px 20px;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative; /* Để căn chỉnh icon tuyệt đối */
+  transition: all 0.3s ease; /* Hiệu ứng trượt mượt mà */
+  
+  /* Reset button styles */
   width: 100%;
-}
-
-
-/* 10. Các mục con bên trong menu (li a) */
-.dropdown-menu li {
-  width: 100%;
-  height: auto;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f3f4f6;
+  font-family: inherit;
+  cursor: pointer;
   margin: 0;
 }
 
-.dropdown-menu li a {
-  display: block;
-  width: 100%;
-  padding: 10px 16px; /* Padding nhất quán */
-  color: #334155; /* Màu chữ tối (slate-700) */
-  text-decoration: none;
-  white-space: nowrap;
-  border-radius: 6px; /* Bo tròn cho từng item */
-  font-size: 14px;
-  transition: background-color 0.2s ease, color 0.2s ease;
+/* --- HIỆU ỨNG HOVER "TRƯỢT + ICON" (GIỐNG MẪU) --- */
+.mobile-nav-item:hover,
+button.mobile-nav-item:hover {
+  background-color: #f0f9ff; /* Nền xanh rất nhạt */
+  color: #1e40af; /* Chữ xanh đậm */
+  padding-left: 50px; /* Đẩy chữ sang phải để chừa chỗ cho icon */
+}
+
+/* Tạo hình tròn chứa mũi tên bằng CSS (Pseudo-element) */
+.mobile-nav-item:hover::before,
+button.mobile-nav-item:hover::before {
+  content: '›'; /* Dấu mũi tên (chevron) */
+  position: absolute;
+  left: 20px; /* Vị trí bên trái */
+  top: 50%;
+  transform: translateY(-50%); /* Căn giữa theo chiều dọc */
   
-  /* Ghi đè */
-  height: auto;
-  background-color: transparent;
+  /* Tạo hình tròn */
+  width: 24px;
+  height: 24px;
+  background-color: #1e40af; /* Nền tròn màu xanh */
+  color: white; /* Mũi tên màu trắng */
+  border-radius: 50%; /* Bo tròn 100% */
+  
+  /* Căn chỉnh mũi tên vào giữa hình tròn */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  padding-bottom: 4px; /* Tinh chỉnh nhỏ để mũi tên đứng giữa */
+  
+  /* Hiệu ứng xuất hiện */
+  animation: fadeInIcon 0.3s ease forwards;
 }
 
-/* 11. Hover cho từng mục con */
-.dropdown-menu li a:hover {
-  background-color: #f3f4f6; /* Màu xám nhạt (gray-100) */
-  color: #1e40af; /* Màu xanh chủ đạo (blue-800) */
+/* Animation cho icon hiện ra nhẹ nhàng */
+@keyframes fadeInIcon {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 
-/* --- HẾT: CSS NÂNG CẤP CHO DROPDOWN --- */
+/* 2. Nhóm Menu Con */
+.mobile-nav-group {
+  border-bottom: 1px solid #f3f4f6;
+  background-color: white;
+}
 
+/* 3. Tiêu đề nhóm */
+.mobile-group-title {
+  display: block;
+  padding: 24px 20px 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
+/* 4. Mục con (Sub-item) */
+.mobile-sub-item {
+  display: block;
+  padding: 12px 20px 12px 40px; /* Thụt đầu dòng mặc định */
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Hiệu ứng Hover cho Mục con (Cũng trượt và hiện icon nhưng nhỏ hơn) */
+.mobile-sub-item:hover {
+  background-color: #eff6ff;
+  color: #1e40af;
+  padding-left: 55px; /* Trượt thêm một chút so với mặc định 40px */
+}
+
+.mobile-sub-item:hover::before {
+  content: '›';
+  position: absolute;
+  left: 25px; /* Icon nằm thụt vào trong so với mục chính */
+  top: 50%;
+  transform: translateY(-50%);
+  
+  width: 20px;
+  height: 20px;
+  background-color: white; /* Đảo ngược: Nền trắng */
+  border: 1px solid #1e40af; /* Viền xanh */
+  color: #1e40af; /* Mũi tên xanh */
+  border-radius: 50%;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+  padding-bottom: 4px;
+}
+
+/* Responsive nhỏ */
+@media (max-width: 480px) {
+  .header-container {
+    padding: 0 15px;
+  }
+  .company-name { font-size: 15px; }
+  .company-tagline { display: none; }
+  .logo-image { width: 40px; height: 40px; }
+}

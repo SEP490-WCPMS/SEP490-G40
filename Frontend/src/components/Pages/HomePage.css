@@ -1,6 +1,10 @@
 .homepage {
   background-color: #f9fafb;
   min-height: 100vh;
+  /* Fix lỗi overflow ngang và khoảng trắng header */
+  width: 100%;
+  overflow-x: hidden;
+  padding-top: 0;
 }
 
 .btn {
@@ -9,7 +13,7 @@
   gap: 8px;
   padding: 12px 28px;
   border: none;
-  border-radius: 8px;
+  /* border-radius: 8px; */
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -49,16 +53,20 @@
 .company-banner-section {
   position: relative;
   height: auto;
-  margin: 0 -9999px;
-  padding-left: 9999px;
-  padding-right: 9999px;
-  padding-bottom: 60px;
+  width: 100%;
+  /* Reset margin âm để tránh lỗi tràn màn hình trên mobile */
+  margin-left: 0;
+  margin-right: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
   overflow: hidden;
 }
 
 .company-banner-image {
   width: 100%;
   height: auto;
+  min-height: 200px; /* Đảm bảo chiều cao tối thiểu trên mobile */
+  object-fit: cover;
   display: block;
 }
 
@@ -96,17 +104,17 @@
 
 /* Water Price Section */
 .water-price-section {
-  padding: 80px 20px;
+  padding: 40px 16px; /* Padding nhỏ hơn cho mobile */
   max-width: 1200px;
   margin: 0 auto;
   background: white;
 }
 
 .water-price-section h2 {
-  font-size: 36px;
+  font-size: 28px; /* Giảm size chữ */
   font-weight: 800;
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   color: #1f2937;
 }
 
@@ -119,13 +127,16 @@
 }
 
 .water-price-table {
-  overflow-x: auto;
+  overflow-x: auto; /* Cho phép cuộn ngang bảng trên mobile */
+  -webkit-overflow-scrolling: touch;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-top: 20px;
 }
 
 .water-price-table table {
   width: 100%;
+  min-width: 600px; /* Đặt chiều rộng tối thiểu để bảng không bị co dúm */
   border-collapse: collapse;
   background: white;
 }
@@ -140,6 +151,7 @@
   text-align: left;
   font-weight: 700;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .water-price-table td {
@@ -159,16 +171,16 @@
 
 /* Payment Methods Section */
 .payment-methods-section {
-  padding: 80px 20px;
+  padding: 60px 16px;
   background: white;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
 }
 
 .payment-methods-section h2 {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 800;
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 40px;
   color: #1e40af;
   text-transform: uppercase;
 }
@@ -176,14 +188,14 @@
 .payment-methods-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
+  gap: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
 .payment-method-card {
   background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
-  padding: 40px;
+  padding: 30px 20px;
   border-radius: 12px;
   text-align: center;
   border: 2px solid #93c5fd;
@@ -191,21 +203,21 @@
 }
 
 .payment-method-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-5px);
   box-shadow: 0 12px 24px rgba(30, 64, 175, 0.15);
   border-color: #1e40af;
 }
 
 .payment-icon {
-  font-size: 48px;
-  margin-bottom: 20px;
+  font-size: 40px;
+  margin-bottom: 15px;
 }
 
 .payment-method-card h3 {
   font-size: 18px;
   font-weight: 700;
   color: #1e40af;
-  margin: 0 0 15px 0;
+  margin: 0 0 10px 0;
   text-transform: uppercase;
 }
 
@@ -219,16 +231,15 @@
 /* Stats Section with Background */
 .stats-section {
   position: relative;
-  padding: 80px 20px;
-  margin-bottom: 60px;
+  padding: 60px 20px;
+  margin-bottom: 40px;
   background-size: cover;
   background-position: center;
   background-image: url('https://capnuocphutho.vn/wp-content/uploads/2020/03/VTI1-1024x768.jpg');
-  background-attachment: fixed;
+  /* Sửa background attachment thành scroll để không bị lỗi trên mobile */
+  background-attachment: scroll;
   color: white;
-  margin: 0 -9999px;
-  padding-left: calc(20px + 9999px);
-  padding-right: calc(20px + 9999px);
+  width: 100%;
 }
 
 .stats-overlay {
@@ -237,7 +248,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(30, 64, 175, 0.8), rgba(30, 58, 138, 0.8));
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.85), rgba(30, 58, 138, 0.8));
   z-index: 1;
 }
 
@@ -245,7 +256,8 @@
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  /* Điều chỉnh grid để linh hoạt trên mobile */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 40px;
   position: relative;
   z-index: 2;
@@ -264,7 +276,7 @@
 }
 
 .stat-number {
-  font-size: 48px;
+  font-size: 40px;
   font-weight: 800;
   margin: 0;
   color: white !important;
@@ -287,23 +299,24 @@
 
 /* Banks Section */
 .banks-section {
-  padding: 80px 20px;
+  padding: 60px 16px;
   background: linear-gradient(to bottom, #f9fafb, white);
-  margin-bottom: 40px;
+  margin-bottom: 20px;
 }
 
 .banks-section h2 {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 800;
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 40px;
   color: #1f2937;
 }
 
 .banks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 30px;
+  /* Mặc định mobile 2 cột */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -314,7 +327,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  padding: 20px;
+  padding: 15px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -323,28 +336,28 @@
 }
 
 .bank-item:hover {
-  transform: translateY(-8px);
+  transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(30, 64, 175, 0.12);
   border-color: #60a5fa;
 }
 
 .bank-logo {
-  font-size: 48px;
+  font-size: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60px;
+  height: 50px;
 }
 
 .bank-logo-image {
   width: 100%;
-  height: 60px;
+  height: 50px;
   object-fit: contain;
   object-position: center;
 }
 
 .bank-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #1f2937;
   text-align: center;
@@ -352,107 +365,34 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
-  .hero-section {
-    padding: 60px 20px;
+@media (min-width: 768px) {
+  .company-banner-image {
+    min-height: 400px;
   }
 
-  .hero-logo {
-    width: 100px;
-    height: 100px;
-  }
-
-  .hero-title {
+  .water-price-section h2 {
     font-size: 36px;
-  }
-
-  .hero-slogan {
-    font-size: 18px;
-  }
-
-  .hero-buttons {
-    flex-direction: column;
-  }
-
-  .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .company-building-section {
-    height: 300px;
-  }
-
-  .company-building-overlay {
-    padding: 30px;
-  }
-
-  .company-building-overlay h2 {
-    font-size: 28px;
-  }
-
-  .company-building-overlay p {
-    font-size: 14px;
-  }
-
-  .features-section h2,
-  .payment-methods-section h2,
-  .quick-links-section h2,
-  .banks-section h2 {
-    font-size: 28px;
-  }
-
-  .features-grid {
-    grid-template-columns: 1fr;
   }
 
   .payment-methods-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-links-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .stats-content {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 30px;
-  }
-
-  .stat-number {
-    font-size: 36px;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .banks-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
+@media (min-width: 1024px) {
+  .banks-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+/* Màn hình nhỏ dưới 480px */
 @media (max-width: 480px) {
-  .hero-section {
-    padding: 40px 20px;
-  }
-
-  .hero-logo {
-    width: 80px;
-    height: 80px;
-  }
-
-  .hero-title {
-    font-size: 28px;
-  }
-
-  .hero-slogan {
-    font-size: 16px;
-  }
-
-  .hero-description {
-    font-size: 14px;
-  }
-
-  .company-building-section {
-    height: 250px;
-    margin-bottom: 40px;
+  .company-banner-section {
+    height: auto;
   }
 
   .company-building-overlay {
@@ -460,89 +400,19 @@
   }
 
   .company-building-overlay h2 {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .company-building-overlay p {
     font-size: 13px;
   }
 
-  .features-section,
-  .payment-methods-section,
-  .quick-links-section,
-  .banks-section {
-    padding: 40px 15px;
-  }
-
-  .features-section h2,
-  .payment-methods-section h2,
-  .quick-links-section h2,
-  .banks-section h2 {
-    font-size: 24px;
-    margin-bottom: 30px;
-  }
-
-  .quick-links-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-
-  .quick-link {
-    padding: 16px;
-  }
-
-  .quick-link span {
-    font-size: 24px;
+  .payment-methods-grid {
+    grid-template-columns: 1fr; /* 1 cột */
   }
 
   .stats-content {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .stat-number {
-    font-size: 32px;
-  }
-
-  .stat-label {
-    font-size: 14px;
-  }
-
-  .stat-description {
-    font-size: 12px;
-  }
-
-  .banks-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  .bank-item {
-    padding: 15px;
-  }
-
-  .bank-logo {
-    font-size: 40px;
-    height: 50px;
-  }
-
-  .bank-name {
-    font-size: 13px;
-  }
-
-  .payment-methods-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .payment-icon {
-    font-size: 40px;
-  }
-
-  .payment-method-card h3 {
-    font-size: 16px;
-  }
-
-  .payment-method-card p {
-    font-size: 13px;
+    grid-template-columns: 1fr; /* 1 cột */
+    gap: 30px;
   }
 }

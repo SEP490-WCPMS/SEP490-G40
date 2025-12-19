@@ -427,6 +427,7 @@ const ServiceDashboardPage = () => {
             <ToastContainer autoClose={2000} />
             
             {/* --- SECTION 1: STATISTICS CARDS (4 Cards - Bỏ Active) --- */}
+            {/*Mobile (mặc định): 1 cột. Sm: 2 cột. Lg: 4 cột.*/}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div onClick={() => handleCardClick('/service/requests')} className="cursor-pointer hover:translate-y-[-2px] transition-transform">
                     <StatisticCard 

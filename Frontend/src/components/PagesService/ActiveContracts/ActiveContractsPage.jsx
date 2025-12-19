@@ -9,7 +9,7 @@ import {
     FilterOutlined, 
     CheckOutlined 
 } from '@ant-design/icons';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import Pagination from '../../common/Pagination';
 import { getServiceContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract, reactivateContract } from '../../Services/apiService';
 import dayjs from 'dayjs';
@@ -308,6 +308,47 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         );
     };
 
+    // Mobile card view for ActiveContracts (similar layout to ContractTable.MobileCard)
+    const MobileCard = ({ record }) => (
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2 text-blue-700">
+                    <FileText size={16} />
+                    <span className="font-medium">{record.contractNumber}</span>
+                </div>
+                {renderStatusBadge(record.contractStatus)}
+            </div>
+
+            <div className="flex items-start gap-2 mt-1">
+                <User size={16} className="text-gray-400 mt-1 shrink-0" />
+                <div>
+                    <div className="font-medium text-gray-800">{record.customerName || 'Khách vãng lai'}</div>
+                    {(record.isGuest || !record.customerCode) ? (
+                        <span className="text-xs text-orange-500 bg-orange-50 px-1 rounded">Chưa có TK</span>
+                    ) : (
+                        <div className="text-xs text-gray-500">{record.customerCode}</div>
+                    )}
+                </div>
+            </div>
+
+            <div className="pl-6 space-y-1 text-sm text-gray-600">
+                {record.contactPhone && (
+                    <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /> <span>{record.contactPhone}</span></div>
+                )}
+                {record.address && (
+                    <div className="flex items-start gap-2"><MapPin size={14} className="text-gray-400 mt-1 shrink-0" /> <span className="line-clamp-2">{record.address}</span></div>
+                )}
+            </div>
+
+            <div className="border-t border-gray-100 pt-3 mt-2">
+                <div className="flex items-center gap-3"> 
+                    <button onClick={() => handleOpenModal(record, 'view')} className="font-semibold text-indigo-600 hover:text-indigo-900">Chi tiết</button>
+                    {record.contractStatus === 'ACTIVE' && <button onClick={() => handleOpenModal(record, 'suspend')} className="font-semibold text-orange-600">Tạm ngưng</button>}
+                </div>
+            </div>
+        </div>
+    );
+
     const formatPaymentMethod = (method) => {
         if (!method) return '—';
         const m = String(method).trim().toUpperCase();
@@ -412,7 +453,18 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile small-screen cards */}
+                <div className="block sm:hidden px-4 py-3">
+                    {loading ? (
+                        <div className="py-8 text-center text-gray-500"><Loader2 className="animate-spin inline-block" size={18} /> Đang tải...</div>
+                    ) : contracts && contracts.length > 0 ? (
+                        contracts.map(r => <MobileCard key={r.id} record={r} />)
+                    ) : (
+                        <div className="text-center text-gray-500 py-8 bg-white rounded-lg border border-dashed">Không tìm thấy hợp đồng nào</div>
+                    )}
+                </div>
+
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
