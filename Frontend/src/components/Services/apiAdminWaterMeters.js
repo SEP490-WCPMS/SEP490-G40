@@ -1,8 +1,8 @@
 import apiClient from './apiClient';
 
 // Admin - Water Meters
-export const getAdminWaterMeters = (includeRetired = false) => {
-    const params = {};
+export const getAdminWaterMeters = (includeRetired = false, page = 0, size = 10) => {
+    const params = { page, size };
     if (includeRetired) params.includeRetired = true;
     return apiClient.get('/admin/water-meters', { params });
 };

@@ -16,7 +16,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(180deg, #f6fbff 0%, #eaf9ff 100%);
+    background: url('/nuoc_sach.jpg') no-repeat center center/cover;
     padding: 24px;
 }
 

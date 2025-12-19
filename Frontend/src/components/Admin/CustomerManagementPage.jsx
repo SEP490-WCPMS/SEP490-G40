@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getPendingGuestRequests, approveGuestRequest, getAllCustomers } from '../Services/apiAdmin';
 import { Button } from '../ui/button';
 import { AlertCircle } from 'lucide-react';
+import ConfirmModal from '../common/ConfirmModal';
 
 const CustomerManagementPage = () => {
     const [activeTab, setActiveTab] = useState('guests'); // 'guests' hoặc 'customers'
@@ -12,6 +13,8 @@ const CustomerManagementPage = () => {
     const [showRawPayload, setShowRawPayload] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
+    const [confirmLoading, setConfirmLoading] = useState(false);
 
     // Hàm tải dữ liệu
     const loadData = useCallback(async () => {
@@ -88,15 +91,22 @@ const CustomerManagementPage = () => {
     }, [loadData]);
 
     // Hàm xử lý duyệt
-    const handleApprove = async (contractId) => {
-        if (!window.confirm("Xác nhận tạo tài khoản và gửi SMS cho khách hàng này?")) return;
+    const handleApprove = (contractId) => {
+        setConfirmModal({ isOpen: true, contractId });
+    };
 
+    const handleConfirmApprove = async () => {
+        if (!confirmModal.contractId) return;
+        setConfirmLoading(true);
         try {
-            await approveGuestRequest(contractId);
+            await approveGuestRequest(confirmModal.contractId);
             alert("Thành công! Đã tạo tài khoản và gửi SMS.");
+            setConfirmModal({ isOpen: false, contractId: null });
             loadData(); // Tải lại danh sách
         } catch (err) {
             alert(err.response?.data || "Có lỗi xảy ra khi duyệt.");
+        } finally {
+            setConfirmLoading(false);
         }
     };
 
@@ -241,6 +251,14 @@ const CustomerManagementPage = () => {
                         )}
                     </>
                 )}
+                <ConfirmModal
+                    isOpen={confirmModal.isOpen}
+                    onClose={() => setConfirmModal({ isOpen: false, contractId: null })}
+                    onConfirm={handleConfirmApprove}
+                    title="Xác nhận duyệt"
+                    message="Xác nhận tạo tài khoản và gửi SMS cho khách hàng này?"
+                    isLoading={confirmLoading}
+                />
             </div>
         </div>
     );
