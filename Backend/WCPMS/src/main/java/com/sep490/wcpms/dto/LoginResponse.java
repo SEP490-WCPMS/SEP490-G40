@@ -15,4 +15,8 @@ public class LoginResponse {
     private RoleName roleName; // Sử dụng RoleName enum trực tiếp
     private Department department;
     private String token;
+    // --- THÊM CÁC TRƯỜNG NÀY ---
+    private String phone;
+    private String email;
+    private String customerCode;
 }

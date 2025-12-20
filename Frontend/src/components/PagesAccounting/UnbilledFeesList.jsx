@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMyCalibrationFees } from '../Services/apiAccountingStaff';
-import { RefreshCw, Eye, Search, MapPin, Calendar, FileText, Wrench } from 'lucide-react';
+import { getMyCalibrationFees, bulkCreateServiceInvoices } from '../Services/apiAccountingStaff';
+import { RefreshCw, Eye, Search, MapPin, Calendar, FileText, Wrench, CheckSquare, Square } from 'lucide-react';
 import moment from 'moment';
 import Pagination from '../common/Pagination';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ConfirmModal from '../common/ConfirmModal';
 
 // 1. Định nghĩa Key lưu trữ
 const STORAGE_KEY = 'ACCOUNTING_UNBILLED_FEES_STATE';
@@ -27,6 +28,11 @@ function UnbilledFeesList() {
 
     const [fees, setFees] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // --- STATE MỚI CHO BULK ACTION ---
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+    const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
     // 3. LƯU STATE VÀO SESSION STORAGE KHI CÓ THAY ĐỔI
     useEffect(() => {
@@ -114,24 +120,72 @@ function UnbilledFeesList() {
         toast.info("Đang cập nhật dữ liệu...", { autoClose: 1000, hideProgressBar: true });
     };
 
+    // --- HÀM XỬ LÝ CHECKBOX ---
+    const toggleSelectAll = () => {
+        if (selectedIds.length === fees.length && fees.length > 0) {
+            setSelectedIds([]); // Bỏ chọn hết
+        } else {
+            setSelectedIds(fees.map(f => f.calibrationId)); // Chọn hết trang hiện tại
+        }
+    };
+
+    const toggleSelectOne = (id) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(prev => prev.filter(item => item !== id));
+        } else {
+            setSelectedIds(prev => [...prev, id]);
+        }
+    };
+
+    // --- HÀM GỌI API BULK ---
+    const handleBulkSubmit = async () => {
+        setBulkSubmitting(true);
+        setShowBulkConfirm(false);
+        try {
+            const res = await bulkCreateServiceInvoices(selectedIds); // Gọi API mới
+            toast.success(res.data.message || `Đã tạo thành công ${res.data.successCount} hóa đơn.`);
+
+            setSelectedIds([]); // Reset chọn
+            fetchData(pagination.page, searchTerm); // Load lại dữ liệu
+        } catch (err) {
+            console.error("Lỗi bulk create:", err);
+            toast.error("Lỗi khi tạo hóa đơn hàng loạt.");
+        } finally {
+            setBulkSubmitting(false);
+        }
+    };
+
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
-            {/* --- HEADER --- */}
+            {/* --- HEADER CÓ NÚT BULK ACTION --- */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 bg-white p-4 rounded-lg shadow-sm">
                 <div>
                     <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-1">Phí Dịch Vụ Phát Sinh</h1>
                     <p className="text-sm text-gray-600">Các khoản phí kiểm định/sửa chữa chưa lập HĐ.</p>
                 </div>
-                <button
-                    onClick={handleRefresh}
-                    className="flex items-center w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
-                    disabled={loading}
-                >
-                    <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Làm mới
-                </button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    {/* NÚT LẬP HÓA ĐƠN HÀNG LOẠT (Chỉ hiện khi có chọn) */}
+                    {selectedIds.length > 0 && (
+                        <button
+                            onClick={() => setShowBulkConfirm(true)}
+                            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md shadow-sm hover:bg-green-700 transition-colors"
+                            disabled={bulkSubmitting}
+                        >
+                            <CheckSquare size={16} className="mr-2" />
+                            Lập HĐ ({selectedIds.length})
+                        </button>
+                    )}
+                    <button
+                        onClick={handleRefresh}
+                        className="flex items-center w-full sm:w-auto justify-center px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
+                        disabled={loading}
+                    >
+                        <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Làm mới
+                    </button>
+                </div>
             </div>
 
             {/* --- THANH TÌM KIẾM --- */}
@@ -159,7 +213,7 @@ function UnbilledFeesList() {
 
             {/* --- DANH SÁCH DỮ LIỆU --- */}
             <div className="bg-transparent md:bg-white md:rounded-lg md:shadow md:border md:border-gray-200">
-                
+
                 {/* 1. MOBILE VIEW: Dạng Thẻ (Cards) */}
                 <div className="block md:hidden space-y-4">
                     {loading && fees.length === 0 ? (
@@ -224,6 +278,15 @@ function UnbilledFeesList() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
+                                {/* CHECKBOX HEADER */}
+                                <th className="px-4 py-3 text-center w-10">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        checked={fees.length > 0 && selectedIds.length === fees.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày KĐ</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách Hàng</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Đồng Hồ</th>
@@ -242,6 +305,15 @@ function UnbilledFeesList() {
                             ) : (
                                 fees.map(fee => (
                                     <tr key={fee.calibrationId} className="hover:bg-gray-50 transition duration-150 ease-in-out">
+                                        {/* CHECKBOX ROW */}
+                                        <td className="px-4 py-4 text-center">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                checked={selectedIds.includes(fee.calibrationId)}
+                                                onChange={() => toggleSelectOne(fee.calibrationId)}
+                                            />
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(fee.calibrationDate).format('DD/MM/YYYY')}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">{fee.customerName}</div>
@@ -270,7 +342,7 @@ function UnbilledFeesList() {
 
                 {/* --- Phân trang --- */}
                 {!loading && fees.length > 0 && (
-                     <div className="py-2">
+                    <div className="py-2">
                         <Pagination
                             currentPage={pagination.page}
                             totalElements={pagination.totalElements}
@@ -280,6 +352,15 @@ function UnbilledFeesList() {
                     </div>
                 )}
             </div>
+            {/* MODAL XÁC NHẬN BULK */}
+            <ConfirmModal
+                isOpen={showBulkConfirm}
+                onClose={() => setShowBulkConfirm(false)}
+                onConfirm={handleBulkSubmit}
+                title="Xác nhận Lập Hàng Loạt"
+                message={`Bạn có chắc chắn muốn lập hóa đơn cho ${selectedIds.length} khoản phí đã chọn không?`}
+                isLoading={bulkSubmitting}
+            />
         </div>
     );
 }

@@ -36,8 +36,8 @@ public class Invoice {
             foreignKey = @ForeignKey(name = "fk_invoices_contracts"))
     private Contract contract;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "meter_reading_id", nullable = false,
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "meter_reading_id", nullable = true,
             foreignKey = @ForeignKey(name = "fk_invoices_meter_readings"))
     private MeterReading meterReading;
 

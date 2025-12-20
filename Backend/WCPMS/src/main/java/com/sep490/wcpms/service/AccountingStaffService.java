@@ -107,4 +107,12 @@ public interface AccountingStaffService {
     // --- HẾT PHẦN SỬA ---
     /** Tính toán chi tiết tiền nước (Xem trước) */
     WaterBillCalculationDTO calculateWaterBill(Integer meterReadingId);
+
+
+    // BULK ACTIONS
+    BulkInvoiceResponseDTO generateBulkWaterBills(List<Integer> readingIds, Integer staffId);
+
+    BulkInvoiceResponseDTO createBulkInstallationInvoices(List<Integer> contractIds, Integer staffId);
+
+    BulkInvoiceResponseDTO createBulkServiceInvoices(List<Integer> calibrationIds, Integer staffId);
 }

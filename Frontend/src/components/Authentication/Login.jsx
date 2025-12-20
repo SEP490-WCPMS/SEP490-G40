@@ -3,12 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-//import { FaFacebookF, FaGoogle } from 'react-icons/fa'; // Cần cài react-icons nếu chưa có, hoặc dùng thẻ <i>
+import { Eye, EyeOff } from 'lucide-react';
 import './Login.css';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  // State quản lý ẩn/hiện mật khẩu
+  const [showPassword, setShowPassword] = useState(false);
+
   const [error, setError] = useState(null);
   const { login, loading } = useAuth();
   const navigate = useNavigate();
@@ -23,13 +27,9 @@ export default function Login() {
     }
 
     try {
-      // 1. Gọi login
       const loginResponse = await login(username, password);
-
-      // 2. Lấy roleName
       const roleName = loginResponse?.user?.roleName || JSON.parse(localStorage.getItem('user'))?.roleName;
 
-      // 3. Quyết định đường dẫn
       let targetPath = '/';
       if (roleName) {
         if (roleName === 'CASHIER_STAFF') targetPath = '/cashier';
@@ -39,12 +39,15 @@ export default function Login() {
         else if (roleName === 'ACCOUNTING_STAFF') targetPath = '/accounting';
       }
 
-      // 4. Navigate và tải lại trang để refresh state
       window.location.href = targetPath;
 
     } catch (err) {
       setError(err.message || 'Lỗi đăng nhập không xác định. Vui lòng thử lại.');
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -53,13 +56,32 @@ export default function Login() {
         .page-logo { position: absolute; left: 20px; top: 18px; display: flex; gap: 10px; align-items: center; cursor: pointer; }
         .page-logo img { height: 36px; width: auto; }
         .page-logo span { font-weight: 700; color: #0A77E2; letter-spacing: 0.5px; }
+        
+        .password-toggle-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            display: flex;
+            align-items: center;
+            padding: 0;
+            z-index: 10;
+        }
+        .password-toggle-btn:hover {
+            color: #0A77E2;
+        }
+        
         @media (max-width: 720px) {
           .page-logo { position: static; margin: 0 auto 12px auto; }
           .water-login-container { padding: 16px; }
           .login-card-wrapper { width: 100%; max-width: 420px; margin: 0 auto; }
         }
       `}</style>
-      {/* Logo góc trái màn hình (giống chữ Fastkart ở ảnh mẫu) */}
+
       <div className="page-logo" onClick={() => navigate('/')} role="button" aria-label="Go to Home">
         <img
           src="https://capnuocphutho.vn/wp-content/uploads/2020/03/logo-2.png"
@@ -68,7 +90,6 @@ export default function Login() {
         <span>PHUTHO WATER</span>
       </div>
 
-      {/* Card đăng nhập nổi */}
       <div className="login-card-wrapper">
         <div className="login-card-header">
           <h3>Chào mừng trở lại</h3>
@@ -90,16 +111,26 @@ export default function Login() {
             />
           </div>
 
-          <div className="input-group">
+          <div className="input-group" style={{ position: 'relative' }}>
             <Input
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Mật khẩu"
               disabled={loading}
               className="water-input"
+              style={{ paddingRight: '40px' }}
             />
+
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="password-toggle-btn"
+              tabIndex="-1"
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
 
           <div className="form-options">
@@ -118,20 +149,10 @@ export default function Login() {
             {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
           </Button>
 
-          <div className="divider">
-            <span>HOẶC</span>
-          </div>
+          {/* Đã xóa phần Divider và Social Login */}
 
-          <div className="social-login">
-            <button type="button" className="social-btn google">
-              <span>Google</span>
-            </button>
-            <button type="button" className="social-btn facebook">
-              <span>Facebook</span>
-            </button>
-          </div>
-
-          <div className="register-redirect">
+          {/* Thêm style margin-top để tách biệt phần đăng ký, giúp thẻ login cân đối hơn */}
+          <div className="register-redirect" style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
             Chưa có tài khoản? <a href="/register">Đăng ký ngay</a>
           </div>
         </form>

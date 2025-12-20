@@ -30,6 +30,7 @@ public class ContractAnnulTransferRequestController {
 
     @GetMapping
     public ResponseEntity<Page<ContractAnnulTransferRequestDTO>> search(
+            @RequestParam(required = false) Integer requestedById,
             @RequestParam(required = false) Integer contractId,
             @RequestParam(required = false) String requestType, // "annul" | "transfer"
             @RequestParam(required = false) String status,      // "pending" | "approved" | "rejected"
@@ -41,7 +42,7 @@ public class ContractAnnulTransferRequestController {
             @RequestParam(defaultValue = "createdAt,DESC") String sort
     ) {
         Pageable pageable = PageRequest.of(page, size, parseSort(sort));
-        return ResponseEntity.ok(service.search(contractId, requestType, status, from, to, q, pageable));
+        return ResponseEntity.ok(service.search(requestedById, contractId, requestType, status, from, to, q, pageable));
     }
 
     @PatchMapping("/{id}/approval")

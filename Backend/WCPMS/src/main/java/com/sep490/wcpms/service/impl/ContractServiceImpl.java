@@ -267,13 +267,18 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng: " + contractId));
 
         WaterMeterResponseDTO dto = new WaterMeterResponseDTO();
-        meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(contract)
+        // Lấy bản ghi lắp đặt mới nhất theo createdAt.
+        // Ưu tiên bản ghi có WaterMeter đang INSTALLED (tránh trả về đồng hồ cũ nếu data bị lẫn).
+        meterInstallationRepository
+                .findTopByContractAndWaterMeter_MeterStatusOrderByCreatedAtDesc(contract, WaterMeter.MeterStatus.INSTALLED)
+                .or(() -> meterInstallationRepository.findTopByContractOrderByCreatedAtDesc(contract))
                 .ifPresent(mi -> {
                     dto.setInstallationImageBase64(mi.getInstallationImageBase64());
-                    if (mi.getWaterMeter() != null && String.valueOf(mi.getWaterMeter().getMeterStatus()).equalsIgnoreCase("INSTALLED")) {
+                    if (mi.getWaterMeter() != null) {
                         dto.setInstalledMeterCode(mi.getWaterMeter().getMeterCode());
                     }
                 });
+
         return dto;
     }
 }

@@ -38,6 +38,9 @@ import java.time.LocalDateTime;
 import com.sep490.wcpms.dto.dashboard.AccountingStatsDTO;
 import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import com.sep490.wcpms.entity.Invoice.PaymentStatus;
+import com.sep490.wcpms.dto.BulkInvoiceResponseDTO; // Import DTO mới
+import java.util.ArrayList;
+import java.time.format.DateTimeFormatter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -333,47 +336,87 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         return "CN" + contractId + month + year;
     }
 
+    private String parseGuestName(String notes) {
+        if (notes == null || notes.isBlank()) return "Khách vãng lai";
+
+        // Notes thường dạng: "KHÁCH: Nguyễn Văn A | Tôi muốn đăng kí..."
+        String raw = notes.trim();
+        if (raw.contains("|")) {
+            raw = raw.split("\\|", 2)[0].trim();
+        }
+        raw = raw.replace("KHÁCH:", "").trim();
+        return raw.isBlank() ? "Khách vãng lai" : raw;
+    }
+
+    private String formatContractAddress(Contract contract) {
+        if (contract == null) return null;
+
+        // Ưu tiên địa chỉ lắp đặt gắn với hợp đồng
+        if (contract.getAddress() != null) {
+            String street = contract.getAddress().getStreet() != null ? contract.getAddress().getStreet() : "";
+            String ward = "";
+            String district = "";
+
+            if (contract.getAddress().getWard() != null) {
+                ward = contract.getAddress().getWard().getWardName();
+                district = contract.getAddress().getWard().getDistrict();
+            }
+
+            String formatted = String.format("%s, %s, %s", street, ward, district)
+                    .replace("null", "")
+                    .replaceAll("^, |, $", "")
+                    .trim();
+            return formatted.isBlank() ? "Chưa cập nhật địa chỉ" : formatted;
+        }
+
+        // Fallback: nếu hợp đồng có customer và customer có address (chuỗi thô)
+        if (contract.getCustomer() != null && contract.getCustomer().getAddress() != null) {
+            return contract.getCustomer().getAddress();
+        }
+
+        return "Chưa cập nhật địa chỉ";
+    }
+
     @Override
     public Page<ContractDTO> getActiveContractsWithoutInstallationInvoice(Pageable pageable,
                                                                           Integer accountingStaffId) {
-        Page<Contract> activeContracts =
-                contractRepository.findByContractStatus(Contract.ContractStatus.ACTIVE, pageable);
 
-        List<ContractDTO> list = activeContracts.getContent().stream()
-                // chỉ HĐ được assign cho kế toán hiện tại
-                .filter(c -> c.getAccountingStaff() != null
-                        && c.getAccountingStaff().getId().equals(accountingStaffId))
-                // chưa có hóa đơn lắp đặt (CN*, meterReading null)
-                .filter(c -> !invoiceRepository
-                        .existsByContract_IdAndMeterReadingIsNullAndInvoiceNumberStartingWith(
-                                c.getId(), "CN"
-                        ))
-                .map(contract -> {
-                    ContractDTO dto = new ContractDTO();
-                    BeanUtils.copyProperties(contract, dto);
+        Page<Contract> page = contractRepository
+                .findActiveContractsWithoutInstallationInvoiceByStaff(accountingStaffId, pageable);
 
-                    dto.setCustomerId(
-                            contract.getCustomer() != null ? contract.getCustomer().getId() : null
-                    );
-                    dto.setServiceStaffId(
-                            contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null
-                    );
-                    dto.setTechnicalStaffId(
-                            contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null
-                    );
-                    dto.setAccountingStaffId(
-                            contract.getAccountingStaff() != null
-                                    ? contract.getAccountingStaff().getId()
-                                    : null
-                    );
+        return page.map(contract -> {
+            ContractDTO dto = new ContractDTO();
+            dto.setId(contract.getId());
+            dto.setContractNumber(contract.getContractNumber());
+            dto.setCustomerId(contract.getCustomer() != null ? contract.getCustomer().getId() : null);
 
-                    return dto;
-                })
-                .toList();
+            dto.setServiceStaffId(contract.getServiceStaff() != null ? contract.getServiceStaff().getId() : null);
+            dto.setTechnicalStaffId(contract.getTechnicalStaff() != null ? contract.getTechnicalStaff().getId() : null);
+            dto.setAccountingStaffId(contract.getAccountingStaff() != null ? contract.getAccountingStaff().getId() : null);
 
-        return new PageImpl<>(list, pageable, list.size());
+            dto.setApplicationDate(contract.getApplicationDate());
+
+            // Thông tin KH
+            if (contract.getCustomer() != null) {
+                dto.setCustomerName(contract.getCustomer().getCustomerName());
+                if (contract.getCustomer().getAccount() != null) {
+                    dto.setCustomerPhone(contract.getCustomer().getAccount().getPhone());
+                }
+            } else {
+                dto.setCustomerName(parseGuestName(contract.getNotes()));
+                dto.setCustomerPhone(contract.getContactPhone());
+            }
+
+            // Địa chỉ lắp đặt
+            dto.setCustomerAddress(formatContractAddress(contract));
+
+            dto.setContractValue(contract.getContractValue());
+            dto.setContractStatus(contract.getContractStatus());
+            dto.setInstallationDate(contract.getInstallationDate());
+
+            return dto;
+        });
     }
-
 
     @Override
     @Transactional
@@ -388,11 +431,14 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             throw new IllegalStateException("Chỉ tạo hóa đơn lắp đặt cho HĐ đang ACTIVE");
         }
 
+        if (contract.getContractValue() == null || contract.getContractValue().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Hợp đồng không có giá trị hợp lệ để lập hóa đơn lắp đặt.");
+        }
+
         // 3. Kiểm tra đã có HĐ lắp đặt chưa
-        boolean exists = invoiceRepository.existsByContract_Id(
-                contract.getId()
-        );
-        if (exists) {
+        boolean existsInstallationInvoice =
+                invoiceRepository.existsInstallationInvoiceByContractId(contract.getId());
+        if (existsInstallationInvoice) {
             throw new IllegalStateException("Hợp đồng này đã có hóa đơn lắp đặt");
         }
 
@@ -400,6 +446,19 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         BigDecimal subtotal = request.getSubtotalAmount();
         BigDecimal vatAmount = request.getVatAmount();
         BigDecimal total = request.getTotalAmount();
+
+        if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tiền lắp đặt (chưa VAT) phải lớn hơn 0");
+        }
+        if (vatAmount == null || vatAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Tiền VAT không được âm");
+        }
+        if (total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Tổng tiền hóa đơn phải lớn hơn 0");
+        }
+        if (subtotal.add(vatAmount).compareTo(total) != 0) {
+            throw new IllegalArgumentException("Tổng tiền không hợp lệ (subtotal + VAT phải bằng total)");
+        }
 
         LocalDate invoiceDate = request.getInvoiceDate();
         LocalDate dueDate = request.getDueDate();
@@ -782,4 +841,179 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         waterServiceContractRepository.saveAll(contractsToUpdate);
     }
     // === HẾT PHẦN SỬA ===
+
+
+    // =================================================================
+    // === TÍNH NĂNG LẬP HÓA ĐƠN HÀNG LOẠT (BULK ACTIONS) ===
+    // =================================================================
+
+    /**
+     * 1. Lập hàng loạt Hóa đơn Tiền Nước
+     */
+    @Override
+    @Transactional
+    public BulkInvoiceResponseDTO generateBulkWaterBills(List<Integer> readingIds, Integer staffId) {
+        int success = 0;
+        int fail = 0;
+
+        for (Integer readingId : readingIds) {
+            try {
+                // Gọi lại hàm tạo đơn lẻ đã có
+                generateWaterBill(readingId, staffId);
+                success++;
+            } catch (Exception e) {
+                System.err.println("Lỗi tạo HĐ nước ID " + readingId + ": " + e.getMessage());
+                fail++;
+            }
+        }
+        return new BulkInvoiceResponseDTO(success, fail, "Hoàn tất xử lý " + (success + fail) + " chỉ số nước.");
+    }
+
+    /**
+     * 2. Lập hàng loạt Hóa đơn Lắp Đặt
+     * (Lưu ý: Hàm này sẽ tự tính toán tiền dựa trên giá trị hợp đồng, không cần FE gửi tiền lên)
+     */
+    @Override
+    @Transactional
+    public BulkInvoiceResponseDTO createBulkInstallationInvoices(List<Integer> contractIds, Integer staffId) {
+        int success = 0;
+        int fail = 0;
+        Account staff = accountRepository.findById(staffId).orElse(null);
+
+        for (Integer contractId : contractIds) {
+            try {
+                Contract contract = contractRepository.findById(contractId)
+                        .orElseThrow(() -> new RuntimeException("Contract not found"));
+
+                // Kiểm tra điều kiện
+                if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE ||
+                        invoiceRepository.existsByContract_Id(contract.getId())) {
+                    fail++;
+                    continue;
+                }
+
+                // Tự động tính toán tiền (Giả sử ContractValue là Tổng tiền đã bao gồm VAT)
+                // Hoặc tùy logic doanh nghiệp của bạn. Ở đây giả sử:
+                BigDecimal totalAmount = contract.getContractValue();
+                // Tính ngược ra VAT (Ví dụ VAT 5% thì chia 1.05, ở đây giả sử VAT lấy từ Config hoặc mặc định)
+                BigDecimal vatRate = new BigDecimal("0.05"); // 5%
+                BigDecimal subtotal = totalAmount.divide(BigDecimal.ONE.add(vatRate), 0, RoundingMode.HALF_UP);
+                BigDecimal vatAmount = totalAmount.subtract(subtotal);
+
+                // Tạo hóa đơn
+                Invoice invoice = new Invoice();
+                invoice.setInvoiceNumber(generateContractInvoiceNumber(LocalDate.now(), contractId));
+                invoice.setCustomer(contract.getCustomer());
+                invoice.setContract(contract);
+                invoice.setMeterReading(null);
+
+                // Set ngày
+                LocalDate today = LocalDate.now();
+                invoice.setFromDate(contract.getInstallationDate() != null ? contract.getInstallationDate() : today);
+                invoice.setToDate(today);
+                invoice.setInvoiceDate(today);
+                invoice.setDueDate(today.plusDays(7)); // Hạn 7 ngày
+
+                // Set tiền
+                invoice.setTotalConsumption(BigDecimal.ZERO);
+                invoice.setSubtotalAmount(subtotal);
+                invoice.setVatAmount(vatAmount);
+                invoice.setTotalAmount(totalAmount);
+
+                invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
+                invoice.setAccountingStaff(staff); // Gán người đang bấm nút
+
+                Invoice saved = invoiceRepository.save(invoice);
+
+                // Gửi thông báo
+                invoiceNotificationService.sendInstallationInvoiceIssued(saved, contract);
+
+                success++;
+            } catch (Exception e) {
+                e.printStackTrace();
+                fail++;
+            }
+        }
+        return new BulkInvoiceResponseDTO(success, fail, "Hoàn tất xử lý " + (success + fail) + " hợp đồng.");
+    }
+
+    /**
+     * 3. Lập hàng loạt Hóa đơn Phí Kiểm Định (Dịch vụ)
+     */
+    @Override
+    @Transactional
+    public BulkInvoiceResponseDTO createBulkServiceInvoices(List<Integer> calibrationIds, Integer staffId) {
+        int success = 0;
+        int fail = 0;
+        Account staff = accountRepository.findById(staffId).orElse(null);
+        // Tạo formatter ngày tháng: MMyyyy (Ví dụ: 122025)
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMyyyy");
+
+        for (Integer calibId : calibrationIds) {
+            try {
+                MeterCalibration calibration = calibrationRepository.findById(calibId).orElse(null);
+                if (calibration == null || calibration.getInvoice() != null) {
+                    fail++; continue;
+                }
+
+                // Tìm Customer thông qua Meter -> Installation
+                // (Logic này copy từ hàm đơn lẻ, hoặc bạn có thể trích xuất ra hàm private để tái sử dụng)
+                MeterInstallation installation = calibration.getMeter().getInstallations().stream()
+                        .sorted((a, b) -> b.getInstallationDate().compareTo(a.getInstallationDate()))
+                        .findFirst().orElse(null);
+
+                if (installation == null || installation.getCustomer() == null) {
+                    fail++; continue;
+                }
+
+                // Tạo Invoice
+                Invoice invoice = new Invoice();
+                // === SỬA TẠI ĐÂY: Format DVKD + ID + MMyyyy ===
+                String datePart = LocalDate.now().format(formatter);
+                String invoiceNum = "DVKD" + calibId + datePart;
+                invoice.setInvoiceNumber(invoiceNum);
+                // ==============================================
+                invoice.setCustomer(installation.getCustomer());
+                invoice.setContract(installation.getContract());
+                invoice.setMeterReading(null);
+
+                LocalDate today = LocalDate.now();
+                invoice.setInvoiceDate(today);
+                invoice.setDueDate(today.plusDays(7));
+                invoice.setFromDate(today);
+                invoice.setToDate(today);
+
+                // === SỬA LỖI TẠI ĐÂY: Thêm dòng này ===
+                invoice.setTotalConsumption(BigDecimal.ZERO); // Mặc định là 0 cho hóa đơn dịch vụ
+                // ======================================
+
+                // Tiền
+                BigDecimal cost = calibration.getCalibrationCost();
+                BigDecimal subtotal = cost; // Giả sử phí kiểm định chưa thuế hoặc đã gồm thuế tùy quy định
+                BigDecimal vat = cost.multiply(new BigDecimal("0.05")); // VAT 5%
+                BigDecimal total = cost.add(vat);
+
+                invoice.setSubtotalAmount(subtotal);
+                invoice.setVatAmount(vat);
+                invoice.setTotalAmount(total);
+
+                invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
+                invoice.setAccountingStaff(staff);
+
+                Invoice savedInvoice = invoiceRepository.save(invoice);
+
+                // Link ngược lại
+                calibration.setInvoice(savedInvoice);
+                calibrationRepository.save(calibration);
+
+                // Gửi noti
+                invoiceNotificationService.sendServiceInvoiceIssued(savedInvoice, "Phí kiểm định định kỳ", "5%");
+
+                success++;
+            } catch (Exception e) {
+                fail++;
+            }
+        }
+        return new BulkInvoiceResponseDTO(success, fail, "Hoàn tất xử lý " + (success + fail) + " phí dịch vụ.");
+    }
 }

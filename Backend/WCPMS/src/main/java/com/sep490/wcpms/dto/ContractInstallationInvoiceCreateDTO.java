@@ -1,6 +1,8 @@
 package com.sep490.wcpms.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -21,11 +23,14 @@ public class ContractInstallationInvoiceCreateDTO {
     private LocalDate dueDate;      // Hạn thanh toán
 
     @NotNull
-    private BigDecimal subtotalAmount; // = contract_value
+    @Positive(message = "Tiền lắp đặt (chưa VAT) phải lớn hơn 0")
+    private BigDecimal subtotalAmount;
 
     @NotNull
-    private BigDecimal vatAmount;      // FE tính sẵn
+    @PositiveOrZero(message = "Tiền VAT không được âm")
+    private BigDecimal vatAmount;
 
     @NotNull
-    private BigDecimal totalAmount;    // FE tính sẵn (subtotal + VAT)
+    @Positive(message = "Tổng tiền hóa đơn phải lớn hơn 0")
+    private BigDecimal totalAmount;
 }

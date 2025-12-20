@@ -8,7 +8,8 @@ import {
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import './WaterPricesPage.css';
-import { AlertCircle, ChevronLeft, ChevronRight, X, Edit } from 'lucide-react';
+import { AlertCircle, X, Edit } from 'lucide-react';
+import Pagination from '../common/Pagination';
 
 // --- MODAL XÁC NHẬN ---
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
@@ -36,6 +37,7 @@ export default function WaterPricesPage() {
 
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
     const pageSize = 10;
 
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', item: null, message: '' });
@@ -48,12 +50,16 @@ export default function WaterPricesPage() {
         try {
             const resp = await getAdminWaterPrices(includeInactive, currentPage, pageSize);
             const data = resp.data || resp;
-            if (data && Array.isArray(data.content)) {
-                setItems(data.content);
-                setTotalPages(data.totalPages);
-            } else {
-                setItems([]);
-            }
+            const hasContent = data && Array.isArray(data.content);
+            const resolvedItems = hasContent ? data.content : [];
+
+            setItems(resolvedItems);
+
+            const inferredTotalElements = data?.totalElements ?? data?.totalCount ?? (hasContent ? data.content.length : resolvedItems.length);
+            const inferredTotalPages = data?.totalPages ?? (inferredTotalElements ? Math.ceil(inferredTotalElements / pageSize) : 0);
+
+            setTotalElements(inferredTotalElements);
+            setTotalPages(inferredTotalPages);
 
             const respTypes = await getAvailableWaterPriceTypes();
             const dataTypes = respTypes.data || respTypes;
@@ -68,7 +74,19 @@ export default function WaterPricesPage() {
 
     useEffect(() => { fetchData(); }, [currentPage]);
 
+    useEffect(() => {
+        if (totalPages > 0 && currentPage > totalPages - 1) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [currentPage, totalPages]);
+
     const handleChange = (e) => setForm(s => ({ ...s, [e.target.id]: e.target.value }));
+
+    const handlePageChange = (page) => {
+        const maxPage = Math.max(totalPages - 1, 0);
+        const clamped = Math.min(Math.max(page, 0), maxPage);
+        setCurrentPage(clamped);
+    };
 
     const performSave = async () => {
         setLoading(true);
@@ -213,11 +231,12 @@ export default function WaterPricesPage() {
                     </table>
                 </div>
 
-                <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 10 }}>
-                    <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}><ChevronLeft /></Button>
-                    <span>Trang {currentPage + 1} / {totalPages || 1}</span>
-                    <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))} disabled={currentPage >= totalPages - 1}><ChevronRight /></Button>
-                </div>
+                <Pagination
+                    currentPage={currentPage}
+                    totalElements={totalElements}
+                    pageSize={pageSize}
+                    onPageChange={handlePageChange}
+                />
             </div>
         </div>
     );
