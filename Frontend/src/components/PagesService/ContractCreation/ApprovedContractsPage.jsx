@@ -22,7 +22,6 @@ const ApprovedContractsPage = ({ refreshKey }) => {
     const [selectedContract, setSelectedContract] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [generateModalOpen, setGenerateModalOpen] = useState(false);
-    const [generateForm] = Form.useForm();
     const navigate = useNavigate();
     
     const [showSendToSignConfirm, setShowSendToSignConfirm] = useState(false);
@@ -218,102 +217,12 @@ const ApprovedContractsPage = ({ refreshKey }) => {
             </Spin>
 
             {/* --- Modal xem chi tiết (đọc-only) --- */}
-            {isModalVisible && selectedContract && (
-                <Modal
-                    title="Chi tiết hợp đồng đã duyệt"
-                    open={isModalVisible}
-                    onCancel={handleCancelModal}
-                    onOk={handleCancelModal}
-                    confirmLoading={modalLoading}
-                    okText="Đóng"
-                    cancelButtonProps={{ style: { display: 'none' } }}
-                    destroyOnClose
-                    width={800}
-                >
-                    <Spin spinning={modalLoading}>
-                        <Descriptions bordered size="small" column={1}>
-                            {/* PHẦN 1: THÔNG TIN KHÁCH HÀNG */}
-                            <Descriptions.Item label="Mã Hợp đồng" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
-                                {selectedContract.contractNumber || '—'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Khách hàng">
-                                {selectedContract.customerName || '—'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Mã Khách hàng">
-                                {selectedContract.customerCode || '—'}
-                            </Descriptions.Item>
-                            {selectedContract.applicationDate && (
-                                <Descriptions.Item label="Ngày đăng ký">
-                                    {moment(selectedContract.applicationDate).format('DD/MM/YYYY')}
-                                </Descriptions.Item>
-                            )}
-
-                            {/* PHẦN 2: THÔNG TIN KHẢO SÁT & KỸ THUẬT */}
-                            {selectedContract.surveyDate && (
-                                <Descriptions.Item label="Ngày khảo sát" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
-                                    {moment(selectedContract.surveyDate).format('DD/MM/YYYY')}
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.technicalStaffName && (
-                                <Descriptions.Item label="Nhân viên Kỹ thuật">
-                                    {selectedContract.technicalStaffName}
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.technicalDesign && (
-                                <Descriptions.Item label="Thiết kế Kỹ thuật">
-                                    <div className="whitespace-pre-wrap">
-                                        {selectedContract.technicalDesign}
-                                    </div>
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.estimatedCost !== undefined && selectedContract.estimatedCost !== null ? (
-                                <Descriptions.Item label="Chi phí Ước tính">
-                                    {Number(selectedContract.estimatedCost).toLocaleString('vi-VN')} đ
-                                </Descriptions.Item>
-                            ) : null}
-
-                            {/* PHẦN 3: THÔNG TIN HỢP ĐỒNG */}
-                            {selectedContract.startDate && (
-                                <Descriptions.Item label="Ngày bắt đầu" style={{ fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>
-                                    {moment(selectedContract.startDate).format('DD/MM/YYYY')}
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.endDate && (
-                                <Descriptions.Item label="Ngày kết thúc">
-                                    {moment(selectedContract.endDate).format('DD/MM/YYYY')}
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.contractValue !== undefined && selectedContract.contractValue !== null ? (
-                                <Descriptions.Item label="Giá trị Hợp đồng">
-                                    {Number(selectedContract.contractValue).toLocaleString('vi-VN')} đ
-                                </Descriptions.Item>
-                            ) : null}
-                            {selectedContract.paymentMethod && (
-                                <Descriptions.Item label="Phương thức thanh toán">
-                                    {selectedContract.paymentMethod}
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.serviceStaffName && (
-                                <Descriptions.Item label="Nhân viên Dịch vụ">
-                                    {selectedContract.serviceStaffName}
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.notes && (
-                                <Descriptions.Item label="Ghi chú">
-                                    <div className="whitespace-pre-wrap">
-                                        {selectedContract.notes}
-                                    </div>
-                                </Descriptions.Item>
-                            )}
-                            {selectedContract.priceTypeName && (
-                                <Descriptions.Item label="Loại giá nước">
-                                    {selectedContract.priceTypeName}
-                                </Descriptions.Item>
-                            )}
-                        </Descriptions>
-                    </Spin>
-                </Modal>
-            )}
+            <ContractViewModal
+                visible={isModalVisible}
+                onCancel={handleCancelModal}
+                initialData={selectedContract}
+                loading={modalLoading}
+            />
 
             {/* Modal tạo HĐ chính thức đã bỏ – điều hướng sang trang riêng */}
             

@@ -117,7 +117,7 @@ function CreateWaterInvoicePage() {
                 onClose={() => setShowConfirm(false)}
                 onConfirm={handleConfirmGenerate}
                 title="Xác nhận phát hành"
-                message="Bạn có chắc chắn muốn phát hành hóa đơn này không? Hành động này sẽ tạo công nợ cho khách hàng và gửi thông báo."
+                message="Bạn có chắc chắn muốn phát hành hóa đơn này không? Hành động này sẽ tạo hóa đơn cho khách hàng và gửi thông báo."
                 isLoading={submitting}
             />
         </div>

@@ -535,17 +535,15 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
     // === HẾT PHẦN THÊM ===
 
-    // ==========================================================
-    // === ✨ THÊM 2 HÀM MỚI CHO HÓA ĐƠN TIỀN NƯỚC ✨ ===
-    // ==========================================================
+    // HÀM MỚI CHO HÓA ĐƠN TIỀN NƯỚC
 
     @Override
     @Transactional(readOnly = true)
     public Page<PendingReadingDTO> getPendingReadings(Pageable pageable) {
-        // ❌ CŨ: Lấy TẤT CẢ reading chưa bill
+        // CŨ: Lấy TẤT CẢ reading chưa bill
         // Page<MeterReading> readingsPage = meterReadingRepository.findCompletedReadingsNotBilled(pageable);
 
-        // ✅ MỚI: Chỉ lấy reading được ASSIGN cho Accounting Staff hiện tại
+        // MỚI: Chỉ lấy reading được ASSIGN cho Accounting Staff hiện tại
         Integer currentAccountingStaffId = getCurrentAccountingStaffId();
         Page<MeterReading> readingsPage = meterReadingRepository
                 .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);

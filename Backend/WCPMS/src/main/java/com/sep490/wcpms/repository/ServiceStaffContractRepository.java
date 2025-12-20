@@ -44,8 +44,7 @@ public interface ServiceStaffContractRepository extends JpaRepository<Contract, 
     """)
     Page<Contract> findByStatusAndKeyword(ContractStatus status, String keyword, Pageable pageable);
 
-    // === HÀM CŨ 2: SERVICE STAFF ===
-    // Đã thêm: ORDER BY c.updatedAt DESC
+    // === HÀM 2: SERVICE STAFF ===
     @Query("""
         SELECT DISTINCT c FROM Contract c
         LEFT JOIN c.customer cu

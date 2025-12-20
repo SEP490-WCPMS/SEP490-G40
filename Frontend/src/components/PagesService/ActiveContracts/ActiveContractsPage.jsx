@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Input, Row, Col, Typography, Spin, Button, Modal, Form, DatePicker, Select, Tag, Space, Dropdown } from 'antd';
-import { 
-    ReloadOutlined, 
-    PlayCircleOutlined, 
-    FileTextOutlined, 
-    CalendarOutlined, 
-    FilterOutlined, 
-    CheckOutlined 
+import {
+    ReloadOutlined,
+    PlayCircleOutlined,
+    FileTextOutlined,
+    CalendarOutlined,
+    FilterOutlined,
+    CheckOutlined
 } from '@ant-design/icons';
-import { Loader2 } from 'lucide-react';
+import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import Pagination from '../../common/Pagination';
 import { getServiceContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract, reactivateContract } from '../../Services/apiService';
 import dayjs from 'dayjs';
@@ -19,7 +19,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import ConfirmModal from '../../common/ConfirmModal';
 
 const { Paragraph, Title } = Typography;
-const { Search, TextArea } = Input; // Sửa cách lấy TextArea, không dùng FormInput
+const { Search } = Input;
+const { TextArea } = Input; // Lấy TextArea từ Input
 const { Option } = Select;
 
 const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus, refreshKey }) => {
@@ -31,7 +32,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [form] = Form.useForm();
-    
+
     // Modal states
     const [confirmModalVisible, setConfirmModalVisible] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
@@ -83,7 +84,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         setLoading(true);
         try {
             let statusParam = filters.status;
-            
+
             // Backend cần hỗ trợ nhận mã đặc biệt này để trả về 4 loại
             if (statusParam === 'all') {
                 statusParam = 'ACTIVE_TAB_ALL';
@@ -93,14 +94,14 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                 page: pagination.page,
                 size: pagination.size,
                 keyword: filters.keyword,
-                status: statusParam, 
+                status: statusParam,
                 sort: 'updatedAt,desc'
             });
-            
+
             if (response.data) {
                 setContracts(response.data.content || []);
                 const pageInfo = response.data.page || response.data || {};
-                
+
                 setPagination(prev => ({
                     ...prev,
                     totalElements: pageInfo.totalElements || 0,
@@ -126,16 +127,16 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
 
     const filterMenu = {
         items: [
-            { key: 'all', label: <div className="flex justify-between items-center w-full min-w-[120px]">Tất cả {filters.status === 'all' && <CheckOutlined className="text-blue-600"/>}</div> },
-            { key: 'ACTIVE', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-2"></span>Đang hoạt động</div> {filters.status === 'ACTIVE' && <CheckOutlined className="text-blue-600"/>}</div> },
-            { key: 'SUSPENDED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-orange-500 inline-block mr-2"></span>Tạm ngưng</div> {filters.status === 'SUSPENDED' && <CheckOutlined className="text-blue-600"/>}</div> },
-            { key: 'TERMINATED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-2"></span>Đã chấm dứt</div> {filters.status === 'TERMINATED' && <CheckOutlined className="text-blue-600"/>}</div> },
-            { key: 'EXPIRED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-gray-500 inline-block mr-2"></span>Hết hạn</div> {filters.status === 'EXPIRED' && <CheckOutlined className="text-blue-600"/>}</div> },
+            { key: 'all', label: <div className="flex justify-between items-center w-full min-w-[120px]">Tất cả {filters.status === 'all' && <CheckOutlined className="text-blue-600" />}</div> },
+            { key: 'ACTIVE', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-2"></span>Đang hoạt động</div> {filters.status === 'ACTIVE' && <CheckOutlined className="text-blue-600" />}</div> },
+            { key: 'SUSPENDED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-orange-500 inline-block mr-2"></span>Tạm ngưng</div> {filters.status === 'SUSPENDED' && <CheckOutlined className="text-blue-600" />}</div> },
+            { key: 'TERMINATED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-2"></span>Đã chấm dứt</div> {filters.status === 'TERMINATED' && <CheckOutlined className="text-blue-600" />}</div> },
+            { key: 'EXPIRED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-gray-500 inline-block mr-2"></span>Hết hạn</div> {filters.status === 'EXPIRED' && <CheckOutlined className="text-blue-600" />}</div> },
         ],
         onClick: handleMenuClick
     };
 
-    // FIX 2: Helper render style badge (giống ContractTable)
+    // Helper render style badge (giống ContractTable)
     const renderStatusBadge = (status) => {
         const s = (status || '').toUpperCase();
         const map = {
@@ -146,8 +147,8 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
             SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
         };
         // Fallback
-        const cfg = map[s] || { text: status || 'N/A', cls: 'bg-gray-100 text-gray-800' };
-        
+        const cfg = map[s] || { text: status || '—', cls: 'bg-gray-100 text-gray-800' };
+
         return (
             <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
                 {cfg.text}
@@ -155,9 +156,162 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         );
     };
 
-    // ... (Các hàm Modal, Render Modal giữ nguyên) ...
-    // ... Copy lại các hàm handleOpenModal, handleSubmit, renderModalContent từ file cũ ...
-    // Để code gọn, tôi giả định bạn giữ nguyên phần logic Modal dài dòng đó.
+    // --- CARD VIEW CHO MOBILE (Đã cập nhật đủ nút hành động) ---
+    const MobileCard = ({ record }) => (
+        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2 text-blue-700">
+                    <FileText size={16} />
+                    <span className="font-medium">{record.contractNumber}</span>
+                </div>
+                {renderStatusBadge(record.contractStatus)}
+            </div>
+
+            <div className="flex items-start gap-2 mt-1">
+                <User size={16} className="text-gray-400 mt-1 shrink-0" />
+                <div>
+                    <div className="font-medium text-gray-800">{record.customerName || 'Khách vãng lai'}</div>
+                    {(record.isGuest || !record.customerCode) ? (
+                        <span className="text-xs text-orange-500 bg-orange-50 px-1 rounded">Chưa có TK</span>
+                    ) : (
+                        <div className="text-xs text-gray-500">{record.customerCode}</div>
+                    )}
+                </div>
+            </div>
+
+            <div className="pl-6 space-y-1 text-sm text-gray-600">
+                {record.contactPhone && (
+                    <div className="flex items-center gap-2"><Phone size={14} className="text-gray-400" /> <span>{record.contactPhone}</span></div>
+                )}
+                {record.address && (
+                    <div className="flex items-start gap-2"><MapPin size={14} className="text-gray-400 mt-1 shrink-0" /> <span className="line-clamp-2">{record.address}</span></div>
+                )}
+                <div className="flex items-center gap-2">
+                    <CalendarOutlined className="text-gray-400" />
+                    <span>Hết hạn: {record.endDate ? dayjs(record.endDate).format('DD/MM/YYYY') : '—'}</span>
+                </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-3 mt-2">
+                <div className="flex flex-wrap items-center gap-3 justify-end">
+                    {/* Luôn hiện nút Chi tiết */}
+                    <button onClick={() => handleOpenModal(record, 'view')} className="font-semibold text-indigo-600 hover:text-indigo-900 text-sm">Chi tiết</button>
+
+                    {/* Logic nút hành động trên Mobile giống Desktop */}
+                    {record.contractStatus === 'ACTIVE' && (
+                        <>
+                            <button onClick={() => handleOpenModal(record, 'suspend')} className="font-semibold text-amber-600 hover:text-amber-800 text-sm">Tạm ngưng</button>
+                            <button onClick={() => handleOpenModal(record, 'terminate')} className="font-semibold text-red-600 hover:text-red-800 text-sm">Chấm dứt</button>
+                        </>
+                    )}
+                    {record.contractStatus === 'EXPIRED' && (
+                        <button onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-blue-600 hover:text-blue-800 text-sm">Gia hạn</button>
+                    )}
+                    {record.contractStatus === 'SUSPENDED' && (
+                        <button onClick={() => handleOpenModal(record, 'reactivate')} className="font-semibold text-green-600 hover:text-green-800 text-sm">Kích hoạt lại</button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    const formatPaymentMethod = (method) => {
+        if (!method) return '—';
+        const m = String(method).trim().toUpperCase();
+        const map = {
+            'BANK_TRANSFER': 'Chuyển khoản',
+            'CASH': 'Tiền mặt',
+            'CREDIT_CARD': 'Thẻ tín dụng',
+        };
+        return map[m] || method;
+    };
+
+    const renderModalContent = () => {
+        if (modalType === 'view') {
+            const c = selectedContract || {};
+            const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
+            const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
+            return (
+                <div className="space-y-4 pt-2">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã Hợp đồng</div><div className="text-2xl font-bold text-blue-700">{c.contractNumber || '—'}</div></div>
+                            <div className="text-right"><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>{renderStatusBadge(c.contractStatus)}</div>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Thông tin khách hàng</div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><div className="text-xs text-gray-500 mb-1">Tên khách hàng</div><div className="font-semibold text-gray-800">{c.customerName || '—'}</div></div>
+                            {c.customerCode && (<div><div className="text-xs text-gray-500 mb-1">Mã khách hàng</div><div className="font-medium text-gray-800">{c.customerCode}</div></div>)}
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><CalendarOutlined className="mr-1" /> Thông tin hợp đồng</div>
+                        <div className="grid grid-cols-2 gap-4">
+                            {c.startDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày bắt đầu</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-green-500" />{fmtDate(c.startDate)}</div></div>)}
+                            {c.endDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-red-500" />{fmtDate(c.endDate)}</div></div>)}
+                            {c.contractValue != null && (<div><div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div><div className="font-bold text-lg text-green-600">{fmtMoney(c.contractValue)}</div></div>)}
+                            {c.paymentMethod && (<div className="col-span-2"><div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div><div className="font-medium text-gray-800">{formatPaymentMethod(c.paymentMethod)}</div></div>)}
+                        </div>
+                    </div>
+                    {c.installationImageBase64 && (<div className="bg-gray-50 p-4 rounded-lg border border-gray-200"><div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ</div><div className="flex justify-center"><img src={`data:image/jpeg;base64,${c.installationImageBase64}`} alt="Installation" className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" /></div></div>)}
+                    {(c.notes || c.customerNotes) && (<div className="bg-blue-50 p-4 rounded-lg border border-blue-200"><div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2"><FileTextOutlined className="mr-1" /> Ghi chú</div><div className="text-sm text-gray-800 whitespace-pre-wrap">{c.notes || c.customerNotes || '—'}</div></div>)}
+                </div>
+            );
+        } else if (modalType === 'renew') {
+            return (
+                <Form form={form} layout="vertical" className="pt-2">
+                    <div className="bg-gray-50 p-3 rounded mb-4">
+                        <p><strong>Hợp đồng:</strong> {selectedContract?.contractNumber}</p>
+                        <p><strong>Ngày kết thúc hiện tại:</strong> {selectedContract?.endDate ? dayjs(selectedContract.endDate).format('DD/MM/YYYY') : 'Vô thời hạn'}</p>
+                    </div>
+                    <Form.Item name="newEndDate" label="Ngày kết thúc mới" rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}>
+                        <DatePicker
+                            style={{ width: '100%' }}
+                            format="DD/MM/YYYY"
+                            // Validate Frontend: Không cho chọn ngày quá khứ
+                            disabledDate={d => d && d.isBefore(dayjs(selectedContract?.endDate).add(1, 'day'))}
+                        />
+                    </Form.Item>
+                </Form>
+            );
+        } else if (modalType === 'terminate' || modalType === 'suspend') {
+            return (
+                <Form form={form} layout="vertical">
+                    <div className={`p-3 mb-4 rounded ${modalType === 'terminate' ? 'bg-red-50 border-red-400' : 'bg-yellow-50 border-yellow-400'} border-l-4`}>
+                        <div className={`font-semibold text-sm ${modalType === 'terminate' ? 'text-red-900' : 'text-yellow-900'}`}>
+                            {modalType === 'terminate' ? 'Chấm dứt hợp đồng' : 'Tạm ngưng hợp đồng'}
+                        </div>
+                    </div>
+                    <Form.Item label="Số Hợp đồng"><Input value={selectedContract?.contractNumber} disabled style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} /></Form.Item>
+                    <Form.Item name="reason" label="Lý do" rules={[{ required: true, message: 'Vui lòng nhập lý do!' }]}>
+                        <TextArea rows={4} placeholder="Nhập lý do..." style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} />
+                    </Form.Item>
+                </Form>
+            );
+        } else if (modalType === 'reactivate') {
+            return (
+                <div className="text-center py-6">
+                    <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"><PlayCircleOutlined style={{ fontSize: '32px', color: '#16a34a' }} /></div>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">Kích hoạt lại Hợp đồng?</h3>
+                    <p className="text-gray-600 mb-1">Hợp đồng số: <strong>{selectedContract?.contractNumber}</strong></p>
+                    <p className="text-gray-500 text-sm max-w-xs mx-auto">Trạng thái sẽ chuyển từ Tạm ngưng sang <span className="text-green-600 font-medium">Hoạt động</span>.</p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const getModalTitle = () => {
+        switch (modalType) {
+            case 'view': return 'Chi tiết hợp đồng';
+            case 'renew': return 'Gia hạn hợp đồng';
+            case 'terminate': return 'Chấm dứt hợp đồng';
+            case 'suspend': return 'Tạm ngưng hợp đồng';
+            default: return '';
+        }
+    };
 
     const location = useLocation();
     useEffect(() => {
@@ -188,8 +342,8 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
             const contractData = response.data;
             setSelectedContract(contractData);
             setModalType(type);
-            if (type === 'view') { form.setFieldsValue({}); } 
-            else if (type === 'renew') { form.setFieldsValue({ newEndDate: null, notes: '' }); } 
+            if (type === 'view') { form.setFieldsValue({}); }
+            else if (type === 'renew') { form.setFieldsValue({ newEndDate: null, notes: '' }); }
             else if (type === 'terminate' || type === 'suspend') {
                 form.setFieldsValue({
                     contractNumber: contractData.contractNumber,
@@ -215,15 +369,15 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
     const handleSubmit = async () => {
         try {
             if (modalType === 'reactivate') { setShowReactivateConfirm(true); return; }
-            
+
             const values = await form.validateFields();
-            
+
             if (modalType === 'renew') {
                 const newDate = values.newEndDate;
                 // Kiểm tra ngày: Nếu nhỏ hơn hoặc bằng hôm nay -> Báo lỗi
                 if (newDate && newDate.isBefore(dayjs(), 'day')) {
                     toast.error('Ngày kết thúc mới phải sau ngày hôm nay!');
-                    return; 
+                    return;
                 }
 
                 setRenewData({ endDate: newDate ? newDate.format('YYYY-MM-DD') : null, notes: values.notes });
@@ -291,128 +445,23 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         }
     };
 
-    const statusBadge = (status) => {
-        const s = (status || '').toUpperCase();
-        const map = {
-            ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
-            EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
-            TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
-            SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
-            SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
-        };
-        const cfg = map[s] || { text: status || '—', cls: 'bg-gray-100 text-gray-800' };
-        return (
-            <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
-                {cfg.text}
-            </span>
-        );
-    };
-
-    const formatPaymentMethod = (method) => {
-        if (!method) return '—';
-        const m = String(method).trim().toUpperCase();
-        const map = {
-            'BANK_TRANSFER': 'Chuyển khoản',
-            'CASH': 'Tiền mặt',
-            'CREDIT_CARD': 'Thẻ tín dụng',
-        };
-        return map[m] || method;
-    };
-
-    const renderModalContent = () => {
-        if (modalType === 'view') {
-           const c = selectedContract || {};
-           const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
-           const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
-           return (
-               <div className="space-y-4 pt-2">
-                   <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                       <div className="flex items-center justify-between">
-                           <div><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã Hợp đồng</div><div className="text-2xl font-bold text-blue-700">{c.contractNumber || '—'}</div></div>
-                           <div className="text-right"><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>{statusBadge(c.contractStatus)}</div>
-                       </div>
-                   </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                       <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Thông tin khách hàng</div>
-                       <div className="grid grid-cols-2 gap-4">
-                           <div><div className="text-xs text-gray-500 mb-1">Tên khách hàng</div><div className="font-semibold text-gray-800">{c.customerName || '—'}</div></div>
-                           {c.customerCode && (<div><div className="text-xs text-gray-500 mb-1">Mã khách hàng</div><div className="font-medium text-gray-800">{c.customerCode}</div></div>)}
-                       </div>
-                   </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                       <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><CalendarOutlined className="mr-1" /> Thông tin hợp đồng</div>
-                       <div className="grid grid-cols-2 gap-4">
-                           {c.startDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày bắt đầu</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-green-500" />{fmtDate(c.startDate)}</div></div>)}
-                           {c.endDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-red-500" />{fmtDate(c.endDate)}</div></div>)}
-                           {c.contractValue != null && (<div><div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div><div className="font-bold text-lg text-green-600">{fmtMoney(c.contractValue)}</div></div>)}
-                            {c.paymentMethod && (<div className="col-span-2"><div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div><div className="font-medium text-gray-800">{formatPaymentMethod(c.paymentMethod)}</div></div>)}
-                       </div>
-                   </div>
-                   {c.installationImageBase64 && (<div className="bg-gray-50 p-4 rounded-lg border border-gray-200"><div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ</div><div className="flex justify-center"><img src={`data:image/jpeg;base64,${c.installationImageBase64}`} alt="Installation" className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" /></div></div>)}
-                   {(c.notes || c.customerNotes) && (<div className="bg-blue-50 p-4 rounded-lg border border-blue-200"><div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2"><FileTextOutlined className="mr-1" /> Ghi chú</div><div className="text-sm text-gray-800 whitespace-pre-wrap">{c.notes || c.customerNotes || '—'}</div></div>)}
-               </div>
-           );
-       } else if (modalType === 'renew') {
-            return (
-               <Form form={form} layout="vertical" className="pt-2">
-                    <div className="bg-gray-50 p-3 rounded mb-4">
-                       <p><strong>Hợp đồng:</strong> {selectedContract?.contractNumber}</p>
-                       <p><strong>Ngày kết thúc hiện tại:</strong> {selectedContract?.endDate ? dayjs(selectedContract.endDate).format('DD/MM/YYYY') : 'Vô thời hạn'}</p>
-                    </div>
-                    <Form.Item name="newEndDate" label="Ngày kết thúc mới" rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}>
-                        <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" 
-                            disabledDate={d => d && d.isBefore(dayjs(selectedContract?.endDate).add(1, 'day'))} />
-                    </Form.Item>
-                    <Form.Item name="notes" label="Ghi chú"><TextArea rows={3} /></Form.Item>
-               </Form>
-           );
-       } else if (modalType === 'terminate' || modalType === 'suspend') {
-           return (
-               <Form form={form} layout="vertical">
-                   <div className={`p-3 mb-4 rounded ${modalType === 'terminate' ? 'bg-red-50 border-red-400' : 'bg-yellow-50 border-yellow-400'} border-l-4`}>
-                       <div className={`font-semibold text-sm ${modalType === 'terminate' ? 'text-red-900' : 'text-yellow-900'}`}>
-                           {modalType === 'terminate' ? '⚠️ Chấm dứt hợp đồng' : '⏸️ Tạm ngưng hợp đồng'}
-                       </div>
-                   </div>
-                   <Form.Item label="Số Hợp đồng"><Input value={selectedContract?.contractNumber} disabled style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} /></Form.Item>
-                   <Form.Item name="reason" label="Lý do" rules={[{ required: true, message: 'Vui lòng nhập lý do!' }]}>
-                       <TextArea rows={4} placeholder="Nhập lý do..." style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} />
-                   </Form.Item>
-               </Form>
-           );
-       } else if (modalType === 'reactivate') {
-            return (
-               <div className="text-center py-6">
-                   <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"><PlayCircleOutlined style={{ fontSize: '32px', color: '#16a34a' }} /></div>
-                   <h3 className="text-xl font-bold text-gray-800 mb-2">Kích hoạt lại Hợp đồng?</h3>
-                   <p className="text-gray-600 mb-1">Hợp đồng số: <strong>{selectedContract?.contractNumber}</strong></p>
-                   <p className="text-gray-500 text-sm max-w-xs mx-auto">Trạng thái sẽ chuyển từ Tạm ngưng sang <span className="text-green-600 font-medium">Hoạt động</span>.</p>
-               </div>
-            );
-       }
-       return null;
-    };
-
-    const getModalTitle = () => {
-        switch(modalType) {
-            case 'view': return 'Chi tiết hợp đồng';
-            case 'renew': return 'Gia hạn hợp đồng';
-            case 'terminate': return 'Chấm dứt hợp đồng';
-            case 'suspend': return 'Tạm ngưng hợp đồng';
-            default: return '';
-        }
-    };
-
-    useEffect(() => {
-        if (refreshKey !== undefined) fetchContracts();
-    }, [refreshKey]);
-
     return (
         <div className="space-y-6">
             <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* Mobile small-screen cards */}
+                <div className="block sm:hidden px-4 py-3">
+                    {loading ? (
+                        <div className="py-8 text-center text-gray-500"><Loader2 className="animate-spin inline-block" size={18} /> Đang tải...</div>
+                    ) : contracts && contracts.length > 0 ? (
+                        contracts.map(r => <MobileCard key={r.id} record={r} />)
+                    ) : (
+                        <div className="text-center text-gray-500 py-8 bg-white rounded-lg border border-dashed">Không tìm thấy hợp đồng nào</div>
+                    )}
+                </div>
+
+                <div className="hidden sm:block overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -421,7 +470,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày bắt đầu</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày kết thúc</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chi phí lắp đặt</th>
-                                
+
                                 {/* Cột Trạng thái với Icon Filter */}
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     <div className="flex items-center gap-1 group cursor-pointer">
@@ -438,12 +487,12 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                                {loading ? (
+                            {loading ? (
                                 <tr><td colSpan="7" className="px-6 py-12 text-center"><div className="flex justify-center items-center gap-2 text-gray-500"><Loader2 className="animate-spin" size={20} /><span>Đang tải...</span></div></td></tr>
                             ) : contracts.length > 0 ? (
                                 contracts.map((record) => {
                                     const actions = [];
-                                    
+
                                     actions.push(
                                         <button key="detail" onClick={() => handleOpenModal(record, 'view')} className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out">Chi tiết</button>
                                     );
@@ -452,11 +501,11 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                                         actions.push(<button key="suspend" onClick={() => handleOpenModal(record, 'suspend')} className="font-semibold text-amber-600 hover:text-amber-800 transition duration-150 ease-in-out">Tạm ngưng</button>);
                                         actions.push(<button key="terminate" onClick={() => handleOpenModal(record, 'terminate')} className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out">Chấm dứt</button>);
                                     } else if (record.contractStatus === 'EXPIRED') {
-                                         actions.push(<button key="renew" onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out">Gia hạn</button>);
+                                        actions.push(<button key="renew" onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out">Gia hạn</button>);
                                     } else if (record.contractStatus === 'SUSPENDED') {
                                         actions.push(<button key="reactivate" onClick={() => handleOpenModal(record, 'reactivate')} className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out">Kích hoạt lại</button>);
                                     }
-                                    
+
                                     return (
                                         <tr key={record.id} className="hover:bg-gray-50" data-contract-id={record.id}>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.contractNumber}</td>
@@ -465,7 +514,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.endDate ? dayjs(record.endDate).format('DD/MM/YYYY') : 'N/A'}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.contractValue ? `${record.contractValue.toLocaleString()} đ` : 'N/A'}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                {/* Dùng Badge mới đẹp hơn */}
                                                 {renderStatusBadge(record.contractStatus)}
                                             </td>
                                             <td className="px-6 py-4 text-sm">
@@ -482,7 +530,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                         </tbody>
                     </table>
                 </div>
-                
+
                 <Pagination
                     currentPage={pagination.page}
                     totalElements={pagination.totalElements}
@@ -490,8 +538,23 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                     onPageChange={handlePageChange}
                 />
             </div>
-            
-            <Modal title={getModalTitle()} open={isModalVisible} onCancel={handleCloseModal} onOk={modalType === 'view' ? handleCloseModal : handleSubmit} confirmLoading={modalLoading} okText={modalType === 'view' ? 'Đóng' : modalType === 'renew' ? 'Xác nhận Gia hạn' : modalType === 'terminate' ? 'Chấm dứt' : modalType === 'suspend' ? 'Tạm ngưng' : modalType === 'reactivate' ? 'Kích hoạt ngay' : 'Xác nhận'} cancelText={modalType === 'view' ? undefined : 'Hủy'} cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined} destroyOnClose width={modalType === 'reactivate' ? 400 : 700} okButtonProps={{ danger: modalType === 'terminate', className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : '' }} centered>
+
+            <Modal
+                title={getModalTitle()}
+                open={isModalVisible}
+                onCancel={handleCloseModal}
+                onOk={modalType === 'view' ? handleCloseModal : handleSubmit}
+                confirmLoading={modalLoading}
+                okText={modalType === 'view' ? 'Đóng' : modalType === 'renew' ? 'Xác nhận Gia hạn' : modalType === 'terminate' ? 'Chấm dứt' : modalType === 'suspend' ? 'Tạm ngưng' : modalType === 'reactivate' ? 'Kích hoạt ngay' : 'Xác nhận'}
+                cancelText={modalType === 'view' ? undefined : 'Hủy'}
+                cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined}
+                destroyOnClose
+                width={modalType === 'reactivate' ? 400 : 700}
+                okButtonProps={{ danger: modalType === 'terminate', className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : '' }}
+                centered
+                bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+                style={{ top: 20 }}
+            >
                 {renderModalContent()}
             </Modal>
             <ConfirmModal isOpen={confirmModalVisible} onClose={() => setConfirmModalVisible(false)} onConfirm={handleConfirmAction} title={confirmAction === 'terminate' ? 'Xác nhận chấm dứt hợp đồng' : 'Xác nhận tạm ngưng hợp đồng'} message="Bạn có chắc chắn muốn thực hiện hành động này?" isLoading={confirmLoading} />

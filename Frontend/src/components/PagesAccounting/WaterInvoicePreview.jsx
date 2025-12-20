@@ -78,8 +78,8 @@ const WaterInvoicePreview = ({ data, customerInfo }) => {
             <div className="flex items-start gap-3 text-sm text-orange-700 bg-orange-50 p-4 rounded-lg border border-orange-200">
                 <AlertCircle size={20} className="mt-0.5 flex-shrink-0 text-orange-600" />
                 <p>
-                    <strong>Lưu ý quan trọng:</strong> Hóa đơn sau khi phát hành sẽ được gửi thông báo ngay lập tức cho khách hàng qua Email/SMS. 
-                    Vui lòng kiểm tra kỹ các thông tin về chỉ số và số tiền trước khi xác nhận.
+                    <strong>Lưu ý quan trọng:</strong> 
+                    Vui lòng kiểm tra kỹ các thông tin về chỉ số và số tiền trước khi "xác nhận".
                 </p>
             </div>
         </div>
