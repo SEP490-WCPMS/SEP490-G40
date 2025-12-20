@@ -217,19 +217,6 @@ const Header = ({ isAuthenticated, user }) => {
           <button
             onClick={() => { handleWaterPriceClick(); closeMenu(); }}
             className="mobile-nav-item"
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer', 
-              width: '100%', 
-              textAlign: 'left', 
-              // Quan trọng: Phải khớp padding với class .mobile-nav-item trong CSS
-              padding: '16px 20px', 
-              fontSize: '16px',
-              fontWeight: '600',
-              fontFamily: 'inherit', // Dùng font chung của web
-              color: '#1f2937'       // Màu chữ xám đậm cho giống các mục khác
-            }}
           >
             Giá nước
           </button>

@@ -94,6 +94,7 @@
   border: none;
   padding: 5px 0;
   cursor: pointer;
+  font-family: inherit;
 }
 
 .nav-item:hover {
@@ -402,30 +403,29 @@
 }
 
 /* --- STYLE CHUNG CHO CÁC MỤC (LINK & BUTTON) --- */
+/*Gom nhóm cả a và button lại để style giống nhau */
 .mobile-nav-item, 
 button.mobile-nav-item {
   display: block;
-  padding: 16px 20px;
+  width: 100%; /* Chiếm hết chiều ngang */
+  padding: 16px 20px; /* Padding đều */
   color: #1f2937;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
+  text-align: left; /* Căn trái chữ (quan trọng cho button) */
+  background: none; /* Xóa nền mặc định của button */
+  border: none; /* Xóa viền mặc định */
   border-bottom: 1px solid #f3f4f6;
-  position: relative; /* Để căn chỉnh icon tuyệt đối */
-  transition: all 0.3s ease; /* Hiệu ứng trượt mượt mà */
-  
-  /* Reset button styles */
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  border-bottom: 1px solid #f3f4f6;
-  font-family: inherit;
+  font-family: inherit; /* Kế thừa font chữ */
   cursor: pointer;
   margin: 0;
+  position: relative; /* Để định vị icon absolute */
+  transition: all 0.3s ease;
+  box-sizing: border-box; /* Đảm bảo padding không làm vỡ layout */
 }
 
-/* --- HIỆU ỨNG HOVER "TRƯỢT + ICON" (GIỐNG MẪU) --- */
+/* --- HIỆU ỨNG HOVER "TRƯỢT + ICON" --- */
 .mobile-nav-item:hover,
 button.mobile-nav-item:hover {
   background-color: #f0f9ff; /* Nền xanh rất nhạt */
@@ -433,7 +433,7 @@ button.mobile-nav-item:hover {
   padding-left: 50px; /* Đẩy chữ sang phải để chừa chỗ cho icon */
 }
 
-/* Tạo hình tròn chứa mũi tên bằng CSS (Pseudo-element) */
+/* Tạo hình tròn chứa mũi tên */
 .mobile-nav-item:hover::before,
 button.mobile-nav-item:hover::before {
   content: '›'; /* Dấu mũi tên (chevron) */
@@ -460,6 +460,7 @@ button.mobile-nav-item:hover::before {
   
   /* Hiệu ứng xuất hiện */
   animation: fadeInIcon 0.3s ease forwards;
+  z-index: 1; /* Đảm bảo icon nổi lên trên */
 }
 
 /* Animation cho icon hiện ra nhẹ nhàng */
@@ -474,13 +475,13 @@ button.mobile-nav-item:hover::before {
   }
 }
 
-/* 2. Nhóm Menu Con */
+/* 2. Group Menu Con */
 .mobile-nav-group {
   border-bottom: 1px solid #f3f4f6;
   background-color: white;
 }
 
-/* 3. Tiêu đề nhóm */
+/* 3. Tiêu đề Group */
 .mobile-group-title {
   display: block;
   padding: 24px 20px 8px 20px;
@@ -523,7 +524,6 @@ button.mobile-nav-item:hover::before {
   border: 1px solid #1e40af; /* Viền xanh */
   color: #1e40af; /* Mũi tên xanh */
   border-radius: 50%;
-  
   display: flex;
   align-items: center;
   justify-content: center;
