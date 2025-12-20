@@ -581,6 +581,9 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         if (reading.getReadingStatus() != MeterReading.ReadingStatus.COMPLETED) {
             throw new IllegalStateException("Chỉ số này không ở trạng thái 'COMPLETED'.");
         }
+        if (reading.getConsumption().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Không thể lập hóa đơn cho chỉ số tiêu thụ nhỏ hơn hoặc bằng 0.");
+        }
         if (invoiceRepository.existsByMeterReading(reading)) {
             throw new IllegalStateException("Chỉ số này đã được lập hóa đơn.");
         }
