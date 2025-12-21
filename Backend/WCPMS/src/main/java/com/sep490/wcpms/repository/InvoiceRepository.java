@@ -475,4 +475,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
      */
     @Query("SELECT i.invoiceDate, SUM(i.totalAmount) FROM Invoice i WHERE i.paymentStatus = 'PAID' AND i.invoiceDate BETWEEN :from AND :to GROUP BY i.invoiceDate ORDER BY i.invoiceDate")
     List<Object[]> sumPaidGroupedByInvoiceDate(@Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    @Query("SELECT i FROM Invoice i " +
+            "LEFT JOIN FETCH i.customer c " +
+            "LEFT JOIN FETCH c.account a " + // <--- Lấy Account
+            "LEFT JOIN FETCH i.contract ctr " +
+            "WHERE i.id = :id")
+    Optional<Invoice> findByIdWithDetails(@Param("id") Integer id);
 }
