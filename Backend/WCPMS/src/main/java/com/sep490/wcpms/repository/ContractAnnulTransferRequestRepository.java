@@ -21,7 +21,6 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
     boolean existsByContractIdAndRequestTypeAndApprovalStatus(Integer contractId, ContractAnnulTransferRequest.RequestType requestType,
                                                               ContractAnnulTransferRequest.ApprovalStatus approvalStatus);
 
-    // Ensure contract.customer is fetched as well so DTO fallback can read contract.getCustomer().getCustomerName() safely
     @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer"})
     Optional<ContractAnnulTransferRequest> findWithRelationsById(Integer id);
 
@@ -45,20 +44,25 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
             @Param("keyword") String keyword,
             Pageable pageable);
 
-    // 2. Service Staff: Tìm theo Staff (NGƯỜI ĐƯỢC GÁN) + Type + List Status + Keyword
+    // 2. Service Staff: Tìm theo Staff (NGƯỜI ĐƯỢC GÁN VÀ PHẢI THUỘC TUYẾN) + Type + List Status + Keyword
     @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer", "serviceStaff"})
-    @Query("SELECT r FROM ContractAnnulTransferRequest r " +
+    @Query("SELECT DISTINCT r FROM ContractAnnulTransferRequest r " +
             "LEFT JOIN r.contract c " +
             "LEFT JOIN c.customer cust " +
-            "LEFT JOIN r.serviceStaff ss " +  // Staff được giao việc
-            "LEFT JOIN c.serviceStaff css " + // Staff quản lý hợp đồng
+            "LEFT JOIN r.serviceStaff ss " +       // (1) Staff được gán trong request
+
+            // --- CHECK VÀO BẢNG route_service_assignments ---
+            "LEFT JOIN c.readingRoute route " +    // Từ hợp đồng lấy ra Tuyến
+            "LEFT JOIN route.serviceStaffs rss " + // Từ Tuyến lấy ra Staff (qua bảng trung gian assignment)
+            // ------------------------------------------------------------------
+
             "WHERE ((:approvalStatuses) IS NULL OR r.approvalStatus IN (:approvalStatuses)) " +
 
-            // --- LOGIC QUAN TRỌNG: OR ---
-            // Hiện bản ghi nếu:
-            // Staff được giao (ss) trùng với ID đăng nhập
-            "AND (ss.id = :serviceStaffId) " +
-            // ---------------------------
+            // ss.id: Là người được gán cứng trên Request (ví dụ ID 11)
+            // rss.id: Là người có tên trong bảng phân công tuyến
+            // Cả 2 phải trùng khớp với :serviceStaffId (ID 11)
+            "AND (ss.id = :serviceStaffId AND rss.id = :serviceStaffId) " +
+            // ---------------------
 
             "AND r.requestType = :requestType " +
             "AND (:keyword IS NULL OR :keyword = '' OR " +
@@ -74,5 +78,4 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
             Pageable pageable);
     // NEW: chỉ chặn khi còn request PENDING trên hợp đồng (tránh spam nhưng vẫn cho tạo lại sau khi APPROVED/REJECTED)
     boolean existsByContractIdAndApprovalStatus(Integer contractId, ContractAnnulTransferRequest.ApprovalStatus approvalStatus);
-
 }

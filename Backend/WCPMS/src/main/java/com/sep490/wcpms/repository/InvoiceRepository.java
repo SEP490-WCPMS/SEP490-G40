@@ -463,4 +463,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
       AND UPPER(i.invoiceNumber) LIKE 'CN%'
 """)
     boolean existsInstallationInvoiceByContractId(@Param("contractId") Integer contractId);
+
+    /**
+     *  Kiểm tra hợp đồng có hóa đơn chưa thanh toán (PENDING hoặc OVERDUE) không
+     */
+    // Kiểm tra xem hợp đồng có hóa đơn nào thuộc các trạng thái cung cấp không
+    boolean existsByContract_IdAndPaymentStatusIn(Integer contractId, Collection<Invoice.PaymentStatus> statuses);
 }
