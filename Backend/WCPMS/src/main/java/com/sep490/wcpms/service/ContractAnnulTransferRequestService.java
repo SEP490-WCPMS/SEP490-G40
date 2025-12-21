@@ -31,14 +31,54 @@ public class ContractAnnulTransferRequestService {
     private final ContractAnnulTransferRequestMapper mapper;
 
     // Helper: chọn Service Staff ít việc nhất (dựa trên bảng annul_transfer_contract_requests)
-    private Account pickLeastBusyServiceStaffForAnnulTransfer() {
-        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
-                .orElseThrow(() ->
-                        new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+//    private Account pickLeastBusyServiceStaffForAnnulTransfer() {
+//        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
+//                .orElseThrow(() ->
+//                        new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+//
+//        return accountRepository.findServiceStaffWithLeastAnnulTransferWorkload(serviceRole.getId())
+//                .orElseThrow(() -> new IllegalStateException(
+//                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE để phân công xử lý yêu cầu hủy/chuyển."
+//                ));
+//    }
 
-        return accountRepository.findServiceStaffWithLeastAnnulTransferWorkload(serviceRole.getId())
+    /**
+     * Chọn Service Staff ít việc nhất nhưng phải thuộc tuyến (ReadingRoute) của hợp đồng.
+     * Ưu tiên theo số lượng yêu cầu hủy/chuyển đang PENDING được phân công (ít -> nhiều).
+     */
+    private Account pickLeastBusyServiceStaffForAnnulTransferForContract(Contract contract) {
+        if (contract == null) {
+            throw new IllegalArgumentException("contract must not be null.");
+        }
+
+        ReadingRoute route = contract.getReadingRoute();
+        if (route == null || route.getId() == null) {
+            throw new IllegalStateException(
+                    "Hợp đồng chưa được gán tuyến đọc (reading route) nên không thể tự động phân công Service Staff."
+            );
+        }
+
+        // Validate tuyến còn ACTIVE
+        if (route.getStatus() != null && route.getStatus() != ReadingRoute.Status.ACTIVE) {
+            throw new IllegalStateException(
+                    "Tuyến đọc của hợp đồng đang INACTIVE, không thể tạo yêu cầu hủy/chuyển. Vui lòng kiểm tra lại tuyến."
+            );
+        }
+
+        // Validate tuyến có ít nhất 1 Service Staff được gán quản lý
+        if (route.getServiceStaffs() == null || route.getServiceStaffs().isEmpty()) {
+            throw new IllegalStateException(
+                    "Tuyến đọc của hợp đồng chưa được gán Service Staff (route_service_assignments). Vui lòng gán nhân viên trước."
+            );
+        }
+
+        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
+                .orElseThrow(() -> new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+
+        return accountRepository
+                .findServiceStaffWithLeastAnnulTransferWorkloadForRoute(serviceRole.getId(), route.getId())
                 .orElseThrow(() -> new IllegalStateException(
-                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE để phân công xử lý yêu cầu hủy/chuyển."
+                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE thuộc tuyến để phân công xử lý yêu cầu hủy/chuyển."
                 ));
     }
 
@@ -139,7 +179,7 @@ public class ContractAnnulTransferRequestService {
         }
 
         // NEW: tự động phân công nhân viên Service ít việc nhất
-        Account assignedServiceStaff = pickLeastBusyServiceStaffForAnnulTransfer();
+        Account assignedServiceStaff = pickLeastBusyServiceStaffForAnnulTransferForContract(contract);
         entity.setServiceStaff(assignedServiceStaff);
 
         entity = repository.save(entity);
