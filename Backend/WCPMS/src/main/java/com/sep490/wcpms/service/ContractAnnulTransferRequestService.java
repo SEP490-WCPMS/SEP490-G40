@@ -14,6 +14,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.sep490.wcpms.repository.WaterMeterRepository;
+import com.sep490.wcpms.repository.InvoiceRepository;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -29,6 +31,8 @@ public class ContractAnnulTransferRequestService {
     private final CustomerRepository customerRepository; // cần nếu validate from/to
     private final RoleRepository roleRepository;
     private final ContractAnnulTransferRequestMapper mapper;
+    private final WaterMeterRepository waterMeterRepository;
+    private final InvoiceRepository invoiceRepository;
 
     // Helper: chọn Service Staff ít việc nhất (dựa trên bảng annul_transfer_contract_requests)
     private Account pickLeastBusyServiceStaffForAnnulTransfer() {
@@ -294,8 +298,15 @@ public class ContractAnnulTransferRequestService {
 
         // --- NEW: Khi từ chối, yêu cầu có lý do (notes) để audit ---
         if (dto.getApprovalStatus() == ContractAnnulTransferRequest.ApprovalStatus.REJECTED) {
-            if (dto.getNotes() == null || dto.getNotes().trim().isEmpty()) {
-                throw new IllegalArgumentException("notes (reason) is required when rejecting a request.");
+            // Kiểm tra rejectionReason thay vì notes
+            if (dto.getRejectionReason() == null || dto.getRejectionReason().trim().isEmpty()) {
+                // Nếu rejectionReason trống, thử check sang notes (để tương thích ngược nếu cần)
+                if (dto.getNotes() == null || dto.getNotes().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Lý do từ chối là bắt buộc.");
+                } else {
+                    // Nếu có notes mà ko có rejectionReason, thì copy notes sang rejectionReason
+                    dto.setRejectionReason(dto.getNotes());
+                }
             }
         }
 

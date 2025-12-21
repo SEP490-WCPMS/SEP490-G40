@@ -28,12 +28,15 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
     // 1. Admin/General: Tìm theo Type + List Status + Keyword
     @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer", "serviceStaff"})
     @Query("SELECT r FROM ContractAnnulTransferRequest r " +
+            "LEFT JOIN r.contract c " +
+            "LEFT JOIN c.customer cust " +
             "WHERE ((:approvalStatuses) IS NULL OR r.approvalStatus IN (:approvalStatuses)) " +
             "AND r.requestType = :requestType " +
             "AND (:keyword IS NULL OR " +
-            "   LOWER(r.contract.contractNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "   LOWER(r.fromCustomer.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "   LOWER(r.toCustomer.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "   LOWER(c.contractNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   LOWER(cust.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   (r.fromCustomer IS NOT NULL AND LOWER(r.fromCustomer.customerName) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+            "   (r.toCustomer IS NOT NULL AND LOWER(r.toCustomer.customerName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             ") " +
             "ORDER BY r.updatedAt DESC")
     Page<ContractAnnulTransferRequest> findByApprovalStatusInAndTypeAndKeyword(
@@ -45,15 +48,22 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
     // 2. Service Staff: Tìm theo Staff (NGƯỜI ĐƯỢC GÁN) + Type + List Status + Keyword
     @EntityGraph(attributePaths = {"contract", "contract.customer", "requestedBy", "approvedBy", "fromCustomer", "toCustomer", "serviceStaff"})
     @Query("SELECT r FROM ContractAnnulTransferRequest r " +
+            "LEFT JOIN r.contract c " +
+            "LEFT JOIN c.customer cust " +
+            "LEFT JOIN r.serviceStaff ss " +  // Staff được giao việc
+            "LEFT JOIN c.serviceStaff css " + // Staff quản lý hợp đồng
             "WHERE ((:approvalStatuses) IS NULL OR r.approvalStatus IN (:approvalStatuses)) " +
-            // --- SỬA Ở ĐÂY: Lọc theo người được phân công xử lý yêu cầu (r.serviceStaff) ---
-            "AND r.serviceStaff.id = :serviceStaffId " +
-            // -------------------------------------------------------------------------------
+
+            // --- LOGIC QUAN TRỌNG: OR ---
+            // Hiện bản ghi nếu:
+            // Staff được giao (ss) trùng với ID đăng nhập
+            "AND (ss.id = :serviceStaffId) " +
+            // ---------------------------
+
             "AND r.requestType = :requestType " +
-            "AND (:keyword IS NULL OR " +
-            "   LOWER(r.contract.contractNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "   LOWER(r.fromCustomer.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "   LOWER(r.toCustomer.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "   LOWER(c.contractNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   LOWER(cust.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             ") " +
             "ORDER BY r.updatedAt DESC")
     Page<ContractAnnulTransferRequest> findByStaffAndStatusInAndTypeAndKeyword(
@@ -62,7 +72,6 @@ public interface ContractAnnulTransferRequestRepository extends JpaRepository<Co
             @Param("requestType") ContractAnnulTransferRequest.RequestType requestType,
             @Param("keyword") String keyword,
             Pageable pageable);
-
     // NEW: chỉ chặn khi còn request PENDING trên hợp đồng (tránh spam nhưng vẫn cho tạo lại sau khi APPROVED/REJECTED)
     boolean existsByContractIdAndApprovalStatus(Integer contractId, ContractAnnulTransferRequest.ApprovalStatus approvalStatus);
 
