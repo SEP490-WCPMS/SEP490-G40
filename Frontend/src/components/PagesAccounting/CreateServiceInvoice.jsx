@@ -277,13 +277,17 @@ function CreateServiceInvoice() {
                     <div>
                         <label htmlFor="subtotalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">Tiền dịch vụ</label>
                         <input
-                            type="text" // <-- TEXT để format dấu phẩy
+                            type="text"
                             id="subtotalAmount"
                             name="subtotalAmount"
                             value={formData.subtotalAmount ? Number(formData.subtotalAmount).toLocaleString('en-US') : ''}
-                            onChange={handleMoneyChange} // <-- Hàm xử lý tiền riêng
-                            required
-                            className="block w-full border border-gray-300 rounded-md py-2 px-3 text-sm font-medium"
+
+                            // --- THAY ĐỔI Ở ĐÂY ---
+                            readOnly // 1. Thêm thuộc tính này để chặn sửa
+                            // onChange={handleMoneyChange} // 2. Bỏ hoặc comment dòng này đi
+
+                            // 3. Cập nhật className để hiện màu xám (disabled style)
+                            className="block w-full border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed rounded-md py-2 px-3 text-sm font-medium"
                         />
                     </div>
                     {/* 2. Tiền VAT (5%) - ĐÃ SỬA: READ ONLY */}

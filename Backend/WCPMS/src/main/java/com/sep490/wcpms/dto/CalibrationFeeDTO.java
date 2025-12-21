@@ -30,55 +30,70 @@ public class CalibrationFeeDTO {
         this.calibrationId = calibration.getId();
         this.calibrationDate = calibration.getCalibrationDate();
         this.calibrationCost = calibration.getCalibrationCost();
-        this.notes = calibration.getNotes(); // Đây là Ghi chú của Kỹ thuật
+        this.notes = calibration.getNotes();
 
         if (calibration.getMeter() != null) {
             this.meterCode = calibration.getMeter().getMeterCode();
 
-            // Tìm bản ghi lắp đặt MỚI NHẤT của đồng hồ này
-            MeterInstallation installation = calibration.getMeter().getInstallations()
-                    .stream()
-                    .sorted((a, b) -> b.getInstallationDate().compareTo(a.getInstallationDate()))
-                    .findFirst().orElse(null);
+            // 1. Kiểm tra xem Phí này ĐÃ CÓ HÓA ĐƠN chưa?
+            if (calibration.getInvoice() != null) {
+                // === NẾU ĐÃ CÓ HÓA ĐƠN -> LẤY KHÁCH HÀNG TỪ HÓA ĐƠN (LỊCH SỬ) ===
+                Invoice invoice = calibration.getInvoice();
+                if (invoice.getCustomer() != null) {
+                    this.customerId = invoice.getCustomer().getId();
+                    this.customerName = invoice.getCustomer().getCustomerName(); // Lấy Thắng
+                    this.customerCode = invoice.getCustomer().getCustomerCode();
+                    this.customerAddress = invoice.getCustomer().getAddress();
+                    // (Lấy thêm SĐT nếu cần)
+                }
+            } else {
+                // === NẾU CHƯA CÓ HÓA ĐƠN (Đang chờ duyệt) -> LẤY CHỦ HỢP ĐỒNG HIỆN TẠI (Thịnh) ===
+                // (Logic cũ của chúng ta nằm ở đây)
 
-            if (installation != null && installation.getCustomer() != null) {
-                var customer = installation.getCustomer();
-                this.customerId = customer.getId();
-                this.customerName = customer.getCustomerName();
-                this.customerCode = customer.getCustomerCode();
-                // ==================================================================
-                // === SỬA TẠI ĐÂY: LOGIC ƯU TIÊN ĐỊA CHỈ HỢP ĐỒNG (CONTRACT) ===
-                // ==================================================================
+                // Tìm bản ghi lắp đặt MỚI NHẤT
+                MeterInstallation installation = calibration.getMeter().getInstallations()
+                        .stream()
+                        .sorted((a, b) -> b.getInstallationDate().compareTo(a.getInstallationDate()))
+                        .findFirst().orElse(null);
 
-                // 1. Mặc định gán tạm địa chỉ của Khách hàng (đề phòng HĐ không có địa chỉ)
-                this.customerAddress = customer.getAddress();
+                if (installation != null) {
+                    // === SỬA LỖI TẠI ĐÂY ===
+                    // Ưu tiên lấy khách hàng từ Hợp đồng hiện tại (vì HĐ có thể đã chuyển nhượng)
+                    Contract contract = installation.getContract();
+                    Customer currentCustomer = null;
 
-                // 2. Kiểm tra trong Hợp Đồng (Contract) có địa chỉ lắp đặt không?
-                Contract contract = installation.getContract();
-                if (contract != null && contract.getAddress() != null) {
-                    // Nếu bảng Address là một Entity riêng (có street, ward, district...)
-                    // Bạn cần ghép chuỗi hoặc lấy trường cụ thể. Ví dụ:
-                    if (contract.getAddress().getAddress() != null && !contract.getAddress().getAddress().isEmpty()) {
-                        // Ưu tiên cao nhất: Lấy trường address full trong bảng Address của HĐ
-                        this.customerAddress = contract.getAddress().getAddress();
+                    if (contract != null && contract.getCustomer() != null) {
+                        // Nếu có hợp đồng, lấy chủ sở hữu hiện tại của hợp đồng (Thịnh)
+                        currentCustomer = contract.getCustomer();
                     } else {
-                        // Nếu trường address full rỗng, thử ghép Street + Ward (tùy cấu trúc DB của bạn)
-                        String street = contract.getAddress().getStreet();
-                        String ward = (contract.getAddress().getWard() != null) ? contract.getAddress().getWard().getWardName() : "";
-                        this.customerAddress = street + (ward.isEmpty() ? "" : ", " + ward);
+                        // Fallback: Nếu không tìm thấy HĐ (ít khi xảy ra), lấy người lắp đặt ban đầu (Minh)
+                        currentCustomer = installation.getCustomer();
+                    }
+
+                    if (currentCustomer != null) {
+                        this.customerId = currentCustomer.getId();
+                        this.customerName = currentCustomer.getCustomerName();
+                        this.customerCode = currentCustomer.getCustomerCode();
+
+                        // Logic lấy địa chỉ (giữ nguyên hoặc cập nhật theo customer mới)
+                        this.customerAddress = currentCustomer.getAddress();
+                        // (Nếu bạn muốn lấy địa chỉ lắp đặt từ contract thì dùng logic cũ ở đây)
+                        if (contract != null && contract.getAddress() != null) {
+                            if (contract.getAddress().getAddress() != null) {
+                                this.customerAddress = contract.getAddress().getAddress();
+                            }
+                        }
+
+                        if (currentCustomer.getAccount() != null) {
+                            this.customerPhone = currentCustomer.getAccount().getPhone();
+                            this.customerEmail = currentCustomer.getAccount().getEmail();
+                        }
+                    }
+
+                    if (contract != null) {
+                        this.contractId = contract.getId();
                     }
                 }
-                // ==================================================================
-
-
-                if (customer.getAccount() != null) {
-                    this.customerPhone = customer.getAccount().getPhone();
-                    this.customerEmail = customer.getAccount().getEmail();
-                }
-            }
-
-            if (installation != null && installation.getContract() != null) {
-                this.contractId = installation.getContract().getId();
             }
         }
     }

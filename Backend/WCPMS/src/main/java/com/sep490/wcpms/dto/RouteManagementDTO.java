@@ -1,5 +1,6 @@
 package com.sep490.wcpms.dto;
 
+import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.WaterServiceContract;
 import com.sep490.wcpms.entity.MeterInstallation; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.WaterMeter; // <-- THÊM IMPORT
@@ -27,17 +28,29 @@ public class RouteManagementDTO {
         this.contractId = wsc.getId();
         this.routeOrder = wsc.getRouteOrder();
 
-        if (wsc.getCustomer() != null) {
-            this.customerName = wsc.getCustomer().getCustomerName();
-            // --- SỬA LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY ---
-            String displayAddress = wsc.getCustomer().getAddress(); // Mặc định: Địa chỉ KH
+        // === SỬA LOGIC LẤY KHÁCH HÀNG TẠI ĐÂY ===
+
+        // Mặc định lấy từ HĐ Dịch vụ
+        Customer displayCustomer = wsc.getCustomer();
+
+        // [QUAN TRỌNG] Kiểm tra Hợp đồng gốc (Contract) xem ai đang sở hữu
+        // Vì khi chuyển nhượng, thường Contract (Bảng 8) được cập nhật trước hoặc chuẩn nhất.
+        if (wsc.getSourceContract() != null && wsc.getSourceContract().getCustomer() != null) {
+            displayCustomer = wsc.getSourceContract().getCustomer();
+        }
+
+        if (displayCustomer != null) {
+            this.customerName = displayCustomer.getCustomerName();
+
+            // --- LOGIC LẤY ĐỊA CHỈ (Giữ nguyên hoặc tinh chỉnh) ---
+            String displayAddress = displayCustomer.getAddress();
 
             // Ưu tiên 1: Địa chỉ từ Hợp đồng Dịch vụ (Bảng 9)
             if (wsc.getAddress() != null) {
                 if (wsc.getAddress().getAddress() != null) {
                     displayAddress = wsc.getAddress().getAddress();
                 } else {
-                    displayAddress = wsc.getAddress().getStreet(); // Hoặc ghép chuỗi
+                    displayAddress = wsc.getAddress().getStreet();
                 }
             }
             // Ưu tiên 2: Địa chỉ từ Hợp đồng Gốc (Bảng 8)
