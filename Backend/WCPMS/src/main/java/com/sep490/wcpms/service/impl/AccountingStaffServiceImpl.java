@@ -886,8 +886,10 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
                         .orElseThrow(() -> new RuntimeException("Contract not found"));
 
                 // Kiểm tra điều kiện
-                if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE ||
-                        invoiceRepository.existsByContract_Id(contract.getId())) {
+                boolean existsInstallationInvoice =
+                        invoiceRepository.existsInstallationInvoiceByContractId(contract.getId());
+
+                if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE || existsInstallationInvoice) {
                     fail++;
                     continue;
                 }
