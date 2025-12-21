@@ -115,4 +115,7 @@ public interface AccountingStaffService {
     BulkInvoiceResponseDTO createBulkInstallationInvoices(List<Integer> contractIds, Integer staffId);
 
     BulkInvoiceResponseDTO createBulkServiceInvoices(List<Integer> calibrationIds, Integer staffId);
+
+    // Trong AccountingStaffService.java
+    void createSingleServiceInvoiceForBulk(Integer calibId, Integer staffId);
 }

@@ -350,16 +350,57 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         }
         // --- HẾT PHẦN THÊM ---
 
-        // 2. Tìm bản ghi lắp đặt MỚI NHẤT của đồng hồ đó
+        // 2. Tìm bản ghi lắp đặt MỚI NHẤT
         MeterInstallation oldInstallation = meterInstallationRepository.findTopByWaterMeterOrderByInstallationDateDesc(oldMeter)
                 .orElseThrow(() -> new ResourceNotFoundException("Đồng hồ này chưa được ghi nhận lắp đặt: " + meterCode));
 
         // 3. Lấy HĐ Dịch vụ và Khách hàng
         WaterServiceContract serviceContract = oldInstallation.getWaterServiceContract();
+
+        // Thử tìm từ Contract gốc nếu chưa có link trực tiếp
+        if (serviceContract == null && oldInstallation.getContract() != null) {
+            serviceContract = oldInstallation.getContract().getPrimaryWaterContract();
+        }
+
         if (serviceContract == null) {
             throw new ResourceNotFoundException("Không tìm thấy HĐ Dịch Vụ cho việc lắp đặt này.");
         }
-        Customer customer = serviceContract.getCustomer();
+
+        // === [LOGIC QUAN TRỌNG: TÌM KHÁCH HÀNG HIỆN TẠI] ===
+        Customer displayCustomer = null;
+
+        // Ưu tiên 1: Lấy từ Hợp đồng Gốc (Bảng 8) - Nơi lưu chủ sở hữu pháp lý hiện tại (sau chuyển nhượng)
+        if (serviceContract.getSourceContract() != null && serviceContract.getSourceContract().getCustomer() != null) {
+            displayCustomer = serviceContract.getSourceContract().getCustomer(); // Lấy Thịnh (Chủ mới)
+        }
+        // Ưu tiên 2: Fallback lấy từ HĐ Dịch vụ
+        else {
+            displayCustomer = serviceContract.getCustomer();
+        }
+
+        // === [LOGIC TÌM ĐỊA CHỈ] ===
+        String displayAddress = "N/A";
+
+        if (displayCustomer != null) {
+            displayAddress = displayCustomer.getAddress(); // Mặc định lấy địa chỉ của KH
+        }
+
+        // Ưu tiên 1: Lấy từ Hợp đồng Dịch vụ (Bảng 9) -> Bảng Address
+        if (serviceContract.getAddress() != null) {
+            if (serviceContract.getAddress().getAddress() != null) {
+                displayAddress = serviceContract.getAddress().getAddress();
+            } else {
+                displayAddress = serviceContract.getAddress().getStreet(); // Tự ghép chuỗi nếu cần
+            }
+        }
+        // Ưu tiên 2: Lấy từ Hợp đồng Lắp đặt (Bảng 8) -> Bảng Address (Dự phòng)
+        else if (serviceContract.getSourceContract() != null && serviceContract.getSourceContract().getAddress() != null) {
+            if (serviceContract.getSourceContract().getAddress().getAddress() != null) {
+                displayAddress = serviceContract.getSourceContract().getAddress().getAddress();
+            } else {
+                displayAddress = serviceContract.getSourceContract().getAddress().getStreet();
+            }
+        }
 
         // 4. Tìm chỉ số đọc CUỐI CÙNG
         BigDecimal lastReading;
@@ -374,30 +415,12 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         // 5. Trả về DTO
         MeterInfoDTO dto = new MeterInfoDTO();
-        dto.setCustomerName(customer.getCustomerName());
-        // --- SỬA LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY ---
-        String displayAddress = customer.getAddress(); // Mặc định: Địa chỉ KH
 
-        // Ưu tiên 1: Lấy từ Hợp đồng Dịch vụ (Bảng 9) -> Bảng Address
-        if (serviceContract.getAddress() != null) {
-            if (serviceContract.getAddress().getAddress() != null) {
-                displayAddress = serviceContract.getAddress().getAddress();
-            } else {
-                // Tự ghép chuỗi nếu cần
-                displayAddress = serviceContract.getAddress().getStreet();
-            }
-        }
-        // Ưu tiên 2: Lấy từ Hợp đồng Lắp đặt (Bảng 8) -> Bảng Address (Dự phòng)
-        else if (serviceContract.getSourceContract() != null && serviceContract.getSourceContract().getAddress() != null) {
-            if (serviceContract.getSourceContract().getAddress().getAddress() != null) {
-                displayAddress = serviceContract.getSourceContract().getAddress().getAddress();
-            } else {
-                displayAddress = serviceContract.getSourceContract().getAddress().getStreet();
-            }
+        if (displayCustomer != null) {
+            dto.setCustomerName(displayCustomer.getCustomerName());
         }
 
-        dto.setCustomerAddress(displayAddress);
-        // ------------------------------------
+        dto.setCustomerAddress(displayAddress); // Đã xử lý logic ở trên
         dto.setContractNumber(serviceContract.getContractNumber()); // Số HĐ Dịch vụ
         dto.setMeterInstallationId(oldInstallation.getId()); // ID Lắp đặt CŨ
         dto.setLastReading(lastReading); // Chỉ số CŨ
@@ -749,53 +772,44 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
 
         Customer customer = ticket.getCustomer();
 
-        // 3. Tìm HĐ Dịch vụ (Bảng 9) ACTIVE (để lấy thông tin chung)
-        WaterServiceContract activeServiceContract = customer.getWaterServiceContracts().stream()
-                .filter(wsc -> wsc.getContractStatus() == WaterServiceContract.WaterServiceContractStatus.ACTIVE)
-                .findFirst()
-                .orElse(null);
+        // --- SỬA LOGIC TÌM KIẾM THÔNG TIN LIÊN QUAN ---
 
-        // --- LOGIC MỚI: TÌM ĐỒNG HỒ ĐÚNG ---
+        WaterMeter meterToFind = ticket.getWaterMeter();
+        // Nếu ticket không gắn sẵn meter, thử parse từ description
+        if (meterToFind == null) {
+            String code = extractMeterCodeFromDescription(ticket.getDescription());
+            if (code != null) meterToFind = waterMeterRepository.findByMeterCode(code).orElse(null);
+        }
 
         MeterInstallation installationToDisplay = null;
-        WaterMeter meterToFind = null;
+        WaterServiceContract activeServiceContract = null;
 
-        // Ưu tiên 1: Lấy đồng hồ đã gán (meter_id) trong Bảng 20
-        if (ticket.getWaterMeter() != null) {
-            meterToFind = ticket.getWaterMeter();
-        }
-
-        // Ưu tiên 2: (Nếu không có meter_id) Thử trích xuất từ Description
-        if (meterToFind == null) {
-            String meterCodeFromDesc = extractMeterCodeFromDescription(ticket.getDescription());
-            if (meterCodeFromDesc != null) {
-                meterToFind = waterMeterRepository.findByMeterCode(meterCodeFromDesc).orElse(null);
-            }
-        }
-
-        // Nếu tìm thấy đồng hồ (bằng Ưu tiên 1 hoặc 2)
         if (meterToFind != null) {
-            // Lấy bản ghi lắp đặt MỚI NHẤT của đồng hồ CỤ THỂ đó
-            Optional<MeterInstallation> installationOpt = meterInstallationRepository
+            // 1. Tìm bản ghi lắp đặt MỚI NHẤT của đồng hồ này
+            Optional<MeterInstallation> installOpt = meterInstallationRepository
                     .findTopByWaterMeterOrderByInstallationDateDesc(meterToFind);
-            if (installationOpt.isPresent()) {
-                installationToDisplay = installationOpt.get();
-            }
-        }
-        // Ưu tiên 3: (Nếu cả 2 cách trên đều thất bại)
-        // Mới lấy đồng hồ INSTALLED mới nhất của HĐ Active (làm dự phòng)
-        else if (activeServiceContract != null) {
-            Optional<MeterInstallation> latestInstalledOpt = meterInstallationRepository
-                    .findTopByWaterServiceContractAndWaterMeter_MeterStatusOrderByInstallationDateDesc(
-                            activeServiceContract,
-                            WaterMeter.MeterStatus.INSTALLED
-                    );
-            if (latestInstalledOpt.isPresent()) {
-                installationToDisplay = latestInstalledOpt.get();
+
+            if (installOpt.isPresent()) {
+                installationToDisplay = installOpt.get();
+                // Lấy HĐ từ installation -> Contract -> WaterServiceContract
+                // (Cách này chuẩn nhất vì nó link trực tiếp với lần lắp đặt đó)
+                if (installationToDisplay.getWaterServiceContract() != null) {
+                    activeServiceContract = installationToDisplay.getWaterServiceContract();
+                } else if (installationToDisplay.getContract() != null) {
+                    activeServiceContract = installationToDisplay.getContract().getPrimaryWaterContract();
+                }
             }
         }
 
-        // --- HẾT LOGIC MỚI ---
+        // Fallback: Nếu không tìm thấy qua đồng hồ, mới tìm qua Customer
+        if (activeServiceContract == null) {
+            activeServiceContract = ticket.getCustomer().getWaterServiceContracts().stream()
+                    .filter(wsc -> wsc.getContractStatus() == WaterServiceContract.WaterServiceContractStatus.ACTIVE)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // --- HẾT PHẦN SỬA ---
 
         // 7. Map sang DTO chi tiết
         return supportTicketMapper.toDetailDto(ticket, activeServiceContract, installationToDisplay);

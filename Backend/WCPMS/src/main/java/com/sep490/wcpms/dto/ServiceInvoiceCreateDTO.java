@@ -22,22 +22,22 @@ public class ServiceInvoiceCreateDTO {
     private Integer contractId; // ID Hợp đồng Lắp đặt (Bảng 8)
 
     @NotNull
-    private String invoiceNumber; // Số HĐ (Kế toán có thể sửa)
+    private String invoiceNumber; // Số HĐ
 
     @NotNull
     private LocalDate invoiceDate;
 
     @NotNull
-    private LocalDate dueDate; // Hạn thanh toán (Kế toán có thể sửa)
+    private LocalDate dueDate; // Hạn thanh toán
 
     @NotNull
-    private BigDecimal subtotalAmount; // Tiền (Kế toán có thể sửa)
+    private BigDecimal subtotalAmount; // Tiền
 
     @NotNull
-    private BigDecimal vatAmount; // VAT (Kế toán có thể sửa)
+    private BigDecimal vatAmount; // VAT
 
     @NotNull
-    private BigDecimal totalAmount; // Tổng (Kế toán có thể sửa)
+    private BigDecimal totalAmount; // Tổng
 
     private String notes; // Ghi chú của Kế toán
 }
