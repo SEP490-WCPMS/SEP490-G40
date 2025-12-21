@@ -273,13 +273,266 @@ const ContractRequestDetailModal = ({
     const effectiveStatus = detail?.approvalStatus || detail?.status;
     const statusObj = getStatusBadge(effectiveStatus);
 
+    const renderCreationDetail = () => (
+        <>
+            {/* Thông tin hợp đồng cơ bản */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>📋 Thông tin hợp đồng</h3>
+                <div style={styles.grid}>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Số hợp đồng:</span>
+                        <span style={styles.value}>
+              {detail.contractNumber || (isCreation ? 'N/A' : 'N/A')}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Trạng thái:</span>
+                        <span style={styles.statusBadge(statusObj.className)}>
+              {statusObj.text}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Ngày gửi yêu cầu:</span>
+                        <span style={styles.value}>
+              {formatDate(detail.applicationDate)}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Loại yêu cầu:</span>
+                        <span style={styles.value}>
+              {getRequestTypeText(detail.requestType)}
+            </span>
+                    </div>
+
+                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                        <span style={styles.label}>Ghi chú:</span>
+                        <span style={styles.value}>
+              {detail.notes || '(Không có)'}
+            </span>
+                    </div>
+
+                    {detail.attachedEvidence && (
+                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                            <span style={styles.label}>Minh chứng:</span>
+                            <span style={styles.value}>
+                {(() => {
+                    const src = buildEvidenceSrc(detail.attachedEvidence);
+                    if (!src) return '(Không hiển thị được)';
+                    return (
+                        <img
+                            src={src}
+                            alt="attachedEvidence"
+                            style={{ maxWidth: '100%', borderRadius: '10px' }}
+                        />
+                    );
+                })()}
+              </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Thông tin khách hàng */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>👤 Thông tin khách hàng</h3>
+                <div style={styles.grid}>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Tên khách hàng:</span>
+                        <span style={styles.value}>
+              {detail.customerName || 'N/A'}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Mã khách hàng:</span>
+                        <span style={styles.value}>
+              {detail.customerCode || 'N/A'}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Tuyến đọc:</span>
+                        <span style={styles.value}>
+              {(detail.routeCode ? `${detail.routeCode} — ` : '') + (detail.routeName || detail.routeId || 'N/A')}
+            </span>
+                    </div>
+
+                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                        <span style={styles.label}>Địa chỉ:</span>
+                        <span style={styles.value}>
+              {detail.address || 'N/A'}
+            </span>
+                    </div>
+
+                    {detail.contactPersonName && (
+                        <div style={styles.row}>
+                            <span style={styles.label}>Người liên hệ:</span>
+                            <span style={styles.value}>{detail.contactPersonName}</span>
+                        </div>
+                    )}
+                    {detail.contactPersonPhone && (
+                        <div style={styles.row}>
+                            <span style={styles.label}>Số điện thoại:</span>
+                            <span style={styles.value}>{detail.contactPersonPhone}</span>
+                        </div>
+                    )}
+                    {detail.identityNumber && (
+                        <div style={styles.row}>
+                            <span style={styles.label}>Số CMND/CCCD:</span>
+                            <span style={styles.value}>{detail.identityNumber}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Thông tin loại giá nước */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>💧 Thông tin loại giá nước</h3>
+                <div style={styles.grid}>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Loại giá nước:</span>
+                        <span style={styles.value}>{detail.priceTypeName || 'N/A'}</span>
+                    </div>
+                    {detail.usagePurpose && (
+                        <div style={styles.row}>
+                            <span style={styles.label}>Mục đích sử dụng:</span>
+                            <span style={styles.value}>{detail.usagePurpose}</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Thông tin sử dụng nước */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>📊 Thông tin sử dụng nước</h3>
+                <div style={styles.grid}>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Số người sử dụng:</span>
+                        <span style={styles.value}>
+              {detail.occupants ? `${detail.occupants} người` : 'N/A'}
+            </span>
+                    </div>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Phần trăm sử dụng:</span>
+                        <span style={styles.value}>
+              {detail.usagePercentage ? `${detail.usagePercentage}%` : 'N/A'}
+            </span>
+                    </div>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Lượng tiêu thụ dự tính:</span>
+                        <span style={styles.value}>
+              {detail.estimatedMonthlyConsumption ? `${detail.estimatedMonthlyConsumption} m³/tháng` : 'N/A'}
+            </span>
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+
+    const renderChangeDetail = () => (
+        <>
+            {/* CHANGE: chỉ hiển thị đúng cái form ContractRequestChange đã gửi */}
+            <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>📋 Thông tin yêu cầu</h3>
+                <div style={styles.grid}>
+                    <div style={styles.row}>
+                        <span style={styles.label}>Số hợp đồng:</span>
+                        <span style={styles.value}>{detail.contractNumber || detail.contractId || 'N/A'}</span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Mã yêu cầu:</span>
+                        <span style={styles.value}>{detail.requestNumber || 'N/A'}</span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Trạng thái:</span>
+                        <span style={styles.statusBadge(statusObj.className)}>
+              {statusObj.text}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Ngày gửi yêu cầu:</span>
+                        <span style={styles.value}>
+              {formatDate(detail.requestDate || detail.createdAt)}
+            </span>
+                    </div>
+
+                    <div style={styles.row}>
+                        <span style={styles.label}>Loại yêu cầu:</span>
+                        <span style={styles.value}>
+              {getRequestTypeText(detail.requestType)}
+            </span>
+                    </div>
+
+                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                        <span style={styles.label}>Lý do:</span>
+                        <span style={styles.value}>{detail.reason || '(Không có)'}</span>
+                    </div>
+
+                    {detail.attachedEvidence && (
+                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                            <span style={styles.label}>Minh chứng:</span>
+                            <span style={styles.value}>
+                {(() => {
+                    const src = buildEvidenceSrc(detail.attachedEvidence);
+                    if (!src) return '(Không hiển thị được)';
+                    return (
+                        <img
+                            src={src}
+                            alt="attachedEvidence"
+                            style={{ maxWidth: '100%', borderRadius: '10px' }}
+                        />
+                    );
+                })()}
+              </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {detail.requestType === 'TRANSFER' && (
+                <div style={styles.section}>
+                    <h3 style={styles.sectionTitle}>👤 Thông tin chuyển nhượng</h3>
+                    <div style={styles.grid}>
+                        <div style={styles.row}>
+                            <span style={styles.label}>Từ khách hàng:</span>
+                            <span style={styles.value}>{detail.fromCustomerName || 'N/A'}</span>
+                        </div>
+                        <div style={styles.row}>
+                            <span style={styles.label}>Đến khách hàng:</span>
+                            <span style={styles.value}>{detail.toCustomerName || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Nếu REJECTED và có notes (service đang dùng notes khi từ chối) */}
+            {detail.approvalStatus === 'REJECTED' && detail.notes && (
+                <div style={styles.section}>
+                    <h3 style={styles.sectionTitle}>🛑 Phản hồi từ chối</h3>
+                    <div style={styles.grid}>
+                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                            <span style={styles.label}>Lý do từ chối:</span>
+                            <span style={styles.value}>{detail.notes}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+
     return (
         <div style={styles.overlay} onClick={onClose}>
             <style>{`
-                button:hover {
-                    transform: translateY(-2px);
-                }
-            `}</style>
+        button:hover {
+          transform: translateY(-2px);
+        }
+      `}</style>
             <div style={styles.content} onClick={(e) => e.stopPropagation()}>
                 <div style={styles.header}>
                     <h2 style={styles.headerTitle}>📄 Chi tiết Yêu cầu Hợp đồng</h2>
@@ -311,180 +564,7 @@ const ContractRequestDetailModal = ({
 
                     {!loading && !error && detail && (
                         <>
-                            {/* Thông tin hợp đồng cơ bản */}
-                            <div style={styles.section}>
-                                <h3 style={styles.sectionTitle}>📋 Thông tin hợp đồng</h3>
-                                <div style={styles.grid}>
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Số hợp đồng:</span>
-                                        <span style={styles.value}>
-                                            {detail.contractNumber || (isCreation ? 'N/A' : 'N/A')}
-                                        </span>
-                                    </div>
-
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Trạng thái:</span>
-                                        <span style={styles.statusBadge(statusObj.className)}>
-                                            {statusObj.text}
-                                        </span>
-                                    </div>
-
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Ngày gửi yêu cầu:</span>
-                                        <span style={styles.value}>
-                                            {formatDate(
-                                                isCreation
-                                                    ? detail.applicationDate
-                                                    : (detail.requestDate || detail.createdAt)
-                                            )}
-                                        </span>
-                                    </div>
-
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Loại yêu cầu:</span>
-                                        <span style={styles.value}>
-                                            {getRequestTypeText(detail.requestType)}
-                                        </span>
-                                    </div>
-
-                                    {/* Ghi chú: CREATE dùng notes, CHUYỂN/HỦY ưu tiên reason rồi notes */}
-                                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                                        <span style={styles.label}>Ghi chú:</span>
-                                        <span style={styles.value}>
-                                            {isCreation
-                                                ? (detail.notes || '(Không có)')
-                                                : (detail.reason || detail.notes || '(Không có)')}
-                                        </span>
-                                    </div>
-
-                                    {/* Minh chứng (nếu có) - chỉ render, không đổi layout */}
-                                    {detail.attachedEvidence && (
-                                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                                            <span style={styles.label}>Minh chứng:</span>
-                                            <span style={styles.value}>
-                                                {(() => {
-                                                    const src = buildEvidenceSrc(detail.attachedEvidence);
-                                                    if (!src) return '(Không hiển thị được)';
-                                                    return (
-                                                        <img
-                                                            src={src}
-                                                            alt="attachedEvidence"
-                                                            style={{ maxWidth: '100%', borderRadius: '10px' }}
-                                                        />
-                                                    );
-                                                })()}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Thông tin khách hàng */}
-                            <div style={styles.section}>
-                                <h3 style={styles.sectionTitle}>👤 Thông tin khách hàng</h3>
-                                <div style={styles.grid}>
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Tên khách hàng:</span>
-                                        <span style={styles.value}>
-                                            {isCreation ? (detail.customerName || 'N/A') : (detail.fromCustomerName || 'N/A')}
-                                        </span>
-                                    </div>
-
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Mã khách hàng:</span>
-                                        <span style={styles.value}>
-                                            {isCreation ? (detail.customerCode || 'N/A') : (detail.fromCustomerCode || 'N/A')}
-                                        </span>
-                                    </div>
-
-                                    {/* Transfer: khách hàng nhận */}
-                                    {!isCreation && detail.requestType === 'TRANSFER' && (
-                                        <div style={styles.row}>
-                                            <span style={styles.label}>Khách hàng nhận:</span>
-                                            <span style={styles.value}>
-                                                {detail.toCustomerName || 'N/A'}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Tuyến đọc:</span>
-                                        <span style={styles.value}>
-                                            {isCreation
-                                                ? ((detail.routeCode ? `${detail.routeCode} — ` : '') + (detail.routeName || detail.routeId || 'N/A'))
-                                                : ((detail.routeCode ? `${detail.routeCode} — ` : '') + (detail.routeName || detail.routeId || 'N/A'))}
-                                        </span>
-                                    </div>
-
-                                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                                        <span style={styles.label}>Địa chỉ:</span>
-                                        <span style={styles.value}>
-                                            {detail.address || 'N/A'}
-                                        </span>
-                                    </div>
-
-                                    {detail.contactPersonName && (
-                                        <div style={styles.row}>
-                                            <span style={styles.label}>Người liên hệ:</span>
-                                            <span style={styles.value}>{detail.contactPersonName}</span>
-                                        </div>
-                                    )}
-                                    {detail.contactPersonPhone && (
-                                        <div style={styles.row}>
-                                            <span style={styles.label}>Số điện thoại:</span>
-                                            <span style={styles.value}>{detail.contactPersonPhone}</span>
-                                        </div>
-                                    )}
-                                    {detail.identityNumber && (
-                                        <div style={styles.row}>
-                                            <span style={styles.label}>Số CMND/CCCD:</span>
-                                            <span style={styles.value}>{detail.identityNumber}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Thông tin loại giá nước (chỉ meaningful cho CREATE, nhưng vẫn giữ section — render N/A nếu không có) */}
-                            <div style={styles.section}>
-                                <h3 style={styles.sectionTitle}>💧 Thông tin loại giá nước</h3>
-                                <div style={styles.grid}>
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Loại giá nước:</span>
-                                        <span style={styles.value}>{detail.priceTypeName || 'N/A'}</span>
-                                    </div>
-                                    {detail.usagePurpose && (
-                                        <div style={styles.row}>
-                                            <span style={styles.label}>Mục đích sử dụng:</span>
-                                            <span style={styles.value}>{detail.usagePurpose}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Thông tin sử dụng nước */}
-                            <div style={styles.section}>
-                                <h3 style={styles.sectionTitle}>📊 Thông tin sử dụng nước</h3>
-                                <div style={styles.grid}>
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Số người sử dụng:</span>
-                                        <span style={styles.value}>
-                                            {detail.occupants ? `${detail.occupants} người` : 'N/A'}
-                                        </span>
-                                    </div>
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Phần trăm sử dụng:</span>
-                                        <span style={styles.value}>
-                                            {detail.usagePercentage ? `${detail.usagePercentage}%` : 'N/A'}
-                                        </span>
-                                    </div>
-                                    <div style={styles.row}>
-                                        <span style={styles.label}>Lượng tiêu thụ dự tính:</span>
-                                        <span style={styles.value}>
-                                            {detail.estimatedMonthlyConsumption ? `${detail.estimatedMonthlyConsumption} m³/tháng` : 'N/A'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                            {isCreation ? renderCreationDetail() : renderChangeDetail()}
                         </>
                     )}
                 </div>
