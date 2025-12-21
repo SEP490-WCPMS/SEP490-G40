@@ -113,6 +113,9 @@ public class AuthService {
                 .roleName(role.getRoleName()) // Lấy Enum RoleName từ Account entity
                 .department(account.getDepartment()) // Lấy Enum Department từ Account entity
                 .token(jwt) // Trả về token thật
+                .phone(account.getPhone())           // <-- QUAN TRỌNG
+                .email(account.getEmail())           // <-- Nên thêm
+                .customerCode(account.getCustomerCode()) // <-- Nên thêm
                 .build();
     }
 

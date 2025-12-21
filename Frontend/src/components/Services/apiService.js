@@ -200,6 +200,22 @@ export const createContractRequest = (requestData) => {
 };
 
 /**
+ * Lấy danh sách YÊU CẦU TẠO HỢP ĐỒNG (Contract creation requests)
+ * API: GET /api/contract-request/my-requests/{accountId}
+ */
+export const getMyContractCreationRequests = (accountId) => {
+    return apiClient.get(`/contract-request/my-requests/${accountId}`);
+};
+
+/**
+ * Lấy chi tiết 1 YÊU CẦU TẠO HỢP ĐỒNG
+ * API: GET /api/contract-request/{contractId}/details/{accountId}
+ */
+export const getContractCreationRequestDetail = (contractId, accountId) => {
+    return apiClient.get(`/contract-request/${contractId}/details/${accountId}`);
+};
+
+/**
  * Tìm kiếm khách hàng theo tên hoặc CMND/CCCD
  * @param {object} params { customerName, identityNumber }
  * @returns {Promise}

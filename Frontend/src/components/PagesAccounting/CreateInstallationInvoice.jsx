@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { createInstallationInvoice } from '../Services/apiAccountingStaff';
 import { ArrowLeft, Calendar, FileText, AlertCircle, Save } from 'lucide-react';
 import ConfirmModal from '../common/ConfirmModal';
 import moment from 'moment';
+
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function CreateInstallationInvoice() {
     const { contractId } = useParams();
@@ -18,6 +21,8 @@ function CreateInstallationInvoice() {
     const [error, setError] = useState(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
+    const redirectTimeoutRef = useRef(null);
+
     const [formData, setFormData] = useState({
         invoiceNumber: '',
         invoiceDate: '',
@@ -31,6 +36,12 @@ function CreateInstallationInvoice() {
     const isInvalidAmount = Number(formData.subtotalAmount || 0) <= 0;
 
     useEffect(() => {
+        return () => {
+            if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+        };
+    }, []);
+
+    useEffect(() => {
         if (!contractFromState) {
             setError('Không tìm thấy dữ liệu Hợp đồng. Vui lòng quay lại danh sách.');
             setLoading(false);
@@ -40,7 +51,7 @@ function CreateInstallationInvoice() {
         setContract(contractFromState);
 
         const subtotal = contractFromState.contractValue || 0;
-        const vatRate = 0.1; // VAT 10% (bạn có thể đổi)
+        const vatRate = 0.1;
         const vat = Math.round(subtotal * vatRate);
         const total = subtotal + vat;
 
@@ -71,11 +82,12 @@ function CreateInstallationInvoice() {
             return;
         }
 
+        setConfirmOpen(false);
         setSubmitting(true);
         setError(null);
 
         const payload = {
-            contractId: parseInt(contractId),
+            contractId: parseInt(contractId, 10),
             invoiceNumber: formData.invoiceNumber,
             invoiceDate: formData.invoiceDate,
             dueDate: formData.dueDate,
@@ -86,11 +98,29 @@ function CreateInstallationInvoice() {
 
         try {
             const response = await createInstallationInvoice(payload);
-            alert(`Tạo Hóa đơn lắp đặt ${response.data.invoiceNumber} thành công!`);
-            navigate('/accounting/invoices');
+            const invoiceNo = response?.data?.invoiceNumber || formData.invoiceNumber || '';
+
+            toast.dismiss();
+            toast.success(
+                <div>
+                    <div className="font-semibold">
+                        Đã tạo hóa đơn lắp đặt {invoiceNo ? `"${invoiceNo}"` : ''} thành công!
+                    </div>
+                </div>,
+                { autoClose: 3000 }
+            );
+
+            if (redirectTimeoutRef.current) clearTimeout(redirectTimeoutRef.current);
+            redirectTimeoutRef.current = setTimeout(() => {
+                navigate('/accounting/invoices');
+            }, 3000);
         } catch (err) {
             console.error('Lỗi khi tạo Hóa đơn lắp đặt:', err);
-            setError(err.response?.data?.message || 'Tạo Hóa đơn lắp đặt thất bại.');
+            const msg = err.response?.data?.message || 'Tạo Hóa đơn lắp đặt thất bại.';
+            setError(msg);
+
+            toast.dismiss();
+            toast.error(msg, { autoClose: 3000 });
         } finally {
             setSubmitting(false);
         }
@@ -125,6 +155,9 @@ function CreateInstallationInvoice() {
 
     return (
         <div className="p-4 sm:p-6">
+            {/* Toast theo style project */}
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
+
             {/* Breadcrumb / Back */}
             <div className="flex items-center mb-4">
                 <button
@@ -161,7 +194,7 @@ function CreateInstallationInvoice() {
                             </p>
                             <p className="flex items-center">
                                 <span className="font-medium text-gray-600 mr-1">Giá trị HĐ: </span>
-                                { (contract.contractValue || 0).toLocaleString('vi-VN') } đ
+                                {(contract.contractValue || 0).toLocaleString('vi-VN')} đ
                             </p>
                         </div>
                     </div>
@@ -198,10 +231,7 @@ function CreateInstallationInvoice() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Số Hóa đơn - READONLY */}
                             <div>
-                                <label
-                                    htmlFor="invoiceNumber"
-                                    className="block mb-1.5 text-sm font-medium text-gray-700"
-                                >
+                                <label htmlFor="invoiceNumber" className="block mb-1.5 text-sm font-medium text-gray-700">
                                     Số Hóa đơn *
                                 </label>
                                 <input
@@ -216,10 +246,7 @@ function CreateInstallationInvoice() {
 
                             {/* Ngày lập Hóa đơn - READONLY */}
                             <div>
-                                <label
-                                    htmlFor="invoiceDate"
-                                    className="block mb-1.5 text-sm font-medium text-gray-700"
-                                >
+                                <label htmlFor="invoiceDate" className="block mb-1.5 text-sm font-medium text-gray-700">
                                     Ngày lập Hóa đơn *
                                 </label>
                                 <div className="relative">
@@ -231,19 +258,13 @@ function CreateInstallationInvoice() {
                                         readOnly
                                         className="appearance-none block w-full border border-gray-200 bg-gray-50 rounded-md py-2 px-3 text-sm pr-8 text-gray-700 cursor-not-allowed"
                                     />
-                                    <Calendar
-                                        size={16}
-                                        className="absolute right-2 top-2.5 text-gray-300 pointer-events-none"
-                                    />
+                                    <Calendar size={16} className="absolute right-2 top-2.5 text-gray-300 pointer-events-none" />
                                 </div>
                             </div>
 
                             {/* Hạn thanh toán - CHO PHÉP SỬA */}
                             <div>
-                                <label
-                                    htmlFor="dueDate"
-                                    className="block mb-1.5 text-sm font-medium text-gray-700"
-                                >
+                                <label htmlFor="dueDate" className="block mb-1.5 text-sm font-medium text-gray-700">
                                     Hạn thanh toán *
                                 </label>
                                 <div className="relative">
@@ -252,26 +273,19 @@ function CreateInstallationInvoice() {
                                         id="dueDate"
                                         name="dueDate"
                                         value={formData.dueDate}
-                                        onChange={handleChange}   // chỉ field này cho onChange
+                                        onChange={handleChange}
                                         required
                                         className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm pr-8"
                                     />
-                                    <Calendar
-                                        size={16}
-                                        className="absolute right-2 top-2.5 text-gray-400 pointer-events-none"
-                                    />
+                                    <Calendar size={16} className="absolute right-2 top-2.5 text-gray-400 pointer-events-none" />
                                 </div>
                             </div>
                         </div>
 
                         {/* Tiền */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-                            {/* Tiền lắp đặt (chưa VAT) - READONLY */}
                             <div>
-                                <label
-                                    htmlFor="subtotalAmount"
-                                    className="block mb-1.5 text-sm font-medium text-gray-700"
-                                >
+                                <label htmlFor="subtotalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">
                                     Tiền lắp đặt (chưa VAT) *
                                 </label>
                                 <input
@@ -284,12 +298,8 @@ function CreateInstallationInvoice() {
                                 />
                             </div>
 
-                            {/* VAT - READONLY */}
                             <div>
-                                <label
-                                    htmlFor="vatAmount"
-                                    className="block mb-1.5 text-sm font-medium text-gray-700"
-                                >
+                                <label htmlFor="vatAmount" className="block mb-1.5 text-sm font-medium text-gray-700">
                                     Tiền VAT *
                                 </label>
                                 <input
@@ -302,12 +312,8 @@ function CreateInstallationInvoice() {
                                 />
                             </div>
 
-                            {/* Tổng cộng - READONLY */}
                             <div>
-                                <label
-                                    htmlFor="totalAmount"
-                                    className="block mb-1.5 text-sm font-medium text-gray-700"
-                                >
+                                <label htmlFor="totalAmount" className="block mb-1.5 text-sm font-medium text-gray-700">
                                     Tổng cộng *
                                 </label>
                                 <input
@@ -323,10 +329,7 @@ function CreateInstallationInvoice() {
 
                         {/* Ghi chú */}
                         <div className="pt-4 border-t">
-                            <label
-                                htmlFor="notes"
-                                className="block mb-1.5 text-sm font-medium text-gray-700"
-                            >
+                            <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">
                                 Ghi chú (tuỳ chọn)
                             </label>
                             <textarea
@@ -356,13 +359,14 @@ function CreateInstallationInvoice() {
                                   ${(submitting || isInvalidAmount) ? 'opacity-50 cursor-not-allowed' : ''}
                                 `}
                             >
-                            <Save size={18} className="mr-2" />
+                                <Save size={18} className="mr-2" />
                                 {submitting ? 'Đang phát hành...' : 'Xác nhận & Phát hành Hóa đơn lắp đặt'}
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
+
             <ConfirmModal
                 isOpen={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
@@ -372,9 +376,7 @@ function CreateInstallationInvoice() {
                     contract
                         ? `Bạn có chắc chắn muốn phát hành Hóa đơn lắp đặt cho hợp đồng ${
                             contract.contractNumber || `#${contract.id || contractId}`
-                        } với số tiền ${Number(
-                            formData.totalAmount || 0
-                        ).toLocaleString('vi-VN')} đ không?`
+                        } với số tiền ${Number(formData.totalAmount || 0).toLocaleString('vi-VN')} đ không?`
                         : `Bạn có chắc chắn muốn phát hành Hóa đơn lắp đặt với số tiền ${Number(
                             formData.totalAmount || 0
                         ).toLocaleString('vi-VN')} đ không?`

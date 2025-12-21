@@ -7,7 +7,8 @@ import {
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import './WaterPriceTypesPage.css';
-import { AlertCircle, ChevronLeft, ChevronRight, X, Edit } from 'lucide-react';
+import { AlertCircle, X, Edit } from 'lucide-react';
+import Pagination from '../common/Pagination';
 
 // --- MODAL XÁC NHẬN ---
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
@@ -42,6 +43,7 @@ export default function WaterPriceTypesPage() {
     // --- PHÂN TRANG ---
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
     const pageSize = 10;
 
     // --- MODAL ---
@@ -57,16 +59,16 @@ export default function WaterPriceTypesPage() {
         try {
             const resp = await getAdminWaterPriceTypes(includeInactive, currentPage, pageSize);
             const data = resp.data || resp;
+            const hasContentArray = data && Array.isArray(data.content);
+            const resolvedItems = hasContentArray ? data.content : (Array.isArray(data) ? data : []);
 
-            if (data && Array.isArray(data.content)) {
-                setItems(data.content);
-                setTotalPages(data.totalPages);
-            } else if (Array.isArray(data)) {
-                setItems(data);
-                setTotalPages(0);
-            } else {
-                setItems([]);
-            }
+            setItems(resolvedItems);
+
+            const inferredTotalElements = data?.totalElements ?? data?.totalCount ?? data?.total ?? (hasContentArray ? data.content.length : resolvedItems.length);
+            const inferredTotalPages = data?.totalPages ?? (inferredTotalElements ? Math.ceil(inferredTotalElements / pageSize) : (resolvedItems.length ? 1 : 0));
+
+            setTotalElements(inferredTotalElements);
+            setTotalPages(inferredTotalPages);
         } catch (err) {
             setError(err.response?.data?.message || err.message || 'Lỗi tải danh sách');
             setItems([]);
@@ -80,7 +82,19 @@ export default function WaterPriceTypesPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage]);
 
+    useEffect(() => {
+        if (totalPages > 0 && currentPage > totalPages - 1) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [currentPage, totalPages]);
+
     const handleChange = (e) => setForm(s => ({ ...s, [e.target.id]: e.target.value }));
+
+    const handlePageChange = (page) => {
+        const maxPage = Math.max(totalPages - 1, 0);
+        const clamped = Math.min(Math.max(page, 0), maxPage);
+        setCurrentPage(clamped);
+    };
 
     // --- LƯU (CREATE/UPDATE) ---
     const performSave = async () => {
@@ -241,17 +255,12 @@ export default function WaterPriceTypesPage() {
                             </table>
                         </div>
 
-                        <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 20, padding: 10 }}>
-                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}>
-                                <ChevronLeft size={16} /> Trước
-                            </Button>
-                            <span style={{ fontWeight: 600, color: '#555', display: 'flex', alignItems: 'center' }}>
-                                Trang {currentPage + 1} / {totalPages || 1}
-                            </span>
-                            <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))} disabled={currentPage >= (totalPages - 1)}>
-                                Sau <ChevronRight size={16} />
-                            </Button>
-                        </div>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalElements={totalElements}
+                            pageSize={pageSize}
+                            onPageChange={handlePageChange}
+                        />
                     </>
                 )}
             </div>

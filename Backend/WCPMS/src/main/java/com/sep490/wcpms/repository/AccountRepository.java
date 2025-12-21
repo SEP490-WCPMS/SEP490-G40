@@ -234,22 +234,46 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
             "ORDER BY (COUNT(DISTINCT c.id) + COUNT(DISTINCT t.id)) ASC, a.fullName ASC")
     List<AccountDTO> findTechnicalStaffWithWorkload();
 
+//  /**
+//   * Tìm Service Staff đang có ít yêu cầu hủy/chuyển hợp đồng (PENDING) nhất.
+//   * Dùng cho bảng annul_transfer_contract_requests.
+//   */
+//  @Query(value = """
+//        SELECT a.*
+//        FROM accounts a
+//        LEFT JOIN annul_transfer_contract_requests atr
+//               ON atr.service_staff_id = a.id
+//              AND atr.approval_status = 'PENDING'   -- chỉ đếm yêu cầu chưa xử lý
+//        WHERE a.role_id = :roleId
+//          AND a.status = 1                         -- chỉ lấy account đang ACTIVE
+//        GROUP BY a.id
+//        ORDER BY COUNT(atr.id) ASC, a.id ASC
+//        LIMIT 1
+//        """, nativeQuery = true)
+//  Optional<Account> findServiceStaffWithLeastAnnulTransferWorkload(@Param("roleId") int roleId);
+
   /**
-   * Tìm Service Staff đang có ít yêu cầu hủy/chuyển hợp đồng (PENDING) nhất.
-   * Dùng cho bảng annul_transfer_contract_requests.
+   * Chọn Service Staff ít việc nhất (đếm số request PENDING đang được phân công)
+   * nhưng CHỈ trong danh sách Service Staff đang được gán vào tuyến (route_service_assignments).
    */
   @Query(value = """
-        SELECT a.* 
-        FROM accounts a
-        LEFT JOIN annul_transfer_contract_requests atr
-               ON atr.service_staff_id = a.id
-              AND atr.approval_status = 'PENDING'   -- chỉ đếm yêu cầu chưa xử lý
-        WHERE a.role_id = :roleId
-          AND a.status = 1                         -- chỉ lấy account đang ACTIVE
-        GROUP BY a.id
-        ORDER BY COUNT(atr.id) ASC, a.id ASC
-        LIMIT 1
-        """, nativeQuery = true)
-  Optional<Account> findServiceStaffWithLeastAnnulTransferWorkload(@Param("roleId") int roleId);
+      SELECT a.* 
+      FROM accounts a
+      JOIN route_service_assignments rsa
+             ON rsa.account_id = a.id
+            AND rsa.route_id = :routeId
+      LEFT JOIN annul_transfer_contract_requests atr
+             ON atr.service_staff_id = a.id
+            AND atr.approval_status = 'PENDING'
+      WHERE a.role_id = :roleId
+        AND a.status = 1
+      GROUP BY a.id
+      ORDER BY COUNT(atr.id) ASC, a.id ASC
+      LIMIT 1
+      """, nativeQuery = true)
+  Optional<Account> findServiceStaffWithLeastAnnulTransferWorkloadForRoute(
+          @Param("roleId") int roleId,
+          @Param("routeId") int routeId
+  );
 
 }

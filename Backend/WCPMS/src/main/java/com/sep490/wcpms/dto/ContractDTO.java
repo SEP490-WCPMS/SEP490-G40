@@ -18,6 +18,12 @@ public class ContractDTO {
     private String contractNumber;
     private Integer customerId; // Có thể null cho guest
     private String contactPhone; // Quan trọng cho guest (khi customerId = null)
+
+    // Thông tin hiển thị (dùng cho danh sách/chi tiết nhanh)
+    private String customerName;
+    private String customerAddress;
+    private String customerPhone;
+
     private LocalDate applicationDate;
     private LocalDate surveyDate;
     private String technicalDesign;

@@ -20,14 +20,20 @@ const ContractRequestForm = () => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
 
-    // 1. Load Data
+    // --- 1. Load Data & Auto-map Customer Info ---
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user'));
         const storedToken = localStorage.getItem('token');
+
         if (storedUser && storedToken) {
             setUser(storedUser);
             setToken(storedToken);
-            setFormData(prev => ({ ...prev, fullName: storedUser.fullName || '', phone: storedUser.phone || '' }));
+            // TỰ ĐỘNG MAP HỌ TÊN VÀ SĐT TỪ TÀI KHOẢN
+            setFormData(prev => ({
+                ...prev,
+                fullName: storedUser.fullName || '',
+                phone: storedUser.phone || ''
+            }));
         }
 
         const fetchData = async () => {
@@ -52,12 +58,26 @@ const ContractRequestForm = () => {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
+    // --- HÀM VALIDATE SỐ ĐIỆN THOẠI VN ---
+    const validateVietnamesePhone = (phone) => {
+        const regex = /(03|05|07|08|09|01[2|6|8|9])+([0-9]{8})\b/;
+        return regex.test(phone) && phone.length === 10;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true); setError(''); setMessage('');
 
+        // 1. Validate cơ bản
         if (!formData.fullName || !formData.phone || !formData.address || !formData.priceTypeId || !formData.routeId) {
             setError("Vui lòng điền đầy đủ các thông tin bắt buộc (*).");
+            setLoading(false);
+            return;
+        }
+
+        // 2. Validate SĐT Việt Nam
+        if (!validateVietnamesePhone(formData.phone)) {
+            setError("Số điện thoại không đúng định dạng Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09).");
             setLoading(false);
             return;
         }
@@ -129,6 +149,10 @@ const ContractRequestForm = () => {
         input: {
             padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', transition: 'all 0.2s'
         },
+        // Style cho input bị khóa (khi đã đăng nhập)
+        inputReadOnly: {
+            padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#e5e7eb', width: '100%', color: '#6b7280', cursor: 'not-allowed'
+        },
         select: {
             padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em'
         },
@@ -175,11 +199,28 @@ const ContractRequestForm = () => {
                     <div style={styles.formRow}>
                         <div style={styles.formGroup}>
                             <label htmlFor="fullName" style={styles.label}>Họ và tên (*)</label>
-                            <input id="fullName" type="text" style={styles.input} value={formData.fullName} onChange={handleChange} required placeholder="Nguyễn Văn A" />
+                            <input
+                                id="fullName"
+                                type="text"
+                                style={styles.input}
+                                value={formData.fullName}
+                                onChange={handleChange}
+                                required
+                                placeholder="Nguyễn Văn A"
+                            />
                         </div>
                         <div style={styles.formGroup}>
                             <label htmlFor="phone" style={styles.label}>Số điện thoại (*)</label>
-                            <input id="phone" type="tel" style={styles.input} value={formData.phone} onChange={handleChange} required placeholder="0912..." pattern="[0-9]{10}" title="SĐT 10 số" />
+                            <input
+                                id="phone"
+                                type="tel"
+                                style={styles.input}
+                                value={formData.phone}
+                                onChange={handleChange}
+                                required
+                                placeholder="0912..."
+                                maxLength="10"
+                            />
                         </div>
                     </div>
 

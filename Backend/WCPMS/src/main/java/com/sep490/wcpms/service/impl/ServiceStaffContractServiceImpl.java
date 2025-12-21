@@ -359,12 +359,6 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new IllegalArgumentException("End date is required for renewal");
         }
 
-        if (renewRequest.getNotes() != null) {
-            // Nối thêm ghi chú gia hạn thay vì ghi đè (tuỳ chọn)
-            String oldNote = contract.getNotes() == null ? "" : contract.getNotes();
-            contract.setNotes(oldNote + "\n[Renewed]: " + renewRequest.getNotes());
-        }
-
         //Chuyển trạng thái trở lại ACTIVE sau khi gia hạn thành công
         contract.setContractStatus(ContractStatus.ACTIVE);
 
@@ -430,7 +424,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         contract.setContractStatus(ContractStatus.SUSPENDED);
         if (reason != null && !reason.isBlank()) {
             String existing = contract.getNotes();
-            contract.setNotes((existing == null ? "" : existing + "\n") + "[Suspend]: " + reason);
+            contract.setNotes((existing == null ? "" : existing + "\n") + "[Lý do tạm ngưng]: " + reason);
         }
 
         Contract updated = contractRepository.save(contract);

@@ -1,19 +1,19 @@
 .about-page {
   background-color: #f9fafb;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Hero Banner */
 .about-hero {
   background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
   color: white;
-  padding: 60px 20px;
+  padding: 40px 20px;
   text-align: center;
   position: relative;
   overflow: hidden;
-  margin: 0 -9999px;
-  padding-left: calc(20px + 9999px);
-  padding-right: calc(20px + 9999px);
+  width: 100%;
+  margin: 0;
 }
 
 .about-hero::before {
@@ -36,7 +36,7 @@
 }
 
 .about-hero h1 {
-  font-size: 48px;
+  font-size: 32px;
   font-weight: 800;
   margin: 0;
   letter-spacing: 1px;
@@ -44,7 +44,7 @@
 
 /* Main Content */
 .about-content {
-  padding: 80px 20px;
+  padding: 40px 16px;
 }
 
 .about-container {
@@ -55,33 +55,35 @@
 /* Company Header */
 .about-header {
   text-align: center;
-  margin-bottom: 60px;
+  margin-bottom: 40px;
 }
 
 .about-header h2 {
-  font-size: 36px;
+  font-size: 24px;
   font-weight: 800;
   color: #1e3a8a;
   margin: 0 0 10px 0;
   text-transform: uppercase;
   letter-spacing: 1px;
+  line-height: 1.4;
 }
 
 .company-subtitle {
-  font-size: 16px;
+  font-size: 14px;
   color: #6b7280;
-  margin: 0 0 40px 0;
+  margin: 0 0 30px 0;
   font-style: italic;
 }
 
 /* Logo and Contact Info Layout */
+/* Mặc định Mobile: Xếp dọc (Column) */
 .about-logo-contact {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
   align-items: center;
-  margin-bottom: 60px;
-  padding: 40px;
+  margin-bottom: 40px;
+  padding: 30px 20px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -94,15 +96,17 @@
 }
 
 .about-logo img {
-  width: 200px;
-  height: 200px;
+  width: 150px;
+  height: 150px;
   object-fit: contain;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
 }
 
 .about-contact-info {
   display: flex;
-  gap: 60px;
+  flex-direction: column; /* Mobile: Dọc */
+  gap: 20px;
+  width: 100%;
 }
 
 .contact-item {
@@ -113,17 +117,18 @@
   font-size: 14px;
   font-weight: 700;
   color: #1e40af;
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 2px solid #22c55e;
-  padding-bottom: 8px;
+  padding-bottom: 5px;
+  display: inline-block;
 }
 
 .contact-item p {
   font-size: 14px;
   color: #374151;
-  margin: 0 0 8px 0;
+  margin: 0 0 5px 0;
   line-height: 1.6;
 }
 
@@ -134,7 +139,7 @@
 
 /* Google Map */
 .about-map {
-  margin-bottom: 60px;
+  margin-bottom: 40px;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -142,26 +147,28 @@
 
 .map-contact {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 0;
-  min-height: 300px;
+  width: 100%;
 }
 
 .contact-column {
   background: white;
-  padding: 40px;
+  padding: 30px 20px;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 20px;
   justify-content: center;
+  width: 100%;
 }
 
 .contact-phone,
 .contact-address {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .contact-icon {
@@ -178,7 +185,8 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 2px solid #22c55e;
-  padding-bottom: 8px;
+  padding-bottom: 5px;
+  display: inline-block;
 }
 
 .contact-phone p,
@@ -197,37 +205,38 @@
 .map-column {
   border-radius: 0;
   width: 100%;
-  max-width: 800px;
+  max-width: 100%;
 }
 
 /* Timeline Section */
 .about-timeline {
-  margin-bottom: 80px;
+  margin-bottom: 60px;
 }
 
 .about-timeline h3,
 .about-stats h3,
 .about-mission h3 {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 800;
   text-align: center;
   color: #1e3a8a;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 3px solid #22c55e;
-  padding-bottom: 20px;
+  padding-bottom: 15px;
 }
 
 .timeline-items {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 20px;
 }
 
 .timeline-item {
   display: flex;
-  gap: 30px;
+  flex-direction: column; /* Mobile: Dọc (Ngày trên, nội dung dưới) */
+  gap: 15px;
   align-items: flex-start;
   padding: 20px;
   background: white;
@@ -238,7 +247,7 @@
 }
 
 .timeline-item:hover {
-  transform: translateX(8px);
+  transform: translateX(5px);
   box-shadow: 0 8px 16px rgba(30, 64, 175, 0.12);
 }
 
@@ -251,30 +260,30 @@
   border-radius: 8px;
   min-width: 100px;
   text-align: center;
-  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .timeline-content p {
   margin: 0;
   color: #374151;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 /* Stats Section */
 .about-stats {
-  margin-bottom: 80px;
+  margin-bottom: 60px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 30px;
+  grid-template-columns: 1fr; /* Mobile: 1 cột */
+  gap: 20px;
 }
 
 .stat-box {
   background: white;
-  padding: 40px 30px;
+  padding: 30px 20px;
   border-radius: 12px;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -283,169 +292,76 @@
 }
 
 .stat-box:hover {
-  transform: translateY(-8px);
+  transform: translateY(-5px);
   box-shadow: 0 12px 24px rgba(30, 64, 175, 0.15);
 }
 
 .stat-number {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 800;
   color: #1e40af;
   margin-bottom: 10px;
 }
 
 .stat-label {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #1f2937;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .stat-box p {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Responsive Tablet & Desktop */
+@media (min-width: 768px) {
   .about-hero h1 {
-    font-size: 36px;
+    font-size: 42px;
   }
 
   .about-header h2 {
-    font-size: 28px;
+    font-size: 32px;
   }
 
   .about-logo-contact {
-    grid-template-columns: 1fr;
-    gap: 30px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 60px;
+    padding: 40px;
   }
 
   .about-logo img {
-    width: 150px;
-    height: 150px;
+    width: 200px;
+    height: 200px;
   }
 
   .about-contact-info {
-    flex-direction: column;
+    flex-direction: row; /* Tablet: Ngang */
+    gap: 40px;
+  }
+
+  .timeline-item {
+    flex-direction: row; /* Tablet: Ngang */
     gap: 30px;
   }
 
-  .about-timeline h3,
-  .about-stats h3 {
-    font-size: 24px;
-    margin-bottom: 30px;
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
 
   .map-contact {
-    grid-template-columns: 1fr;
+    flex-direction: row;
   }
-
+  
   .contact-column {
-    border-bottom: 1px solid #e5e7eb;
+    width: 40%;
   }
-
-  .timeline-item {
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .timeline-date {
-    width: 100%;
-    min-width: unset;
-  }
-
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-
-  .stat-box {
-    padding: 30px 20px;
-  }
-
-  .stat-number {
-    font-size: 28px;
-  }
-
-  .mission-content {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .about-hero {
-    padding: 40px 20px;
-  }
-
-  .about-hero h1 {
-    font-size: 28px;
-  }
-
-  .about-content {
-    padding: 40px 15px;
-  }
-
-  .about-header h2 {
-    font-size: 22px;
-  }
-
-  .company-subtitle {
-    font-size: 14px;
-  }
-
-  .about-logo-contact {
-    padding: 20px;
-    gap: 20px;
-  }
-
-  .about-logo img {
-    width: 120px;
-    height: 120px;
-  }
-
-  .about-contact-info {
-    gap: 20px;
-  }
-
-  .contact-item h4 {
-    font-size: 12px;
-  }
-
-  .contact-item p {
-    font-size: 13px;
-  }
-
-  .about-timeline h3,
-  .about-stats h3 {
-    font-size: 20px;
-    margin-bottom: 20px;
-  }
-
-  .timeline-item {
-    padding: 15px;
-    border-left-width: 3px;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stat-box {
-    padding: 25px 20px;
-  }
-
-  .stat-number {
-    font-size: 24px;
-  }
-
-  .stat-label {
-    font-size: 14px;
-  }
-
-  .stat-box p {
-    font-size: 12px;
+  
+  .map-column {
+    width: 60%;
   }
 }
