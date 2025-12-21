@@ -301,6 +301,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             if (staff != null) {
                 al.setActorType("STAFF");
                 al.setActorId(staff.getId());
+                al.setActorName(staff.getFullName());
                 al.setInitiatorType("STAFF");
                 al.setInitiatorId(staff.getId());
                 al.setInitiatorName(staff.getFullName());
@@ -659,9 +660,26 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             al.setSubjectId(savedInvoice.getInvoiceNumber() != null ? savedInvoice.getInvoiceNumber() : String.valueOf(savedInvoice.getId()));
             al.setAction("WATER_INVOICE_GENERATED");
 
-            // Log thông tin người được gán tự động
-            al.setActorType("SYSTEM");
-            al.setPayload("Tự động gán cho Kế toán: " + assignedStaff.getFullName() + " (ID: " + assignedStaff.getId() + ")");
+            // <--- [SỬA LOGIC GHI LOG: LẤY CURRENT USER] --->
+            Integer currentUserId = getCurrentAccountingStaffId(); // Helper method lấy user đang login
+            Account currentUser = accountRepository.findById(currentUserId).orElse(null);
+
+            if (currentUser != null) {
+                // Người thực hiện = User đang login (bấm nút)
+                al.setActorType("STAFF");
+                al.setActorId(currentUser.getId());
+                al.setActorName(currentUser.getFullName());
+                al.setInitiatorType("STAFF");
+                al.setInitiatorId(currentUser.getId());
+                al.setInitiatorName(currentUser.getFullName());
+                // Ghi chú thêm về việc auto-assign
+                al.setPayload("Người tạo: " + currentUser.getFullName() + ". Phân công cho: " + assignedStaff.getFullName());
+            } else {
+                // Fallback (hiếm khi xảy ra)
+                al.setActorType("SYSTEM");
+                al.setPayload("Tự động gán cho Kế toán: " + assignedStaff.getFullName());
+            }
+            // <--- [HẾT PHẦN SỬA] --->
 
             activityLogService.save(al);
         } catch (Exception ex) {
@@ -930,6 +948,32 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
                 // Gửi thông báo
                 invoiceNotificationService.sendInstallationInvoiceIssued(saved, contract);
+
+                // persist activity log for installation invoice creation
+                try {
+                    ActivityLog al = new ActivityLog();
+                    al.setSubjectType("INVOICE");
+                    al.setSubjectId(saved.getInvoiceNumber() != null ? saved.getInvoiceNumber() : String.valueOf(saved.getId()));
+                    al.setAction("INSTALLATION_INVOICE_CREATED");
+                    // <--- [ĐÃ SỬA] Thêm Name, ActorType là STAFF --->
+                    if (staffId != null) {
+                        Account st = accountRepository.findById(staffId).orElse(null);
+                        if (st != null) {
+                            al.setActorType("STAFF");
+                            al.setActorId(st.getId());
+                            al.setActorName(st.getFullName());
+                            al.setInitiatorType("STAFF");
+                            al.setInitiatorId(st.getId());
+                            al.setInitiatorName(st.getFullName());
+                        }
+                    } else {
+                        al.setActorType("SYSTEM");
+                    }
+                    // <--- [HẾT] --->
+                    activityLogService.save(al);
+                } catch (Exception ex) {
+                    // swallow
+                }
 
                 success++;
             } catch (Exception e) {

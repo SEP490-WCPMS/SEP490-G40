@@ -1,22 +1,27 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import StatisticCard from '../common/StatisticCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Table, Button, Tag } from 'antd';
-import { Download } from 'lucide-react';
+import { Table, Button, Tag, Space } from 'antd'; // Added Space
+import { Download, FileText, User } from 'lucide-react'; // Added icons
 import apiClient from '../Services/apiClient';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A78BFA'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A78BFA', '#F87171', '#60A5FA'];
 
 function toCSV(data, headerLabels) {
   if (!data || data.length === 0) return '';
-  
   const keys = Object.keys(data[0]);
   const rows = data.map(row => keys.map(k => {
     let v = row[k];
-    if (v == null) return '';
+    if (v == null) return '""'; // Trả về ô trống có quote
     const s = typeof v === 'string' ? v : String(v);
-    // Escape quotes and wrap in quotes if contains comma, newline, or quote
-    return (s.includes(',') || s.includes('\n') || s.includes('"')) ? `"${s.replace(/"/g, '""')}"` : s;
+    
+    // Escape dấu ngoặc kép cũ (nếu có)
+    const escaped = s.replace(/"/g, '""');
+    
+    // MAGIC FIX: Bọc toàn bộ bằng "" và thêm \t vào đầu
+    // Excel sẽ đọc là: "đây là text và căn trái nó"
+    // Dấu phẩy bên trong sẽ được bảo toàn vì nằm trong ""
+    return `"\t${escaped}"`; 
   }).join(','));
   const headerRow = (Array.isArray(headerLabels) && headerLabels.length === keys.length) ? headerLabels.join(',') : keys.join(',');
   return headerRow + '\n' + rows.join('\n');
@@ -41,17 +46,16 @@ function downloadCSV(filename, data, headerLabels) {
 function mapKeyToVnLabel(key) {
   const m = {
     // users
-    customer_id: 'Mã khách hàng',
+    customer_id: 'ID khách hàng',
+    customer_code: 'Mã khách hàng',
     customer_name: 'Tên khách hàng',
     address: 'Địa chỉ',
     phone: 'Điện thoại',
-    meter_id: 'Mã đồng hồ',
-    meter_serial: 'Số đồng hồ',
+    email: 'Email',
     created_at: 'Ngày tạo',
-    last_reading_date: 'Ngày đọc cuối',
     // invoices
     invoice_number: 'Số hóa đơn',
-    invoice_date: 'Ngày hóa đơn',
+    invoice_date: 'Ngày tạo hóa đơn',
     total_amount: 'Tổng tiền',
     payment_status: 'Trạng thái thanh toán',
     // consumption (aggregated)
@@ -67,31 +71,57 @@ function mapKeyToVnLabel(key) {
     // recent
     time: 'Thời gian',
     actor: 'Người thực hiện',
-    action: 'Hành động'
+    action: 'Hành động',
+    // contract export (new)
+    contract_number: 'Số hợp đồng',
+    contract_status: 'Trạng thái',
+    
+    // Tiền
+    contract_value: 'Chi phí lắp đặt',
+    estimated_cost: 'Chi phí dự kiến',
+    payment_method: 'Hình thức thanh toán',
+    
+    // Khách hàng
+    customer_code: 'Mã khách hàng',
+    customer_name: 'Tên khách hàng',
+    contact_phone: 'SĐT liên hệ',
+    customer_address: 'Địa chỉ',
+    
+    // Nhân viên
+    service_staff: 'Nhân viên Dịch vụ',
+    technical_staff: 'Nhân viên Kỹ thuật',
+    accounting_staff: 'Nhân viên Kế toán',
+    
+    // Ngày tháng
+    created_at: 'Ngày tạo',
+    application_date: 'Ngày làm đơn',
+    survey_date: 'Ngày khảo sát',
+    installation_date: 'Ngày lắp đặt',
+    start_date: 'Ngày bắt đầu',
+    end_date: 'Ngày kết thúc',
+    signed_date: 'Ngày ký kết',
+    
+    // Khác
+    notes: 'Ghi chú',
+    technical_design: 'Thiết kế kỹ thuật'
   };
   return m[key] || key.replace(/_/g, ' ');
 }
 
 // Try to extract a human-readable name from a payload string.
-// Support JSON payload or simple key=value pairs separated by ; or &.
 function parseNameFromPayload(payload) {
   if (!payload) return null;
   try {
     if (typeof payload === 'object') {
-      // if already parsed
       return payload.name || payload.initiatorName || payload.actorName || null;
     }
     const s = String(payload).trim();
-    // try JSON
     if (s.startsWith('{') && s.endsWith('}')) {
       try {
         const obj = JSON.parse(s);
         return obj.initiatorName || obj.actorName || obj.name || null;
-      } catch (e) {
-        // fallthrough
-      }
+      } catch (e) { }
     }
-    // key=value;key2=value2 or key=value&key2=value2
     const parts = s.split(/[;|&]/);
     const map = {};
     for (const p of parts) {
@@ -105,7 +135,6 @@ function parseNameFromPayload(payload) {
     if (map.initiatorName) return map.initiatorName;
     if (map.actorName) return map.actorName;
     if (map.name) return map.name;
-    // heuristics: look for a token that looks like a person name (has letters and spaces)
     for (const v of Object.values(map)) {
       if (typeof v === 'string' && /[\p{L}]/u.test(v)) return v;
     }
@@ -121,11 +150,12 @@ async function fetchAndDownloadCsv(type = 'invoices', filename = 'export.csv', f
     if (from) params.from = from;
     if (to) params.to = to;
 
-    // Map type to likely backend endpoints. Backend may change these; if endpoint missing, show friendly message.
+    // Map type to likely backend endpoints.
     const endpointMap = {
       users: '/admin/users',
       invoices: '/admin/invoices',
-      consumption: '/admin/consumption'
+      consumption: '/admin/consumption',
+      contracts: '/admin/contracts' // <-- Added new endpoint
     };
 
     const url = endpointMap[type] || `/admin/${type}`;
@@ -137,7 +167,6 @@ async function fetchAndDownloadCsv(type = 'invoices', filename = 'export.csv', f
       return;
     }
 
-    // Use object keys as column headers by default, but map to Vietnamese labels
     if (data.length === 0) {
       downloadCSV(filename, data, []);
       return;
@@ -154,12 +183,11 @@ async function fetchAndDownloadCsv(type = 'invoices', filename = 'export.csv', f
       PARTIALLY_PAID: 'Thanh toán một phần'
     };
     
-    // Transform data: ensure values order matches keys order and localize payment_status
+    // Transform data
     const transformed = data.map(row => {
       const obj = {};
       for (const k of keys) {
         let val = row[k];
-        // Localize payment_status values
         if (k === 'payment_status' && val && paymentStatusMapVN[val.toUpperCase()]) {
           val = paymentStatusMapVN[val.toUpperCase()];
         }
@@ -182,37 +210,32 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({ users: 0, activeContracts: 0, unpaidInvoices: 0, revenueMTD: 0 });
   const [chartData, setChartData] = useState([]);
   const [pieData, setPieData] = useState([]);
-  const [recent, setRecent] = useState([]); // optional: backend activity endpoint not implemented yet
+  const [recent, setRecent] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
   const [exportingConsumption, setExportingConsumption] = useState(false);
 
   useEffect(() => {
-    // ensure charts render after mount/layout to avoid Recharts width/height warnings
     setMounted(true);
   }, []);
 
-  // Compute a "nice" Y-axis max based on chart data so axis scales adapt to data range
-  // Add ~10% headroom to keep the top point from touching the chart top
   const yAxisNiceMax = useMemo(() => {
-    if (!Array.isArray(chartData) || chartData.length === 0) return 100000; // default when no data
+    if (!Array.isArray(chartData) || chartData.length === 0) return 100000;
     const max = Math.max(...chartData.map(d => Number(d.revenue || 0)));
     if (!isFinite(max) || max <= 0) return 100000;
-    const scaled = max * 1.1; // 10% headroom
-    // Determine magnitude (power of 10) and round up to a nice step
+    const scaled = max * 1.1; 
     const magnitude = Math.pow(10, Math.floor(Math.log10(scaled)));
-    const nice = Math.ceil(scaled / magnitude) * magnitude;
-    return nice;
+    return Math.ceil(scaled / magnitude) * magnitude;
   }, [chartData]);
 
-  // Compact formatter: 1.5 triệu / 500 nghìn / or full VNĐ for small values
+  // Compact formatter
   const compactValue = (v) => {
     const n = Number(v || 0);
     if (!isFinite(n)) return String(v);
-    if (n >= 1_000_000) return (Math.round((n / 1_000_000) * 10) / 10).toString().replace(/\.0$/, '') + ' triệu';
-    if (n >= 1_000) return (Math.round((n / 1_000) * 10) / 10).toString().replace(/\.0$/, '') + ' nghìn';
-    return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ';
+    if (n >= 1_000_000) return (Math.round((n / 1_000_000) * 10) / 10).toString().replace(/\.0$/, '') + ' tr';
+    if (n >= 1_000) return (Math.round((n / 1_000) * 10) / 10).toString().replace(/\.0$/, '') + ' k';
+    return new Intl.NumberFormat('vi-VN').format(n);
   };
 
   useEffect(() => {
@@ -220,10 +243,11 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
       try {
-        const [overviewRes, chartRes, contractsRes] = await Promise.all([
+        const [overviewRes, chartRes, contractsRes, actRes] = await Promise.all([
           apiClient.get('/admin/overview', { params: { from: fromDate, to: toDate } }),
           apiClient.get('/admin/charts/revenue', { params: { from: fromDate, to: toDate } }),
-          apiClient.get('/admin/charts/contracts-by-status', { params: { from: fromDate, to: toDate } })
+          apiClient.get('/admin/charts/contracts-by-status', { params: { from: fromDate, to: toDate } }),
+          apiClient.get('/admin/activity', { params: { limit: 20 } })
         ]);
 
         const o = overviewRes.data || {};
@@ -234,7 +258,6 @@ const AdminDashboard = () => {
           revenueMTD: o.revenueMTD || 0
         });
 
-        // map chart data: labels[], revenueValues[], contractsCreated[] -> [{ name, revenue, contracts }]
         const chartDto = chartRes.data || {};
         const labels = chartDto.labels || [];
         const revenues = chartDto.revenueValues || [];
@@ -244,40 +267,31 @@ const AdminDashboard = () => {
 
         const pie = (contractsRes.data || []).map(p => ({ name: p.name, value: p.value }));
         setPieData(pie);
-        // recent activity: request from backend
-          try {
-          const actRes = await apiClient.get('/admin/activity', { params: { limit: 20 } });
-          let activities = Array.isArray(actRes.data) ? actRes.data : [];
-          // Filter out contract-related activities that are in any kind of PENDING state
-          // (backend may return actions like "CONTRACT_PENDING", "CONTRACT_PENDING_CUSTOMER_SIGN", etc.)
-          activities = activities.filter(a => {
+
+        // Process Activity Log
+        let activities = Array.isArray(actRes.data) ? actRes.data : [];
+        activities = activities.filter(a => {
             try {
               const actionStr = (a.action || '').toString().toUpperCase();
               if (actionStr.startsWith('CONTRACT_') && actionStr.includes('PENDING')) return false;
-            } catch (err) {
-              // if anything unexpected, keep the record
-            }
+            } catch (err) { }
             return true;
-          });
-          // Normalize actor/initiator fields for rendering: prefer initiatorName -> actorName -> actor -> parse from payload
-          activities = activities.map(a => {
+        });
+        
+        // Normalize actor fields
+        activities = activities.map(a => {
             const out = { ...a };
             const pName = parseNameFromPayload(a.payload);
             let actorNorm = out.initiatorName || out.actorName || out.actor || pName || null;
             if (actorNorm && typeof actorNorm === 'string') {
               actorNorm = actorNorm.replace(/\(initiator\)/i, '').trim();
             }
-            out.actor = actorNorm || out.actor || null; // keep 'actor' used by table
+            out.actor = actorNorm || out.actor || null;
             out.actorName = out.actorName || actorNorm || null;
             return out;
-          });
-          // Debug: log a sample of recent activity so we can inspect payload shape
-          if (activities.length > 0) console.debug('Admin activity sample:', activities.slice(0, 5));
-          setRecent(activities);
-        } catch (e) {
-          console.warn('Could not load recent activity', e);
-          setRecent([]);
-        }
+        });
+        setRecent(activities);
+
       } catch (err) {
         console.error('Error loading admin dashboard', err);
         setError('Khong the tai du lieu dashboard. Vui long thu lai sau.');
@@ -287,9 +301,9 @@ const AdminDashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [fromDate, toDate]);
 
-  // Export consumption with nicer headers and feedback
+  // Export consumption
   const handleExportConsumption = async (from, to) => {
     setExportingConsumption(true);
     try {
@@ -304,34 +318,22 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Backend returns aggregated per-meter rows with these fields:
-      // meter_id, meter_serial, customer_id, customer_name, start_reading, end_reading, consumption, start_reading_date, end_reading_date
-      // We export columns in the requested order with Vietnamese labels (with diacritics)
       const headerVN = ['Mã đồng hồ','Số đồng hồ','Mã khách hàng','Tên khách hàng','Ngày đọc','Chỉ số cũ','Chỉ số hiện tại','Tiêu thụ'];
-
       const transformed = data.map(r => ({
         meter_id: r['meter_id'],
         meter_serial: r['meter_serial'],
         customer_id: r['customer_id'],
         customer_name: r['customer_name'],
-        // choose end_reading_date as the representative 'ngay doc' for the exported row
         reading_date: r['end_reading_date'] || r['start_reading_date'] || null,
-        // backend fields
         previous_reading: r['start_reading'],
         current_reading: r['end_reading'],
         consumption_delta: r['consumption']
       }));
 
-      // downloadCSV will use headerVN as column headers in the same order
       downloadCSV(`consumption_${from || ''}_${to || ''}.csv`, transformed, headerVN);
     } catch (err) {
       console.error('Export consumption failed', err);
-      const serverMsg = err.response?.data?.message || err.response?.data || null;
-      if (serverMsg) {
-        alert(`Khong the xuat tieu thu: ${JSON.stringify(serverMsg)}`);
-      } else {
-        alert('Khong the xuat tieu thu. Vui long thu lai hoac lien he backend de kich hoat endpoint export.');
-      }
+      alert('Khong the xuat tieu thu.');
     } finally {
       setExportingConsumption(false);
     }
@@ -344,18 +346,23 @@ const AdminDashboard = () => {
     ACCOUNTING: 'Kế toán'
   };
 
+  // --- MAP TRẠNG THÁI HỢP ĐỒNG SANG TIẾNG VIỆT ---
   const contractStatusMapVN = {
-    DRAFT: 'Yêu cầu tạo hợp đồng',
-    REQUEST_CREATE: 'Yêu cầu tạo hợp đồng',
-    CREATED: 'Yêu cầu tạo hợp đồng',
-    CREATED_BY_CUSTOMER: 'Yêu cầu tạo hợp đồng',
+    DRAFT: 'Yêu cầu mới',
+    REQUEST_CREATE: 'Yêu cầu mới',
+    CREATED: 'Yêu cầu mới',
+    CREATED_BY_CUSTOMER: 'Yêu cầu mới',
     PENDING_CUSTOMER_SIGN: 'Chờ khách ký',
-    SIGNED: 'Khách ký hợp đồng',
-    ACTIVE: 'Kích hoạt hợp đồng',
+    SIGNED: 'Đã ký',
+    ACTIVE: 'Đang hoạt động',
     PENDING: 'Chờ xử lý',
-    EXPIRED: 'Hợp đồng hết hạn',
-    CANCELLED: 'Hủy hợp đồng',
-    TERMINATED: 'HĐ đã chấm dứt'
+    EXPIRED: 'Hết hạn',
+    CANCELLED: 'Đã hủy',
+    TERMINATED: 'Đã chấm dứt',
+    APPROVED: 'Đã duyệt', 
+    PENDING_SURVEY_REVIEW: 'Chờ duyệt KS',
+    SUSPENDED: 'Tạm ngưng',
+    PENDING_SIGN: 'Chờ ký' // Added
   };
 
   const invoiceStatusMapVN = {
@@ -367,8 +374,9 @@ const AdminDashboard = () => {
   const miscActionMap = {
     DAILY_BILL_GENERATION: 'Sinh hóa đơn hàng ngày'
   };
+  
+  // --- MAP HÀNH ĐỘNG SANG TIẾNG VIỆT ---
   const actionMapVN = {
-    // general business actions
     INSTALLATION_COMPLETED: 'Hoàn thành lắp đặt',
     SENT_TO_INSTALLATION: 'Gửi đến bộ phận lắp đặt',
     CUSTOMER_SIGNED: 'Khách hàng đã ký',
@@ -377,133 +385,70 @@ const AdminDashboard = () => {
     INVOICE_CREATED: 'Tạo hóa đơn',
     INVOICE_CANCELLED: 'Hủy hóa đơn',
     INSTALLATION_INVOICE_CREATED: 'Tạo hóa đơn lắp đặt',
-    SENT_TO_CUSTOMER_FOR_SIGN: 'Gửi hợp đồng cho khách ký'
-    // add more mappings as needed
+    SENT_TO_CUSTOMER_FOR_SIGN: 'Gửi hợp đồng cho khách ký',
+    WATER_INVOICE_GENERATED: 'Tạo hóa đơn tiền nước',
+    RENEWED: 'Gia hạn hợp đồng',
+    CONTRACT_RENEWED: 'Gia hạn hợp đồng',
+    SURVEY_REPORT_APPROVED: 'Duyệt khảo sát',
+    CONTRACT_APPROVED: 'Duyệt hợp đồng'
   };
 
   const formatAction = (act) => {
     if (!act) return '-';
     try {
       const raw = String(act);
-      // Extract the leading token (before any space) as the canonical code
       const baseToken = raw.split(' ')[0] || raw;
-      // Normalize: uppercase, spaces -> underscores, remove stray chars
       const key = baseToken.toString().toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
 
-      // Direct mapping first (explicit VN translations)
-      if (actionMapVN[key]) {
-        // If original string contains a reference like "#123" or extra text, append it in parentheses
-        const refMatch = raw.match(/#(\S+)/);
-        const ref = refMatch ? refMatch[0] : '';
-        return actionMapVN[key] + (ref ? ` (${ref})` : '');
-      }
+      if (actionMapVN[key]) return actionMapVN[key];
 
-      // Then handle CONTRACT_ and INVOICE_ patterns using existing maps
       if (key.startsWith('CONTRACT_')) {
         const code = key.replace('CONTRACT_', '');
-        const arg = raw.split(' ').slice(1).join(' ');
         const mapped = contractStatusMapVN[code] || code.replace(/_/g, ' ');
-        return `${mapped}${arg ? ' (' + arg + ')' : ''}`;
+        return `${mapped}`;
       }
 
       if (key.startsWith('INVOICE_')) {
         const code = key.replace('INVOICE_', '');
-        const arg = raw.split(' ').slice(1).join(' ');
         const mapped = invoiceStatusMapVN[code] || code.replace(/_/g, ' ');
-        return `${mapped}${arg ? ' (' + arg + ')' : ''}`;
+        return `${mapped}`;
       }
 
-      // misc mapped actions
       if (miscActionMap[raw] || miscActionMap[key]) return miscActionMap[raw] || miscActionMap[key];
 
-      // fall back: make it more readable by replacing underscores and trimming
       return raw.replace(/_/g, ' ').trim();
     } catch (e) {
       return act;
     }
   };
 
+  // --- SỬA RENDER ACTOR CELL (Hiển thị "Hệ thống" đẹp hơn) ---
   const renderActorCell = (text, record) => {
-    const name = record.actor || text || null;
-    const rawType = (record.actorType || '').toString();
-    let type = rawType.toUpperCase();
-    let id = record.actorId;
-    const rawRole = (record.actorRole || '').toString();
-    const role = rawRole.toUpperCase();
+    const actorType = (record.actorType || '').toUpperCase();
+    // Prioritize initiator name, then actor name
+    let actorName = record.initiatorName || record.actorName || record.actor || 'N/A';
 
-    // Prefer initiator when backend persisted it (initiator fields come from activity_log)
-    const initiatorName = record.initiatorName || null;
-    const initiatorTypeRaw = (record.initiatorType || '').toString();
-    const initiatorType = initiatorTypeRaw.toUpperCase();
-    const initiatorId = record.initiatorId;
-    let isInitiator = false;
-    let displayName = null;
-    if (initiatorName || initiatorTypeRaw) {
-      // use initiator info as primary display when present
-      displayName = initiatorName || null;
-      if (initiatorType) type = initiatorType;
-      if (initiatorId) id = initiatorId;
-      isInitiator = true;
+    // Fix lỗi hiển thị N/A cho System
+    if (actorType === 'SYSTEM' || actorName === 'system' || actorName === 'SYSTEM' || actorName === 'N/A') {
+        return <Tag color="default">Hệ thống tự động</Tag>; // Màu xám cho đỡ chói
     }
-
-    // If actorType is missing, try to infer from the action (common when backend returns minimal actor info)
-    const actionHint = (record.action || '').toString().toUpperCase();
-    if (!rawType) {
-      const lowerActor = (record.actor || '').toString().toLowerCase();
-      const lowerAction = (record.action || '').toString().toLowerCase();
-      // Heuristics: detect customer, service, technical, system from actor string or action
-      if (lowerActor.includes('khach') || lowerAction.includes('khach') || lowerAction.includes('customer') || lowerAction.includes('pending_customer_sign') || /contract.*sign/i.test(record.action || '')) {
-        type = 'CUSTOMER';
-      } else if (lowerActor.includes('dịch') || lowerActor.includes('dich vu') || lowerActor.includes('dich vụ') || lowerActor.includes('service') || lowerAction.includes('service')) {
-        type = 'SERVICE';
-      } else if (lowerActor.includes('kỹ thuật') || lowerActor.includes('ky thuat') || lowerActor.includes('lắp đặt') || lowerActor.includes('lap dat') || lowerAction.includes('install') || lowerAction.includes('technical')) {
-        type = 'TECHNICAL';
-      } else if (lowerActor.includes('hệ thống') || lowerActor.includes('he thong') || lowerAction.includes('system')) {
-        type = 'SYSTEM';
-      }
-      // Log inferred type for debugging
-      if (!rawType) console.debug(`Inferred actorType for record id=${record.id}:`, type);
+    
+    if (actorType === 'CUSTOMER') {
+        return (
+            <div className="flex items-center gap-2">
+                <User size={14} className="text-gray-500"/>
+                <span className="font-medium text-gray-700">{actorName}</span>
+                <Tag className="ml-auto">Khách hàng</Tag>
+            </div>
+        );
     }
-
-    // Determine display name fallback (if initiator not present)
-    if (!displayName) displayName = name;
-    // strip any leftover suffix like '(initiator)'
-    if (displayName && typeof displayName === 'string') {
-      displayName = displayName.replace(/\(initiator\)/i, '').trim();
-    }
-    if (!displayName) {
-      if (type === 'SYSTEM') displayName = 'Hệ thống';
-      else if (type === 'CUSTOMER') displayName = 'Khách hàng';
-      else if (role && roleLabelMap[role]) displayName = roleLabelMap[role];
-      else displayName = '-';
-    }
-
-    // Determine badge: prefer explicit actorType CUSTOMER/SYSTEM, then role-based labels
-    // If the actor is rendered as a clickable profile link (blue), hide the gray tag to avoid duplication.
-    let badge = null;
-    if (type === 'SYSTEM') badge = <Tag>Hệ thống</Tag>;
-    else if (type === 'CUSTOMER') badge = <Tag>Khách hàng</Tag>;
-    else if (type === 'SERVICE' || role === 'SERVICE') badge = <Tag>Dịch vụ</Tag>;
-    else if (type === 'TECHNICAL' || role === 'TECHNICAL') badge = <Tag>Kỹ thuật</Tag>;
-    else if (type === 'CASHIER' || role === 'CASHIER') badge = <Tag>Thu ngân</Tag>;
-    else if (type === 'ACCOUNTING' || role === 'ACCOUNTING') badge = <Tag>Kế toán</Tag>;
-    else if (type === 'STAFF') {
-      // If staff with explicit role, show role badge; otherwise generic 'Nhân viên'
-      const mapped = role ? (roleLabelMap[role] || role) : 'Nhân viên';
-      badge = <Tag>{mapped}</Tag>;
-    }
-
-    // Determine profile link: customers -> /customers/:id, staff -> /staff/:id; others usually no link
-    const link = (id && (type === 'STAFF' || type === 'CASHIER' || type === 'ACCOUNTING' || type === 'SERVICE' || type === 'TECHNICAL'))
-      ? `/staff/${id}`
-      : (id && type === 'CUSTOMER' ? `/customers/${id}` : null);
-
+    
+    // Staff
     return (
-      <div>
-        {link ? <a href={link}>{displayName}</a> : <span>{displayName}</span>}
-        {/* show badge only when there is no profile link to avoid duplicate visual labels */}
-        {!link && badge ? <span style={{ marginLeft: 8 }}>{badge}</span> : null}
-      </div>
+        <div className="flex items-center gap-2">
+            <span className="font-medium text-blue-600">{actorName}</span>
+            {record.actorRole && <Tag>{record.actorRole}</Tag>}
+        </div>
     );
   };
 
@@ -522,8 +467,8 @@ const AdminDashboard = () => {
         }
       }
     },
-    { title: 'Người thực hiện', dataIndex: 'actor', key: 'actor', render: renderActorCell },
-    { title: 'Hành động', dataIndex: 'action', key: 'action', render: (act) => formatAction(act) }
+    { title: 'Tác nhân', dataIndex: 'actor', key: 'actor', render: renderActorCell }, // Renamed Header
+    { title: 'Hành động', dataIndex: 'action', key: 'action', render: (act) => <span className="text-gray-600">{formatAction(act)}</span> }
   ];
 
   return (
@@ -547,10 +492,13 @@ const AdminDashboard = () => {
           <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="border rounded p-1" />
           <span className="mx-2">—</span>
           <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="border rounded p-1" />
-          <Button icon={<Download />} onClick={() => { downloadCSV(`chart_${fromDate}_${toDate}.csv`, chartData, ['Ngày','Doanh thu','Hợp đồng']) }} title="Xuất dữ liệu biểu đồ">Xuất Dữ liệu Biểu đồ (CSV)</Button>
+          
+          <Button icon={<Download size={14}/>} onClick={() => { downloadCSV(`chart_${fromDate}_${toDate}.csv`, chartData, ['Ngày','Doanh thu','Hợp đồng']) }} title="Xuất dữ liệu biểu đồ">Xuất Dữ liệu Biểu đồ (CSV)</Button>
           <Button onClick={() => fetchAndDownloadCsv('users', `customers_${fromDate}_${toDate}.csv`, fromDate, toDate)}>Xuất Khách hàng (CSV)</Button>
           <Button loading={exportingConsumption} onClick={() => handleExportConsumption(fromDate, toDate)} title="Xuất dữ liệu tiêu thụ (CSV)">Xuất Tiêu thụ (CSV)</Button>
           <Button onClick={() => fetchAndDownloadCsv('invoices', `revenue_${fromDate}_${toDate}.csv`, fromDate, toDate)}>Xuất Doanh thu (CSV)</Button>
+          {/* Nút mới: Xuất hợp đồng */}
+          <Button icon={<Download size={14}/>} onClick={() => fetchAndDownloadCsv('contracts', `hop_dong_${fromDate}_${toDate}.csv`, fromDate, toDate)}>Xuất Hợp đồng (CSV)</Button>
         </div>
       </div>
 
@@ -558,7 +506,7 @@ const AdminDashboard = () => {
         <StatisticCard title="Người dùng" value={stats.users} color="#2563EB" />
         <StatisticCard title="Hợp đồng đang hoạt động" value={stats.activeContracts} color="#10B981" />
         <StatisticCard title="Hóa đơn chưa thu" value={stats.unpaidInvoices} color="#F59E0B" />
-        <StatisticCard title="Doanh thu (Tháng)" value={(stats.revenueMTD || 0).toLocaleString('vi-VN') + ' VNĐ'} color="#EF4444" />
+        <StatisticCard title="Doanh thu thực thu" value={(stats.revenueMTD || 0).toLocaleString('vi-VN') + ' VNĐ'} color="#EF4444" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -571,9 +519,9 @@ const AdminDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis width={80} tickMargin={8} domain={[0, yAxisNiceMax]} tickFormatter={(v) => compactValue(v)} />
-                <Tooltip formatter={(value) => compactValue(value)} />
+                <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)} />
                 <Legend />
-                <Line type="monotone" dataKey="revenue" name="Doanh thu" stroke="#16A34A" strokeWidth={2} />
+                <Line type="monotone" dataKey="revenue" name="Doanh thu thực" stroke="#16A34A" strokeWidth={2} />
               </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -602,35 +550,20 @@ const AdminDashboard = () => {
                           try {
                             const { cx, cy, midAngle, innerRadius, outerRadius, percent, value } = props;
                             const RADIAN = Math.PI / 180;
-                            // Position label at 75% radius (near outer edge but still inside)
                             const radius = outerRadius * 0.75;
                             const x = cx + radius * Math.cos(-midAngle * RADIAN);
                             const y = cy + radius * Math.sin(-midAngle * RADIAN);
                             const pct = Math.round(percent * 100);
                             
-                            // Only show label if slice is big enough (>3%)
+                            // Ẩn nhãn nếu tỷ lệ quá nhỏ
                             if (pct < 3) return null;
                             
                             return (
                               <g>
-                                <text 
-                                  x={x} 
-                                  y={y - 7} 
-                                  fill="#fff" 
-                                  textAnchor="middle" 
-                                  dominantBaseline="central" 
-                                  style={{ fontSize: 10, fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
-                                >
+                                <text x={x} y={y - 7} fill="#fff" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 10, fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
                                   {value} HĐ
                                 </text>
-                                <text 
-                                  x={x} 
-                                  y={y + 8} 
-                                  fill="#fff" 
-                                  textAnchor="middle" 
-                                  dominantBaseline="central" 
-                                  style={{ fontSize: 13, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
-                                >
+                                <text x={x} y={y + 8} fill="#fff" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 13, fontWeight: 600, textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
                                   {pct}%
                                 </text>
                               </g>
@@ -648,6 +581,7 @@ const AdminDashboard = () => {
                         if (!active || !payload || !payload.length) return null;
                         const p = payload[0];
                         const rawName = (p.name || '').toString().toUpperCase();
+                        // Dịch tên trạng thái
                         const vn = contractStatusMapVN[rawName] || p.name || rawName;
                         const val = p.value || 0;
                         const total = pieData.reduce((s, it) => s + (Number(it.value) || 0), 0);
@@ -696,15 +630,14 @@ const AdminDashboard = () => {
       <div className="bg-white p-4 rounded shadow">
         <div className="flex justify-between items-center mb-3">
             <h3 className="font-semibold">Hoạt động gần đây</h3>
+            {/* Added Export Button for Activity Log */}
             <Button 
-              icon={<Download />} 
+              icon={<Download size={14}/>} 
               onClick={async () => {
                 try {
-                  // Fetch full activity data from backend with all fields for export
                   const actRes = await apiClient.get('/admin/activity', { params: { limit: 1000, from: fromDate, to: toDate } });
                   let activities = Array.isArray(actRes.data) ? actRes.data : [];
                   
-                  // Map subject_type to Vietnamese
                   const subjectTypeMapVN = {
                     CONTRACT: 'Hợp đồng',
                     CONTRACT_INSTALLATION: 'Lắp đặt',
