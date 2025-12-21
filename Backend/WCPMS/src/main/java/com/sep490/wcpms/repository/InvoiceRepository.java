@@ -463,4 +463,16 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
       AND UPPER(i.invoiceNumber) LIKE 'CN%'
 """)
     boolean existsInstallationInvoiceByContractId(@Param("contractId") Integer contractId);
+
+    /**
+     *  Kiểm tra hợp đồng có hóa đơn chưa thanh toán (PENDING hoặc OVERDUE) không
+     */
+    // Kiểm tra xem hợp đồng có hóa đơn nào thuộc các trạng thái cung cấp không
+    boolean existsByContract_IdAndPaymentStatusIn(Integer contractId, Collection<Invoice.PaymentStatus> statuses);
+
+    /**
+     * Lấy tổng doanh thu theo ngày trong khoảng thời gian, chỉ tính hóa đơn đã thanh toán
+     */
+    @Query("SELECT i.invoiceDate, SUM(i.totalAmount) FROM Invoice i WHERE i.paymentStatus = 'PAID' AND i.invoiceDate BETWEEN :from AND :to GROUP BY i.invoiceDate ORDER BY i.invoiceDate")
+    List<Object[]> sumPaidGroupedByInvoiceDate(@Param("from") LocalDate from, @Param("to") LocalDate to);
 }

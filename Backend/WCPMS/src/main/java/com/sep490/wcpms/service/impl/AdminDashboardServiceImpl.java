@@ -95,14 +95,15 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
 
         try {
-            // Use date range for revenue calculation when repository supports it
+            // Lấy PAID (Đã thu)
             BigDecimal sum = invoiceRepository.sumTotalAmountByPaymentStatusInAndInvoiceDateBetween(
-                    List.of(Invoice.PaymentStatus.PENDING, Invoice.PaymentStatus.OVERDUE), from, to);
+                    List.of(Invoice.PaymentStatus.PAID), from, to);
             dto.setRevenueMTD(sum == null ? 0L : sum.longValue());
         } catch (Exception e) {
-            // fallback to existing method (no date range)
+            // fallback
             try {
-                BigDecimal sum = invoiceRepository.sumGlobalTotalAmountByStatusAndDate(List.of(Invoice.PaymentStatus.PENDING, Invoice.PaymentStatus.OVERDUE), from, to);
+                // SỬA: Chỉ lấy PAID
+                BigDecimal sum = invoiceRepository.sumGlobalTotalAmountByStatusAndDate(List.of(Invoice.PaymentStatus.PAID), from, to);
                 dto.setRevenueMTD(sum == null ? 0L : sum.longValue());
             } catch (Exception ex) {
                 dto.setRevenueMTD(0L);
@@ -135,7 +136,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
 
         // get raw grouped data by invoiceDate
-        List<Object[]> rows = invoiceRepository.sumTotalGroupedByInvoiceDate(from, to);
+        List<Object[]> rows = invoiceRepository.sumPaidGroupedByInvoiceDate(from, to);
         Map<LocalDate, BigDecimal> map = new HashMap<>();
         for (Object[] r : rows) {
             LocalDate d = (LocalDate) r[0];
