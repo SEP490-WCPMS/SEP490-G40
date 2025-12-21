@@ -102,8 +102,8 @@ function OnSiteCalibrationForm() {
         }
 
         // 4. Validate Chi phí (> 0)
-        if (Number(formData.calibrationCost) <= 0) {
-            toast.warn("Chi phí kiểm định phải lớn hơn 0.");
+        if (Number(formData.calibrationCost) <= 2000) {
+            toast.warn("Chi phí kiểm định phải lớn hơn 2,000.");
             return;
         }
 

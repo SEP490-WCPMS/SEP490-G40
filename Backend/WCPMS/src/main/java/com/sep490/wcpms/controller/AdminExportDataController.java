@@ -54,20 +54,27 @@ public class AdminExportDataController {
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
     ) {
+        // Giữ nguyên tham số để không lỗi nhưng KHÔNG dùng lọc ngày để lấy toàn bộ danh sách
         LocalDateTime fromDt = (from != null) ? from.atStartOfDay() : LocalDateTime.now().minusDays(30);
         LocalDateTime toDt = (to != null) ? to.atTime(23, 59, 59) : LocalDateTime.now();
 
-        String sql = "SELECT c.id AS customer_id, c.customer_name, c.address, " +
-                "CONCAT('\t', COALESCE(CAST(c.contact_person_phone AS CHAR), CAST(a.phone AS CHAR), '')) AS phone, " +
-                "m.id AS meter_id, m.serial_number AS meter_serial, c.created_at, " +
-                "(SELECT MAX(mr.reading_date) FROM meter_readings mr JOIN meter_installations mi2 ON mr.meter_installation_id = mi2.id WHERE mi2.customer_id = c.id AND mi2.meter_id = m.id) AS last_reading_date " +
+        // <--- SỬA QUERY CHUẨN LOGIC DỮ LIỆU --->
+        // 1. Chỉ join accounts khi role_id = 2 (Khách hàng).
+        //    Nếu account_id trỏ vào nhân viên (role 3,4,5...), nó sẽ bỏ qua thông tin account đó -> Không hiện email nhân viên.
+        // 2. Thêm \t để căn trái.
+        String sql = "SELECT c.id AS customer_id, " +
+                "c.customer_code, " +
+                "c.customer_name, " +
+                "c.address, " +
+                "CONCAT('\t', COALESCE(acc.phone, c.contact_person_phone, '')) AS phone, " +
+                "acc.email, " +
+                "CONCAT('\t', c.created_at) AS created_at " +
                 "FROM customers c " +
-                "LEFT JOIN accounts a ON c.account_id = a.id " +
-                "LEFT JOIN meter_installations mi ON mi.customer_id = c.id " +
-                "LEFT JOIN water_meters m ON m.id = mi.meter_id " +
-                "WHERE c.created_at BETWEEN ? AND ?";
+                "LEFT JOIN accounts acc ON c.account_id = acc.id AND acc.role_id = 2 " + // QUAN TRỌNG: Chỉ join nếu là Role Khách hàng
+                "ORDER BY c.created_at DESC";
 
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, Timestamp.valueOf(fromDt), Timestamp.valueOf(toDt));
+        // Query không tham số (Lấy toàn bộ)
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
         return ResponseEntity.ok(rows);
     }
 
@@ -184,7 +191,11 @@ public class AdminExportDataController {
             }
 
             Double consumption = null;
-            if (endReading != null && startReading != null) consumption = endReading - startReading;
+            if (endReading != null && startReading != null) {
+                consumption = endReading - startReading;
+                // --- FIX: Chặn số âm ---
+                if (consumption < 0) consumption = 0.0;
+            }
 
             java.util.Map<String, Object> row = new java.util.HashMap<>();
             row.put("meter_id", meterId);
@@ -243,7 +254,8 @@ public class AdminExportDataController {
                         String subjectId = log.getSubjectId();
                         String payload = log.getPayload() != null ? log.getPayload() : "";
 
-                        csv.printRecord(time, actorName, actorType, action, subjectType, subjectId, payload);
+                        // --- FIX: Thêm \t để căn trái ---
+                        csv.printRecord("\t" + time, actorName, actorType, action, subjectType, subjectId, payload);
                     }
                     csv.flush();
                 }
@@ -265,6 +277,62 @@ public class AdminExportDataController {
         headers.add(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION);
 
         return ResponseEntity.ok().headers(headers).body(stream);
+    }
+
+    /**
+     * <--- THÊM MỚI: API Xuất danh sách hợp đồng (để phục vụ nút Export Hợp đồng) --->
+     */
+    @GetMapping("/contracts")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getContractsForExport(
+            @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        LocalDateTime fromDt = (from != null) ? from.atStartOfDay() : LocalDateTime.now().minusDays(30);
+        LocalDateTime toDt = (to != null) ? to.atTime(23, 59, 59) : LocalDateTime.now();
+
+        // SQL Mới: Lấy thêm contact_phone, payment_method, các loại ngày, và tên nhân viên kỹ thuật/kế toán
+        String sql = "SELECT " +
+                "c.contract_number, " +
+                "c.contract_status, " +
+                "c.payment_method, " +  // Phương thức thanh toán
+                "c.contract_value, " +  // Giá trị HĐ (Chi phí lắp đặt)
+                "c.estimated_cost, " +  // Chi phí dự kiến
+                "c.technical_design, " + // Thiết kế kỹ thuật (nếu cần)
+                "COALESCE(c.notes, '') AS notes, " +
+
+                // Thông tin Khách hàng & Liên hệ
+                "cust.customer_code, " +
+                "cust.customer_name, " +
+                // Lấy SĐT liên hệ trong HĐ, nếu không có thì lấy của khách hàng -> Thêm \t để căn trái
+                "CONCAT('\t', COALESCE(c.contact_phone, cust.contact_person_phone, '')) AS contact_phone, " +
+                "cust.address AS customer_address, " +
+
+                // Nhân sự phụ trách (Join 3 lần bảng accounts)
+                "s.full_name AS service_staff, " +
+                "t.full_name AS technical_staff, " +
+                "ac.full_name AS accounting_staff, " +
+
+                // Các mốc thời gian (Thêm \t để Excel không tự format sai)
+                "CONCAT('\t', c.created_at) AS created_at, " +
+                "CONCAT('\t', c.application_date) AS application_date, " +
+                "CONCAT('\t', c.survey_date) AS survey_date, " +
+                "CONCAT('\t', c.installation_date) AS installation_date, " +
+                "CONCAT('\t', c.start_date) AS start_date, " +
+                "CONCAT('\t', c.end_date) AS end_date, " +
+                "CONCAT('\t', wsc.contract_signed_date) AS signed_date " +
+
+                "FROM contracts c " +
+                "LEFT JOIN customers cust ON c.customer_id = cust.id " +
+                "LEFT JOIN accounts s ON c.service_staff_id = s.id " +      // Nhân viên dịch vụ
+                "LEFT JOIN accounts t ON c.technical_staff_id = t.id " +    // Nhân viên kỹ thuật
+                "LEFT JOIN accounts ac ON c.accounting_staff_id = ac.id " + // Nhân viên kế toán
+                "LEFT JOIN water_service_contracts wsc ON c.id = wsc.source_contract_id " +
+                "WHERE c.created_at BETWEEN ? AND ? " +
+                "ORDER BY c.created_at DESC";
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, Timestamp.valueOf(fromDt), Timestamp.valueOf(toDt));
+        return ResponseEntity.ok(rows);
     }
 
 }

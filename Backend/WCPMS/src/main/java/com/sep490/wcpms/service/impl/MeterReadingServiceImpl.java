@@ -60,10 +60,22 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         }
 
         // 4. Lấy Khách hàng (Bảng 7) từ HĐ Dịch vụ
-        Customer customer = serviceContract.getCustomer();
-        if(customer == null) {
+        // === SỬA LOGIC LẤY KHÁCH HÀNG TẠI ĐÂY ===
+        Customer customer = null;
+
+        // Ưu tiên 1: Lấy từ Hợp đồng Gốc (Bảng 8) - Nơi lưu chủ sở hữu pháp lý hiện tại
+        if (serviceContract.getSourceContract() != null && serviceContract.getSourceContract().getCustomer() != null) {
+            customer = serviceContract.getSourceContract().getCustomer();
+        }
+        // Ưu tiên 2 (Fallback): Lấy từ Hợp đồng Dịch vụ (Bảng 9)
+        else if (serviceContract.getCustomer() != null) {
+            customer = serviceContract.getCustomer();
+        }
+
+        if (customer == null) {
             throw new ResourceNotFoundException("No Customer associated with this service contract.");
         }
+        // =========================================
 
         // 5. Tìm chỉ số CŨ (Giữ nguyên logic)
         BigDecimal previousReading;
