@@ -58,6 +58,15 @@ public interface MeterCalibrationRepository extends JpaRepository<MeterCalibrati
     );
     // ------------------------------------
 
+    // Trong MeterCalibrationRepository.java
+
+    @Query("SELECT mc FROM MeterCalibration mc " +
+            "LEFT JOIN FETCH mc.invoice i " +       // Lấy luôn Invoice
+            "LEFT JOIN FETCH i.customer c " +       // Lấy luôn Customer của Invoice
+            "LEFT JOIN FETCH c.account a " +        // <--- QUAN TRỌNG: Lấy luôn Account của Customer
+            "WHERE mc.invoice.id = :invoiceId")
+    Optional<MeterCalibration> findByInvoiceIdWithDetails(@Param("invoiceId") Integer invoiceId);
+
     // --- THÊM HÀM MỚI ---
     /**
      * Tìm bản ghi Phí (Bảng 14) dựa trên Hóa đơn (Bảng 17).

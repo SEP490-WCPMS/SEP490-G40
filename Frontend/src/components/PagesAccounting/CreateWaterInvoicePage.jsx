@@ -108,7 +108,7 @@ function CreateWaterInvoicePage() {
                     onClick={() => setShowConfirm(true)}
                 >
                     <CheckCircle size={18} />
-                    Phát hành ngay
+                    Xác nhận & Phát hành hóa đơn
                 </Button>
             </div>
 
