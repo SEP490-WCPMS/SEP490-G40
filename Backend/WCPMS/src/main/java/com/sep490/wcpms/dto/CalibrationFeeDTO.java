@@ -5,27 +5,23 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * DTO hiển thị các khoản phí kiểm định chưa được lập hóa đơn.
- */
 @Data
 public class CalibrationFeeDTO {
-    private Integer calibrationId; // ID của Bảng 14
+    private Integer calibrationId;
     private LocalDate calibrationDate;
     private BigDecimal calibrationCost;
     private String notes;
     private String meterCode;
-    // --- THÊM CÁC TRƯỜNG ĐỂ PRE-FILL FORM ---
+
+    // Info khách hàng
     private Integer customerId;
     private String customerName;
     private String customerCode;
     private String customerAddress;
-    private String customerPhone; // (Lấy từ Account)
-    private String customerEmail; // (Lấy từ Account)
-    private Integer contractId; // ID HĐ Lắp đặt (Bảng 8)
-    // --- HẾT PHẦN THÊM ---
+    private String customerPhone;
+    private String customerEmail;
+    private Integer contractId;
 
-    // Constructor (Sửa lại)
     public CalibrationFeeDTO(MeterCalibration calibration) {
         this.calibrationId = calibration.getId();
         this.calibrationDate = calibration.getCalibrationDate();
@@ -35,38 +31,42 @@ public class CalibrationFeeDTO {
         if (calibration.getMeter() != null) {
             this.meterCode = calibration.getMeter().getMeterCode();
 
-            // 1. Kiểm tra xem Phí này ĐÃ CÓ HÓA ĐƠN chưa?
+            // =================================================================
+            // CASE 1: ĐÃ CÓ HÓA ĐƠN -> Lấy thông tin từ Invoice (Lịch sử)
+            // =================================================================
             if (calibration.getInvoice() != null) {
-                // === NẾU ĐÃ CÓ HÓA ĐƠN -> LẤY KHÁCH HÀNG TỪ HÓA ĐƠN (LỊCH SỬ) ===
                 Invoice invoice = calibration.getInvoice();
                 if (invoice.getCustomer() != null) {
                     this.customerId = invoice.getCustomer().getId();
-                    this.customerName = invoice.getCustomer().getCustomerName(); // Lấy Thắng
+                    this.customerName = invoice.getCustomer().getCustomerName();
                     this.customerCode = invoice.getCustomer().getCustomerCode();
                     this.customerAddress = invoice.getCustomer().getAddress();
-                    // (Lấy thêm SĐT nếu cần)
-                }
-            } else {
-                // === NẾU CHƯA CÓ HÓA ĐƠN (Đang chờ duyệt) -> LẤY CHỦ HỢP ĐỒNG HIỆN TẠI (Thịnh) ===
-                // (Logic cũ của chúng ta nằm ở đây)
 
-                // Tìm bản ghi lắp đặt MỚI NHẤT
+                    // --- [BỔ SUNG ĐOẠN NÀY ĐỂ HIỆN SĐT & EMAIL] ---
+                    if (invoice.getCustomer().getAccount() != null) {
+                        this.customerPhone = invoice.getCustomer().getAccount().getPhone();
+                        this.customerEmail = invoice.getCustomer().getAccount().getEmail();
+                    }
+                    // ----------------------------------------------
+                }
+            }
+            // =================================================================
+            // CASE 2: CHƯA CÓ HÓA ĐƠN -> Lấy chủ hợp đồng hiện tại
+            // =================================================================
+            else {
                 MeterInstallation installation = calibration.getMeter().getInstallations()
                         .stream()
                         .sorted((a, b) -> b.getInstallationDate().compareTo(a.getInstallationDate()))
                         .findFirst().orElse(null);
 
                 if (installation != null) {
-                    // === SỬA LỖI TẠI ĐÂY ===
-                    // Ưu tiên lấy khách hàng từ Hợp đồng hiện tại (vì HĐ có thể đã chuyển nhượng)
                     Contract contract = installation.getContract();
                     Customer currentCustomer = null;
 
+                    // Ưu tiên lấy Customer từ Contract
                     if (contract != null && contract.getCustomer() != null) {
-                        // Nếu có hợp đồng, lấy chủ sở hữu hiện tại của hợp đồng (Thịnh)
                         currentCustomer = contract.getCustomer();
                     } else {
-                        // Fallback: Nếu không tìm thấy HĐ (ít khi xảy ra), lấy người lắp đặt ban đầu (Minh)
                         currentCustomer = installation.getCustomer();
                     }
 
@@ -74,13 +74,16 @@ public class CalibrationFeeDTO {
                         this.customerId = currentCustomer.getId();
                         this.customerName = currentCustomer.getCustomerName();
                         this.customerCode = currentCustomer.getCustomerCode();
-
-                        // Logic lấy địa chỉ (giữ nguyên hoặc cập nhật theo customer mới)
                         this.customerAddress = currentCustomer.getAddress();
-                        // (Nếu bạn muốn lấy địa chỉ lắp đặt từ contract thì dùng logic cũ ở đây)
+
+                        // Ưu tiên địa chỉ lắp đặt từ hợp đồng
                         if (contract != null && contract.getAddress() != null) {
                             if (contract.getAddress().getAddress() != null) {
                                 this.customerAddress = contract.getAddress().getAddress();
+                            } else {
+                                String street = contract.getAddress().getStreet();
+                                String ward = (contract.getAddress().getWard() != null) ? contract.getAddress().getWard().getWardName() : "";
+                                this.customerAddress = street + (ward.isEmpty() ? "" : ", " + ward);
                             }
                         }
 

@@ -290,13 +290,12 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
     @Transactional(readOnly = true)
     public AccountingInvoiceDetailDTO getInvoiceDetail(Integer invoiceId) {
         // 1. Lấy Hóa đơn (Bảng 17)
-        Invoice invoice = invoiceRepository.findById(invoiceId)
+        Invoice invoice = invoiceRepository.findByIdWithDetails(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Hóa đơn: " + invoiceId));
 
         // 2. Lấy Phí gốc (Bảng 14) liên quan đến Hóa đơn này
         // (findByInvoice trả về Optional<MeterCalibration>)
-        MeterCalibration calibration = calibrationRepository.findByInvoice(invoice)
-                .orElse(null); // (Sẽ là null nếu đây là HĐ tiền nước, nhưng ở đây ta mặc định là HĐ Dịch vụ)
+        MeterCalibration calibration = calibrationRepository.findByInvoiceIdWithDetails(invoiceId).orElse(null); // (Sẽ là null nếu đây là HĐ tiền nước, nhưng ở đây ta mặc định là HĐ Dịch vụ)
 
         // 3. Map
         AccountingInvoiceDetailDTO detailDTO = new AccountingInvoiceDetailDTO();
