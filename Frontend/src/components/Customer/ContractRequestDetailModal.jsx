@@ -511,14 +511,14 @@ const ContractRequestDetailModal = ({
                 </div>
             )}
 
-            {/* Nếu REJECTED và có notes (service đang dùng notes khi từ chối) */}
-            {detail.approvalStatus === 'REJECTED' && detail.notes && (
+            {/* Nếu REJECTED: ưu tiên rejectionReason, fallback notes để tương thích ngược */}
+            {detail.approvalStatus === 'REJECTED' && (detail.rejectionReason || detail.notes) && (
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>🛑 Phản hồi từ chối</h3>
                     <div style={styles.grid}>
                         <div style={{ ...styles.row, ...styles.rowFullWidth }}>
                             <span style={styles.label}>Lý do từ chối:</span>
-                            <span style={styles.value}>{detail.notes}</span>
+                            <span style={styles.value}>{detail.rejectionReason || detail.notes}</span>
                         </div>
                     </div>
                 </div>

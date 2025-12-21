@@ -1,9 +1,6 @@
 package com.sep490.wcpms.controller;
 
-import com.sep490.wcpms.dto.ApiResponse;
-import com.sep490.wcpms.dto.ContractCreateDTO;
-import com.sep490.wcpms.dto.ContractDTO;
-import com.sep490.wcpms.dto.WaterMeterResponseDTO;
+import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.service.ContractCustomerService;
 import com.sep490.wcpms.service.ContractService;
@@ -49,6 +46,21 @@ public class ContractController {
     public ApiResponse<ContractDTO> confirmCustomerSign(@PathVariable Integer id) {
         ContractDTO contract = contractCustomerService.confirmCustomerSign(id);
         return ApiResponse.success(contract, "Contract confirmed successfully");
+    }
+
+    /**
+     * Customer rejects signing a contract.
+     * - Status: PENDING_CUSTOMER_SIGN -> APPROVED
+     * - Persist activity_log with action CUSTOMER_REJECT_SIGN and payload = reason
+     */
+    @PostMapping("/{id}/customer-reject-sign")
+    public ApiResponse<ContractDTO> rejectCustomerSign(
+            @PathVariable Integer id,
+            @RequestBody(required = false) CustomerRejectSignDTO body
+    ) {
+        String reason = body != null ? body.getReason() : null;
+        ContractDTO contract = contractCustomerService.rejectCustomerSign(id, reason);
+        return ApiResponse.success(contract, "Contract rejected successfully");
     }
 
     @PostMapping

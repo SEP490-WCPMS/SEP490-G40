@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Table, Typography, message, Spin, Button, Row, Col, Tag } from 'antd';
-import { EyeOutlined, ReloadOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Table, Typography, Spin, Button, Row, Col, Tag, Modal, Input } from 'antd';
+import { ToastContainer, toast } from 'react-toastify';
+import { EyeOutlined, ReloadOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import ConfirmModal from '../Common/ConfirmModal';
 import Pagination from '../Common/Pagination';
-import { getCustomerPendingSignContracts, confirmCustomerSign } from '../Services/apiService';
+import 'react-toastify/dist/ReactToastify.css';
+import { getCustomerPendingSignContracts, confirmCustomerSign, rejectCustomerSign } from '../Services/apiService';
 
 const { Title, Paragraph } = Typography;
 
@@ -15,6 +17,9 @@ const PendingSignContract = () => {
     const [signingContractId, setSigningContractId] = useState(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [selectedContract, setSelectedContract] = useState(null);
+    const [rejectingContractId, setRejectingContractId] = useState(null);
+    const [isRejectModalVisible, setIsRejectModalVisible] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
     const [currentPage, setCurrentPage] = useState(0);
     const pageSize = 10;
     const navigate = useNavigate();
@@ -41,7 +46,7 @@ const PendingSignContract = () => {
         const customerId = getCustomerId();
 
         if (!customerId) {
-            message.error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
+            toast.error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
             return;
         }
 
@@ -60,7 +65,7 @@ const PendingSignContract = () => {
                 setContracts([]);
             }
         } catch (error) {
-            message.error('Lỗi khi tải danh sách hợp đồng chờ ký!');
+            toast.error('Lỗi khi tải danh sách hợp đồng chờ ký!');
             console.error("Fetch pending sign contracts error:", error);
             setContracts([]);
         } finally {
@@ -106,7 +111,10 @@ const PendingSignContract = () => {
             console.log('Confirm sign response:', response);
             console.log('Đã ký thành công hợp đồng:', selectedContract.contractNumber);
 
-            message.success(`Đã xác nhận ký thành công hợp đồng ${selectedContract.contractNumber}`);
+            toast.success(`Đã xác nhận ký thành công hợp đồng ${selectedContract.contractNumber}`, {
+                position: "top-center",
+                autoClose: 3000
+            });
 
             // Đóng modal
             setIsModalVisible(false);
@@ -123,10 +131,55 @@ const PendingSignContract = () => {
             console.error('Confirm sign error:', error);
             console.error('Error response:', error.response);
             const errorMessage = error.response?.data?.message || 'Xác nhận ký hợp đồng thất bại!';
-            message.error(errorMessage);
+            toast.error(errorMessage);
         } finally {
             setSigningContractId(null);
         }
+    };
+
+    const handleRejectSign = async () => {
+        if (!selectedContract) return;
+
+        const reason = rejectReason.trim();
+        if (!reason) {
+            toast.warn('Vui lòng nhập lý do từ chối ký.');
+            return;
+        }
+
+        setRejectingContractId(selectedContract.id);
+        try {
+            await rejectCustomerSign(selectedContract.id, reason);
+            toast.success(`Đã gửi từ chối ký cho hợp đồng ${selectedContract.contractNumber}`);
+
+            setIsRejectModalVisible(false);
+            setRejectReason('');
+
+            // Remove khỏi list hiện tại để UI phản hồi ngay
+            setContracts(prev => prev.filter(c => c.id !== selectedContract.id));
+            setSelectedContract(null);
+
+            // Reload để đồng bộ
+            setTimeout(() => {
+                fetchPendingSignContracts();
+            }, 1000);
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'Từ chối ký hợp đồng thất bại!';
+            toast.error(errorMessage);
+        } finally {
+            setRejectingContractId(null);
+        }
+    };
+
+    const showRejectModal = (record) => {
+        setSelectedContract(record);
+        setRejectReason('');
+        setIsRejectModalVisible(true);
+    };
+
+    const handleRejectCancel = () => {
+        setIsRejectModalVisible(false);
+        setRejectReason('');
+        setSelectedContract(null);
     };
 
     // Hiển thị trạng thái với màu sắc
@@ -225,11 +278,12 @@ const PendingSignContract = () => {
             fixed: 'right',
             width: 220,
             render: (_, record) => (
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'stretch', flexDirection: 'column' }}>
                     <Button
                         type="default"
                         icon={<EyeOutlined />}
                         onClick={() => handleViewDetail(record.id)}
+                        style={{ minWidth: 120, height: 36 }}
                     >
                         Xem chi tiết
                     </Button>
@@ -239,9 +293,19 @@ const PendingSignContract = () => {
                         onClick={() => showConfirmModal(record)}
                         loading={signingContractId === record.id}
                         disabled={signingContractId !== null}
-                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                        style={{ minWidth: 120, height: 36, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                     >
                         Xác nhận ký
+                    </Button>
+                    <Button
+                        danger
+                        icon={<CloseCircleOutlined />}
+                        onClick={() => showRejectModal(record)}
+                        loading={rejectingContractId === record.id}
+                        disabled={signingContractId !== null || rejectingContractId !== null}
+                        style={{ minWidth: 120, height: 36 }}
+                    >
+                        Từ chối ký
                     </Button>
                 </div>
             ),
@@ -251,6 +315,13 @@ const PendingSignContract = () => {
     return (
         <div style={{ padding: '24px 0' }}>
             <div style={pageContainerStyle}>
+
+                <ToastContainer
+                    position="top-center"
+                    autoClose={3000}
+                    theme="colored"
+                />
+
                 <Row gutter={16} align="middle">
                     <Col xs={24} sm={12}>
                         <div>
@@ -309,6 +380,31 @@ const PendingSignContract = () => {
                     }
                     isLoading={signingContractId !== null}
                 />
+                {/* Modal từ chối ký */}
+                <Modal
+                    open={isRejectModalVisible}
+                    title="Từ chối ký hợp đồng"
+                    okText="Gửi từ chối"
+                    cancelText="Hủy"
+                    onOk={handleRejectSign}
+                    onCancel={handleRejectCancel}
+                    confirmLoading={rejectingContractId !== null}
+                    destroyOnClose
+                    styles={{ body: { paddingBottom: 15 } }}
+                >
+                    <p>
+                        Vui lòng cho biết lý do từ chối ký hợp đồng{' '}
+                        <b>{selectedContract?.contractNumber}</b>.
+                    </p>
+                    <Input.TextArea
+                        rows={4}
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="Ví dụ: Muốn điều chỉnh chi phí, muốn đổi thiết kế, muốn dời lịch..."
+                        maxLength={500}
+                        showCount
+                    />
+                </Modal>
             </div>
         </div>
     );
