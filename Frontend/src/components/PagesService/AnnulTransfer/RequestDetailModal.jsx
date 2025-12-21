@@ -114,6 +114,9 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
       confirmLoading={loading}
       width={900}
       destroyOnClose
+      centered
+      bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+      style={{ top: 20 }}
       footer={(
         <Space>
           {statusCode === 'PENDING' && (
@@ -275,6 +278,9 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
         }}
         okText="Xác nhận"
         okButtonProps={{ danger: true }}
+        centered
+        bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+        style={{ top: 24 }}
       >
         <Input.TextArea rows={4} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối (bắt buộc)" />
       </Modal>

@@ -1,17 +1,38 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
-import { Menu, X, LogOut, User, Bell, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown } from 'lucide-react'; // Bỏ Bell nếu ko dùng
 import './Header.css';
 
 const Header = ({ isAuthenticated, user }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // State để quản lý mở/đóng submenu trên mobile (nếu muốn làm gọn)
+  // Ở đây tôi làm phẳng (hiện hết) để đơn giản, hoặc bạn có thể thêm state toggle
+  
+  const closeMenu = () => setIsMenuOpen(false);
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false);
 
+  const location = useLocation();
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location]);
+
+  // Close mobile menu on resize to desktop widths
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth > 768) setIsMenuOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const handleLogout = () => {
-    logout(); // Gọi logout từ AuthContext
+    logout(); 
     setIsAvatarDropdownOpen(false);
     navigate('/');
   };
@@ -78,71 +99,50 @@ const Header = ({ isAuthenticated, user }) => {
           </div>
         </Link>
 
-        {/* Desktop Navigation Menu */}
+        {/* --- DESKTOP MENU (Giữ nguyên) --- */}
         <nav className="nav-menu">
           <Link to="/about" className="nav-item">Giới thiệu</Link>
-          <a href="#tin-tuc" className="nav-item">Tin tức</a>
+          {/* <a href="#tin-tuc" className="nav-item">Tin tức</a> */}
           <button
             onClick={handleWaterPriceClick}
             className="nav-item"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            Giá nước
+          > Giá nước
           </button>
           <Link to="/contact" className="nav-item">Liên hệ</Link>
-          <Link to="/my-notifications">Thông báo</Link>
-          {/* --- BẮT ĐẦU THAY ĐỔI Ở ĐÂY --- */}
+          {/* <Link to="/my-notifications" className="nav-item">Thông báo</Link> */}
+          
           <div className="nav-item nav-dropdown">
             <span className="nav-dropdown-trigger">
-              Hỗ Trợ
-              <ChevronDown size={16} className="nav-dropdown-chevron" />
+              Hỗ Trợ <ChevronDown size={16} className="nav-dropdown-chevron" />
             </span>
             <ul className="dropdown-menu">
-              <li>
-                <Link to="/support-request">Tạo đơn yêu cầu hỗ trợ</Link>
-              </li>
-              <li>
-                <Link to="/my-support-tickets">Danh sách đơn của tôi</Link>
-              </li>
+              <li><Link to="/support-request">Tạo đơn yêu cầu hỗ trợ</Link></li>
+              <li><Link to="/my-support-tickets">Danh sách đơn của tôi</Link></li>
             </ul>
           </div>
 
           <div className="nav-item nav-dropdown">
             <span className="nav-dropdown-trigger">
-              Hóa Đơn
-              <ChevronDown size={16} className="nav-dropdown-chevron" />
+              Hóa Đơn <ChevronDown size={16} className="nav-dropdown-chevron" />
             </span>
             <ul className="dropdown-menu">
-              <li>
-                <Link to="/my-invoices">Hóa đơn của tôi</Link>
-              </li>
+              <li><Link to="/my-invoices">Hóa đơn của tôi</Link></li>
             </ul>
           </div>
 
           <div className="nav-item nav-dropdown">
             <span className="nav-dropdown-trigger">
-              Hợp đồng
-              <ChevronDown size={16} className="nav-dropdown-chevron" />
+              Hợp đồng <ChevronDown size={16} className="nav-dropdown-chevron" />
             </span>
             <ul className="dropdown-menu">
-              <li>
-                <Link to="/contract-request">Đăng ký cấp nước</Link>
-              </li>
-              <li>
-                <Link to="/my-requests">Xem trạng thái đơn</Link>
-              </li>
-              <li>
-                <Link to="/contract-list">Danh sách hợp đồng</Link>
-              </li>
-              <li>
-                <Link to="/pending-sign-contract">Danh sách chờ ký</Link>
-              </li>
-              <li>
-                <Link to="/contract-request-change">Tạo yêu cầu thay đổi hợp đồng</Link>
-              </li>
+              <li><Link to="/contract-request">Đăng ký cấp nước</Link></li>
+              <li><Link to="/my-requests">Xem trạng thái đơn</Link></li>
+              <li><Link to="/contract-list">Danh sách hợp đồng</Link></li>
+              <li><Link to="/pending-sign-contract">Danh sách chờ ký</Link></li>
+              <li><Link to="/contract-request-change">Tạo yêu cầu thay đổi hợp đồng</Link></li>
             </ul>
           </div>
-          {/* --- KẾT THÚC THAY ĐỔI --- */}
         </nav>
 
         {/* Avatar / Login Button */}
@@ -173,90 +173,78 @@ const Header = ({ isAuthenticated, user }) => {
                   {/* Chỉ hiển thị Dashboard cho Staff users */}
                   {(user?.roleName === 'CASHIER_STAFF' || user?.roleName === 'TECHNICAL_STAFF' || user?.roleName === 'SERVICE_STAFF') && (
                     <>
-                      <button
-                        className="dropdown-item"
-                        onClick={handleDashboardClick}
-                      >
-                        <LayoutDashboard size={16} />
-                        <span>Dashboard</span>
+                      <button className="dropdown-item" onClick={handleDashboardClick}>
+                        <LayoutDashboard size={16} /> <span>Dashboard</span>
                       </button>
                       <hr className="dropdown-divider" />
                     </>
                   )}
-                  <button
-                    className="dropdown-item"
-                    onClick={handleProfileClick}
-                  >
-                    <User size={16} />
-                    <span>Hồ sơ</span>
+                  <button className="dropdown-item" onClick={handleProfileClick}>
+                    <User size={16} /> <span>Hồ sơ</span>
                   </button>
                   {user?.roleName === 'CUSTOMER' ? (
-                    <button
-                      className="dropdown-item"
-                      onClick={() => {
-                        navigate('/change-password');
-                        setIsAvatarDropdownOpen(false);
-                      }}
-                    >
-                      <LogOut size={16} /> {/* Thay bằng icon chìa khóa nếu có */}
-                      <span>Đổi mật khẩu</span>
+                    <button className="dropdown-item" onClick={() => { navigate('/change-password'); setIsAvatarDropdownOpen(false); }}>
+                      <LogOut size={16} /> <span>Đổi mật khẩu</span>
                     </button>
                   ) : (
-                    // For staff/admin show staff change-password route
-                    <button
-                      className="dropdown-item"
-                      onClick={() => {
-                        navigate('/staff/change-password');
-                        setIsAvatarDropdownOpen(false);
-                      }}
-                    >
-                      <LogOut size={16} />
-                      <span>Đổi mật khẩu</span>
+                    <button className="dropdown-item" onClick={() => { navigate('/staff/change-password'); setIsAvatarDropdownOpen(false); }}>
+                      <LogOut size={16} /> <span>Đổi mật khẩu</span>
                     </button>
                   )}
                   <hr className="dropdown-divider" />
-                  <button
-                    className="dropdown-item logout"
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={16} />
-                    <span>Đăng xuất</span>
+                  <button className="dropdown-item logout" onClick={handleLogout}>
+                    <LogOut size={16} /> <span>Đăng xuất</span>
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <button
-              className="login-button"
-              onClick={handleLoginClick}
-            >
-              Đăng nhập
-            </button>
+            <button className="login-button" onClick={handleLoginClick}>Đăng nhập</button>
           )}
         </div>
 
         {/* Mobile Menu Toggle */}
-        <button
-          className="mobile-menu-toggle"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
+        <button className="mobile-menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* Mobile Navigation Menu */}
+      {/* --- MOBILE NAVIGATION MENU (ĐÃ SỬA LẠI ĐẦY ĐỦ) --- */}
       {isMenuOpen && (
         <nav className="mobile-nav-menu">
-          <Link to="/about" className="mobile-nav-item">Giới thiệu</Link>
-          <a href="#tin-tuc" className="mobile-nav-item">Tin tức</a>
+          <Link to="/about" className="mobile-nav-item" onClick={closeMenu}>Giới thiệu</Link>
+          {/* <a href="#tin-tuc" className="mobile-nav-item" onClick={closeMenu}>Tin tức</a> */}
           <button
-            onClick={handleWaterPriceClick}
+            onClick={() => { handleWaterPriceClick(); closeMenu(); }}
             className="mobile-nav-item"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: '12px 0' }}
           >
             Giá nước
           </button>
-          <Link to="/contact" className="nav-item">Liên hệ</Link>
+          <Link to="/contact" className="mobile-nav-item" onClick={closeMenu}>Liên hệ</Link>
+          {/* <Link to="/my-notifications" className="mobile-nav-item" onClick={closeMenu}>Thông báo</Link> */}
+
+          {/* Group: Hỗ trợ */}
+          <div className="mobile-nav-group">
+            <span className="mobile-group-title">Hỗ trợ</span>
+            <Link to="/support-request" className="mobile-sub-item" onClick={closeMenu}>Tạo yêu cầu</Link>
+            <Link to="/my-support-tickets" className="mobile-sub-item" onClick={closeMenu}>Đơn của tôi</Link>
+          </div>
+
+          {/* Group: Hóa đơn */}
+          <div className="mobile-nav-group">
+            <span className="mobile-group-title">Hóa đơn</span>
+            <Link to="/my-invoices" className="mobile-sub-item" onClick={closeMenu}>Hóa đơn của tôi</Link>
+          </div>
+
+          {/* Group: Hợp đồng */}
+          <div className="mobile-nav-group">
+            <span className="mobile-group-title">Hợp đồng</span>
+            <Link to="/contract-request" className="mobile-sub-item" onClick={closeMenu}>Đăng ký cấp nước</Link>
+            <Link to="/my-requests" className="mobile-sub-item" onClick={closeMenu}>Xem trạng thái đơn</Link>
+            <Link to="/contract-list" className="mobile-sub-item" onClick={closeMenu}>Danh sách hợp đồng</Link>
+            <Link to="/pending-sign-contract" className="mobile-sub-item" onClick={closeMenu}>Danh sách chờ ký</Link>
+            <Link to="/contract-request-change" className="mobile-sub-item" onClick={closeMenu}>Yêu cầu thay đổi HĐ</Link>
+          </div>
         </nav>
       )}
     </header>

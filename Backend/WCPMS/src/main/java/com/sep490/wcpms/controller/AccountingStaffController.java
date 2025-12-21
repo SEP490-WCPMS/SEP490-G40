@@ -183,9 +183,6 @@ public class AccountingStaffController {
 
     // --- HẾT HÀM THÊM ---
 
-    // ==========================================================
-    // === ✨ THÊM 2 API MỚI CHO HÓA ĐƠN TIỀN NƯỚC ✨ ===
-    // ==========================================================
 
     /**
      * API Lấy danh sách chỉ số đã đọc (COMPLETED) chờ lập hóa đơn.
