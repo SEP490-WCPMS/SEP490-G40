@@ -123,9 +123,15 @@ public class ContractServiceImpl implements ContractService {
     @Override
     @Transactional
     public String createGuestContractRequest(ContractRequestDTO requestDTO) {
-        // Validate
+        // Validate input cơ bản
         if (requestDTO.getFullName() == null || requestDTO.getPhone() == null || requestDTO.getAddress() == null) {
             throw new IllegalArgumentException("Thông tin Guest (Tên, SĐT, Địa chỉ) không được để trống.");
+        }
+
+        // --- VALIDATE: KIỂM TRA SỐ ĐIỆN THOẠI ĐÃ TỒN TẠI CHƯA ---
+        // Kiểm tra trong bảng Account (Username thường là SĐT)
+        if (accountRepository.existsByUsername(requestDTO.getPhone())) {
+            throw new IllegalArgumentException("Không thể gửi yêu cầu. Số điện thoại này đã được đăng ký tài khoản trên hệ thống.");
         }
 
         WaterPriceType priceType = waterPriceTypeRepository.findById(requestDTO.getPriceTypeId())
@@ -133,48 +139,35 @@ public class ContractServiceImpl implements ContractService {
 
         Account assignedStaff = findAutoAssignedStaff(requestDTO.getRouteId());
 
-        // A. TẠO & LƯU ADDRESS (Bỏ qua Ward/Customer)
+        // ... (Phần còn lại của logic tạo Address, Contract... giữ nguyên như cũ)
         Address guestAddress = new Address();
-        guestAddress.setCustomer(null); // Guest chưa có tài khoản
-        guestAddress.setWard(null);     // Chưa chọn phường (đã update DB cho phép null)
-
-        // Lưu địa chỉ khách nhập vào cột 'address' và 'street'
+        guestAddress.setCustomer(null);
         guestAddress.setAddress(requestDTO.getAddress());
         guestAddress.setStreet(requestDTO.getAddress());
         guestAddress.setIsActive(1);
-
-        // Lưu xuống DB -> Có ID
         Address savedAddress = addressRepository.save(guestAddress);
 
-        // B. TẠO HỢP ĐỒNG
         Contract newContract = new Contract();
         newContract.setContractNumber("GUEST-" + System.currentTimeMillis());
         newContract.setCustomer(null);
-
-        // Gắn Address vừa tạo
         newContract.setAddress(savedAddress);
-
-        // Lưu thông tin liên hệ
         newContract.setContactPhone(requestDTO.getPhone());
 
-        // Lưu Tên khách vào Note (để nhân viên biết tên)
         String notes = "KHÁCH: " + requestDTO.getFullName();
         if (requestDTO.getNotes() != null) notes += " | " + requestDTO.getNotes();
         newContract.setNotes(notes);
 
         newContract.setApplicationDate(LocalDate.now());
         newContract.setStartDate(LocalDate.now());
-        newContract.setContractStatus(ContractStatus.DRAFT);
-        newContract.setServiceStaff(assignedStaff);
+        newContract.setContractStatus(ContractStatus.DRAFT); // Hoặc PENDING_SURVEY_REVIEW tùy flow
 
+        newContract.setServiceStaff(assignedStaff);
         if (requestDTO.getRouteId() != null) {
-            readingRouteRepository.findById(requestDTO.getRouteId())
-                    .ifPresent(newContract::setReadingRoute);
+            readingRouteRepository.findById(requestDTO.getRouteId()).ifPresent(newContract::setReadingRoute);
         }
 
         Contract savedContract = contractRepository.save(newContract);
 
-        // C. LƯU CHI TIẾT SỬ DỤNG
         ContractUsageDetail usageDetail = new ContractUsageDetail();
         usageDetail.setContract(savedContract);
         usageDetail.setPriceType(priceType);
@@ -182,7 +175,6 @@ public class ContractServiceImpl implements ContractService {
         usageDetail.setUsagePercentage(new BigDecimal("100.00"));
         contractUsageDetailRepository.save(usageDetail);
 
-        // D. PUBLISH EVENT (customerId = null)
         publishContractCreatedEvent(savedContract, null, requestDTO.getFullName());
 
         return savedContract.getContractNumber();

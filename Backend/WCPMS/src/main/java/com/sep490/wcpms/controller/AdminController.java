@@ -1,5 +1,6 @@
 package com.sep490.wcpms.controller;
 
+import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.CustomerResponseDTO;
 import com.sep490.wcpms.dto.GuestRequestResponseDTO;
 import com.sep490.wcpms.service.AdminService;
@@ -32,5 +33,10 @@ public class AdminController {
     @GetMapping("/customers")
     public ResponseEntity<List<CustomerResponseDTO>> getAllCustomers() {
         return ResponseEntity.ok(adminService.getAllCustomers());
+    }
+
+    @GetMapping("/customers/{customerId}/contracts")
+    public ResponseEntity<List<ContractDetailsDTO>> getCustomerContracts(@PathVariable Integer customerId) {
+        return ResponseEntity.ok(adminService.getContractsByCustomerId(customerId));
     }
 }

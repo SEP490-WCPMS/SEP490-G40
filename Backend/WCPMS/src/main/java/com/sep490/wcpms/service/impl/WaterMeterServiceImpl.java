@@ -24,13 +24,13 @@ public class WaterMeterServiceImpl implements WaterMeterService {
     // ... (Các hàm listAll, getById, create, update giữ nguyên như cũ) ...
 
     @Override
-    public Page<WaterMeterAdminResponseDTO> listAll(boolean includeRetired, int page, int size) {
+    public Page<WaterMeterAdminResponseDTO> listAll(boolean includeMaintenance, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<WaterMeter> pageResult;
-        if (includeRetired) {
+        if (includeMaintenance) {
             pageResult = repository.findAll(pageable);
         } else {
-            pageResult = repository.findByMeterStatusNot(WaterMeter.MeterStatus.RETIRED, pageable);
+            pageResult = repository.findByMeterStatusNot(WaterMeter.MeterStatus.UNDER_MAINTENANCE, pageable);
         }
         return pageResult.map(this::toDto);
     }
@@ -111,9 +111,9 @@ public class WaterMeterServiceImpl implements WaterMeterService {
         }
 
         // LOGIC CHECK: Chỉ cho phép xóa (RETIRED) nếu đang là IN_STOCK
-        if (newStatus == WaterMeter.MeterStatus.RETIRED) {
-            if (w.getMeterStatus() != WaterMeter.MeterStatus.IN_STOCK) {
-                throw new IllegalArgumentException("Chỉ có thể xóa đồng hồ đang ở trạng thái 'Trong kho' (IN_STOCK). Đồng hồ này đang: " + w.getMeterStatus());
+        if (newStatus == WaterMeter.MeterStatus.UNDER_MAINTENANCE) {
+            if (w.getMeterStatus() != WaterMeter.MeterStatus.IN_STOCK && w.getMeterStatus() != WaterMeter.MeterStatus.BROKEN) {
+                throw new IllegalArgumentException("Chỉ có thể xóa đồng hồ đang ở trạng thái 'Trong kho' hoặc 'Bị hỏng' . Đồng hồ này đang: " + w.getMeterStatus());
             }
         }
 

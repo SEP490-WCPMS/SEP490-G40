@@ -2,8 +2,13 @@ import apiClient from './apiClient';
 
 const BASE = '/admin/reading-routes';
 
-export const getReadingRoutes = (includeInactive = false) => {
-    return apiClient.get(BASE, { params: { includeInactive } });
+export const getReadingRoutes = (includeInactive, search = '') => {
+    return apiClient.get('/admin/reading-routes', {
+        params: {
+            includeInactive,
+            search // Truyền keyword lên
+        }
+    });
 };
 
 export const getReadingRouteById = (id) => {

@@ -32,7 +32,9 @@ public class ReadingRouteService {
         repository.findByRouteCode(req.getRouteCode()).ifPresent(r -> {
             throw new IllegalArgumentException("routeCode already exists");
         });
-        // --- VALIDATE LOGIC: Nhân viên dịch vụ đã được gán chỗ khác chưa? ---
+        if (req.getAssignedReaderId() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn nhân viên thu ngân.");
+        }
         if (req.getServiceStaffIds() != null && !req.getServiceStaffIds().isEmpty()) {
             validateServiceStaffAvailability(req.getServiceStaffIds(), null);
         }
@@ -43,24 +45,16 @@ public class ReadingRouteService {
         entity.setAreaCoverage(req.getAreaCoverage());
         entity.setStatus(ReadingRoute.Status.ACTIVE);
 
-        if (req.getAssignedReaderId() != null) {
-            Account acc = accountRepository.findById(req.getAssignedReaderId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + req.getAssignedReaderId()));
-            entity.setAssignedReader(acc);
-        } else {
-            // Logic fallback gán mặc định thu ngân (giữ nguyên của bạn)
-            accountRepository.findFirstByDepartmentAndStatus(Account.Department.CASHIER, 1)
-                    .ifPresent(entity::setAssignedReader);
-        }
+        Account acc = accountRepository.findById(req.getAssignedReaderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản thu ngân ID: " + req.getAssignedReaderId()));
+        entity.setAssignedReader(acc);
 
-        // Logic Service Staff
         if (req.getServiceStaffIds() != null && !req.getServiceStaffIds().isEmpty()) {
             List<Account> serviceStaffs = accountRepository.findAllById(req.getServiceStaffIds());
             entity.setServiceStaffs(new HashSet<>(serviceStaffs));
         }
 
-        ReadingRoute saved = repository.save(entity);
-        return toResponse(saved);
+        return toResponse(repository.save(entity));
     }
 
     public ReadingRouteResponse getById(Integer id) {
@@ -71,19 +65,27 @@ public class ReadingRouteService {
 
     // --- SỬA QUAN TRỌNG: THÊM TRANSACTIONAL CHO LIST ---
     @Transactional(readOnly = true)
-    public List<ReadingRouteResponse> list(boolean includeInactive) {
+    public List<ReadingRouteResponse> list(boolean includeInactive, String keyword) {
         List<ReadingRoute> list;
-        if (includeInactive) {
-            list = repository.findAll();
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String searchTerm = keyword.trim();
+            if (includeInactive) {
+                // Gọi hàm Native Query
+                list = repository.searchRoutesAllStatusNative(searchTerm);
+            } else {
+                // Gọi hàm Native Query, chuyển Enum Status sang String
+                list = repository.searchRoutesNative(searchTerm, ReadingRoute.Status.ACTIVE.name());
+            }
         } else {
-            list = repository.findAllByStatus(ReadingRoute.Status.ACTIVE);
-            if (list == null || list.isEmpty()) {
-                // Fallback logic của bạn
-                list = repository.findAll().stream()
-                        .filter(r -> r.getStatus() == null || r.getStatus() == ReadingRoute.Status.ACTIVE)
-                        .collect(Collectors.toList());
+            // Logic cũ (không search)
+            if (includeInactive) {
+                list = repository.findAll();
+            } else {
+                list = repository.findAllByStatus(ReadingRoute.Status.ACTIVE);
             }
         }
+
         return list.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -99,6 +101,10 @@ public class ReadingRouteService {
         if (req.getRouteCode() != null) r.setRouteCode(req.getRouteCode());
         if (req.getRouteName() != null) r.setRouteName(req.getRouteName());
         if (req.getAreaCoverage() != null) r.setAreaCoverage(req.getAreaCoverage());
+
+        if (req.getAssignedReaderId() == null && r.getAssignedReader() == null) {
+            throw new IllegalArgumentException("Vui lòng chọn nhân viên thu ngân.");
+        }
 
         // Update Thu ngân
         if (req.getAssignedReaderId() != null) {
