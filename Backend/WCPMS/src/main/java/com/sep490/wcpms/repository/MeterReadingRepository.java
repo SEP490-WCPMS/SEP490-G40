@@ -24,13 +24,13 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
      */
     Optional<MeterReading> findTopByMeterInstallationOrderByReadingDateDesc(MeterInstallation meterInstallation);
 
-    // ✨ THÊM HÀM MỚI NÀY ✨
     /**
      * Lấy danh sách các bản ghi đọc số đã HOÀN THÀNH (COMPLETED)
      * và CHƯA được liên kết với bất kỳ hóa đơn nào (chưa được lập HĐ).
      */
     @Query("SELECT mr FROM MeterReading mr " +
             "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
+            "AND mr.consumption > 0" +
             "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.meterReading = mr)")
     Page<MeterReading> findCompletedReadingsNotBilled(Pageable pageable);
 
@@ -61,11 +61,13 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
      * Tìm các meter_readings:
      * - Status = COMPLETED
      * - Được assign cho accountingStaffId
+     * - Tiêu thụ > 0 (consumption > 0)
      * - Chưa có invoice (NOT EXISTS trong bảng invoices với meter_reading_id)
      */
     @Query("SELECT mr FROM MeterReading mr " +
            "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
            "AND mr.accountingStaff.id = :accountingStaffId " +
+           "AND mr.consumption > 0" +
            "AND NOT EXISTS (" +
            "    SELECT 1 FROM Invoice inv " +
            "    WHERE inv.meterReading.id = mr.id" +
@@ -82,6 +84,7 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
     @Query("SELECT COUNT(mr) FROM MeterReading mr " +
             "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
             "AND mr.accountingStaff.id = :staffId " + // <--- QUAN TRỌNG: Lọc theo staff
+            "AND mr.consumption > 0 " +
             "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.meterReading = mr)")
     long countPendingWaterBillsByStaff(@Param("staffId") Integer staffId);
 }

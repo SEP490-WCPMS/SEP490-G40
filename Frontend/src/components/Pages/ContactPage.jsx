@@ -21,7 +21,7 @@ const ContactPage = () => {
         <div className="contact-icon-wrapper"><MapPin size={20} /></div>
         <div>
           <strong className="contact-label">Địa chỉ</strong>
-          <span>Số 8 - Đường Trần Phú - Phường Việt Trì - Tỉnh Phú Thọ</span>
+          <span>Số 8, Trần Phú, Phường Tân Dân, TP Việt Trì, Phú Thọ</span>
         </div>
       </div>
       
@@ -30,7 +30,7 @@ const ContactPage = () => {
         <div className="contact-icon-wrapper"><Phone size={20} /></div>
         <div>
           <strong className="contact-label">Điện Thoại</strong>
-          <span>02103 846 531 hoặc 02106251998</span>
+          <span>0210 6251998 hoặc 0210 3992369</span>
         </div>
       </div>
       

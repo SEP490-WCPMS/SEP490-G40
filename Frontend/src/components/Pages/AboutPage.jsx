@@ -31,8 +31,7 @@ const AboutPage = () => {
               <div className="about-contact-info">
                 <div className="contact-item">
                   <h4>ĐIỆN THOẠI</h4>
-                  <p>0210 3846 531</p>
-                  <p className="fax">FAX: 0210 3848 064</p>
+                  <p>0210 6251998 / 0210 3992369</p>
                 </div>
                 <div className="contact-item">
                   <h4>ĐỊA CHỈ</h4>

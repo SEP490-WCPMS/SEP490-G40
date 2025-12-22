@@ -28,6 +28,8 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         // no-op: kept to mirror previous lifecycle; Descriptions is read-only
     }, [initialData, isOpen]);
 
+    // Hiển thị badge trạng thái hợp đồng (style nhỏ gọn)
+    // Input: status (string), output: JSX <span>
     const statusBadge = (status) => {
         const s = (status || '').toUpperCase();
         const map = {
@@ -50,7 +52,9 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         );
     };
 
+    // Định dạng ngày theo DD/MM/YYYY
     const fmtDate = (d) => (d ? moment(d).format('DD/MM/YYYY') : '—');
+    // Định dạng số tiền theo locale vi-VN và thêm 'đ'
     const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
 
     return (
@@ -67,7 +71,10 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
             okText="Đóng"
             cancelButtonProps={{ style: { display: 'none' } }}
             width={900}
+            centered
             destroyOnClose
+            bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+            style={{ top: 20 }}
         >
             <Spin spinning={loading}>
                 <div className="space-y-4 pt-2">

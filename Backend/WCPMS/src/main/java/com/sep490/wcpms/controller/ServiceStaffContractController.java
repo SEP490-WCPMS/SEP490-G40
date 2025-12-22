@@ -365,7 +365,7 @@ public class ServiceStaffContractController {
     }
 
     /**
-     * Gửi khách hàng ký: chuyển HĐ lắp đặt sang PENDING_SIGN
+     * Gửi khách hàng ký
      * PUT /api/service/contracts/{id}/send-to-sign
      */
     @PutMapping("/{id}/send-to-sign")

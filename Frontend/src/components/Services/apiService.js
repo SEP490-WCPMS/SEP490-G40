@@ -268,6 +268,14 @@ export const confirmCustomerSign = (contractId) => {
     return apiClient.post(`/v1/contracts/${contractId}/customer-confirm-sign`);
 };
 
+/**
+ * Customer rejects signing a contract (PENDING_CUSTOMER_SIGN -> APPROVED).
+ * Body: { reason: string }
+ */
+export const rejectCustomerSign = (contractId, reason) => {
+    return apiClient.post(`/v1/contracts/${contractId}/customer-reject-sign`, { reason });
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {

@@ -202,8 +202,16 @@ const ContractRequestStatusList = () => {
                                         </span>
                                     </div>
                                     <div style={styles.bodyRow}>
-                                        <span style={styles.bodyLabel}>📝 Ghi chú của bạn:</span>
-                                        <span style={styles.bodyValue}>{req.notes || req.reason || '(Không có)'}</span>
+                                        <span style={styles.bodyLabel}>
+                                          {String(req.approvalStatus || req.status).toUpperCase() === 'REJECTED'
+                                              ? '❌ Lý do từ chối:'
+                                              : '📝 Ghi chú của bạn:'}
+                                        </span>
+                                        <span style={styles.bodyValue}>
+                                          {String(req.approvalStatus || req.status).toUpperCase() === 'REJECTED'
+                                              ? (req.rejectionReason || '(Không có)')
+                                              : (req.notes || req.reason || '(Không có)')}
+                                        </span>
                                     </div>
                                     <div style={styles.actions}>
                                         <button style={styles.detailButton} onClick={() => handleViewDetail(req)}>

@@ -137,8 +137,8 @@ function MeterReplacementForm() {
 
         // 2. Check Chi phí kiểm định (nếu chọn lý do Kiểm Định)
         if (formData.replacementReason === 'CALIBRATION') {
-            if (!formData.calibrationCost || Number(formData.calibrationCost) <= 0) {
-                toast.warn("Vui lòng nhập Chi phí kiểm định hợp lệ (> 0).");
+            if (!formData.calibrationCost || Number(formData.calibrationCost) <= 2000) {
+                toast.warn("Vui lòng nhập Chi phí kiểm định hợp lệ (> 2,000).");
                 return;
             }
         }

@@ -1,70 +1,71 @@
 .contact-container {
   max-width: 1200px;
-  margin: 48px auto;
-  padding: 40px;
+  /* Căn giữa và margin hợp lý cho mobile */
+  margin: 24px auto;
+  padding: 24px 20px;
   background-color: #ffffff;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-
-  /* ---  THÊM HIỆU ỨNG HOVER CHO CẢ KHUNG  --- */
+  /* Đảm bảo container không dính sát lề màn hình */
+  width: 95%; 
   transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-  /* Đảm bảo trình duyệt tối ưu hóa animation */
-  will-change: transform, box-shadow; 
+  will-change: transform, box-shadow;
 }
 
 .contact-container:hover {
-  /* 1. Nổi lên (dịch chuyển lên trên 5px) */
-  transform: translateY(-5px); 
-  /* 2. Sáng nhẹ (tăng cường độ đổ bóng) */
+  transform: translateY(-5px);
   box-shadow: 0 12px 40px rgba(30, 64, 175, 0.12);
 }
-/* --- HẾT HIỆU ỨNG HOVER --- */
 
 .contact-title {
-  font-size: 32px;
+  font-size: 26px; /* Font size vừa phải */
   font-weight: 700;
-  color: #1e40af; /* Màu xanh đậm giống header */
-  margin-bottom: 24px;
+  color: #1e40af; 
+  margin-bottom: 20px;
   border-bottom: 2px solid #e5e7eb;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
 .contact-section-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 16px;
-  margin-top: 32px;
+  margin-top: 30px;
 }
 
+/* Mặc định Mobile: Flex dọc để icon và text không chen chúc */
 .contact-item {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
-  font-size: 17px;
-  line-height: 1.7;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 1.6;
   color: #374151;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .contact-icon-wrapper {
   color: #1e40af;
-  margin-top: 5px;
+  margin-top: 0;
   flex-shrink: 0;
 }
 
 .contact-label {
   font-weight: 600;
-  color: #6b7280; /* Màu xám */
+  color: #6b7280;
   display: block;
   font-size: 14px;
   text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
 .contact-paragraph {
-  font-size: 17px; 
-  margin-bottom: 32px; 
+  font-size: 16px;
+  margin-bottom: 24px;
   color: #374151;
+  line-height: 1.6;
 }
 
 .contact-email-link {
@@ -73,12 +74,33 @@
   font-weight: 500;
   transition: all 0.2s ease;
   display: inline-block;
+  word-break: break-all; /* Ngắt dòng nếu email quá dài trên mobile */
 }
 
 .contact-email-link:hover {
-  /* Hiệu ứng riêng của link email */
   transform: scale(1.03) translateY(-2px);
   color: #2563eb;
   text-shadow: 0 0 8px rgba(30, 64, 175, 0.3);
   text-decoration: underline;
+}
+
+/* Responsive Tablet & Desktop (> 640px) */
+@media (min-width: 640px) {
+  .contact-container {
+    padding: 40px;
+    margin: 48px auto;
+  }
+
+  .contact-title {
+    font-size: 32px;
+  }
+
+  .contact-item {
+    flex-direction: row; /* Chuyển về hàng ngang */
+    gap: 16px;
+  }
+
+  .contact-icon-wrapper {
+    margin-top: 5px;
+  }
 }

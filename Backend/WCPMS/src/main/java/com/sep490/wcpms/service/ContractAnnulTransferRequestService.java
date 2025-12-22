@@ -14,6 +14,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.sep490.wcpms.repository.WaterMeterRepository;
+import com.sep490.wcpms.repository.InvoiceRepository;
+import com.sep490.wcpms.repository.WaterServiceContractRepository;
+import com.sep490.wcpms.repository.MeterInstallationRepository;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -30,15 +34,61 @@ public class ContractAnnulTransferRequestService {
     private final RoleRepository roleRepository;
     private final ContractAnnulTransferRequestMapper mapper;
 
-    // Helper: chọn Service Staff ít việc nhất (dựa trên bảng annul_transfer_contract_requests)
-    private Account pickLeastBusyServiceStaffForAnnulTransfer() {
-        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
-                .orElseThrow(() ->
-                        new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+    //Repo cần thiết sau khi thay đổi
+    private final WaterMeterRepository waterMeterRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final WaterServiceContractRepository waterServiceContractRepository;
+    private final MeterInstallationRepository meterInstallationRepository;
 
-        return accountRepository.findServiceStaffWithLeastAnnulTransferWorkload(serviceRole.getId())
+    // Helper: chọn Service Staff ít việc nhất (dựa trên bảng annul_transfer_contract_requests)
+//    private Account pickLeastBusyServiceStaffForAnnulTransfer() {
+//        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
+//                .orElseThrow(() ->
+//                        new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+//
+//        return accountRepository.findServiceStaffWithLeastAnnulTransferWorkload(serviceRole.getId())
+//                .orElseThrow(() -> new IllegalStateException(
+//                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE để phân công xử lý yêu cầu hủy/chuyển."
+//                ));
+//    }
+
+    /**
+     * Chọn Service Staff ít việc nhất nhưng phải thuộc tuyến (ReadingRoute) của hợp đồng.
+     * Ưu tiên theo số lượng yêu cầu hủy/chuyển đang PENDING được phân công (ít -> nhiều).
+     */
+    private Account pickLeastBusyServiceStaffForAnnulTransferForContract(Contract contract) {
+        if (contract == null) {
+            throw new IllegalArgumentException("contract must not be null.");
+        }
+
+        ReadingRoute route = contract.getReadingRoute();
+        if (route == null || route.getId() == null) {
+            throw new IllegalStateException(
+                    "Hợp đồng chưa được gán tuyến đọc (reading route) nên không thể tự động phân công Service Staff."
+            );
+        }
+
+        // Validate tuyến còn ACTIVE
+        if (route.getStatus() != null && route.getStatus() != ReadingRoute.Status.ACTIVE) {
+            throw new IllegalStateException(
+                    "Tuyến đọc của hợp đồng đang INACTIVE, không thể tạo yêu cầu hủy/chuyển. Vui lòng kiểm tra lại tuyến."
+            );
+        }
+
+        // Validate tuyến có ít nhất 1 Service Staff được gán quản lý
+        if (route.getServiceStaffs() == null || route.getServiceStaffs().isEmpty()) {
+            throw new IllegalStateException(
+                    "Tuyến đọc của hợp đồng chưa được gán Service Staff (route_service_assignments). Vui lòng gán nhân viên trước."
+            );
+        }
+
+        Role serviceRole = roleRepository.findByRoleName(Role.RoleName.SERVICE_STAFF)
+                .orElseThrow(() -> new IllegalStateException("Role SERVICE_STAFF không tồn tại trong hệ thống"));
+
+        return accountRepository
+                .findServiceStaffWithLeastAnnulTransferWorkloadForRoute(serviceRole.getId(), route.getId())
                 .orElseThrow(() -> new IllegalStateException(
-                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE để phân công xử lý yêu cầu hủy/chuyển."
+                        "Không tìm thấy nhân viên dịch vụ đang ACTIVE thuộc tuyến để phân công xử lý yêu cầu hủy/chuyển."
                 ));
     }
 
@@ -139,7 +189,7 @@ public class ContractAnnulTransferRequestService {
         }
 
         // NEW: tự động phân công nhân viên Service ít việc nhất
-        Account assignedServiceStaff = pickLeastBusyServiceStaffForAnnulTransfer();
+        Account assignedServiceStaff = pickLeastBusyServiceStaffForAnnulTransferForContract(contract);
         entity.setServiceStaff(assignedServiceStaff);
 
         entity = repository.save(entity);
@@ -260,6 +310,7 @@ public class ContractAnnulTransferRequestService {
         });
     }
 
+    // === UPDATE APPROVAL (ĐÃ SỬA: Check Nợ + Xử lý hậu kỳ) ===
     @Transactional
     public ContractAnnulTransferRequestDTO updateApproval(Integer id, ContractAnnulTransferRequestUpdateDTO dto) {
         log.info("[UPDATE APPROVAL] id={}, dto.approvalStatus={}, dto.approvedById={}", id, dto.getApprovalStatus(), dto.getApprovedById());
@@ -294,8 +345,15 @@ public class ContractAnnulTransferRequestService {
 
         // --- NEW: Khi từ chối, yêu cầu có lý do (notes) để audit ---
         if (dto.getApprovalStatus() == ContractAnnulTransferRequest.ApprovalStatus.REJECTED) {
-            if (dto.getNotes() == null || dto.getNotes().trim().isEmpty()) {
-                throw new IllegalArgumentException("notes (reason) is required when rejecting a request.");
+            // Kiểm tra rejectionReason thay vì notes
+            if (dto.getRejectionReason() == null || dto.getRejectionReason().trim().isEmpty()) {
+                // Nếu rejectionReason trống, thử check sang notes (để tương thích ngược nếu cần)
+                if (dto.getNotes() == null || dto.getNotes().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Lý do từ chối là bắt buộc.");
+                } else {
+                    // Nếu có notes mà ko có rejectionReason, thì copy notes sang rejectionReason
+                    dto.setRejectionReason(dto.getNotes());
+                }
             }
         }
 
@@ -306,28 +364,85 @@ public class ContractAnnulTransferRequestService {
             throw ex;
         }
 
-        // Hệ quả khi APPROVED
+        // --- HỆ QUẢ KHI DUYỆT THÀNH CÔNG (APPROVED) ---
         if (ContractAnnulTransferRequest.ApprovalStatus.APPROVED.equals(dto.getApprovalStatus())) {
             Contract contract = entity.getContract();
 
+            // --- KIỂM TRA CÔNG NỢ ---
+            // Nếu còn hóa đơn PENDING/OVERDUE -> Chặn duyệt
+            List<Invoice.PaymentStatus> debtStatuses = Arrays.asList(
+                    Invoice.PaymentStatus.PENDING,
+                    Invoice.PaymentStatus.OVERDUE
+            );
+            if (invoiceRepository.existsByContract_IdAndPaymentStatusIn(contract.getId(), debtStatuses)) {
+                throw new IllegalStateException("Không thể duyệt: Hợp đồng vẫn còn hóa đơn chưa thanh toán. Vui lòng thanh toán hết công nợ trước.");
+            }
+
+            // 1. XỬ LÝ HỦY HỢP ĐỒNG (ANNUL)
             if (entity.getRequestType() == ContractAnnulTransferRequest.RequestType.ANNUL) {
+                // A. Update Hợp đồng Lắp đặt (Cũ)
                 contract.setContractStatus(Contract.ContractStatus.TERMINATED);
                 if (contract.getEndDate() == null) {
                     contract.setEndDate(LocalDate.now());
                 }
-                contractRepository.save(contract);
+
+                // B. [MỚI] Update Hợp đồng Dịch vụ -> NGỪNG SINH HÓA ĐƠN
+                if (contract.getPrimaryWaterContract() != null) {
+                    WaterServiceContract wsc = contract.getPrimaryWaterContract();
+                    wsc.setContractStatus(WaterServiceContract.WaterServiceContractStatus.TERMINATED);
+                    wsc.setServiceEndDate(LocalDate.now());
+                    waterServiceContractRepository.save(wsc);
+                }
+
+                // C. [MỚI] Update Đồng hồ -> NGỪNG GHI NƯỚC (RETIRED)
+                Optional<MeterInstallation> installOpt = meterInstallationRepository.findByContract(contract);
+                if (installOpt.isPresent()) {
+                    WaterMeter meter = installOpt.get().getWaterMeter();
+                    if (meter != null) {
+                        meter.setMeterStatus(WaterMeter.MeterStatus.RETIRED); // Đánh dấu không dùng nữa
+                        waterMeterRepository.save(meter);
+                    }
+                }
+
                 log.info("[APPROVAL] Annul approved - contract {} terminated", contract.getId());
             }
 
+            // 2. XỬ LÝ CHUYỂN NHƯỢNG (TRANSFER)
             if (entity.getRequestType() == ContractAnnulTransferRequest.RequestType.TRANSFER) {
                 if (entity.getToCustomer() == null) {
                     throw new IllegalStateException("toCustomer is required for transfer approval.");
                 }
-                contract.setCustomer(entity.getToCustomer());
-                contractRepository.save(contract);
-                log.info("[APPROVAL] Transfer approved - contract {} customer updated to {}", contract.getId(), entity.getToCustomer().getId());
+
+                Customer newOwner = entity.getToCustomer();
+
+                // A. Sang tên Hợp đồng Lắp đặt (Cũ)
+                contract.setCustomer(newOwner);
+                if (newOwner.getAccount() != null) {
+                    contract.setContactPhone(newOwner.getAccount().getPhone());
+                }
+
+                // B. [MỚI] Sang tên Hợp đồng Dịch vụ -> ĐỂ KẾ TOÁN IN HÓA ĐƠN ĐÚNG TÊN
+                if (contract.getPrimaryWaterContract() != null) {
+                    WaterServiceContract wsc = contract.getPrimaryWaterContract();
+                    // Chỉ cập nhật nếu HĐ đang Active
+                    if (wsc.getContractStatus() == WaterServiceContract.WaterServiceContractStatus.ACTIVE) {
+                        wsc.setCustomer(newOwner);
+                        waterServiceContractRepository.save(wsc);
+                    }
+                }
+
+                // C. [MỚI] Sang tên Biên bản lắp đặt -> ĐỂ LỊCH SỬ ĐỒNG HỒ ĐÚNG CHỦ
+                Optional<MeterInstallation> installOpt = meterInstallationRepository.findByContract(contract);
+                if (installOpt.isPresent()) {
+                    MeterInstallation install = installOpt.get();
+                    install.setCustomer(newOwner);
+                    meterInstallationRepository.save(install);
+                }
+
+                log.info("[APPROVAL] Transfer approved - contract {} moved to customer {}", contract.getId(), entity.getToCustomer().getId());
             }
 
+            contractRepository.save(contract);
         }
 
         entity = repository.save(entity);
@@ -370,8 +485,11 @@ public class ContractAnnulTransferRequestService {
         dto.setId(request.getId());
         // map request and contract identifiers
         dto.setRequestNumber(request.getRequestNumber());
-        dto.setContractId(request.getContract() != null ? request.getContract().getId() : null);
-        dto.setContractNumber(request.getContract() != null ? request.getContract().getContractNumber() : null);
+        if (request.getContract() != null) {
+            dto.setContractId(request.getContract().getId());
+            dto.setContractNumber(request.getContract().getContractNumber());
+        }
+
         dto.setRequestType(request.getRequestType() != null ? request.getRequestType().name() : null);
         dto.setApprovalStatus(request.getApprovalStatus() != null ? request.getApprovalStatus().name() : null);
         dto.setRequestedById(request.getRequestedBy() != null ? request.getRequestedBy().getId() : null);
@@ -379,12 +497,19 @@ public class ContractAnnulTransferRequestService {
         dto.setRequestDate(request.getRequestDate());
         dto.setApprovalDate(request.getApprovalDate());
         dto.setReason(request.getReason());
+        dto.setRejectionReason(request.getRejectionReason());
+        dto.setCreatedDate(request.getCreatedAt());
+        dto.setProcessedDate(request.getApprovalDate());
         dto.setNotes(request.getNotes());
         dto.setAttachedEvidence(request.getAttachedEvidence());
 
         dto.setCreatedAt(request.getCreatedAt());
         dto.setUpdatedAt(request.getUpdatedAt());
-        dto.setRejectionReason(request.getRejectionReason());
+
+        if (request.getRequestedBy() != null) {
+            dto.setRequestedById(request.getRequestedBy().getId());
+            dto.setRequestedByUsername(request.getRequestedBy().getUsername());
+        }
 
         if (request.getFromCustomer() != null) {
             dto.setFromCustomerId(request.getFromCustomer().getId());

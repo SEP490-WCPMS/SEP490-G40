@@ -78,8 +78,27 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
       onCancel && onCancel();
     } catch (err) {
       setShowApproveConfirm(false);
-      console.error('Approve action error:', err);
-      toast.error('Duyệt yêu cầu thất bại');
+   console.error('Approve action error details:', err);
+
+      // 1. Xác định thông báo lỗi
+      let message = 'Duyệt yêu cầu thất bại'; // Mặc định
+
+      if (err.response && err.response.data) {
+          const data = err.response.data;
+          // Ưu tiên lấy message từ backend trả về
+          if (typeof data === 'string') {
+              message = data;
+          } else if (data.message) {
+              message = data.message;
+          } else if (data.error) {
+              message = data.error;
+          }
+      } else if (err.message) {
+          message = err.message;
+      }
+
+      // 2. Hiển thị Toast (Sửa errorMessage thành message)
+      toast.error(message);
     } finally {
       setApproving(false);
     }
@@ -114,6 +133,9 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
       confirmLoading={loading}
       width={900}
       destroyOnClose
+      centered
+      bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+      style={{ top: 20 }}
       footer={(
         <Space>
           {statusCode === 'PENDING' && (
@@ -250,13 +272,18 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
         open={rejectModalVisible}
         onCancel={() => { setRejectModalVisible(false); setRejectReason(''); }}
         onOk={async () => {
+          // --- THÊM CHECK RỖNG ---
+          if (!rejectReason || !rejectReason.trim()) {
+             toast.warning("Vui lòng nhập lý do từ chối");
+             return; // Dừng lại, không gọi API
+          }
           try {
             setActionLoading(true);
             const id = data.requestId || data.id;
             if (typeCode === 'TRANSFER') {
-              await rejectTransferRequest(id, rejectReason || 'Từ chối bởi nhân viên');
+              await rejectTransferRequest(id, rejectReason); 
             } else if (typeCode === 'ANNUL') {
-              await rejectAnnulRequest(id, rejectReason || 'Từ chối bởi nhân viên');
+              await rejectAnnulRequest(id, rejectReason);
             }
             toast.success('Từ chối yêu cầu thành công');
             setRejectModalVisible(false); // Đóng modal lý do trước
@@ -268,6 +295,7 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
             }, 0);
           } catch (err) {
             console.error('Reject action error:', err);
+            const errorMessage = err.response?.data?.message || 'Từ chối yêu cầu thất bại';
             toast.error('Từ chối yêu cầu thất bại');
           } finally {
             setActionLoading(false);
@@ -275,6 +303,9 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
         }}
         okText="Xác nhận"
         okButtonProps={{ danger: true }}
+        centered
+        bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
+        style={{ top: 24 }}
       >
         <Input.TextArea rows={4} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Nhập lý do từ chối (bắt buộc)" />
       </Modal>

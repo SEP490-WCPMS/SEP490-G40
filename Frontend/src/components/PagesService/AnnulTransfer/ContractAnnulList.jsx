@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Table, Tag, Dropdown } from 'antd';
 // Thêm các icon cần thiết
 import { FilterOutlined, CheckOutlined } from '@ant-design/icons';
+import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import { getAnnulRequests, getServiceRequestDetail } from '../../Services/apiService';
 import RequestDetailModal from './RequestDetailModal';
 import Pagination from '../../common/Pagination';
@@ -160,6 +161,35 @@ const ContractAnnulList = ({ refreshKey, keyword }) => {
       .finally(() => setDetailLoading(false));
   };
 
+  // Mobile card view
+  const MobileCard = ({ record }) => (
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2 text-blue-700 font-medium">
+          <FileText size={16} />
+          <span>{record.contractNumber}</span>
+        </div>
+        {renderStatus(record.status)}
+      </div>
+
+      <div className="flex items-start gap-2 mt-1">
+        <User size={16} className="text-gray-400 mt-1 shrink-0" />
+        <div>
+          <div className="font-medium text-gray-800">{record.customerName}</div>
+          <div className="text-xs text-gray-500">{record.requestDate ? new Date(record.requestDate).toLocaleDateString('vi-VN') : '—'}</div>
+        </div>
+      </div>
+
+      <div className="pl-6 space-y-1 text-sm text-gray-600">
+        {record.reason && (<div className="flex items-center gap-2"><MapPin size={14} className="text-gray-400" /> <span className="line-clamp-2">{record.reason}</span></div>)}
+      </div>
+
+      <div className="border-t border-gray-100 pt-3 mt-2">
+        <button onClick={() => handleViewDetails(record)} className="font-semibold text-indigo-600 hover:text-indigo-900">Chi tiết & Xử lý</button>
+      </div>
+    </div>
+  );
+
   const fetchData = async (params = {}) => {
     setLoading(true);
     try {
@@ -232,18 +262,29 @@ const ContractAnnulList = ({ refreshKey, keyword }) => {
         styles={{ body: { padding: 0 } }} 
         className="overflow-hidden rounded-lg shadow-sm border border-gray-200"
       > 
-        <div className="overflow-x-auto">
-            <Table
-              columns={columns}
-              dataSource={annuls}
-              pagination={false} 
-              loading={loading}
-              rowKey="id"
-              onChange={handleTableChange}
-              onRow={(record) => ({ 'data-contract-id': record.id })}
-              style={{ marginBottom: 0 }} 
-              className="no-border-last-row"
-            />
+        {/* Mobile cards for small screens */}
+        <div className="block sm:hidden px-4 py-3">
+          {loading ? (
+            <div className="py-8 text-center text-gray-500"><Loader2 className="animate-spin inline-block" size={18} /> Đang tải...</div>
+          ) : annuls && annuls.length > 0 ? (
+            annuls.map(r => <MobileCard key={r.id} record={r} />)
+          ) : (
+            <div className="text-center text-gray-500 py-8 bg-white rounded-lg border border-dashed">Không có dữ liệu</div>
+          )}
+        </div>
+
+        <div className="hidden sm:block overflow-x-auto">
+          <Table
+            columns={columns}
+            dataSource={annuls}
+            pagination={false} 
+            loading={loading}
+            rowKey="id"
+            onChange={handleTableChange}
+            onRow={(record) => ({ 'data-contract-id': record.id })}
+            style={{ marginBottom: 0 }} 
+            className="no-border-last-row"
+          />
         </div>
         
         {!loading && annuls.length > 0 && (

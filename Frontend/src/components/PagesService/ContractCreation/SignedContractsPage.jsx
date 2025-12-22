@@ -120,7 +120,7 @@ const SignedContractsPage = ({ refreshKey }) => {
             console.log('[SEND TO INSTALL] API success!');
             
             // Show success message
-            toast.success('Đã gửi lắp đặt, hợp đồng chuyển sang "Chờ lắp đặt".', {
+            toast.success('Đã gửi lắp đặt thành công.', {
                 position: "top-center",
                 autoClose: 3000,
             });
