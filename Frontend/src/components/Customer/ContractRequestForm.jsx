@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
+// import { Input } from '../ui/input'; // Đảm bảo import đúng
+// import { Button } from '../ui/button';
 
 const ContractRequestForm = () => {
     const navigate = useNavigate();
@@ -22,18 +22,23 @@ const ContractRequestForm = () => {
 
     // --- 1. Load Data & Auto-map Customer Info ---
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem('user'));
+        const storedUserString = localStorage.getItem('user');
         const storedToken = localStorage.getItem('token');
 
-        if (storedUser && storedToken) {
-            setUser(storedUser);
-            setToken(storedToken);
-            // TỰ ĐỘNG MAP HỌ TÊN VÀ SĐT TỪ TÀI KHOẢN
-            setFormData(prev => ({
-                ...prev,
-                fullName: storedUser.fullName || '',
-                phone: storedUser.phone || ''
-            }));
+        if (storedUserString && storedToken) {
+            try {
+                const storedUser = JSON.parse(storedUserString);
+                setUser(storedUser);
+                setToken(storedToken);
+
+                // MAP DỮ LIỆU TỰ ĐỘNG
+                // Nếu là khách hàng đăng nhập, tự điền Tên và SĐT
+                setFormData(prev => ({
+                    ...prev,
+                    fullName: storedUser.fullName || storedUser.username || '',
+                    phone: storedUser.phone || storedUser.phoneNumber || storedUser.username || ''
+                }));
+            } catch (e) { console.error(e); }
         }
 
         const fetchData = async () => {
@@ -58,10 +63,11 @@ const ContractRequestForm = () => {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
-    // --- HÀM VALIDATE SỐ ĐIỆN THOẠI VN ---
+    // --- [MỚI] HÀM VALIDATE SỐ ĐIỆN THOẠI CHUẨN VN ---
     const validateVietnamesePhone = (phone) => {
-        const regex = /(03|05|07|08|09|01[2|6|8|9])+([0-9]{8})\b/;
-        return regex.test(phone) && phone.length === 10;
+        // Regex: Bắt đầu bằng 03, 05, 07, 08, 09 và theo sau là 8 chữ số
+        const regex = /^(03|05|07|08|09)\d{8}$/;
+        return regex.test(phone);
     };
 
     const handleSubmit = async (e) => {
@@ -75,9 +81,9 @@ const ContractRequestForm = () => {
             return;
         }
 
-        // 2. Validate SĐT Việt Nam
+        // 2. Validate SĐT
         if (!validateVietnamesePhone(formData.phone)) {
-            setError("Số điện thoại không đúng định dạng Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09).");
+            setError("Số điện thoại không đúng định dạng (phải là 10 số, đầu 03, 05, 07, 08, 09).");
             setLoading(false);
             return;
         }
@@ -92,17 +98,21 @@ const ContractRequestForm = () => {
             };
 
             if (user && token) {
+                // Khách hàng đã đăng nhập
                 await axios.post('http://localhost:8080/api/contract-request/request', payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 navigate('/my-requests');
             } else {
+                // Khách vãng lai (Guest)
                 await axios.post('http://localhost:8080/api/public/contracts/guest-request', payload);
-                setMessage("🎉 Gửi yêu cầu thành công! Nhân viên sẽ sớm liên hệ với bạn.");
+                setMessage("🎉 Gửi yêu cầu thành công! Nhân viên sẽ sớm liên hệ với bạn qua SĐT đã cung cấp.");
                 setTimeout(() => navigate('/'), 5000);
             }
         } catch (err) {
-            setError(err.response?.data?.message || "Gửi yêu cầu thất bại.");
+            // Hiển thị lỗi từ Backend (ví dụ: SĐT đã tồn tại)
+            const msg = err.response?.data?.message || err.response?.data || "Gửi yêu cầu thất bại.";
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -111,75 +121,27 @@ const ContractRequestForm = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : 'N/A';
 
-    // --- STYLES OBJECT (CSS-IN-JS) ---
+    // Styles (Giữ nguyên style của bạn)
     const styles = {
-        container: {
-            maxWidth: '900px',
-            margin: '40px auto',
-            padding: '40px',
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
-            fontFamily: "'Inter', sans-serif"
-        },
-        title: {
-            fontSize: '28px', fontWeight: '700', color: '#0A77E2', marginBottom: '8px', textAlign: 'center'
-        },
-        description: {
-            fontSize: '14px', color: '#6b7280', marginBottom: '30px', textAlign: 'center'
-        },
-        alert: (isError) => ({
-            padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', marginBottom: '20px',
-            backgroundColor: isError ? '#fef2f2' : '#ecfdf5',
-            color: isError ? '#991b1b' : '#065f46',
-            borderLeft: `4px solid ${isError ? '#ef4444' : '#10b981'}`
-        }),
-        sectionTitle: {
-            fontSize: '18px', fontWeight: '600', color: '#374151', borderBottom: '2px solid #f3f4f6', paddingBottom: '10px', marginBottom: '20px', marginTop: '10px'
-        },
-        formRow: {
-            display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap'
-        },
-        formGroup: {
-            flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '250px'
-        },
-        label: {
-            fontSize: '14px', fontWeight: '600', color: '#374151'
-        },
-        input: {
-            padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', transition: 'all 0.2s'
-        },
-        // Style cho input bị khóa (khi đã đăng nhập)
-        inputReadOnly: {
-            padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#e5e7eb', width: '100%', color: '#6b7280', cursor: 'not-allowed'
-        },
-        select: {
-            padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em'
-        },
-        small: {
-            fontSize: '12px', color: '#6b7280', marginTop: '4px'
-        },
-        textarea: {
-            padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', minHeight: '100px', resize: 'vertical'
-        },
-        tableWrapper: {
-            marginTop: '10px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e5e7eb', overflowX: 'auto'
-        },
-        table: {
-            width: '100%', borderCollapse: 'collapse', fontSize: '13px'
-        },
-        th: {
-            textAlign: 'left', padding: '10px', color: '#4b5563', borderBottom: '1px solid #d1d5db', fontWeight: '600'
-        },
-        td: {
-            padding: '10px', color: '#374151', borderBottom: '1px solid #e5e7eb'
-        },
-        submitBtn: {
-            width: '100%', padding: '14px', backgroundColor: '#0A77E2', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginTop: '20px'
-        },
-        cancelBtn: {
-            marginTop: '10px', width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '14px'
-        }
+        container: { maxWidth: '900px', margin: '40px auto', padding: '40px', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)', fontFamily: "'Inter', sans-serif" },
+        title: { fontSize: '28px', fontWeight: '700', color: '#0A77E2', marginBottom: '8px', textAlign: 'center' },
+        description: { fontSize: '14px', color: '#6b7280', marginBottom: '30px', textAlign: 'center' },
+        alert: (isError) => ({ padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', marginBottom: '20px', backgroundColor: isError ? '#fef2f2' : '#ecfdf5', color: isError ? '#991b1b' : '#065f46', borderLeft: `4px solid ${isError ? '#ef4444' : '#10b981'}` }),
+        sectionTitle: { fontSize: '18px', fontWeight: '600', color: '#374151', borderBottom: '2px solid #f3f4f6', paddingBottom: '10px', marginBottom: '20px', marginTop: '10px' },
+        formRow: { display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' },
+        formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '250px' },
+        label: { fontSize: '14px', fontWeight: '600', color: '#374151' },
+        input: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', transition: 'all 0.2s' },
+        inputReadOnly: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#e5e7eb', width: '100%', color: '#6b7280', cursor: 'not-allowed', fontWeight: '500' },
+        select: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%' },
+        small: { fontSize: '12px', color: '#6b7280', marginTop: '4px' },
+        textarea: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', minHeight: '100px', resize: 'vertical' },
+        tableWrapper: { marginTop: '10px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e5e7eb', overflowX: 'auto' },
+        table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
+        th: { textAlign: 'left', padding: '10px', color: '#4b5563', borderBottom: '1px solid #d1d5db', fontWeight: '600' },
+        td: { padding: '10px', color: '#374151', borderBottom: '1px solid #e5e7eb' },
+        submitBtn: { width: '100%', padding: '14px', backgroundColor: '#0A77E2', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginTop: '20px' },
+        cancelBtn: { marginTop: '10px', width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '14px' }
     };
 
     return (
@@ -192,10 +154,7 @@ const ContractRequestForm = () => {
                 {error && <div style={styles.alert(true)}>{error}</div>}
 
                 <form onSubmit={handleSubmit}>
-
-                    {/* KHỐI 1: THÔNG TIN KHÁCH HÀNG */}
                     <div style={styles.sectionTitle}>1. Thông tin liên hệ</div>
-
                     <div style={styles.formRow}>
                         <div style={styles.formGroup}>
                             <label htmlFor="fullName" style={styles.label}>Họ và tên (*)</label>
@@ -206,7 +165,6 @@ const ContractRequestForm = () => {
                                 value={formData.fullName}
                                 onChange={handleChange}
                                 required
-                                placeholder="Nguyễn Văn A"
                             />
                         </div>
                         <div style={styles.formGroup}>
@@ -218,7 +176,6 @@ const ContractRequestForm = () => {
                                 value={formData.phone}
                                 onChange={handleChange}
                                 required
-                                placeholder="0912..."
                                 maxLength="10"
                             />
                         </div>
@@ -229,9 +186,7 @@ const ContractRequestForm = () => {
                         <input id="address" type="text" style={styles.input} value={formData.address} onChange={handleChange} required placeholder="Số nhà, đường, xã/phường, quận/huyện..." />
                     </div>
 
-                    {/* KHỐI 2: THÔNG TIN DỊCH VỤ */}
                     <div style={styles.sectionTitle}>2. Thông tin dịch vụ</div>
-
                     <div style={styles.formRow}>
                         <div style={styles.formGroup}>
                             <label htmlFor="routeId" style={styles.label}>Tuyến đọc (Khu vực) (*)</label>
@@ -259,12 +214,11 @@ const ContractRequestForm = () => {
                         </select>
                     </div>
 
-                    {/* BẢNG GIÁ CHI TIẾT */}
                     {priceDetails.length > 0 && (
                         <div style={styles.tableWrapper}>
                             <label style={{ fontWeight: 600, marginBottom: '10px', display: 'block', color: '#4b5563' }}>📊 Bảng giá tham khảo</label>
                             <table style={styles.table}>
-                                <thead>
+                                y={!!user} // Khóa nếu đã đăng nhập    <thead>
                                     <tr>
                                         <th style={styles.th}>Loại</th>
                                         <th style={styles.th}>Đơn giá</th>
