@@ -7,7 +7,10 @@ import {
     FileTextOutlined,
     CalendarOutlined,
     FilterOutlined,
-    CheckOutlined
+    CheckOutlined,
+    ToolOutlined,
+    InfoCircleOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import Pagination from '../../common/Pagination';
@@ -129,20 +132,19 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         items: [
             { key: 'all', label: <div className="flex justify-between items-center w-full min-w-[120px]">Tất cả {filters.status === 'all' && <CheckOutlined className="text-blue-600" />}</div> },
             { key: 'ACTIVE', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-2"></span>Đang hoạt động</div> {filters.status === 'ACTIVE' && <CheckOutlined className="text-blue-600" />}</div> },
-            { key: 'TERMINATED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-2"></span>Đã chấm dứt</div> {filters.status === 'TERMINATED' && <CheckOutlined className="text-blue-600" />}</div> },
             { key: 'EXPIRED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-gray-500 inline-block mr-2"></span>Hết hạn</div> {filters.status === 'EXPIRED' && <CheckOutlined className="text-blue-600" />}</div> },
+            { key: 'TERMINATED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-2"></span>Đã chấm dứt</div> {filters.status === 'TERMINATED' && <CheckOutlined className="text-blue-600" />}</div> },
         ],
         onClick: handleMenuClick
     };
 
-    // Helper render style badge (giống ContractTable)
+    // Helper render style badge
     const renderStatusBadge = (status) => {
         const s = (status || '').toUpperCase();
         const map = {
             ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
             EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
             TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
-            SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
             SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
         };
         // Fallback
@@ -155,7 +157,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         );
     };
 
-    // --- CARD VIEW CHO MOBILE (Đã cập nhật đủ nút hành động) ---
+    // --- CARD VIEW CHO MOBILE ---
     const MobileCard = ({ record }) => (
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
             <div className="flex justify-between items-start">
@@ -195,8 +197,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                 <div className="flex flex-wrap items-center gap-3 justify-end">
                     {/* Luôn hiện nút Chi tiết */}
                     <button onClick={() => handleOpenModal(record, 'view')} className="font-semibold text-indigo-600 hover:text-indigo-900 text-sm">Chi tiết</button>
-
-                    {/* Logic nút hành động: Chỉ giữ lại nút Renew cho EXPIRED. Các nút khác đã bỏ. */}
                     {record.contractStatus === 'EXPIRED' && (
                         <button onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-blue-600 hover:text-blue-800 text-sm">Gia hạn</button>
                     )}
@@ -216,26 +216,78 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         return map[m] || method;
     };
 
+    const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
+    const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
+
     const renderModalContent = () => {
         if (modalType === 'view') {
             const c = selectedContract || {};
-            const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
-            const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
             return (
                 <div className="space-y-4 pt-2">
+                    {/* 1. Header */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã Hợp đồng</div><div className="text-2xl font-bold text-blue-700">{c.contractNumber || '—'}</div></div>
                             <div className="text-right"><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>{renderStatusBadge(c.contractStatus)}</div>
                         </div>
                     </div>
+
+                    {/* 2. Thông tin khách hàng */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Thông tin khách hàng</div>
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><UserOutlined className="mr-1" /> Thông tin khách hàng</div>
                         <div className="grid grid-cols-2 gap-4">
                             <div><div className="text-xs text-gray-500 mb-1">Tên khách hàng</div><div className="font-semibold text-gray-800">{c.customerName || '—'}</div></div>
                             {c.customerCode && (<div><div className="text-xs text-gray-500 mb-1">Mã khách hàng</div><div className="font-medium text-gray-800">{c.customerCode}</div></div>)}
                         </div>
                     </div>
+
+                    {/* 3. --- THÊM MỚI: THÔNG TIN KHẢO SÁT & KỸ THUẬT (Đã bổ sung) --- */}
+                    {(c?.surveyDate || c?.technicalStaffName || c?.technicalDesign || c?.estimatedCost != null) && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                                <ToolOutlined className="mr-1" /> Thông tin khảo sát & kỹ thuật
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {c?.surveyDate && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Ngày khảo sát</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <CalendarOutlined className="text-green-500" />
+                                            {fmtDate(c.surveyDate)}
+                                        </div>
+                                    </div>
+                                )}
+                                {c?.technicalStaffName && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Nhân viên kỹ thuật</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <UserOutlined className="text-orange-500" />
+                                            {c.technicalStaffName}
+                                        </div>
+                                    </div>
+                                )}
+                                {c?.estimatedCost != null && (
+                                    <div className="col-span-2">
+                                        <div className="text-xs text-gray-500 mb-1">Chi phí ước tính</div>
+                                        <div className="font-bold text-lg text-orange-600">
+                                            {fmtMoney(c.estimatedCost)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            {c?.technicalDesign && (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <div className="text-xs text-gray-500 mb-1">Thiết kế kỹ thuật</div>
+                                    <div className="bg-white p-3 rounded border border-gray-200 text-sm text-gray-800 whitespace-pre-wrap">
+                                        {c.technicalDesign}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {/* ------------------------------------------------------------------ */}
+
+                    {/* 4. Thông tin hợp đồng */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><CalendarOutlined className="mr-1" /> Thông tin hợp đồng</div>
                         <div className="grid grid-cols-2 gap-4">
@@ -243,10 +295,34 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                             {c.endDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-red-500" />{fmtDate(c.endDate)}</div></div>)}
                             {c.contractValue != null && (<div><div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div><div className="font-bold text-lg text-green-600">{fmtMoney(c.contractValue)}</div></div>)}
                             {c.paymentMethod && (<div className="col-span-2"><div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div><div className="font-medium text-gray-800">{formatPaymentMethod(c.paymentMethod)}</div></div>)}
+                            
+                            {/* Thêm Staff phụ trách nếu có */}
+                            {c.serviceStaffName && (
+                                <div className="col-span-2">
+                                    <div className="text-xs text-gray-500 mb-1">Nhân viên dịch vụ phụ trách</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <UserOutlined className="text-blue-500" />
+                                        {c.serviceStaffName}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* 5. Ảnh lắp đặt */}
                     {c.installationImageBase64 && (<div className="bg-gray-50 p-4 rounded-lg border border-gray-200"><div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ</div><div className="flex justify-center"><img src={`data:image/jpeg;base64,${c.installationImageBase64}`} alt="Installation" className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" /></div></div>)}
-                    {(c.notes || c.customerNotes) && (<div className="bg-blue-50 p-4 rounded-lg border border-blue-200"><div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2"><FileTextOutlined className="mr-1" /> Ghi chú</div><div className="text-sm text-gray-800 whitespace-pre-wrap">{c.notes || c.customerNotes || '—'}</div></div>)}
+                    
+                    {/* 6. Ghi chú */}
+                    {(c.notes || c.customerNotes) && (
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2">
+                                <InfoCircleOutlined className="mr-1" /> Ghi chú
+                            </div>
+                            <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {c.notes || c.customerNotes || '—'}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         } else if (modalType === 'renew') {

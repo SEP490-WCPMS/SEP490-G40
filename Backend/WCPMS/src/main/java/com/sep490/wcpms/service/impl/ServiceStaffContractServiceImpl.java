@@ -995,6 +995,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setProcessedDate(request.getApprovalDate());
         dto.setCreatedAt(request.getCreatedAt());
         dto.setUpdatedAt(request.getUpdatedAt());
+        dto.setAttachedEvidence(request.getAttachedEvidence());
         if (request.getContract() != null) {
             dto.setContractId(request.getContract().getId());
             dto.setContractNumber(request.getContract().getContractNumber());

@@ -22,6 +22,7 @@ const CONTRACT_STATUS_MAP = {
  * Dùng khi click "Chi tiết" ở dashboard
  */
 const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) => {
+    // Hỗ trợ cả prop 'visible' (cũ) và 'open' (mới của AntD)
     const isOpen = Boolean(typeof visible === 'undefined' ? open : visible);
 
     useEffect(() => {
@@ -56,6 +57,14 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const fmtDate = (d) => (d ? moment(d).format('DD/MM/YYYY') : '—');
     // Định dạng số tiền theo locale vi-VN và thêm 'đ'
     const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
+    
+    // Helper format phương thức thanh toán
+    const formatPaymentMethod = (method) => {
+        if (!method) return '—';
+        const m = String(method).trim().toUpperCase();
+        const map = { 'BANK_TRANSFER': 'Chuyển khoản', 'CASH': 'Tiền mặt' };
+        return map[m] || method;
+    };
 
     return (
         <Modal
@@ -78,7 +87,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         >
             <Spin spinning={loading}>
                 <div className="space-y-4 pt-2">
-                    {/* Header: Mã HĐ và Trạng thái */}
+                    {/* 1. Header: Mã HĐ và Trạng thái */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
@@ -92,7 +101,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                     </div>
 
-                    {/* Thông tin Khách hàng */}
+                    {/* 2. Thông tin Khách hàng */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
                             <UserOutlined className="mr-1" /> Thông tin khách hàng
@@ -126,7 +135,8 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                     </div>
 
-                    {/* Thông tin Khảo sát & Kỹ thuật */}
+                    {/* 3. Thông tin Khảo sát & Kỹ thuật */}
+                    {/* Phần này hiển thị khi đã qua bước khảo sát (có ngày khảo sát, nhân viên kỹ thuật hoặc chi phí dự kiến) */}
                     {(initialData?.surveyDate || initialData?.technicalStaffName || initialData?.technicalDesign || initialData?.estimatedCost != null) && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
@@ -171,7 +181,8 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                     )}
 
-                    {/* Thông tin Hợp đồng */}
+                    {/* 4. Thông tin Hợp đồng */}
+                    {/* Phần này hiển thị khi hợp đồng đã được tạo (có ngày bắt đầu, giá trị hợp đồng, v.v.) */}
                     {(initialData?.startDate || initialData?.endDate || initialData?.contractValue != null || initialData?.paymentMethod || initialData?.serviceStaffName) && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
@@ -205,13 +216,10 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     </div>
                                 )}
                                 {initialData?.paymentMethod && (
-                                    <div>
+                                    <div className="col-span-2">
                                         <div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div>
                                         <div className="font-medium text-gray-800">
-                                            {initialData.paymentMethod === 'BANK_TRANSFER' ? 'Chuyển khoản' : 
-                                             initialData.paymentMethod === 'CASH' ? 'Tiền mặt' : 
-                                             initialData.paymentMethod === 'CREDIT_CARD' ? 'Thẻ tín dụng' : 
-                                             initialData.paymentMethod}
+                                            {formatPaymentMethod(initialData.paymentMethod)}
                                         </div>
                                     </div>
                                 )}
@@ -228,14 +236,31 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                     )}
 
-                    {/* Ghi chú */}
-                    {initialData?.notes && (
+                    {/* 5. Ảnh lắp đặt đồng hồ */}
+                    {/* Chỉ hiển thị nếu có ảnh (thường là sau khi lắp đặt xong - trạng thái ACTIVE, SIGNED...) */}
+                    {initialData?.installationImageBase64 && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                                <FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ
+                            </div>
+                            <div className="flex justify-center">
+                                <img 
+                                    src={`data:image/jpeg;base64,${initialData.installationImageBase64}`} 
+                                    alt="Installation" 
+                                    className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" 
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 6. Ghi chú */}
+                    {(initialData?.notes || initialData?.customerNotes) && (
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                             <div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2">
                                 <InfoCircleOutlined className="mr-1" /> Ghi chú
                             </div>
                             <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                                {initialData.notes}
+                                {initialData.notes || initialData.customerNotes || '—'}
                             </div>
                         </div>
                     )}
