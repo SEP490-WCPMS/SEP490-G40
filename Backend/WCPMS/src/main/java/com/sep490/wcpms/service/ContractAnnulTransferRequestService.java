@@ -64,7 +64,7 @@ public class ContractAnnulTransferRequestService {
         ReadingRoute route = contract.getReadingRoute();
         if (route == null || route.getId() == null) {
             throw new IllegalStateException(
-                    "Hợp đồng chưa được gán tuyến đọc (reading route) nên không thể tự động phân công Service Staff."
+                    "Hợp đồng chưa được gán tuyến đọc nên không thể tự động phân công Service Staff."
             );
         }
 
@@ -78,7 +78,7 @@ public class ContractAnnulTransferRequestService {
         // Validate tuyến có ít nhất 1 Service Staff được gán quản lý
         if (route.getServiceStaffs() == null || route.getServiceStaffs().isEmpty()) {
             throw new IllegalStateException(
-                    "Tuyến đọc của hợp đồng chưa được gán Service Staff (route_service_assignments). Vui lòng gán nhân viên trước."
+                    "Tuyến đọc của hợp đồng chưa được gán Service Staff. Vui lòng gán nhân viên trước."
             );
         }
 
@@ -142,15 +142,14 @@ public class ContractAnnulTransferRequestService {
         Account requestedBy = accountRepository.findById(dto.getRequestedById())
                 .orElseThrow(() -> new ResourceNotFoundException("Account (requestedById) not found: " + dto.getRequestedById()));
 
-        // VALIDATE HỢP ĐỒNG ĐANG ACTIVE TẠO YÊU CẦU HỦY/CHUYỂN
+        // Kiểm tra trạng thái hợp đồng phải là ACTIVE
         if (contract.getContractStatus() != Contract.ContractStatus.ACTIVE) {
             throw new IllegalStateException(
                     "Chỉ những hợp đồng đang ở trạng thái ACTIVE mới được tạo yêu cầu hủy/chuyển."
             );
         }
 
-        // Không cho tạo thêm khi hợp đồng đang có request PENDING (tránh spam),
-        // nhưng sau khi APPROVED/REJECTED thì hợp đồng vẫn có thể tạo request mới.
+        // Kiểm tra hợp đồng đã có yêu cầu hủy/chuyển đang PENDING chưa
         if (repository.existsByContractIdAndApprovalStatus(
                 contract.getId(),
                 ContractAnnulTransferRequest.ApprovalStatus.PENDING)) {
@@ -158,19 +157,50 @@ public class ContractAnnulTransferRequestService {
         }
 
         Customer fromCustomer = null, toCustomer = null;
+
+        // Chỉ cần validate from/to khi là chuyển nhượng
         if (type.equalsIgnoreCase("transfer")) {
             if (dto.getFromCustomerId() == null || dto.getToCustomerId() == null) {
                 throw new IllegalArgumentException("fromCustomerId and toCustomerId are required for transfer.");
             }
-            // TỪ ĐÂY TRỞ ĐI:
-            // fromCustomerId / toCustomerId có thể là:
-            //  - customers.id
-            //  - accounts.id (account của khách)
+            // fromCustomerId / toCustomerId có thể là customers.id hoặc accounts.id
             Integer fromId = dto.getFromCustomerId();
             Integer toId   = dto.getToCustomerId();
 
             fromCustomer = resolveCustomerFlexible(fromId, "From");
             toCustomer   = resolveCustomerFlexible(toId,   "To");
+
+            // validate fromCustomer trùng với chủ hợp đồng và toCustomer phải là tài khoản khác, là CUSTOMER và đang hoạt động
+            boolean sameCustomerId = Objects.equals(fromCustomer.getId(), toCustomer.getId());
+            boolean sameAccountId = (fromCustomer.getAccount() != null && toCustomer.getAccount() != null)
+                    && Objects.equals(fromCustomer.getAccount().getId(), toCustomer.getAccount().getId());
+
+            // không thể chuyển cho chính mình
+            if (sameCustomerId || sameAccountId) {
+                throw new IllegalArgumentException("Không thể chuyển hợp đồng cho chính mình.");
+            }
+
+            // validate fromCustomer là chủ hợp đồng hiện tại
+            if (contract.getCustomer() == null) {
+                throw new IllegalStateException("Hợp đồng không có khách.");
+            }
+
+            // validate fromCustomer trùng với chủ hợp đồng
+            if (!Objects.equals(contract.getCustomer().getId(), fromCustomer.getId())) {
+                throw new IllegalArgumentException("fromCustomerId không khớp với chủ hợp đồng hiện tại.");
+            }
+
+            // validate toCustomer là tài khoản CUSTOMER và đang hoạt động
+            if (toCustomer.getAccount() == null
+                    || toCustomer.getAccount().getRole() == null
+                    || toCustomer.getAccount().getRole().getRoleName() != Role.RoleName.CUSTOMER) {
+                throw new IllegalArgumentException("toCustomerId phải là tài khoản khách hàng hợp lệ.");
+            }
+
+            // validate tài khoản toCustomer đang hoạt động
+            if (toCustomer.getAccount().getStatus() != null && toCustomer.getAccount().getStatus() == 0) {
+                throw new IllegalArgumentException("Tài khoản nhận chuyển nhượng đang bị khóa/không hoạt động.");
+            }
         }
 
         ContractAnnulTransferRequest entity;
@@ -188,14 +218,14 @@ public class ContractAnnulTransferRequestService {
             entity.setApprovalStatus(ContractAnnulTransferRequest.ApprovalStatus.PENDING);
         }
 
-        // NEW: tự động phân công nhân viên Service ít việc nhất
+        // tự động phân công nhân viên Service ít việc nhất
         Account assignedServiceStaff = pickLeastBusyServiceStaffForAnnulTransferForContract(contract);
         entity.setServiceStaff(assignedServiceStaff);
 
         entity = repository.save(entity);
 
         try {
-            // Use service-level converter which includes fallback to contract.customer when fromCustomer is null
+            // log kết và trả về DTO
             ContractAnnulTransferRequestDTO out = convertToAnnulTransferDTO(entity);
              log.info("[REQUEST CREATED] id={}, contractId={}, type={}, requestedById={}", out.getId(), out.getContractId(), out.getRequestType(), out.getRequestedById());
              return out;
@@ -225,6 +255,7 @@ public class ContractAnnulTransferRequestService {
                                                         LocalDate to,
                                                         String q,
                                                         Pageable pageable) {
+        // Xây dựng Specification động
         Specification<ContractAnnulTransferRequest> spec = Specification.allOf(
                 ContractAnnulTransferRequestSpecs.requestedByEq(requestedById),
                 ContractAnnulTransferRequestSpecs.contractIdEq(contractId),
@@ -274,7 +305,7 @@ public class ContractAnnulTransferRequestService {
                 }
             }
         } catch (Exception ignored) {
-            // Nếu có lỗi ở đoạn xác định user/role thì bỏ qua, trả full như cũ
+            // có lỗi khi lấy user hiện tại, bỏ qua không filter
         }
 
         Page<ContractAnnulTransferRequest> page = repository.findAll(spec, pageable);
@@ -302,9 +333,6 @@ public class ContractAnnulTransferRequestService {
                 if (entity.getApprovalStatus() != null) {
                     dto.setApprovalStatus(entity.getApprovalStatus().name());
                 }
-
-                // Các field khác (from/toCustomer, requestedBy, serviceStaff, ...) để null cũng được
-                // vì mục đích của FE đang là chỉ cần contractId để loại ra khỏi dropdown.
                 return dto;
             }
         });
@@ -480,6 +508,7 @@ public class ContractAnnulTransferRequestService {
         log.info("[DELETE] Contract annul/transfer request deleted: id={}", id);
     }
 
+    // Helper: convert Entity -> DTO
     public ContractAnnulTransferRequestDTO convertToAnnulTransferDTO(ContractAnnulTransferRequest request) {
         ContractAnnulTransferRequestDTO dto = new ContractAnnulTransferRequestDTO();
         dto.setId(request.getId());
@@ -515,7 +544,7 @@ public class ContractAnnulTransferRequestService {
             dto.setFromCustomerId(request.getFromCustomer().getId());
             dto.setFromCustomerName(request.getFromCustomer().getCustomerName());
         } else {
-            // Fallback: show current contract owner name when fromCustomer is not set (e.g. annul requests)
+            // Fallback: lấy từ hợp đồng nếu có
             if (request.getContract() != null && request.getContract().getCustomer() != null) {
                 dto.setFromCustomerId(request.getContract().getCustomer().getId());
                 dto.setFromCustomerName(request.getContract().getCustomer().getCustomerName());
@@ -534,7 +563,7 @@ public class ContractAnnulTransferRequestService {
             dto.setApprovedById(request.getApprovedBy().getId());
             dto.setApprovedByUsername(request.getApprovedBy().getUsername());
         }
-        // NEW: nhân viên Service xử lý
+        // Nhân viên Service xử lý
         if (request.getServiceStaff() != null) {
             dto.setServiceStaffId(request.getServiceStaff().getId());
             dto.setServiceStaffName(request.getServiceStaff().getFullName());
