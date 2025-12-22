@@ -123,6 +123,63 @@ public class ContractCustomerService {
         return convertToDTO(updated);
     }
 
+    /**
+     * Customer rejects signing a contract.
+     *
+     * Behavior (NO DB schema changes):
+     * - Only allowed when status = PENDING_CUSTOMER_SIGN
+     * - Move status back to APPROVED for re-negotiation
+     * - Append reject reason into contract.notes (so Service Staff can see it immediately)
+     * - Persist activity_log with action = CUSTOMER_REJECT_SIGN and payload = reason
+     */
+    @Transactional
+    public ContractDTO rejectCustomerSign(Integer contractId, String reason) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + contractId));
+
+        if (contract.getContractStatus() != Contract.ContractStatus.PENDING_CUSTOMER_SIGN) {
+            throw new IllegalStateException("Only PENDING_CUSTOMER_SIGN contracts can be rejected.");
+        }
+
+        // Move back to APPROVED so Service Staff can review & re-negotiate
+        contract.setContractStatus(Contract.ContractStatus.APPROVED);
+
+        // Append reason to notes (non-breaking, no extra DB fields)
+        String trimmed = (reason == null) ? "" : reason.trim();
+        if (!trimmed.isEmpty()) {
+            String existing = contract.getNotes();
+            String line = "[Customer Reject Sign] " + trimmed;
+            contract.setNotes((existing == null || existing.isBlank()) ? line : (existing + "\n" + line));
+        }
+
+        Contract updated = contractRepository.save(contract);
+
+        // Persist activity_log (do not fail the business flow if logging fails)
+        try {
+            Customer cust = updated.getCustomer();
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            String subj = updated.getContractNumber() != null
+                    ? updated.getContractNumber()
+                    : String.valueOf(updated.getId());
+            log.setSubjectId(subj);
+            log.setAction("CUSTOMER_REJECT_SIGN");
+            log.setActorType("SYSTEM");
+            log.setActorId(null);
+            if (cust != null) {
+                log.setInitiatorType("CUSTOMER");
+                log.setInitiatorId(cust.getId());
+                log.setInitiatorName(cust.getCustomerName());
+            }
+            log.setPayload(trimmed.isEmpty() ? null : trimmed);
+            activityLogService.save(log);
+        } catch (Exception e) {
+            // ignore
+        }
+
+        return convertToDTO(updated);
+    }
+
     @Transactional
     public ContractDTO createContract(ContractCreateDTO createDTO) {
         // Trường hợp GUEST: customerId = null → bắt buộc có contactPhone
