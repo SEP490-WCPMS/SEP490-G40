@@ -29,8 +29,12 @@ public class ReadingRouteController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ReadingRouteResponse>> list(@RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive) {
-        return ResponseEntity.ok(service.list(includeInactive));
+    public ResponseEntity<List<ReadingRouteResponse>> list(
+            @RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(name = "search", required = false, defaultValue = "") String search
+    ) {
+        // Truyền search vào service
+        return ResponseEntity.ok(service.list(includeInactive, search));
     }
 
     @PutMapping("/{id}")

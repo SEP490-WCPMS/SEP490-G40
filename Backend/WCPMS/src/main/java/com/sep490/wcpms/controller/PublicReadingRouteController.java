@@ -23,11 +23,18 @@ public class PublicReadingRouteController {
 
     // Public endpoint for frontend/customer to list active reading routes
     @GetMapping
-    public ResponseEntity<List<ReadingRouteResponse>> listPublic(@RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive) {
+    public ResponseEntity<List<ReadingRouteResponse>> listPublic(
+            @RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive,
+            @RequestParam(name = "search", required = false, defaultValue = "") String search // <-- 1. Thêm tham số search
+    ) {
         try {
-            logger.info("PublicReadingRouteController.listPublic called includeInactive={}", includeInactive);
-            List<ReadingRouteResponse> list = readingRouteService.list(includeInactive);
+            logger.info("PublicReadingRouteController.listPublic called includeInactive={}, search={}", includeInactive, search);
+
+            // <-- 2. Truyền tham số search vào service
+            List<ReadingRouteResponse> list = readingRouteService.list(includeInactive, search);
+
             logger.info("PublicReadingRouteController.listPublic returning {} routes", list == null ? 0 : list.size());
+
             if (list == null || list.isEmpty()) {
                 // fallback sample to help frontend until DB issue resolved
                 logger.warn("ReadingRouteService returned empty list; returning fallback sample routes");
