@@ -41,6 +41,7 @@ import com.sep490.wcpms.dto.ContractAnnulTransferRequestUpdateDTO; // thêm impo
 import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.entity.ActivityLog;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.sep490.wcpms.repository.AddressRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +60,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final ContractAnnulTransferRequestRepository contractAnnulTransferRequestRepository; // Inject repository cho annul/transfer requests
     private final ContractAnnulTransferRequestService contractAnnulTransferRequestService; // delegate to central service
     private final ApplicationEventPublisher eventPublisher;
+    private final AddressRepository addressRepository;
     // private final ContractMapper contractMapper;
 
     @Autowired
@@ -144,26 +146,27 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     }
 
     @Override
+    @Transactional // Thêm Transactional để đảm bảo tính toàn vẹn dữ liệu
     public ServiceStaffContractDTO updateContractByServiceStaff(Integer contractId, ServiceStaffUpdateContractRequestDTO updateRequest) {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
 
-        // Chỉ cập nhật các trường được phép (an toàn với null)
-        if (updateRequest.getStartDate() != null) {
-            contract.setStartDate(updateRequest.getStartDate());
+        // 1. Validate trạng thái cho phép sửa
+        if (contract.getContractStatus() != ContractStatus.DRAFT &&
+                contract.getContractStatus() != ContractStatus.APPROVED &&
+                contract.getContractStatus() != ContractStatus.ACTIVE) {
+            throw new RuntimeException("Cannot update contract in status: " + contract.getContractStatus());
         }
-        if (updateRequest.getEndDate() != null) {
-            contract.setEndDate(updateRequest.getEndDate());
+
+        // 2. Cập nhật các thông tin cơ bản
+        if (updateRequest.getStartDate() != null) contract.setStartDate(updateRequest.getStartDate());
+        if (updateRequest.getEndDate() != null) contract.setEndDate(updateRequest.getEndDate());
+        if (updateRequest.getInstallationDate() != null) {
+            contract.setInstallationDate(updateRequest.getInstallationDate());
         }
-        if (updateRequest.getNotes() != null) {
-            contract.setNotes(updateRequest.getNotes());
-        }
-        if (updateRequest.getEstimatedCost() != null) {
-            contract.setEstimatedCost(updateRequest.getEstimatedCost());
-        }
-        if (updateRequest.getContractValue() != null) {
-            contract.setContractValue(updateRequest.getContractValue());
-        }
+        if (updateRequest.getEstimatedCost() != null) contract.setEstimatedCost(updateRequest.getEstimatedCost());
+        if (updateRequest.getContractValue() != null) contract.setContractValue(updateRequest.getContractValue());
+
         if (updateRequest.getPaymentMethod() != null && !updateRequest.getPaymentMethod().isBlank()) {
             try {
                 PaymentMethod pm = PaymentMethod.valueOf(updateRequest.getPaymentMethod().toUpperCase());
@@ -172,13 +175,63 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
                 throw new IllegalArgumentException("Invalid payment method: " + updateRequest.getPaymentMethod());
             }
         }
-        // Nếu cung cấp serviceStaffId và tồn tại thì gán (tuỳ chọn)
+
         if (updateRequest.getServiceStaffId() != null) {
             Account staff = accountRepository.findById(updateRequest.getServiceStaffId())
                     .orElseThrow(() -> new RuntimeException("Service staff not found"));
             contract.setServiceStaff(staff);
         }
 
+        // 3. [VALIDATE & UPDATE] Số điện thoại & Địa chỉ
+        if (updateRequest.getContactPhone() != null && !updateRequest.getContactPhone().isBlank()) {
+            String phone = updateRequest.getContactPhone();
+            // Validate: 10 số, bắt đầu bằng 03, 05, 07, 08, 09
+            if (!phone.matches("^(03|05|07|08|09)[0-9]{8}$")) {
+                throw new IllegalArgumentException("Số điện thoại không hợp lệ (Phải có 10 chữ số và bắt đầu bằng 03, 05, 07, 08, 09).");
+            }
+            contract.setContactPhone(phone);
+        }
+
+        if (updateRequest.getAddress() != null && !updateRequest.getAddress().isBlank()) {
+            com.sep490.wcpms.entity.Address addr = contract.getAddress();
+            if (addr == null) {
+                addr = new com.sep490.wcpms.entity.Address();
+                addr.setAddress(updateRequest.getAddress());
+                addr = addressRepository.save(addr); // Lưu trước
+                contract.setAddress(addr);
+            } else {
+                addr.setAddress(updateRequest.getAddress());
+            }
+        }
+
+        // 4. Xử lý Ghi chú & Logic "Khách từ chối"
+        String currentNotes = contract.getNotes();
+        String newNoteInput = updateRequest.getNotes();
+
+        // a. Xử lý thêm note mới (nếu có)
+        if (newNoteInput != null && !newNoteInput.isBlank()) {
+            if (currentNotes == null || currentNotes.isBlank()) {
+                currentNotes = newNoteInput;
+            } else {
+                // Nối thêm vào dòng dưới kèm timestamp
+                currentNotes = currentNotes + "\n[Service Staff " + LocalDate.now() + "]: " + newNoteInput;
+            }
+        }
+
+        // b. Xử lý trạng thái REJECTED -> Chuyển thành ĐÃ XỬ LÝ
+        if (contract.getContractStatus() == ContractStatus.APPROVED &&
+                currentNotes != null &&
+                currentNotes.contains("[Customer Reject Sign]")) {
+
+            // Đánh dấu hệ thống
+            currentNotes += "\n[System] Info updated on " + LocalDateTime.now();
+
+            // QUAN TRỌNG: Đổi tag để mất trạng thái Reject trên UI
+            // Thay "[Customer Reject Sign]" thành "[Rejection Handled]" (Giữ lịch sử nhưng đổi cờ)
+            currentNotes = currentNotes.replace("[Customer Reject Sign]", "[Rejection Handled]");
+        }
+
+        contract.setNotes(currentNotes);
         Contract updated = contractRepository.save(contract);
         return convertToDTO(updated);
     }
@@ -211,7 +264,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             throw new RuntimeException("Cannot submit non-DRAFT contract. Current status: " + contract.getContractStatus());
         }
 
-        // ✅ Tự động gán Nhân viên Dịch vụ hiện tại nếu chưa gán
+        // Tự động gán Nhân viên Dịch vụ hiện tại nếu chưa gán
         if (contract.getServiceStaff() == null) {
             // Lấy ID của Nhân viên Dịch vụ hiện tại từ SecurityContext
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -410,68 +463,68 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         contractRepository.saveAll(expiredContracts);
     }
 
-    //LOGIC TẠM NGƯNG
-    @Override
-    @Transactional
-    public ServiceStaffContractDTO suspendContract(Integer contractId, String reason) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+//    //LOGIC TẠM NGƯNG
+//    @Override
+//    @Transactional
+//    public ServiceStaffContractDTO suspendContract(Integer contractId, String reason) {
+//        Contract contract = contractRepository.findById(contractId)
+//                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+//
+//        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
+//            throw new IllegalStateException("Only ACTIVE contracts can be suspended. Current: " + contract.getContractStatus());
+//        }
+//
+//        contract.setContractStatus(ContractStatus.SUSPENDED);
+//        if (reason != null && !reason.isBlank()) {
+//            String existing = contract.getNotes();
+//            contract.setNotes((existing == null ? "" : existing + "\n") + "[Lý do tạm ngưng]: " + reason);
+//        }
+//
+//        Contract updated = contractRepository.save(contract);
+//        return convertToDTO(updated);
+//    }
+//
+//    //LOGIC KÍCH HOẠT LẠI
+//    @Override
+//    @Transactional
+//    public ServiceStaffContractDTO reactivateContract(Integer contractId) {
+//        Contract contract = contractRepository.findById(contractId)
+//                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+//
+//        if (contract.getContractStatus() != ContractStatus.SUSPENDED) {
+//            throw new IllegalStateException("Only SUSPENDED contracts can be reactivated. Current: " + contract.getContractStatus());
+//        }
+//
+//        contract.setContractStatus(ContractStatus.ACTIVE);
+//        // Có thể thêm log vào notes nếu cần
+//        // String existing = contract.getNotes();
+//        // contract.setNotes((existing == null ? "" : existing + "\n") + "[Reactivate]: Activated on " + LocalDate.now());
+//
+//        Contract updated = contractRepository.save(contract);
+//        return convertToDTO(updated);
+//    }
 
-        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
-            throw new IllegalStateException("Only ACTIVE contracts can be suspended. Current: " + contract.getContractStatus());
-        }
-
-        contract.setContractStatus(ContractStatus.SUSPENDED);
-        if (reason != null && !reason.isBlank()) {
-            String existing = contract.getNotes();
-            contract.setNotes((existing == null ? "" : existing + "\n") + "[Lý do tạm ngưng]: " + reason);
-        }
-
-        Contract updated = contractRepository.save(contract);
-        return convertToDTO(updated);
-    }
-
-    //LOGIC KÍCH HOẠT LẠI
-    @Override
-    @Transactional
-    public ServiceStaffContractDTO reactivateContract(Integer contractId) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
-
-        if (contract.getContractStatus() != ContractStatus.SUSPENDED) {
-            throw new IllegalStateException("Only SUSPENDED contracts can be reactivated. Current: " + contract.getContractStatus());
-        }
-
-        contract.setContractStatus(ContractStatus.ACTIVE);
-        // Có thể thêm log vào notes nếu cần
-        // String existing = contract.getNotes();
-        // contract.setNotes((existing == null ? "" : existing + "\n") + "[Reactivate]: Activated on " + LocalDate.now());
-
-        Contract updated = contractRepository.save(contract);
-        return convertToDTO(updated);
-    }
-
-    @Override
-    public ServiceStaffContractDTO terminateContract(Integer contractId, String reason) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
-
-        // Chỉ cho phép hủy hợp đồng ACTIVE
-        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
-            throw new RuntimeException("Only ACTIVE contracts can be terminated. Current status: " + contract.getContractStatus());
-        }
-
-        // Chuyển trạng thái sang TERMINATED
-        contract.setContractStatus(ContractStatus.TERMINATED);
-        contract.setEndDate(java.time.LocalDate.now());
-
-        if (reason != null && !reason.isBlank()) {
-            contract.setNotes(reason);
-        }
-
-        Contract updated = contractRepository.save(contract);
-        return convertToDTO(updated);
-    }
+//    @Override
+//    public ServiceStaffContractDTO terminateContract(Integer contractId, String reason) {
+//        Contract contract = contractRepository.findById(contractId)
+//                .orElseThrow(() -> new RuntimeException("Contract not found with id: " + contractId));
+//
+//        // Chỉ cho phép hủy hợp đồng ACTIVE
+//        if (contract.getContractStatus() != ContractStatus.ACTIVE) {
+//            throw new RuntimeException("Only ACTIVE contracts can be terminated. Current status: " + contract.getContractStatus());
+//        }
+//
+//        // Chuyển trạng thái sang TERMINATED
+//        contract.setContractStatus(ContractStatus.TERMINATED);
+//        contract.setEndDate(java.time.LocalDate.now());
+//
+//        if (reason != null && !reason.isBlank()) {
+//            contract.setNotes(reason);
+//        }
+//
+//        Contract updated = contractRepository.save(contract);
+//        return convertToDTO(updated);
+//    }
 
     private ServiceStaffContractDTO convertToDTO(Contract c) {
         ServiceStaffContractDTO dto = new ServiceStaffContractDTO();
@@ -760,10 +813,30 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         if (contract.getContractStatus() != ContractStatus.APPROVED) {
             throw new IllegalStateException("Only APPROVED contracts can be sent to customer for signing.");
         }
-        // Theo luồng mới: APPROVED -> PENDING_CUSTOMER_SIGN (gửi cho khách ký)
+        // Theo luồng: APPROVED -> PENDING_CUSTOMER_SIGN (gửi cho khách ký)
         // Sau khi khách ký, trạng thái sẽ chuyển từ PENDING_CUSTOMER_SIGN -> PENDING_SIGN
+        // xử lý khi gửi lại (khách từ chối ký)
+        // Nếu có dòng "[Customer Reject Sign]" trong notes, ta sẽ:
+        // 1. Xóa dòng đó đi để ghi chú sạch sẽ
+        // 2. Hoặc ghi đè thêm dòng mới "[Service Staff] Resent for signing"
+        // Ở đây mình chọn cách ghi log thêm để dễ trace
+        if (contract.getNotes() != null && contract.getNotes().contains("[Customer Reject Sign]")) {
+            String newNote = "\n[Service Staff] Adjusted and Resent for signing at " + LocalDateTime.now();
+            contract.setNotes(contract.getNotes() + newNote);
+        }
         contract.setContractStatus(ContractStatus.PENDING_CUSTOMER_SIGN);
         Contract updated = contractRepository.save(contract);
+
+        // Ghi Log
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("CONTRACT");
+            log.setSubjectId(updated.getContractNumber());
+            log.setAction("SENT_TO_CUSTOMER_FOR_SIGN");
+            log.setActorType("STAFF");
+            // Set ID staff nếu lấy được từ context...
+            activityLogService.save(log);
+        } catch (Exception e) {}
         return convertToDTO(updated);
     }
 
