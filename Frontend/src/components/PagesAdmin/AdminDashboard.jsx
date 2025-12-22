@@ -506,7 +506,7 @@ const AdminDashboard = () => {
         <StatisticCard title="Người dùng" value={stats.users} color="#2563EB" />
         <StatisticCard title="Hợp đồng đang hoạt động" value={stats.activeContracts} color="#10B981" />
         <StatisticCard title="Hóa đơn chưa thu" value={stats.unpaidInvoices} color="#F59E0B" />
-        <StatisticCard title="Doanh thu thực thu" value={(stats.revenueMTD || 0).toLocaleString('vi-VN') + ' VNĐ'} color="#EF4444" />
+        <StatisticCard title="Doanh thu(tháng)" value={(stats.revenueMTD || 0).toLocaleString('vi-VN') + ' VNĐ'} color="#EF4444" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

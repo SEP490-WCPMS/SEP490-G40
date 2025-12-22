@@ -589,13 +589,25 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             throw new IllegalStateException("Chỉ số này đã được lập hóa đơn.");
         }
 
-        // 3. Lấy các thông tin liên quan
+        // 3. Tìm Hợp đồng Dịch vụ (WaterServiceContract) mới nhất đang ACTIVE của cái đồng hồ này.
+        // (Thay vì lấy qua getMeterInstallation cũ có thể bị sai)
         MeterInstallation installation = reading.getMeterInstallation();
-        WaterServiceContract serviceContract = installation.getWaterServiceContract();
+
+        // Dùng Repo để tìm HĐ mới nhất (chủ mới)
+        WaterServiceContract serviceContract = waterServiceContractRepository
+                .findFirstByWaterMeter_IdAndContractStatusOrderByCreatedAtDesc(
+                        installation.getWaterMeter().getId(),
+                        WaterServiceContract.WaterServiceContractStatus.ACTIVE
+                )
+                // Fallback: nếu không tìm thấy thì mới dùng cái cũ
+                .orElse(installation.getWaterServiceContract());
+
         if (serviceContract == null) {
             throw new ResourceNotFoundException("Bản ghi lắp đặt này không liên kết với Hợp đồng Dịch vụ nào.");
         }
-        Customer customer = serviceContract.getCustomer();
+
+        //Lấy thông tin từ Hợp đồng (Đảm bảo là thông tin mới nhất)
+        Customer customer = serviceContract.getCustomer(); // Khách hàng mới
         WaterPriceType priceType = serviceContract.getPriceType();
 
         // --- [LOGIC GÁN VIỆC MỚI] ---

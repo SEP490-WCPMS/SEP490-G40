@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WaterServiceContractRepository extends JpaRepository<WaterServiceContract, Integer> {
@@ -63,5 +64,17 @@ public interface WaterServiceContractRepository extends JpaRepository<WaterServi
             @Param("routeId") Integer routeId,
             @Param("keyword") String keyword,
             Pageable pageable
+    );
+
+    // Tìm HĐ Dịch vụ đang ACTIVE mà có cài đặt đồng hồ này (Join qua bảng MeterInstallation)
+    @Query("SELECT wsc FROM WaterServiceContract wsc " +
+            "JOIN wsc.meterInstallations mi " +
+            "WHERE mi.waterMeter.id = :meterId " +
+            "AND wsc.contractStatus = :status " +
+            "ORDER BY wsc.createdAt DESC " +
+            "LIMIT 1")
+    Optional<WaterServiceContract> findFirstByWaterMeter_IdAndContractStatusOrderByCreatedAtDesc(
+            @Param("meterId") Integer meterId,
+            @Param("status") WaterServiceContractStatus status
     );
 }
