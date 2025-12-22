@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service;
 
+import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.CustomerResponseDTO;
 import com.sep490.wcpms.dto.GuestRequestResponseDTO;
 import java.util.List;
@@ -12,4 +13,7 @@ public interface AdminService {
     void approveGuestAndCreateAccount(Integer contractId);
 
     List<CustomerResponseDTO> getAllCustomers();
+
+    // Trong interface AdminService
+    List<ContractDetailsDTO> getContractsByCustomerId(Integer customerId);
 }

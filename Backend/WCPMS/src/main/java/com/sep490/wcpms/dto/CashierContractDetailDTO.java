@@ -39,40 +39,52 @@ public class CashierContractDetailDTO {
             this.routeName = wsc.getReadingRoute().getRouteName();
         }
 
-        if (wsc.getCustomer() != null) {
-            Customer customer = wsc.getCustomer();
-            this.customerName = customer.getCustomerName();
-            // === [SỬA LẠI LOGIC LẤY ĐỊA CHỈ TẠI ĐÂY] ===
-            String displayAddress = wsc.getCustomer().getAddress(); // Mặc định: Lấy của Customer
+        // === SỬA LOGIC LẤY KHÁCH HÀNG TẠI ĐÂY ===
 
-            // Ưu tiên 1: Lấy từ HĐ Dịch vụ (Bảng 9) -> Bảng Address
+        Customer displayCustomer = wsc.getCustomer(); // Mặc định lấy từ HĐ Dịch vụ (có thể là Minh)
+
+        // [QUAN TRỌNG] Kiểm tra Hợp đồng gốc (Contract) xem ai đang sở hữu
+        if (wsc.getSourceContract() != null && wsc.getSourceContract().getCustomer() != null) {
+            displayCustomer = wsc.getSourceContract().getCustomer(); // Lấy từ HĐ Gốc (Thịnh)
+        }
+
+        if (displayCustomer != null) {
+            this.customerName = displayCustomer.getCustomerName(); // Hiện tên Thịnh
+
+            // --- LOGIC LẤY ĐỊA CHỈ (Giữ nguyên hoặc tinh chỉnh) ---
+            String displayAddress = displayCustomer.getAddress();
+
+            // Ưu tiên 1: Địa chỉ từ Hợp đồng Dịch vụ (Bảng 9)
             if (wsc.getAddress() != null) {
                 if (wsc.getAddress().getAddress() != null) {
                     displayAddress = wsc.getAddress().getAddress();
                 } else {
-                    // Tự ghép chuỗi nếu cần (Street + Ward)
-                    String street = wsc.getAddress().getStreet();
-                    String ward = wsc.getAddress().getWard() != null ? wsc.getAddress().getWard().getWardName() : "";
-                    displayAddress = street + (ward.isEmpty() ? "" : ", " + ward);
+                    displayAddress = wsc.getAddress().getStreet();
                 }
             }
-            // Ưu tiên 2: Lấy từ HĐ Lắp đặt gốc (Bảng 8) -> Bảng Address
+            // Ưu tiên 2: Địa chỉ từ Hợp đồng Gốc (Bảng 8)
             else if (wsc.getSourceContract() != null && wsc.getSourceContract().getAddress() != null) {
                 if (wsc.getSourceContract().getAddress().getAddress() != null) {
                     displayAddress = wsc.getSourceContract().getAddress().getAddress();
                 } else {
-                    String street = wsc.getSourceContract().getAddress().getStreet();
-                    String ward = wsc.getSourceContract().getAddress().getWard() != null ? wsc.getSourceContract().getAddress().getWard().getWardName() : "";
-                    displayAddress = street + (ward.isEmpty() ? "" : ", " + ward);
+                    displayAddress = wsc.getSourceContract().getAddress().getStreet();
                 }
             }
 
             this.customerAddress = displayAddress;
             // ===========================================
+            // 2. Lấy SĐT và Email
+            // Kiểm tra xem Customer có liên kết với Account không
+            if (displayCustomer.getAccount() != null) {
+                this.customerPhone = displayCustomer.getAccount().getPhone();
+                this.customerEmail = displayCustomer.getAccount().getEmail();
+            } else {
+                // Fallback: Nếu không có Account, thử xem trong bảng Customer có lưu contact_phone không?
+                // (Nếu bạn có thêm cột phụ trong bảng Customer)
+                // this.customerPhone = displayCustomer.getContactPhone();
 
-            if (customer.getAccount() != null) {
-                this.customerPhone = customer.getAccount().getPhone();
-                this.customerEmail = customer.getAccount().getEmail();
+                this.customerPhone = "(Chưa cập nhật tài khoản)";
+                this.customerEmail = "(Chưa cập nhật Email)";
             }
         }
 

@@ -52,14 +52,21 @@ public interface WaterServiceContractRepository extends JpaRepository<WaterServi
      * - Tìm kiếm theo Keyword (Mã HĐ, Tên KH, Địa chỉ)
      * - Hỗ trợ Phân trang (Pageable)
      */
-    @Query("SELECT c FROM WaterServiceContract c " +
-            "WHERE c.readingRoute.id = :routeId " +
-            "AND c.contractStatus = 'ACTIVE' " +
+    /**
+     * Tìm kiếm Hợp đồng trong một Tuyến cụ thể:
+     * - SỬA: Join sang bảng Contract (sourceContract) để lấy Customer chuẩn nhất.
+     */
+    @Query("SELECT wsc FROM WaterServiceContract wsc " +
+            "LEFT JOIN FETCH wsc.sourceContract sc " +  // Eager load Contract gốc
+            "LEFT JOIN FETCH sc.customer c " +          // Eager load Customer
+            "LEFT JOIN FETCH c.account a " +            // <--- THÊM DÒNG NÀY: Eager load Account
+            "WHERE wsc.readingRoute.id = :routeId " +
+            "AND wsc.contractStatus = 'ACTIVE' " +
             "AND (:keyword IS NULL OR :keyword = '' OR " +
-            "     LOWER(c.contractNumber) LIKE %:keyword% OR " +
-            "     LOWER(c.customer.customerName) LIKE %:keyword% OR " +
-            "     LOWER(c.customer.address) LIKE %:keyword%) " +
-            "ORDER BY c.routeOrder ASC")
+            "     LOWER(wsc.contractNumber) LIKE %:keyword% OR " +
+            "     LOWER(c.customerName) LIKE %:keyword% OR " +
+            "     LOWER(c.address) LIKE %:keyword%) " +
+            "ORDER BY wsc.routeOrder ASC")
     Page<WaterServiceContract> searchContractsInRoute(
             @Param("routeId") Integer routeId,
             @Param("keyword") String keyword,

@@ -16,6 +16,15 @@ export const getAllCustomers = () => {
     return apiClient.get('/admin/users?role=CUSTOMER');
 };
 
+export const getCustomerContracts = async (customerId) => {
+    // Giả sử bạn đã cấu hình axios instance hoặc dùng đường dẫn đầy đủ
+    // Nếu dùng axios instance có baseURL: return apiClient.get(`/admin/customers/${customerId}/contracts`);
+    const token = localStorage.getItem('token');
+    return apiClient.get(`/admin/customers/${customerId}/contracts`, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+};
+
 // Export default object (nếu cần dùng kiểu import default)
 export default {
     getPendingGuestRequests,
