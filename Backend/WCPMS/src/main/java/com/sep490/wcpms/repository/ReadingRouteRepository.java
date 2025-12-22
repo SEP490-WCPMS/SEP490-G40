@@ -32,5 +32,25 @@ public interface ReadingRouteRepository extends JpaRepository<ReadingRoute, Inte
      */
     @Query("SELECT r FROM ReadingRoute r JOIN r.serviceStaffs s WHERE s.id = :staffId AND r.status = 'ACTIVE'")
     List<ReadingRoute> findActiveRoutesByServiceStaffId(@Param("staffId") Integer staffId);
+
+    @Query(value = "SELECT * FROM reading_routes r WHERE " +
+            "(" +
+            "   LOWER(r.route_code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   LOWER(r.route_name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   LOWER(r.area_coverage) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+            ") " +
+            "AND (:status IS NULL OR r.status = :status)",
+            nativeQuery = true)
+    List<ReadingRoute> searchRoutesNative(@Param("keyword") String keyword, @Param("status") String status);
+
+    // Search cho trường hợp lấy tất cả (kể cả inactive)
+    @Query(value = "SELECT * FROM reading_routes r WHERE " +
+            "(" +
+            "   LOWER(r.route_code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   LOWER(r.route_name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "   LOWER(r.area_coverage) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+            ")",
+            nativeQuery = true)
+    List<ReadingRoute> searchRoutesAllStatusNative(@Param("keyword") String keyword);
 }
 

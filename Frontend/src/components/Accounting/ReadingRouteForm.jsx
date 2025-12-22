@@ -145,6 +145,11 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         setSaving(true);
         setError(null);
         try {
+            if (!form.assignedReaderId) {
+                setError("Vui lòng chọn Nhân Viên Thu Ngân (bắt buộc).");
+                setSaving(false);
+                return;
+            }
             // Validate: ensure selected service staff are not already assigned to other routes
             if (form.serviceStaffIds && form.serviceStaffIds.length > 0) {
                 try {
@@ -190,7 +195,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                 routeCode: form.routeCode,
                 routeName: form.routeName,
                 areaCoverage: form.areaCoverage,
-                assignedReaderId: form.assignedReaderId || null,
+                assignedReaderId: form.assignedReaderId,
                 serviceStaffIds: form.serviceStaffIds
             };
 
@@ -222,22 +227,28 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                 {error && <div className="error">{error}</div>}
                 <form onSubmit={handleSubmit}>
                     <div className="form-row">
-                        <label>Route Code</label>
+                        <label>Mã Tuyến Đọc</label>
                         <input name="routeCode" value={form.routeCode} onChange={handleChange} required />
                     </div>
                     <div className="form-row">
-                        <label>Route Name</label>
+                        <label>Tên Tuyến Đọc</label>
                         <input name="routeName" value={form.routeName} onChange={handleChange} required />
                     </div>
                     <div className="form-row">
-                        <label>Area Coverage</label>
+                        <label>Khu vực</label>
                         <input name="areaCoverage" value={form.areaCoverage} onChange={handleChange} />
                     </div>
 
                     <div className="form-row">
-                        <label>Assigned Reader (Cashier)</label>
-                        <select name="assignedReaderId" value={form.assignedReaderId || ''} onChange={handleChange}>
-                            <option value="">Unassigned</option>
+                        <label>Nhân Viên Thu Ngân (*)</label> {/* Thêm dấu * */}
+                        <select
+                            name="assignedReaderId"
+                            value={form.assignedReaderId || ''}
+                            onChange={handleChange}
+                            required // Thêm thuộc tính required HTML5
+                            style={{ borderColor: !form.assignedReaderId ? '#e5e7eb' : '' }}
+                        >
+                            <option value="">-- Chọn nhân viên --</option>
                             {readers.map(r => (
                                 <option key={r.id} value={r.id}>{r.fullName} ({r.department || r.roleName})</option>
                             ))}
@@ -245,7 +256,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                     </div>
 
                     <div className="form-row">
-                        <label>Service Staff (Hold Ctrl to select multiple)</label>
+                        <label>Nhân Viên Dịch Vụ đọc tuyến (Giữ Ctrl để chọn nhiều)</label>
                         <select
                             multiple
                             name="serviceStaffIds"

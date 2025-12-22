@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.CustomerResponseDTO;
 import com.sep490.wcpms.dto.GuestRequestResponseDTO;
 import com.sep490.wcpms.entity.*;
@@ -26,6 +27,7 @@ public class AdminServiceImpl implements AdminService {
     private final CustomerRepository customerRepository;
     private final RoleRepository roleRepository;
     private final AddressRepository addressRepository;
+    private final MeterInstallationRepository meterInstallationRepository;
     private final PasswordEncoder passwordEncoder;
     private final SmsService smsService;
     private final CustomerNotificationRepository notificationRepository;
@@ -34,34 +36,71 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
-        // 1. Lấy toàn bộ dữ liệu từ bảng CUSTOMERS (đã JOIN account để tránh lazy loading)
+        // 1. Lấy danh sách customer (kèm account để tối ưu query)
         List<Customer> customers = customerRepository.findAllWithAccount();
 
         return customers.stream().map(cust -> {
-            Account acc = cust.getAccount();
+            // Bước 1: Tạo DTO cơ bản từ thông tin Customer/Account
+            CustomerResponseDTO dto = CustomerResponseDTO.fromEntity(cust);
 
-            return CustomerResponseDTO.builder()
-                    .customerId(cust.getId())
-                    .accountId(acc != null ? acc.getId() : null)
-                    .customerCode(cust.getCustomerCode())
-                    .fullName(cust.getCustomerName())
-                    .address(cust.getAddress())
-                    .phone(cust.getContactPersonPhone() != null ? cust.getContactPersonPhone() : (acc != null ? acc.getPhone() : ""))
-                    .email(acc != null ? acc.getEmail() : "")
-                    .status(acc != null && acc.getStatus() != null ? acc.getStatus() : 1)
-                    .build();
+            // Bước 2: Logic tìm Mã Đồng Hồ (Meter Code)
+            String meterCode = "---";
+            String meterStatus = "";
+
+            try {
+                // Tìm danh sách hợp đồng của khách này
+                List<Contract> contracts = contractRepository.findByCustomer_IdOrderByIdDesc(cust.getId());
+
+                // Lấy hợp đồng nào đang ACTIVE (hoặc PENDING_SIGN nếu vừa lắp xong)
+                // Ưu tiên hợp đồng mới nhất
+                Contract activeContract = contracts.stream()
+                        .filter(c -> c.getContractStatus() == Contract.ContractStatus.ACTIVE)
+                        .findFirst()
+                        .orElse(null);
+
+                if (activeContract != null) {
+                    // Tìm bản ghi lắp đặt đồng hồ mới nhất của hợp đồng này
+                    // (Sử dụng repository của MeterInstallation)
+                    var installation = meterInstallationRepository.findTopByContractOrderByCreatedAtDesc(activeContract);
+
+                    if (installation.isPresent() && installation.get().getWaterMeter() != null) {
+                        WaterMeter wm = installation.get().getWaterMeter();
+                        meterCode = wm.getMeterCode();
+                        meterStatus = wm.getMeterStatus() != null ? wm.getMeterStatus().name() : "";
+                    }
+                }
+            } catch (Exception e) {
+                // Log lỗi nhẹ nếu cần, không để crash luồng chính
+                System.err.println("Lỗi lấy đồng hồ cho KH ID " + cust.getId() + ": " + e.getMessage());
+            }
+
+            // Bước 3: Gán thông tin đồng hồ vào DTO
+            dto.setMeterCode(meterCode);
+            dto.setMeterStatus(meterStatus);
+
+            return dto;
         }).collect(Collectors.toList());
     }
+
+    @Override
+    public List<ContractDetailsDTO> getContractsByCustomerId(Integer customerId) {
+        // Tìm tất cả hợp đồng của khách hàng này (sắp xếp mới nhất trước)
+        List<Contract> contracts = contractRepository.findByCustomer_IdOrderByIdDesc(customerId);
+
+        // Convert sang ContractDetailsDTO
+        return contracts.stream()
+                .map(ContractDetailsDTO::new) // Sử dụng constructor có sẵn trong DTO
+                .collect(Collectors.toList());
+    }
+
     @Override
     public List<GuestRequestResponseDTO> getPendingGuestRequests() {
-        // SỬA: Lấy các hợp đồng chưa có Customer và trạng thái là PENDING_SIGN_REVIEW hoặc APPROVED
-        // Bạn cần đảm bảo Repository có hỗ trợ method này hoặc dùng @Query tương ứng
+        // Lấy các hợp đồng chưa có Customer và trạng thái là PENDING_SURVEY_REVIEW hoặc APPROVED
         List<Contract.ContractStatus> targetStatuses = Arrays.asList(
                 Contract.ContractStatus.PENDING_SURVEY_REVIEW,
                 Contract.ContractStatus.APPROVED
         );
 
-        // Gọi hàm repository (Xem phần cập nhật Repository bên dưới)
         List<Contract> contracts = contractRepository.findByCustomerIsNullAndContractStatusIn(targetStatuses);
 
         return contracts.stream().map(this::mapToGuestDTO).collect(Collectors.toList());
@@ -74,7 +113,7 @@ public class AdminServiceImpl implements AdminService {
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Hợp đồng không tồn tại"));
 
-        // SỬA: Kiểm tra trạng thái hợp lệ (PENDING_SIGN_REVIEW hoặc APPROVED)
+        // Kiểm tra trạng thái hợp lệ
         if (contract.getContractStatus() != Contract.ContractStatus.PENDING_SURVEY_REVIEW
                 && contract.getContractStatus() != Contract.ContractStatus.APPROVED) {
             throw new IllegalStateException("Chỉ tạo tài khoản cho Guest khi hợp đồng đang chờ ký duyệt hoặc đã duyệt.");
@@ -88,7 +127,6 @@ public class AdminServiceImpl implements AdminService {
         String phone = contract.getContactPhone();
         if (phone == null || phone.isEmpty()) throw new IllegalArgumentException("Không tìm thấy SĐT Guest.");
 
-        // Parse tên từ Note (Giả định format: "KHÁCH: [Tên]...") hoặc xử lý chuỗi
         String fullName = extractNameFromNote(contract.getNotes());
         String addressStr = contract.getAddress() != null ? contract.getAddress().getAddress() : "Chưa cập nhật";
 
@@ -97,18 +135,17 @@ public class AdminServiceImpl implements AdminService {
             throw new IllegalArgumentException("SĐT này đã được đăng ký tài khoản khác.");
         }
 
-        String rawPassword = generateRandomPassword(6); // Sinh mật khẩu 6 số
+        String rawPassword = generateRandomPassword(6);
         Role customerRole = roleRepository.findByRoleName(Role.RoleName.CUSTOMER)
                 .orElseThrow(() -> new RuntimeException("Role Customer not found"));
 
         Account account = new Account();
-        account.setUsername(phone); // Username là SĐT
+        account.setUsername(phone);
         account.setPassword(passwordEncoder.encode(rawPassword));
         account.setFullName(fullName);
         account.setPhone(phone);
         account.setRole(customerRole);
-        account.setStatus(1); // Active
-        // Generate Customer Code (copy logic từ AuthService)
+        account.setStatus(1);
         account.setCustomerCode("KH" + System.currentTimeMillis());
 
         Account savedAccount = accountRepository.save(account);
@@ -119,12 +156,11 @@ public class AdminServiceImpl implements AdminService {
         customer.setCustomerName(fullName);
         customer.setCustomerCode(savedAccount.getCustomerCode());
         customer.setAddress(addressStr);
-        // Link SĐT liên hệ
         customer.setContactPersonPhone(phone);
 
         Customer savedCustomer = customerRepository.save(customer);
 
-        // 5. Cập nhật Address (nếu có) để trỏ về Customer mới
+        // 5. Cập nhật Address
         if (contract.getAddress() != null) {
             Address addr = contract.getAddress();
             addr.setCustomer(savedCustomer);
@@ -135,7 +171,7 @@ public class AdminServiceImpl implements AdminService {
         contract.setCustomer(savedCustomer);
         contractRepository.save(contract);
 
-        // Chuẩn bị thông tin chung dùng cho cả email & SMS
+        // 7. Thông báo
         String contractNumber = contract.getContractNumber() != null
                 ? contract.getContractNumber()
                 : String.valueOf(contract.getId());
@@ -169,7 +205,7 @@ public class AdminServiceImpl implements AdminService {
         emailService.sendEmail(notification);
         customerNotificationSmsService.sendForNotification(notification);
 
-        // 8. Gửi SMS qua httpSMS
+        // 8. Gửi SMS
         String smsContent = String.format(
                 "Tai khoan nuoc Phu Tho da duoc tao. SDT: %s, Mat khau: %s. Vui long dang nhap de ky hop dong.",
                 phone, rawPassword
@@ -196,8 +232,6 @@ public class AdminServiceImpl implements AdminService {
 
     private String extractNameFromNote(String note) {
         if (note == null) return "Khách vãng lai";
-        // Logic parse đơn giản: Tìm dòng bắt đầu bằng "KHÁCH:"
-        // Bạn có thể cải thiện regex này
         if (note.contains("KHÁCH:")) {
             int start = note.indexOf("KHÁCH:") + 6;
             int end = note.indexOf("|", start);
@@ -218,9 +252,6 @@ public class AdminServiceImpl implements AdminService {
     }
 
     private String removeAccent(String s) {
-        // Hàm bỏ dấu tiếng Việt để gửi SMS (cần implement hoặc dùng thư viện Normalizer)
-        // Tạm thời trả về nguyên chuỗi
         return s;
     }
 }
-
