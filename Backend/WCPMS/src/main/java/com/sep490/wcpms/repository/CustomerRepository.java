@@ -47,4 +47,16 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     // Fetch customers with their accounts to avoid lazy loading issues when building DTOs
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.account")
     List<Customer> findAllWithAccount();
+
+    // Tìm kiếm Customer theo tên, số CMND/CCCD và số điện thoại (sử dụng LIKE để tìm kiếm tương đối)
+    @Query("SELECT c FROM Customer c " +
+            "LEFT JOIN FETCH c.account a " +
+            "WHERE (:customerName IS NULL OR LOWER(c.customerName) LIKE LOWER(CONCAT('%', :customerName, '%'))) " +
+            "AND (:identityNumber IS NULL OR c.identityNumber LIKE CONCAT('%', :identityNumber, '%')) " +
+            "AND (:phone IS NULL OR a.phone LIKE CONCAT('%', :phone, '%'))")
+    List<Customer> findByCustomerNameIdentityAndPhone(
+            @Param("customerName") String customerName,
+            @Param("identityNumber") String identityNumber,
+            @Param("phone") String phone
+    );
 }
