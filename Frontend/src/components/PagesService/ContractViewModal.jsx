@@ -198,7 +198,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 )}
                                 {initialData?.contractValue != null && (
                                     <div>
-                                        <div className="text-xs text-gray-500 mb-1">Giá trị hợp đồng</div>
+                                        <div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div>
                                         <div className="font-bold text-lg text-green-600">
                                             {fmtMoney(initialData.contractValue)}
                                         </div>

@@ -164,17 +164,17 @@ public class ServiceStaffContractController {
         return service.renewContract(id, renewRequest);
     }
 
-    /**
-     * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
-     * PUT /api/service/contracts/{id}/terminate
-     * Payload: { "reason": "Lý do hủy" }
-     */
-    @PutMapping("/{id}/terminate")
-    public ServiceStaffContractDTO terminateContract(
-            @PathVariable Integer id,
-            @RequestParam String reason) {
-        return service.terminateContract(id, reason);
-    }
+//    /**
+//     * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
+//     * PUT /api/service/contracts/{id}/terminate
+//     * Payload: { "reason": "Lý do hủy" }
+//     */
+//    @PutMapping("/{id}/terminate")
+//    public ServiceStaffContractDTO terminateContract(
+//            @PathVariable Integer id,
+//            @RequestParam String reason) {
+//        return service.terminateContract(id, reason);
+//    }
 
     // === API CHO TAB ANNUL & TRANSFER (TÁCH RIÊNG) ===
 
@@ -397,23 +397,23 @@ public class ServiceStaffContractController {
         return ResponseEntity.ok(dto);
     }
 
-    /**
-     * Tạm ngưng hợp đồng ACTIVE
-     * PUT /api/service/contracts/{id}/suspend
-     */
-    @PutMapping("/{id}/suspend")
-    public ServiceStaffContractDTO suspendContract(
-            @PathVariable Integer id,
-            @RequestParam String reason) {
-        return service.suspendContract(id, reason);
-    }
-
-    /**
-     * Kích hoạt lại hợp đồng đã tạm ngưng
-     * PUT /api/service/contracts/{id}/reactivate
-     */
-    @PutMapping("/{id}/reactivate")
-    public ServiceStaffContractDTO reactivateContract(@PathVariable Integer id) {
-        return service.reactivateContract(id);
-    }
+//    /**
+//     * Tạm ngưng hợp đồng ACTIVE
+//     * PUT /api/service/contracts/{id}/suspend
+//     */
+//    @PutMapping("/{id}/suspend")
+//    public ServiceStaffContractDTO suspendContract(
+//            @PathVariable Integer id,
+//            @RequestParam String reason) {
+//        return service.suspendContract(id, reason);
+//    }
+//
+//    /**
+//     * Kích hoạt lại hợp đồng đã tạm ngưng
+//     * PUT /api/service/contracts/{id}/reactivate
+//     */
+//    @PutMapping("/{id}/reactivate")
+//    public ServiceStaffContractDTO reactivateContract(@PathVariable Integer id) {
+//        return service.reactivateContract(id);
+//    }
 }

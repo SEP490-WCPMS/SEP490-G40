@@ -65,20 +65,20 @@ public interface ServiceStaffContractService {
      */
     ServiceStaffContractDTO renewContract(Integer contractId, ServiceStaffUpdateContractRequestDTO renewRequest);
 
-    /**
-     * Tạm ngưng hợp đồng ACTIVE (chuyển sang SUSPENDED)
-     */
-    ServiceStaffContractDTO suspendContract(Integer contractId, String reason);
-
-    /**
-     * Kích hoạt lại hợp đồng SUSPENDED (chuyển sang ACTIVE)
-     */
-    ServiceStaffContractDTO reactivateContract(Integer contractId);
-
-    /**
-     * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
-     */
-    ServiceStaffContractDTO terminateContract(Integer contractId, String reason);
+//    /**
+//     * Tạm ngưng hợp đồng ACTIVE (chuyển sang SUSPENDED)
+//     */
+//    ServiceStaffContractDTO suspendContract(Integer contractId, String reason);
+//
+//    /**
+//     * Kích hoạt lại hợp đồng SUSPENDED (chuyển sang ACTIVE)
+//     */
+//    ServiceStaffContractDTO reactivateContract(Integer contractId);
+//
+//    /**
+//     * Hủy/Chấm dứt hợp đồng ACTIVE (chuyển sang TERMINATED)
+//     */
+//    ServiceStaffContractDTO terminateContract(Integer contractId, String reason);
 
     // === THÊM 3 HÀM MỚI CHO BƯỚC 2 ===
 

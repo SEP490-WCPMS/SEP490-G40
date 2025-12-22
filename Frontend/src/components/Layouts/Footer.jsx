@@ -68,9 +68,6 @@ const Footer = () => {
                 <Link to="/my-invoices">Thanh toán hóa đơn</Link> {/* Trỏ về DS hóa đơn */}
             </li>
             <li>
-                <Link to="/support-request">Tạm ngưng cấp nước</Link> 
-            </li>
-            <li>
                 <Link to="/my-invoices">Tra cứu hóa đơn</Link>
             </li>
             <li>
