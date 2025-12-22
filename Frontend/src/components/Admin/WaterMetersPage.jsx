@@ -175,7 +175,7 @@ export default function WaterMetersPage() {
     // Đổi tên hàm cho đúng ngữ cảnh mới
     const requestToggleMaintenance = (meter) => {
         const isMaintenance = meter.meterStatus === 'UNDER_MAINTENANCE';
-        const action = isMaintenance ? 'Khôi phục (Về kho)' : 'Đưa vào bảo trì (Xóa mềm)';
+        const action = isMaintenance ? 'Khôi phục (Về kho)' : 'Đưa vào bảo trì';
 
         setConfirmModal({
             isOpen: true,
