@@ -50,7 +50,9 @@ export default function WaterMetersPage() {
     const [meters, setMeters] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [includeRetired, setIncludeRetired] = useState(false);
+
+    // Đổi tên state cho phù hợp ngữ cảnh mới
+    const [includeMaintenance, setIncludeMaintenance] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -65,7 +67,8 @@ export default function WaterMetersPage() {
         setLoading(true);
         setError(null);
         try {
-            const resp = await getAdminWaterMeters(includeRetired, currentPage, pageSize);
+            // Truyền includeMaintenance vào API (Backend cần xử lý param này để trả về UNDER_MAINTENANCE)
+            const resp = await getAdminWaterMeters(includeMaintenance, currentPage, pageSize);
             const data = resp.data || resp;
             const hasContentArray = data && Array.isArray(data.content);
             const resolvedMeters = hasContentArray ? data.content : (Array.isArray(data) ? data : []);
@@ -88,7 +91,7 @@ export default function WaterMetersPage() {
     useEffect(() => {
         fetchList();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [includeRetired, currentPage]);
+    }, [includeMaintenance, currentPage]);
 
     useEffect(() => {
         if (totalPages > 0 && currentPage > totalPages - 1) {
@@ -154,11 +157,14 @@ export default function WaterMetersPage() {
         setConfirmModal({ isOpen: false, type: '', meter: null, message: '' });
 
         try {
-            const targetStatus = meter.meterStatus === 'RETIRED' ? 'IN_STOCK' : 'RETIRED';
+            // LOGIC MỚI:
+            // Nếu đang là UNDER_MAINTENANCE -> Khôi phục về IN_STOCK
+            // Nếu không -> Chuyển thành UNDER_MAINTENANCE
+            const targetStatus = meter.meterStatus === 'UNDER_MAINTENANCE' ? 'IN_STOCK' : 'UNDER_MAINTENANCE';
+
             await changeAdminWaterMeterStatus(meter.id, { status: targetStatus });
             await fetchList();
         } catch (err) {
-            // Hiển thị lỗi từ backend nếu cố xóa đồng hồ đang installed
             setError(err.response?.data?.message || err.message || 'Lỗi khi thay đổi trạng thái');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
@@ -166,11 +172,14 @@ export default function WaterMetersPage() {
         }
     };
 
-    const requestToggleRetire = (meter) => {
-        const action = meter.meterStatus === 'RETIRED' ? 'Khôi phục' : 'Xóa (Retire)';
+    // Đổi tên hàm cho đúng ngữ cảnh mới
+    const requestToggleMaintenance = (meter) => {
+        const isMaintenance = meter.meterStatus === 'UNDER_MAINTENANCE';
+        const action = isMaintenance ? 'Khôi phục (Về kho)' : 'Đưa vào bảo trì (Xóa mềm)';
+
         setConfirmModal({
             isOpen: true,
-            type: meter.meterStatus === 'RETIRED' ? 'RESTORE' : 'RETIRE',
+            type: isMaintenance ? 'RESTORE' : 'MAINTAIN',
             meter: meter,
             message: `Bạn có chắc chắn muốn ${action} đồng hồ mã "${meter.meterCode}" không?`
         });
@@ -213,6 +222,16 @@ export default function WaterMetersPage() {
                 .table-responsive { overflow-x: auto; }
                 .responsive-table { width: 100%; border-collapse: collapse; }
                 .responsive-table th, .responsive-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+                
+                /* Style cho trạng thái mới */
+                .status-badge.status-under_maintenance { background-color: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+                .status-badge.status-in_stock { background-color: #dcfce7; color: #166534; }
+                .status-badge.status-broken { background-color: #fee2e2; color: #991b1b; }
+                .status-badge.status-installed { background-color: #dbeafe; color: #1e40af; }
+
+                /* Style cho hàng đang bảo trì */
+                tr.maintenance-row { background-color: #fafafa; opacity: 0.8; }
+
                 @media (max-width: 720px) {
                     .responsive-table thead { display: none; }
                     .responsive-table tbody tr { display: block; margin-bottom: 12px; border: 1px solid #eee; border-radius: 8px; padding: 8px; background: white; }
@@ -264,7 +283,8 @@ export default function WaterMetersPage() {
                 <div className="list-header">
                     <h2>Danh sách Đồng hồ nước</h2>
                     <div className="controls">
-                        <label className="include-retired"><input type="checkbox" checked={includeRetired} onChange={(e) => { setIncludeRetired(e.target.checked); setCurrentPage(0); }} /> Hiện cả RETIRED</label>
+                        {/* Cập nhật nhãn checkbox */}
+                        <label className="include-retired"><input type="checkbox" checked={includeMaintenance} onChange={(e) => { setIncludeMaintenance(e.target.checked); setCurrentPage(0); }} /> Hiện đang bảo trì</label>
                         <Button variant="ghost" onClick={() => fetchList()}>Tải lại</Button>
                     </div>
                 </div>
@@ -291,11 +311,12 @@ export default function WaterMetersPage() {
                                         <tr><td colSpan="7" style={{ textAlign: 'center' }}>Không có dữ liệu</td></tr>
                                     )}
                                     {Array.isArray(meters) && meters.map((m) => {
-                                        // Logic kiểm tra quyền xóa
-                                        const canDelete = m.meterStatus === 'IN_STOCK' || m.meterStatus === 'RETIRED';
+                                        // Logic MỚI: Cho phép "Xóa" nếu IN_STOCK hoặc BROKEN hoặc đang UNDER_MAINTENANCE (để khôi phục)
+                                        const isMaintenance = m.meterStatus === 'UNDER_MAINTENANCE';
+                                        const canDeleteOrRestore = m.meterStatus === 'IN_STOCK' || m.meterStatus === 'BROKEN' || isMaintenance;
 
                                         return (
-                                            <tr key={m.id} className={m.meterStatus === 'RETIRED' ? 'retired' : ''}>
+                                            <tr key={m.id} className={isMaintenance ? 'maintenance-row' : ''}>
                                                 <td data-label="ID">{m.id}</td>
                                                 <td data-label="Mã">{m.meterCode}</td>
                                                 <td data-label="Serial">{m.serialNumber}</td>
@@ -306,13 +327,13 @@ export default function WaterMetersPage() {
                                                     <Button size="sm" variant="outline" onClick={() => handleEdit(m)}>Sửa</Button>
 
                                                     <Button size="sm"
-                                                        variant={m.meterStatus === 'RETIRED' ? 'secondary' : 'destructive'}
-                                                        onClick={() => requestToggleRetire(m)}
+                                                        variant={isMaintenance ? 'secondary' : 'destructive'}
+                                                        onClick={() => requestToggleMaintenance(m)}
                                                         style={{ marginLeft: 8 }}
-                                                        disabled={!canDelete}
-                                                        title={!canDelete ? "Chỉ xóa được đồng hồ trong kho (IN_STOCK)" : ""}
+                                                        disabled={!canDeleteOrRestore}
+                                                        title={!canDeleteOrRestore ? "Chỉ xóa được đồng hồ trong kho (IN_STOCK) hoặc hỏng (BROKEN)" : ""}
                                                     >
-                                                        {m.meterStatus === 'RETIRED' ? 'Khôi phục' : 'Xóa'}
+                                                        {isMaintenance ? 'Khôi phục' : 'Xóa'}
                                                     </Button>
                                                 </td>
                                             </tr>
