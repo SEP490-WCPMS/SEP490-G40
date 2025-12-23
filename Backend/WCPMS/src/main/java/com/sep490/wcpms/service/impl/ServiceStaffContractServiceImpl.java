@@ -550,6 +550,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setContractStatus(c.getContractStatus() != null ? c.getContractStatus().name() : null);
         dto.setStartDate(c.getStartDate());
         dto.setEndDate(c.getEndDate());
+        dto.setInstallationDate(c.getInstallationDate());
         dto.setEstimatedCost(c.getEstimatedCost());
         dto.setContractValue(c.getContractValue());
         dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null);

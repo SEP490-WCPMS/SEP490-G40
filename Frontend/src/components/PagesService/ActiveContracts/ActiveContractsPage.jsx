@@ -8,6 +8,7 @@ import {
     CalendarOutlined,
     FilterOutlined,
     CheckOutlined,
+
     ToolOutlined,
     InfoCircleOutlined,
     UserOutlined
@@ -293,6 +294,15 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                         <div className="grid grid-cols-2 gap-4">
                             {c.startDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày bắt đầu</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-green-500" />{fmtDate(c.startDate)}</div></div>)}
                             {c.endDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-red-500" />{fmtDate(c.endDate)}</div></div>)}
+                            {c.installationDate && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Ngày lắp đặt</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <CalendarOutlined className="text-purple-500" />
+                                        {fmtDate(c.installationDate)}
+                                    </div>
+                                </div>
+                            )}
                             {c.contractValue != null && (<div><div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div><div className="font-bold text-lg text-green-600">{fmtMoney(c.contractValue)}</div></div>)}
                             {c.paymentMethod && (<div className="col-span-2"><div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div><div className="font-medium text-gray-800">{formatPaymentMethod(c.paymentMethod)}</div></div>)}
                             

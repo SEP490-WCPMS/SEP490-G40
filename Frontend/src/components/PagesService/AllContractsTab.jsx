@@ -212,14 +212,19 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
 
             // Các hành động cần Modal Form
             setModalLoading(true);
-            setModalVisible(true);
-            setModalType('loading');
+            
+            // --- Set true ngay để tránh "nháy" ---
+            // setModalVisible(true); // 
+            // setModalType('loading'); // 
 
             const resp = await getServiceContractDetail(record.id);
             const fullData = resp?.data || record;
 
             setSelectedContract(fullData);
-            setModalType(action === 'submit' ? 'edit' : action);
+            setModalType(action === 'submit' ? 'edit' : action); // action có thể là 'view' hoặc 'renew'
+
+            // Mở modal SAU KHI đã có dữ liệu
+            setModalVisible(true);
 
             form.resetFields();
             if (action === 'renew') {
@@ -382,26 +387,27 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             {/* Pagination is rendered inside ContractTable; duplicate removed. */}
 
             {/* --- MODAL CHÍNH --- */}
-            {/* AssignSurveyModal: always mounted, visibility controlled by `open` prop so it can show spinner immediately */}
+            
+            {/* AssignSurveyModal (Gửi khảo sát) */}
             <AssignSurveyModal
                 open={modalVisible && modalType === 'edit'}
-                visible={modalVisible && modalType === 'edit'}
+                // visible={modalVisible && modalType === 'edit'} // Antd v5 prefer open
                 onCancel={() => setModalVisible(false)}
                 initialData={selectedContract}
                 loading={modalLoading}
                 onSave={handleAssignSurveySave}
             />
 
-            {/* Contract view modal (always mounted, controlled by open) */}
+            {/* ContractViewModal (Xem chi tiết) */}
             <ContractViewModal
                 open={modalVisible && modalType === 'view'}
-                visible={modalVisible && modalType === 'view'}
+                // visible={modalVisible && modalType === 'view'} 
                 onCancel={() => setModalVisible(false)}
                 initialData={selectedContract}
                 loading={modalLoading}
             />
 
-            {/* Generic Modal for other modalType (renew, terminate...) */}
+            {/* Generic Modal (Cho Renew) */}
             {(modalType !== 'edit' && modalType !== 'view') && (
                 <Modal
                     open={modalVisible}

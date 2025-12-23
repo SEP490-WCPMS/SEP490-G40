@@ -100,7 +100,7 @@ const renderActions = (record, onViewDetails) => {
           if (record.isGuest || !record.customerCode) {
             const contentNode = (
               <div>
-                <p>Khách hàng <b>{record.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                <p>Khách hàng <b>{record.customerName}</b> hiện là Guest (Chưa có tài khoản).</p>
                 <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
               </div>
             );
