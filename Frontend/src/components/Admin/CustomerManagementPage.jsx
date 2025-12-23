@@ -1,10 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPendingGuestRequests, approveGuestRequest, getAllCustomers, getCustomerContracts } from '../Services/apiAdmin';
 import { Button } from '../ui/button';
-import { AlertCircle, FileText } from 'lucide-react';
+import { AlertCircle, FileText, CheckCircle, X } from 'lucide-react'; // Import thêm icon
 import ConfirmModal from '../common/ConfirmModal';
 import CustomerContractsModal from '../Admin/CustomerContractsModal';
 
+// --- COMPONENT THÔNG BÁO ---
+const NotificationBanner = ({ type, message, onClose }) => {
+    if (!message) return null;
+    const isSuccess = type === 'success';
+    return (
+        <div style={{
+            backgroundColor: isSuccess ? '#ecfdf5' : '#fef2f2',
+            color: isSuccess ? '#065f46' : '#991b1b',
+            border: `1px solid ${isSuccess ? '#10b981' : '#ef4444'}`,
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            animation: 'fadeIn 0.3s ease-in-out'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {isSuccess ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                <span>{message}</span>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>
+                <X size={18} />
+            </button>
+        </div>
+    );
+};
+
+// ... (Giữ nguyên các hàm helper resolvePath, getFirstAvailableValue, FIELD_PATHS...)
+// ... Copy lại các hàm helper từ code cũ của bạn vào đây ...
 const resolvePath = (source, path) => {
     if (!source || !path) return undefined;
     return path.split('.').reduce((current, part) => {
@@ -45,92 +75,27 @@ const FIELD_PATHS = {
     address: ['address', 'customerAddress', 'location.address', 'user.address']
 };
 
-const METER_CODE_PATHS = [
-    'meter_code',
-    'meterCode',
-    'code',
-    'meter.meterCode',
-    'meter.meter_code',
-    'waterMeter.meterCode',
-    'waterMeter.meter_code',
-    'customerMeter.meterCode',
-    'customerMeter.meter_code',
-    'installedMeter.meterCode',
-    'meters[0].meterCode',
-    'meters[0].meter_code',
-    'waterMeters[0].meterCode',
-    'waterMeters[0].meter_code',
-    'meterAssignments[0].meterCode',
-    'meterAssignments[0].meter_code'
-];
-
-const METER_STATUS_PATHS = [
-    'meter_status',
-    'meterStatus',
-    'status',
-    'state',
-    'meter.status',
-    'waterMeter.status'
-];
-
-const METER_DIRECT_PATHS = [
-    'meter',
-    'waterMeter',
-    'primaryMeter',
-    'mainMeter',
-    'assignedMeter',
-    'meterInfo',
-    'meterDetails',
-    'currentMeter'
-];
-
-const METER_COLLECTION_PATHS = [
-    'meters',
-    'waterMeters',
-    'customerMeters',
-    'assignedMeters',
-    'meterAssignments',
-    'activeMeters',
-    'meterList'
-];
-
-const CONTRACT_METER_CODE_PATHS = [
-    'meterCode',
-    'meter_code',
-    'waterMeterCode',
-    'water_meter_code',
-    'meter.meterCode',
-    'meter.meter_code',
-    'waterMeter.meterCode',
-    'waterMeter.meter_code'
-];
-
-const CONTRACT_METER_STATUS_PATHS = [
-    'meterStatus',
-    'meter_status',
-    'meter.status',
-    'waterMeter.status'
-];
+const METER_CODE_PATHS = ['meter_code', 'meterCode', 'code', 'meter.meterCode', 'meter.meter_code', 'waterMeter.meterCode', 'waterMeter.meter_code', 'customerMeter.meterCode', 'customerMeter.meter_code', 'installedMeter.meterCode', 'meters[0].meterCode', 'meters[0].meter_code', 'waterMeters[0].meterCode', 'waterMeters[0].meter_code', 'meterAssignments[0].meterCode', 'meterAssignments[0].meter_code'];
+const METER_STATUS_PATHS = ['meter_status', 'meterStatus', 'status', 'state', 'meter.status', 'waterMeter.status'];
+const METER_DIRECT_PATHS = ['meter', 'waterMeter', 'primaryMeter', 'mainMeter', 'assignedMeter', 'meterInfo', 'meterDetails', 'currentMeter'];
+const METER_COLLECTION_PATHS = ['meters', 'waterMeters', 'customerMeters', 'assignedMeters', 'meterAssignments', 'activeMeters', 'meterList'];
+const CONTRACT_METER_CODE_PATHS = ['meterCode', 'meter_code', 'waterMeterCode', 'water_meter_code', 'meter.meterCode', 'meter.meter_code', 'waterMeter.meterCode', 'waterMeter.meter_code'];
+const CONTRACT_METER_STATUS_PATHS = ['meterStatus', 'meter_status', 'meter.status', 'waterMeter.status'];
 
 const getMeterDetails = (customer) => {
     if (!customer) return { code: null, status: null };
-
     const buildFromCandidate = (candidate) => {
         if (!candidate || typeof candidate !== 'object') return null;
         const code = getFirstAvailableValue(candidate, METER_CODE_PATHS);
         const status = getFirstAvailableValue(candidate, METER_STATUS_PATHS);
-        if (code || status) {
-            return { code, status };
-        }
+        if (code || status) return { code, status };
         return null;
     };
-
     for (const path of METER_DIRECT_PATHS) {
         const candidate = resolvePath(customer, path);
         const result = buildFromCandidate(candidate);
         if (result) return result;
     }
-
     for (const collectionPath of METER_COLLECTION_PATHS) {
         const collection = resolvePath(customer, collectionPath);
         if (Array.isArray(collection)) {
@@ -140,13 +105,9 @@ const getMeterDetails = (customer) => {
             }
         }
     }
-
     const fallbackCode = getFirstAvailableValue(customer, METER_CODE_PATHS);
     const fallbackStatus = getFirstAvailableValue(customer, METER_STATUS_PATHS);
-    if (fallbackCode || fallbackStatus) {
-        return { code: fallbackCode, status: fallbackStatus };
-    }
-
+    if (fallbackCode || fallbackStatus) return { code: fallbackCode, status: fallbackStatus };
     return { code: null, status: null };
 };
 
@@ -160,7 +121,9 @@ const CustomerManagementPage = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
     const [confirmLoading, setConfirmLoading] = useState(false);
 
-    // State cho Modal xem hợp đồng
+    // --- [MỚI] State thông báo ---
+    const [notification, setNotification] = useState({ type: '', message: '' });
+
     const [contractModal, setContractModal] = useState({
         isOpen: false,
         customerName: '',
@@ -171,19 +134,15 @@ const CustomerManagementPage = () => {
     const parseCreatedAt = useCallback((value) => {
         if (!value) return null;
         const normalized = String(value).trim().replace(/\s+/g, ' ');
-        // Backend thường trả dạng: "YYYY-MM-DD HH:mm:ss" (không phải ISO)
-        // Chuyển sang ISO-ish để Date parse ổn định hơn.
-        const isoLike = normalized.includes(' ') && !normalized.includes('T')
-            ? normalized.replace(' ', 'T')
-            : normalized;
+        const isoLike = normalized.includes(' ') && !normalized.includes('T') ? normalized.replace(' ', 'T') : normalized;
         const date = new Date(isoLike);
         return Number.isNaN(date.getTime()) ? null : date;
     }, []);
 
-    // --- LOAD DATA ---
     const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
+        // Không reset notification ở đây để giữ thông báo thành công
         try {
             if (activeTab === 'guests') {
                 const res = await getPendingGuestRequests();
@@ -192,18 +151,14 @@ const CustomerManagementPage = () => {
                 const res = await getAllCustomers();
                 const raw = res?.data ?? res;
                 const payload = raw?.data ?? raw;
-                // Lấy mảng dữ liệu dù nó nằm ở đâu
                 const dataList = Array.isArray(payload) ? payload : (payload?.content || payload?.customers || []);
 
-                // Sắp xếp: khách tạo mới nhất lên trên (như danh sách cũ)
                 const sortedCustomers = [...dataList].sort((a, b) => {
                     const dateA = parseCreatedAt(a?.created_at ?? a?.createdAt);
                     const dateB = parseCreatedAt(b?.created_at ?? b?.createdAt);
-
                     if (dateA && dateB) return dateB.getTime() - dateA.getTime();
                     if (dateA && !dateB) return -1;
                     if (!dateA && dateB) return 1;
-
                     const idA = Number(a?.customer_id ?? a?.customerId ?? a?.id ?? 0);
                     const idB = Number(b?.customer_id ?? b?.customerId ?? b?.id ?? 0);
                     return idB - idA;
@@ -211,8 +166,6 @@ const CustomerManagementPage = () => {
 
                 setCustomers(sortedCustomers);
 
-                // Nếu API danh sách customer không trả thông tin đồng hồ, lấy bổ sung từ API hợp đồng
-                // (hiển thị mã đồng hồ ở cột "Đồng hồ")
                 const meterResults = await Promise.allSettled(
                     sortedCustomers.map(async (customer) => {
                         const customerId = customer.customer_id || customer.id || customer.customerId;
@@ -220,13 +173,8 @@ const CustomerManagementPage = () => {
                         const contractsRes = await getCustomerContracts(customerId);
                         const contractsRaw = contractsRes?.data ?? contractsRes;
                         const contractsPayload = contractsRaw?.data ?? contractsRaw;
-                        const contracts = Array.isArray(contractsPayload)
-                            ? contractsPayload
-                            : (contractsPayload?.content || contractsPayload?.contracts || []);
-                        if (!Array.isArray(contracts) || contracts.length === 0) {
-                            return [customerId, { code: null, status: null }];
-                        }
-
+                        const contracts = Array.isArray(contractsPayload) ? contractsPayload : (contractsPayload?.content || contractsPayload?.contracts || []);
+                        if (!Array.isArray(contracts) || contracts.length === 0) return [customerId, { code: null, status: null }];
                         const contractWithMeter = contracts.find((ct) => getFirstAvailableValue(ct, CONTRACT_METER_CODE_PATHS));
                         const meterCode = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_CODE_PATHS) : null;
                         const meterStatus = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_STATUS_PATHS) : null;
@@ -236,10 +184,8 @@ const CustomerManagementPage = () => {
 
                 const nextCustomerMeters = {};
                 for (const r of meterResults) {
-                    if (r.status !== 'fulfilled') continue;
-                    const value = r.value;
-                    if (!value) continue;
-                    const [customerId, meterInfo] = value;
+                    if (r.status !== 'fulfilled' || !r.value) continue;
+                    const [customerId, meterInfo] = r.value;
                     if (!customerId) continue;
                     nextCustomerMeters[customerId] = meterInfo;
                 }
@@ -247,6 +193,7 @@ const CustomerManagementPage = () => {
             }
         } catch (err) {
             console.error("Lỗi tải dữ liệu:", err);
+            // Sửa lại: Dùng notification thay vì error state nếu muốn nhất quán (hoặc giữ cả 2)
             setError("Không thể tải dữ liệu. Vui lòng thử lại.");
         } finally {
             setLoading(false);
@@ -257,7 +204,6 @@ const CustomerManagementPage = () => {
         loadData();
     }, [loadData]);
 
-    // --- ACTIONS ---
     const handleApprove = (contractId) => {
         setConfirmModal({ isOpen: true, contractId });
     };
@@ -265,26 +211,34 @@ const CustomerManagementPage = () => {
     const handleConfirmApprove = async () => {
         if (!confirmModal.contractId) return;
         setConfirmLoading(true);
+        // Reset notification cũ
+        setNotification({ type: '', message: '' });
+
         try {
             await approveGuestRequest(confirmModal.contractId);
-            alert("Thành công! Đã tạo tài khoản và gửi SMS.");
+
+            // --- THAY ALERT BẰNG NOTIFICATION ---
+            setNotification({ type: 'success', message: "Thành công! Đã tạo tài khoản và gửi SMS cho khách hàng." });
+            // ------------------------------------
+
             setConfirmModal({ isOpen: false, contractId: null });
             loadData();
         } catch (err) {
-            alert(err.response?.data || "Có lỗi xảy ra khi duyệt.");
+            // Hiển thị lỗi bằng notification (hoặc alert nếu muốn giữ lỗi critical dạng popup)
+            const msg = err.response?.data || "Có lỗi xảy ra khi duyệt.";
+            setNotification({ type: 'error', message: msg });
         } finally {
             setConfirmLoading(false);
         }
     };
 
-    // --- XEM HỢP ĐỒNG ---
     const handleViewContracts = async (customer) => {
         const customerId = customer.customer_id || customer.id || customer.customerId;
         const name = customer.customer_name || customer.customerName || customer.fullName || 'Khách hàng';
 
         if (!customerId) {
             console.error("Missing ID for customer object:", customer);
-            alert("Lỗi dữ liệu: Không tìm thấy ID khách hàng.");
+            setNotification({ type: 'error', message: "Lỗi dữ liệu: Không tìm thấy ID khách hàng." });
             return;
         }
 
@@ -296,10 +250,10 @@ const CustomerManagementPage = () => {
         } catch (err) {
             console.error("Lỗi tải hợp đồng:", err);
             setContractModal(prev => ({ ...prev, loading: false }));
+            setNotification({ type: 'error', message: "Không thể tải danh sách hợp đồng." });
         }
     };
 
-    // --- RENDER ---
     return (
         <div style={{ padding: '20px', backgroundColor: '#f8fafc', minHeight: '85vh' }}>
             <style>{`
@@ -309,6 +263,7 @@ const CustomerManagementPage = () => {
                 .badge-meter { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e0f2fe; color: #0284c7; }
                 .meter-info { display: flex; flex-direction: column; gap: 4px; }
                 .meter-code { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #0f172a; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 
                 @media (max-width: 720px) {
                     .responsive-table thead { display: none; }
@@ -324,7 +279,7 @@ const CustomerManagementPage = () => {
 
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
                 <Button
-                    onClick={() => setActiveTab('guests')}
+                    onClick={() => { setActiveTab('guests'); setNotification({ type: '', message: '' }); }}
                     style={{
                         backgroundColor: activeTab === 'guests' ? '#0A77E2' : 'white',
                         color: activeTab === 'guests' ? 'white' : '#64748b',
@@ -334,7 +289,7 @@ const CustomerManagementPage = () => {
                     Guest (Chờ duyệt)
                 </Button>
                 <Button
-                    onClick={() => setActiveTab('customers')}
+                    onClick={() => { setActiveTab('customers'); setNotification({ type: '', message: '' }); }}
                     style={{
                         backgroundColor: activeTab === 'customers' ? '#0A77E2' : 'white',
                         color: activeTab === 'customers' ? 'white' : '#64748b',
@@ -346,6 +301,13 @@ const CustomerManagementPage = () => {
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                {/* --- HIỂN THỊ THÔNG BÁO Ở ĐÂY --- */}
+                <NotificationBanner
+                    type={notification.type}
+                    message={notification.message}
+                    onClose={() => setNotification({ type: '', message: '' })}
+                />
+
                 {loading && <div style={{ textAlign: 'center', padding: '20px' }}>⏳ Đang tải...</div>}
 
                 {!loading && error && (
@@ -393,7 +355,7 @@ const CustomerManagementPage = () => {
                     </div>
                 )}
 
-                {/* TAB CUSTOMERS (Đã bỏ cột "Tài khoản") */}
+                {/* TAB CUSTOMERS */}
                 {!loading && !error && activeTab === 'customers' && (
                     <div className="table-responsive">
                         <table className="responsive-table" style={{ width: '100%' }}>
@@ -430,22 +392,14 @@ const CustomerManagementPage = () => {
                                             <td data-label="SĐT">{phone}</td>
                                             <td data-label="Email">{email}</td>
                                             <td data-label="Địa chỉ">{address}</td>
-
                                             <td data-label="Đồng hồ">
                                                 <div className="meter-info">
                                                     <span className="meter-code">{meterCode}</span>
                                                     {meterStatus ? <span className="badge-meter">{meterStatus}</span> : null}
                                                 </div>
                                             </td>
-
                                             <td data-label="HĐ" style={{ textAlign: 'center' }}>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => handleViewContracts(c)}
-                                                    title="Xem danh sách hợp đồng"
-                                                    style={{ padding: '6px' }}
-                                                >
+                                                <Button size="sm" variant="outline" onClick={() => handleViewContracts(c)} title="Xem danh sách hợp đồng" style={{ padding: '6px' }}>
                                                     <FileText size={16} />
                                                 </Button>
                                             </td>

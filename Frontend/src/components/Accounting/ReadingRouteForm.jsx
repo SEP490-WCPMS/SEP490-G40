@@ -11,7 +11,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         routeCode: '',
         routeName: '',
         areaCoverage: '',
-        assignedReaderId: '',
+        assignedReaderId: '', // Default rỗng
         serviceStaffIds: [],
     });
 
@@ -49,7 +49,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         loadReaders();
     }, [routeToEdit]);
 
-    // --- 2. SỬA LOGIC LOAD SERVICE STAFF (CHỈ LẤY DỊCH VỤ) ---
+    // --- 2. GIỮ NGUYÊN LOGIC LOAD SERVICE STAFF ---
     useEffect(() => {
         const loadServiceStaff = async () => {
             try {
@@ -124,7 +124,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                 routeCode: routeToEdit.routeCode || '',
                 routeName: routeToEdit.routeName || '',
                 areaCoverage: routeToEdit.areaCoverage || '',
-                assignedReaderId: routeToEdit.assignedReaderId || '',
+                assignedReaderId: routeToEdit.assignedReaderId || '', // Có thể null
                 serviceStaffIds: routeToEdit.serviceStaffs ? routeToEdit.serviceStaffs.map(s => s.id) : [],
             });
         }
@@ -145,28 +145,30 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
         setSaving(true);
         setError(null);
         try {
-            if (!form.assignedReaderId) {
-                setError("Vui lòng chọn Nhân Viên Thu Ngân (bắt buộc).");
-                setSaving(false);
-                return;
-            }
-            // Validate: ensure selected service staff are not already assigned to other routes
+            // --- SỬA 1: BỎ CHECK BẮT BUỘC THU NGÂN ---
+            // if (!form.assignedReaderId) { ... } // (Đã xóa)
+
+            // --- GIỮ LOGIC CHECK CONFLICT ---
+            // (Backend đã nới lỏng, nhưng Frontend vẫn nên cảnh báo nếu người dùng CỐ TÌNH chọn người đang bận)
+            // Lưu ý: Khi người dùng "bỏ chọn" (deselect), ID người đó sẽ không nằm trong `form.serviceStaffIds`
+            // -> Logic này sẽ không chạy với người bị bỏ chọn -> OK.
             if (form.serviceStaffIds && form.serviceStaffIds.length > 0) {
                 try {
                     const res = await getReadingRoutes(false);
-                    const routes = res.data || [];
-                    // Build map staffId -> route
+                    const raw = res.data || res;
+                    // Support cả Page và List response
+                    const routes = Array.isArray(raw) ? raw : (raw.content || []);
+
                     const assigned = {};
                     routes.forEach(r => {
                         const sidList = r.serviceStaffs || [];
                         sidList.forEach(s => {
-                            // s may be an object with id or just an id
                             const sid = s && (s.id || s);
                             if (sid) assigned[sid] = r;
                         });
                     });
 
-                    // Check conflicts, ignoring current route if editing
+                    // Check conflicts
                     const conflicts = form.serviceStaffIds.filter(id => {
                         const existingRoute = assigned[id];
                         if (!existingRoute) return false;
@@ -175,27 +177,26 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                     });
 
                     if (conflicts.length > 0) {
-                        // Build readable message listing conflicts
                         const messages = conflicts.map(id => {
                             const r = assigned[id];
                             const user = serviceCandidates.find(u => (u.id === id) || (u.id === Number(id))) || { fullName: `ID ${id}` };
                             const routeInfo = r ? (r.routeCode || r.routeName || `ID ${r.id}`) : 'khác';
-                            return `${user.fullName} đã được gán cho tuyến đọc ${routeInfo}`;
+                            return `${user.fullName} đang ở tuyến ${routeInfo}`;
                         });
-                        setError(`Không thể lưu. Nhân viên đã bị trùng: ${messages.join('; ')}.`);
+                        setError(`Nhân viên đã bị trùng: ${messages.join('; ')}. Hãy gỡ họ khỏi tuyến cũ trước.`);
                         setSaving(false);
                         return;
                     }
                 } catch (err) {
                     console.debug('Could not validate service staff assignment', err);
-                    // Proceed with save if validation failed (avoid blocking user)
                 }
             }
+
             const payload = {
                 routeCode: form.routeCode,
                 routeName: form.routeName,
                 areaCoverage: form.areaCoverage,
-                assignedReaderId: form.assignedReaderId,
+                assignedReaderId: form.assignedReaderId || null, // Gửi null nếu rỗng
                 serviceStaffIds: form.serviceStaffIds
             };
 
@@ -239,16 +240,17 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                         <input name="areaCoverage" value={form.areaCoverage} onChange={handleChange} />
                     </div>
 
+                    {/* --- SỬA UI: THU NGÂN TÙY CHỌN --- */}
                     <div className="form-row">
-                        <label>Nhân Viên Thu Ngân (*)</label> {/* Thêm dấu * */}
+                        <label>Nhân Viên Thu Ngân (Tùy chọn)</label>
                         <select
                             name="assignedReaderId"
                             value={form.assignedReaderId || ''}
                             onChange={handleChange}
-                            required // Thêm thuộc tính required HTML5
-                            style={{ borderColor: !form.assignedReaderId ? '#e5e7eb' : '' }}
+                            // Đã bỏ required
+                            style={{ borderColor: '#ccc' }}
                         >
-                            <option value="">-- Chọn nhân viên --</option>
+                            <option value="">-- Không chọn / Bỏ gán --</option>
                             {readers.map(r => (
                                 <option key={r.id} value={r.id}>{r.fullName} ({r.department || r.roleName})</option>
                             ))}
@@ -256,7 +258,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                     </div>
 
                     <div className="form-row">
-                        <label>Nhân Viên Dịch Vụ đọc tuyến (Giữ Ctrl để chọn nhiều)</label>
+                        <label>Nhân Viên Dịch Vụ (Giữ Ctrl để chọn/bỏ chọn)</label>
                         <select
                             multiple
                             name="serviceStaffIds"
@@ -275,7 +277,7 @@ const ReadingRouteForm = ({ routeToEdit, onClose, refreshList }) => {
                             )}
                         </select>
                         <small style={{ fontSize: '0.8em', color: '#666' }}>
-                            Selected: {form.serviceStaffIds.length}
+                            Đang chọn: {form.serviceStaffIds.length}. Giữ phím <b>Ctrl</b> (Win) hoặc <b>Cmd</b> (Mac) và click để bỏ chọn nhân viên muốn gỡ.
                         </small>
                     </div>
 
