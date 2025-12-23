@@ -10,6 +10,10 @@ import com.sep490.wcpms.repository.ReadingRouteRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,29 +69,31 @@ public class ReadingRouteService {
 
     // --- SỬA QUAN TRỌNG: THÊM TRANSACTIONAL CHO LIST ---
     @Transactional(readOnly = true)
-    public List<ReadingRouteResponse> list(boolean includeInactive, String keyword) {
-        List<ReadingRoute> list;
+    public Page<ReadingRouteResponse> list(boolean includeInactive, String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<ReadingRoute> pageResult;
 
         if (keyword != null && !keyword.trim().isEmpty()) {
             String searchTerm = keyword.trim();
             if (includeInactive) {
-                // Gọi hàm Native Query
-                list = repository.searchRoutesAllStatusNative(searchTerm);
+                pageResult = repository.searchRoutesAllStatusNative(searchTerm, pageable);
             } else {
-                // Gọi hàm Native Query, chuyển Enum Status sang String
-                list = repository.searchRoutesNative(searchTerm, ReadingRoute.Status.ACTIVE.name());
+                pageResult = repository.searchRoutesNative(searchTerm, ReadingRoute.Status.ACTIVE.name(), pageable);
             }
         } else {
-            // Logic cũ (không search)
+            // Không search
             if (includeInactive) {
-                list = repository.findAll();
+                pageResult = repository.findAll(pageable);
             } else {
-                list = repository.findAllByStatus(ReadingRoute.Status.ACTIVE);
+                pageResult = repository.findAllByStatus(ReadingRoute.Status.ACTIVE, pageable);
             }
         }
 
-        return list.stream().map(this::toResponse).collect(Collectors.toList());
+        // Map Page<Entity> sang Page<DTO>
+        return pageResult.map(this::toResponse);
     }
+
+
 
     @Transactional
     public ReadingRouteResponse update(Integer id, ReadingRouteRequest req) {
