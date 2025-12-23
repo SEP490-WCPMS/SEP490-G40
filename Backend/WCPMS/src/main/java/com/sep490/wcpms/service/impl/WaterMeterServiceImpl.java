@@ -27,14 +27,12 @@ public class WaterMeterServiceImpl implements WaterMeterService {
     // ... (Các hàm listAll, getById, create, update giữ nguyên như cũ) ...
 
     @Override
-    public Page<WaterMeterAdminResponseDTO> listAll(boolean includeMaintenance, int page, int size) {
+    public Page<WaterMeterAdminResponseDTO> listAll(boolean includeMaintenance, String keyword, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<WaterMeter> pageResult;
-        if (includeMaintenance) {
-            pageResult = repository.findAll(pageable);
-        } else {
-            pageResult = repository.findByMeterStatusNot(WaterMeter.MeterStatus.UNDER_MAINTENANCE, pageable);
-        }
+
+        // Gọi hàm search mới (đã bao gồm cả logic lọc includeMaintenance trong Query)
+        Page<WaterMeter> pageResult = repository.searchWaterMeters(keyword, includeMaintenance, pageable);
+
         return pageResult.map(this::toDto);
     }
 

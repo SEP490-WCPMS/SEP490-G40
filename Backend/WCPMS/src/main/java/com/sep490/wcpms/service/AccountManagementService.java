@@ -16,7 +16,7 @@ public interface AccountManagementService {
 
     // Lấy danh sách tất cả tài khoản nhân viên
     // Sửa hàm này: Thêm tham số page, size, department
-    Page<StaffAccountResponseDTO> getAllStaffAccounts(int page, int size, Account.Department department);
+    Page<StaffAccountResponseDTO> getAllStaffAccounts(int page, int size, Account.Department department, String search);
 
     // Lấy chi tiết một tài khoản
     StaffAccountResponseDTO getStaffAccountById(Integer accountId);

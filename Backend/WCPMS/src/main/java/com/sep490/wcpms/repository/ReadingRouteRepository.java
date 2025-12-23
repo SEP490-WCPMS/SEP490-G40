@@ -2,6 +2,8 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Account;
 import com.sep490.wcpms.entity.ReadingRoute;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,6 +35,9 @@ public interface ReadingRouteRepository extends JpaRepository<ReadingRoute, Inte
     @Query("SELECT r FROM ReadingRoute r JOIN r.serviceStaffs s WHERE s.id = :staffId AND r.status = 'ACTIVE'")
     List<ReadingRoute> findActiveRoutesByServiceStaffId(@Param("staffId") Integer staffId);
 
+    // --- SEARCH CÓ PHÂN TRANG (NATIVE QUERY) ---
+
+    // 1. Tìm kiếm theo trạng thái (Active)
     @Query(value = "SELECT * FROM reading_routes r WHERE " +
             "(" +
             "   LOWER(r.route_code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
@@ -40,17 +45,34 @@ public interface ReadingRouteRepository extends JpaRepository<ReadingRoute, Inte
             "   LOWER(r.area_coverage) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
             ") " +
             "AND (:status IS NULL OR r.status = :status)",
+            countQuery = "SELECT count(*) FROM reading_routes r WHERE " +
+                    "(" +
+                    "   LOWER(r.route_code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                    "   LOWER(r.route_name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                    "   LOWER(r.area_coverage) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+                    ") " +
+                    "AND (:status IS NULL OR r.status = :status)",
             nativeQuery = true)
-    List<ReadingRoute> searchRoutesNative(@Param("keyword") String keyword, @Param("status") String status);
+    Page<ReadingRoute> searchRoutesNative(@Param("keyword") String keyword, @Param("status") String status, Pageable pageable);
 
-    // Search cho trường hợp lấy tất cả (kể cả inactive)
+    // 2. Tìm kiếm tất cả (Include Inactive)
     @Query(value = "SELECT * FROM reading_routes r WHERE " +
             "(" +
             "   LOWER(r.route_code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "   LOWER(r.route_name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "   LOWER(r.area_coverage) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
             ")",
+            countQuery = "SELECT count(*) FROM reading_routes r WHERE " +
+                    "(" +
+                    "   LOWER(r.route_code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                    "   LOWER(r.route_name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                    "   LOWER(r.area_coverage) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+                    ")",
             nativeQuery = true)
-    List<ReadingRoute> searchRoutesAllStatusNative(@Param("keyword") String keyword);
+    Page<ReadingRoute> searchRoutesAllStatusNative(@Param("keyword") String keyword, Pageable pageable);
+
+    // 3. Fallback: Lấy tất cả có phân trang (JPA)
+    Page<ReadingRoute> findAll(Pageable pageable);
+    Page<ReadingRoute> findAllByStatus(ReadingRoute.Status status, Pageable pageable);
 }
 
