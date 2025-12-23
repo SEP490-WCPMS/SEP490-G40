@@ -397,13 +397,10 @@ public class ContractAnnulTransferRequestService {
             Contract contract = entity.getContract();
 
             // --- KIỂM TRA CÔNG NỢ ---
-            // Nếu còn hóa đơn PENDING/OVERDUE -> Chặn duyệt
-            List<Invoice.PaymentStatus> debtStatuses = Arrays.asList(
-                    Invoice.PaymentStatus.PENDING,
-                    Invoice.PaymentStatus.OVERDUE
-            );
+            // Chỉ chặn duyệt nếu còn hóa đơn ở trạng thái PENDING (theo yêu cầu):
+            List<Invoice.PaymentStatus> debtStatuses = Collections.singletonList(Invoice.PaymentStatus.PENDING);
             if (invoiceRepository.existsByContract_IdAndPaymentStatusIn(contract.getId(), debtStatuses)) {
-                throw new IllegalStateException("Không thể duyệt: Hợp đồng vẫn còn hóa đơn chưa thanh toán. Vui lòng thanh toán hết công nợ trước.");
+                throw new IllegalStateException("Không thể duyệt: Hợp đồng vẫn còn hóa đơn đang PENDING. Vui lòng xử lý (thanh toán/hủy) những hóa đơn PENDING trước khi duyệt hủy.");
             }
 
             // 1. XỬ LÝ HỦY HỢP ĐỒNG (ANNUL)
@@ -466,6 +463,11 @@ public class ContractAnnulTransferRequestService {
                     MeterInstallation install = installOpt.get();
                     install.setCustomer(newOwner);
                     // Cập nhật lại WaterServiceContract trong Installation (nếu cần thiết, nhưng thường nó trỏ theo object nên tự update)
+                    // Nếu có HĐ Dịch vụ liên kết với hợp đồng này, đảm bảo bản ghi lắp đặt cũng trỏ tới HĐ Dịch vụ vừa cập nhật
+                    WaterServiceContract latestWsc = contract.getPrimaryWaterContract();
+                    if (latestWsc != null) {
+                        install.setWaterServiceContract(latestWsc);
+                    }
                     meterInstallationRepository.save(install);
                 }
 

@@ -382,40 +382,41 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             {/* Pagination is rendered inside ContractTable; duplicate removed. */}
 
             {/* --- MODAL CHÍNH --- */}
-            {modalVisible && selectedContract && (
-                <>
-                    {modalType === 'edit' ? (
-                        <AssignSurveyModal
-                            open={modalVisible}
-                            onCancel={() => setModalVisible(false)}
-                            initialData={selectedContract}
-                            loading={modalLoading}
-                            onSave={handleAssignSurveySave}
-                        />
-                    ) : modalType === 'view' ? (
-                        <ContractViewModal
-                            open={modalVisible}
-                            onCancel={() => setModalVisible(false)}
-                            initialData={selectedContract}
-                            loading={modalLoading}
-                        />
-                    ) : (
-                        <Modal
-                            open={modalVisible}
-                            title={getModalTitle()}
-                            onCancel={() => setModalVisible(false)}
-                            onOk={handleModalSubmit}
-                            confirmLoading={modalLoading}
-                            destroyOnHidden
-                            okText={modalType === 'renew' ? 'Xác nhận Gia hạn' : 'Xác nhận'}
-                            cancelText="Hủy"
-                            okButtonProps={{ danger: modalType === 'terminate' }}
-                            destroyOnClose
-                        >
-                            {renderFormContent()}
-                        </Modal>
-                    )}
-                </>
+            {/* AssignSurveyModal: always mounted, visibility controlled by `open` prop so it can show spinner immediately */}
+            <AssignSurveyModal
+                open={modalVisible && modalType === 'edit'}
+                visible={modalVisible && modalType === 'edit'}
+                onCancel={() => setModalVisible(false)}
+                initialData={selectedContract}
+                loading={modalLoading}
+                onSave={handleAssignSurveySave}
+            />
+
+            {/* Contract view modal (always mounted, controlled by open) */}
+            <ContractViewModal
+                open={modalVisible && modalType === 'view'}
+                visible={modalVisible && modalType === 'view'}
+                onCancel={() => setModalVisible(false)}
+                initialData={selectedContract}
+                loading={modalLoading}
+            />
+
+            {/* Generic Modal for other modalType (renew, terminate...) */}
+            {(modalType !== 'edit' && modalType !== 'view') && (
+                <Modal
+                    open={modalVisible}
+                    title={getModalTitle()}
+                    onCancel={() => setModalVisible(false)}
+                    onOk={handleModalSubmit}
+                    confirmLoading={modalLoading}
+                    destroyOnHidden
+                    okText={modalType === 'renew' ? 'Xác nhận Gia hạn' : 'Xác nhận'}
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: modalType === 'terminate' }}
+                    destroyOnClose
+                >
+                    {renderFormContent()}
+                </Modal>
             )}
             
             {/* --- MODAL EDIT MỚI (Thêm phần này) --- */}

@@ -3,9 +3,11 @@ package com.sep490.wcpms.service.impl;
 import com.sep490.wcpms.dto.CreateWaterMeterRequestDTO;
 import com.sep490.wcpms.dto.UpdateWaterMeterRequestDTO;
 import com.sep490.wcpms.dto.WaterMeterAdminResponseDTO;
+import com.sep490.wcpms.entity.ActivityLog;
 import com.sep490.wcpms.entity.WaterMeter;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.WaterMeterRepository;
+import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.service.WaterMeterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WaterMeterServiceImpl implements WaterMeterService {
 
     private final WaterMeterRepository repository;
+    private final ActivityLogService activityLogService;
 
     // ... (Các hàm listAll, getById, create, update giữ nguyên như cũ) ...
 
@@ -63,7 +66,20 @@ public class WaterMeterServiceImpl implements WaterMeterService {
         if (req.getMeterStatus() != null) {
             try { w.setMeterStatus(WaterMeter.MeterStatus.valueOf(req.getMeterStatus())); } catch (Exception ignore) {}
         }
-        return toDto(repository.save(w));
+        WaterMeter saved = repository.save(w);
+
+        // --- GHI LOG ---
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("WATER_METER");
+            log.setSubjectId(saved.getMeterCode());
+            log.setAction("METER_IMPORTED");
+            log.setPayload("Serial: " + saved.getSerialNumber() + ", NCC: " + saved.getSupplier());
+            log.setActorType("ADMIN");
+            activityLogService.save(log);
+        } catch (Exception ex) {}
+
+        return toDto(saved);
     }
 
     @Override
@@ -116,7 +132,20 @@ public class WaterMeterServiceImpl implements WaterMeterService {
         }
 
         w.setMeterStatus(newStatus);
-        return toDto(repository.save(w));
+        WaterMeter saved = repository.save(w);
+
+        // --- GHI LOG ĐỔI TRẠNG THÁI ---
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("WATER_METER");
+            log.setSubjectId(saved.getMeterCode());
+            log.setAction("METER_STATUS_CHANGED");
+            log.setPayload("New Status: " + newStatus);
+            log.setActorType("ADMIN");
+            activityLogService.save(log);
+        } catch (Exception ex) {}
+
+        return toDto(saved);
     }
     // -------------------------
 

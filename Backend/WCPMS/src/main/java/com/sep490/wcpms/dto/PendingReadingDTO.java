@@ -1,6 +1,7 @@
 package com.sep490.wcpms.dto;
 
 import com.sep490.wcpms.entity.Customer;
+import com.sep490.wcpms.entity.MeterInstallation;
 import com.sep490.wcpms.entity.MeterReading;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -44,14 +45,28 @@ public class PendingReadingDTO {
                 this.meterCode = mr.getMeterInstallation().getWaterMeter().getMeterCode();
             }
             // Lấy thông tin Customer từ Hợp đồng Dịch vụ
-            if (mr.getMeterInstallation().getWaterServiceContract() != null) {
-                Customer customer = mr.getMeterInstallation().getWaterServiceContract().getCustomer();
-                if (customer != null) {
-                    this.customerId = customer.getId();
-                    this.customerCode = customer.getCustomerCode();
-                    this.customerName = customer.getCustomerName();
-                    this.customerAddress = customer.getAddress();
-                }
+            MeterInstallation inst = mr.getMeterInstallation();
+            Customer resolved = null;
+
+            // 1) Nếu bản ghi lắp đặt đang trỏ trực tiếp tới 1 WaterServiceContract -> ưu tiên đó
+            if (inst.getWaterServiceContract() != null && inst.getWaterServiceContract().getCustomer() != null) {
+                resolved = inst.getWaterServiceContract().getCustomer();
+            }
+            // 2) Nếu không có, thử lấy từ Hợp đồng lắp đặt (Contract.primaryWaterContract)
+            else if (inst.getContract() != null && inst.getContract().getPrimaryWaterContract() != null
+                    && inst.getContract().getPrimaryWaterContract().getCustomer() != null) {
+                resolved = inst.getContract().getPrimaryWaterContract().getCustomer();
+            }
+            // 3) Fallback: dùng trực tiếp customer trên bản ghi lắp đặt
+            else if (inst.getCustomer() != null) {
+                resolved = inst.getCustomer();
+            }
+
+            if (resolved != null) {
+                this.customerId = resolved.getId();
+                this.customerCode = resolved.getCustomerCode();
+                this.customerName = resolved.getCustomerName();
+                this.customerAddress = resolved.getAddress();
             }
         }
 
