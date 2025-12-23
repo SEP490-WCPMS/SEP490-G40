@@ -227,13 +227,13 @@ public class ContractAnnulTransferRequestService {
         try {
             // log kết và trả về DTO
             ContractAnnulTransferRequestDTO out = convertToAnnulTransferDTO(entity);
-             log.info("[REQUEST CREATED] id={}, contractId={}, type={}, requestedById={}", out.getId(), out.getContractId(), out.getRequestType(), out.getRequestedById());
-             return out;
-         } catch (Exception ex) {
-             log.error("[MAPPER ERROR] failed to map Entity -> DTO after save. entityId={}", entity.getId(), ex);
-             throw ex;
-         }
-     }
+            log.info("[REQUEST CREATED] id={}, contractId={}, type={}, requestedById={}", out.getId(), out.getContractId(), out.getRequestType(), out.getRequestedById());
+            return out;
+        } catch (Exception ex) {
+            log.error("[MAPPER ERROR] failed to map Entity -> DTO after save. entityId={}", entity.getId(), ex);
+            throw ex;
+        }
+    }
 
      public ContractAnnulTransferRequestDTO getById(Integer id) {
         ContractAnnulTransferRequest entity = repository.findWithRelationsById(id)
@@ -449,7 +449,7 @@ public class ContractAnnulTransferRequestService {
                     contract.setContactPhone(newOwner.getAccount().getPhone());
                 }
 
-                // B. [MỚI] Sang tên Hợp đồng Dịch vụ -> ĐỂ KẾ TOÁN IN HÓA ĐƠN ĐÚNG TÊN
+                // B. Sang tên Hợp đồng Dịch vụ -> ĐỂ KẾ TOÁN IN HÓA ĐƠN ĐÚNG TÊN MỚI
                 if (contract.getPrimaryWaterContract() != null) {
                     WaterServiceContract wsc = contract.getPrimaryWaterContract();
                     // Chỉ cập nhật nếu HĐ đang Active
@@ -460,10 +460,12 @@ public class ContractAnnulTransferRequestService {
                 }
 
                 // C. [MỚI] Sang tên Biên bản lắp đặt -> ĐỂ LỊCH SỬ ĐỒNG HỒ ĐÚNG CHỦ
+                // (Optional<MeterInstallation> đã lấy ở trên, nhưng ở đây cần lấy lại hoặc dùng chung)
                 Optional<MeterInstallation> installOpt = meterInstallationRepository.findByContract(contract);
                 if (installOpt.isPresent()) {
                     MeterInstallation install = installOpt.get();
                     install.setCustomer(newOwner);
+                    // Cập nhật lại WaterServiceContract trong Installation (nếu cần thiết, nhưng thường nó trỏ theo object nên tự update)
                     meterInstallationRepository.save(install);
                 }
 

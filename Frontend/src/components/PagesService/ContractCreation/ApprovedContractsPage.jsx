@@ -8,6 +8,7 @@ import Pagination from '../../common/Pagination';
 import ContractTable from '../ContractTable';
 import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
+import ContractEditModal from './ContractEditModal'; // Import Modal Sửa
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../../Services/apiService';
 import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
@@ -27,6 +28,12 @@ const ApprovedContractsPage = ({ refreshKey }) => {
     const [showSendToSignConfirm, setShowSendToSignConfirm] = useState(false);
     const [sendingContract, setSendingContract] = useState(null);
     const [sending, setSending] = useState(false);
+
+    // --- STATE MỚI CHO EDIT ---
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [contractToEdit, setContractToEdit] = useState(null);
+    const [editLoading, setEditLoading] = useState(false);
+    // --------------------------
 
     const [pagination, setPagination] = useState({
         page: 0,
@@ -118,7 +125,7 @@ const ApprovedContractsPage = ({ refreshKey }) => {
         }
     };
 
-// Mở Modal / Xử lý Action
+    // Mở Modal / Xử lý Action
     const handleViewDetails = async (contract, actionType) => {
         
         // --- 1. LOGIC CHẶN GUEST KHI GỬI KÝ (Mới thêm) ---
@@ -143,6 +150,24 @@ const ApprovedContractsPage = ({ refreshKey }) => {
             setShowSendToSignConfirm(true);
             return;
         }
+
+        // --- LOGIC MỚI: MỞ MODAL SỬA ---
+        if (actionType === 'edit') {
+            // Gọi API lấy chi tiết mới nhất để đảm bảo dữ liệu tươi mới
+            setModalLoading(true);
+            try {
+                const res = await getServiceContractDetail(contract.id);
+                setContractToEdit(res.data);
+                setIsEditModalOpen(true);
+            } catch (err) {
+                toast.error('Không thể tải thông tin hợp đồng.');
+            } finally {
+                setModalLoading(false);
+            }
+            return;
+        }
+        // -------------------------------
+
         if (actionType === 'generateWater') {
             // Điều hướng sang trang tạo hợp đồng (trang riêng)
             // Truyền theo sourceContractId để trang tạo biết lấy thông tin gốc nếu cần
@@ -169,23 +194,24 @@ const ApprovedContractsPage = ({ refreshKey }) => {
         setSelectedContract(null);
     };
 
-    // Lưu thay đổi từ Modal
-    const handleSaveModal = async (formData) => {
-        if (!selectedContract) return;
-        setModalLoading(true);
+    // --- HÀM LƯU SAU KHI SỬA ---
+    const handleEditSave = async (updatedData) => {
+        if (!contractToEdit) return;
+        setEditLoading(true);
         try {
-            await updateServiceContract(selectedContract.id, formData);
+            await updateServiceContract(contractToEdit.id, updatedData);
             toast.success('Cập nhật hợp đồng thành công!');
-            setIsModalVisible(false);
-            setSelectedContract(null);
-            fetchContracts(pagination.current, pagination.pageSize, filters.keyword);
+            setIsEditModalOpen(false);
+            setContractToEdit(null);
+            fetchContracts(); // Reload lại bảng
         } catch (error) {
-            toast.error('Cập nhật hợp đồng thất bại!');
-            console.error("Update contract error:", error);
+            console.error(error);
+            toast.error('Cập nhật thất bại: ' + (error.response?.data?.message || error.message));
         } finally {
-            setModalLoading(false);
+            setEditLoading(false);
         }
     };
+    // ---------------------------
 
     return (
         <div className="space-y-6">
@@ -225,6 +251,18 @@ const ApprovedContractsPage = ({ refreshKey }) => {
             />
 
             {/* Modal tạo HĐ chính thức đã bỏ – điều hướng sang trang riêng */}
+
+            {/* --- MODAL EDIT MỚI --- */}
+            {isEditModalOpen && (
+                <ContractEditModal
+                    open={isEditModalOpen}
+                    contract={contractToEdit}
+                    onCancel={() => { setIsEditModalOpen(false); setContractToEdit(null); }}
+                    onSave={handleEditSave}
+                    loading={editLoading}
+                />
+            )}
+            {/* ---------------------- */}
             
             {/* Modal xác nhận Gửi ký */}
             <ConfirmModal 
@@ -240,5 +278,3 @@ const ApprovedContractsPage = ({ refreshKey }) => {
 };
 
 export default ApprovedContractsPage;
-
-

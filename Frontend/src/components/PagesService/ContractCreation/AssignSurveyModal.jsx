@@ -218,21 +218,6 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
               })}
             </Select>
           </Form.Item>
-
-          {/* Thông báo hệ thống */}
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-            <div className="flex items-start gap-3">
-              <InfoCircleOutlined className="text-blue-600 text-lg mt-0.5" />
-              <div>
-                <p className="font-semibold text-blue-900 text-sm mb-2">Sau khi gửi khảo sát, hệ thống sẽ:</p>
-                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                  <li>Chuyển trạng thái hợp đồng sang <span className="font-semibold">"Chờ khảo sát"</span></li>
-                  <li>Thông báo cho nhân viên kỹ thuật được chọn</li>
-                  <li>NV kỹ thuật sẽ thực hiện khảo sát và báo giá chi phí lắp đặt</li>
-                </ul>
-              </div>
-            </div>
-          </div>
         </Form>
       </Spin>
       

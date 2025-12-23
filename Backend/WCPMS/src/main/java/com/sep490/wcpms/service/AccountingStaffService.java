@@ -66,9 +66,9 @@ public interface AccountingStaffService {
     InvoiceDTO createInstallationInvoice(ContractInstallationInvoiceCreateDTO request, Integer staffId);
 
     /**
-     * Lấy danh sách các chỉ số đã đọc (COMPLETED) và chờ lập hóa đơn.
+     * Lấy danh sách các chỉ số đang chờ nhập cho Kế toán.
      */
-    Page<PendingReadingDTO> getPendingReadings(Pageable pageable);
+    Page<PendingReadingDTO> getPendingReadings(String keyword, Pageable pageable);
 
     /**
      * Tạo Hóa đơn tiền nước (Bảng 17) từ một bản ghi MeterReading (Bảng 15).

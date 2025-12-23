@@ -56,27 +56,48 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
             @Param("endDate") LocalDate endDate
     );
 
-    // ========== Query MỚI (cho auto-assign) ==========
-    /**
-     * Tìm các meter_readings:
-     * - Status = COMPLETED
-     * - Được assign cho accountingStaffId
-     * - Tiêu thụ > 0 (consumption > 0)
-     * - Chưa có invoice (NOT EXISTS trong bảng invoices với meter_reading_id)
-     */
+//    // ========== Query MỚI (cho auto-assign) ==========
+//    /**
+//     * Tìm các meter_readings:
+//     * - Status = COMPLETED
+//     * - Được assign cho accountingStaffId
+//     * - Tiêu thụ > 0 (consumption > 0)
+//     * - Chưa có invoice (NOT EXISTS trong bảng invoices với meter_reading_id)
+//     */
+//    @Query("SELECT mr FROM MeterReading mr " +
+//           "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
+//           "AND mr.accountingStaff.id = :accountingStaffId " +
+//           "AND mr.consumption > 0" +
+//           "AND NOT EXISTS (" +
+//           "    SELECT 1 FROM Invoice inv " +
+//           "    WHERE inv.meterReading.id = mr.id" +
+//           ")")
+//    Page<MeterReading> findCompletedReadingsNotBilledByAccountingStaff(
+//            @Param("accountingStaffId") Integer accountingStaffId,
+//            Pageable pageable
+//    );
+    // --- TÍCH HỢP CẢ LOGIC GÁN STAFF VÀ SEARCH ---
     @Query("SELECT mr FROM MeterReading mr " +
-           "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
-           "AND mr.accountingStaff.id = :accountingStaffId " +
-           "AND mr.consumption > 0" +
-           "AND NOT EXISTS (" +
-           "    SELECT 1 FROM Invoice inv " +
-           "    WHERE inv.meterReading.id = mr.id" +
-           ")")
-    Page<MeterReading> findCompletedReadingsNotBilledByAccountingStaff(
-            @Param("accountingStaffId") Integer accountingStaffId,
+            "JOIN mr.meterInstallation mi " +
+            "JOIN mi.waterMeter wm " +
+            "LEFT JOIN mi.waterServiceContract wsc " +
+            "LEFT JOIN wsc.customer c " +
+            "WHERE mr.readingStatus = com.sep490.wcpms.entity.MeterReading.ReadingStatus.COMPLETED " +
+            // 1. GIỮ NGUYÊN LOGIC CŨ: Phải đúng là Staff đang đăng nhập
+            "AND mr.accountingStaff.id = :staffId " +
+            "AND mr.consumption > 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM Invoice inv WHERE inv.meterReading.id = mr.id) " +
+            // 2. THÊM LOGIC MỚI: Nếu có keyword thì lọc, không thì lấy hết
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "     LOWER(wm.meterCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "     LOWER(c.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "     LOWER(c.customerCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "     LOWER(c.address) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<MeterReading> searchPendingReadings(
+            @Param("staffId") Integer staffId,
+            @Param("keyword") String keyword,
             Pageable pageable
     );
-    // --- HẾT PHẦN THÊM ---
 
     /**
      * Đếm số chỉ số đã đọc (COMPLETED) được gán cho Kế toán này nhưng chưa lập hóa đơn.
