@@ -49,15 +49,18 @@ public class AccountController {
     @GetMapping("/customer")
     public List<CustomerDTO> findCustomer(
             @RequestParam(required = false) String customerName,
-            @RequestParam(required = false) String identityNumber) {
-        return customerQueryService.findCustomers(customerName, identityNumber);
+            @RequestParam(required = false) String identityNumber,
+            @RequestParam(required = false) String phone) {
+        return customerQueryService.findCustomers(customerName, identityNumber, phone);
     }
 
+    // GET /api/accounts/{id}
     @GetMapping("/{id}")
     public AccountSummaryDTO getAccountById(@PathVariable Integer id) {
         return accountQueryService.findById(id);
     }
 
+    // GET /api/accounts/customer/{customerId}
     @GetMapping("/customer/{customerId}")
     public CustomerDTO getCustomerById(@PathVariable Integer customerId) {
         return customerQueryService.findById(customerId);

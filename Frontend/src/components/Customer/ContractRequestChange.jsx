@@ -1,10 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Select, Button, Row, Col, message, Spin, Typography, Divider, Upload, DatePicker } from 'antd';
+import React, {useState, useEffect, useRef} from 'react';
+import { Card, Form, Input, Select, Button, Row, Col, Spin, Typography, Divider, Upload, DatePicker, AutoComplete } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {createContractRequest, searchCustomers, getContractsByCustomerId, searchContractRequests} from '../Services/apiService';
 import moment from 'moment';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './ContractRequestChange.css';
 
 const { Title } = Typography;
@@ -24,14 +25,22 @@ const ContractRequestChange = () => {
     const [fromCustomerId, setFromCustomerId] = useState(null);
     const [fromCustomerFullName, setFromCustomerFullName] = useState(null);
     const [fileList, setFileList] = useState([]);
-    const [searchName, setSearchName] = useState('');
-    const [searchIdentity, setSearchIdentity] = useState('');
+    const [searchText, setSearchText] = useState('');
+    const [customerOptions, setCustomerOptions] = useState([]);
+    const [selectedToCustomer, setSelectedToCustomer] = useState(null);
+    const searchTimerRef = useRef(null);
 
     // Lấy danh sách hợp đồng khi component mount
     useEffect(() => {
         fetchCurrentCustomerAndContracts();
+
+        // cleanup function để clear timer khi unmount
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
     }, []);
 
+    // Lấy danh sách contractId đã có yêu cầu (PENDING)
     const fetchRequestedContractIds = async () => {
         try {
             const res = await searchContractRequests({
@@ -66,8 +75,7 @@ const ContractRequestChange = () => {
         }
     };
 
-
-
+    // Lấy thông tin khách hàng hiện tại và danh sách hợp đồng
     const fetchCurrentCustomerAndContracts = async () => {
         setLoading(true);
         try {
@@ -86,16 +94,17 @@ const ContractRequestChange = () => {
                 const customerIdToUse = customerId || accountId;
                 await fetchContractsByCustomer(customerIdToUse);
             } else {
-                message.error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
+                toast.error('Không tìm thấy thông tin khách hàng. Vui lòng đăng nhập lại.');
             }
         } catch (error) {
             console.error("Fetch current customer error:", error);
-            message.error('Lỗi khi tải thông tin khách hàng!');
+            toast.error('Lỗi khi tải thông tin khách hàng!');
         } finally {
             setLoading(false);
         }
     };
 
+    // Lấy danh sách hợp đồng của khách hàng
     const fetchContractsByCustomer = async (customerId) => {
         try {
             const response = await getContractsByCustomerId(customerId);
@@ -133,12 +142,10 @@ const ContractRequestChange = () => {
             setContracts(eligibleContracts);
         } catch (error) {
             console.error("Fetch contracts error:", error);
-            message.error('Lỗi khi tải danh sách hợp đồng!');
+            toast.error('Lỗi khi tải danh sách hợp đồng!');
             setContracts([]);
         }
     };
-
-
 
     // const fetchContracts = async () => {
     //     setLoading(true);
@@ -178,6 +185,7 @@ const ContractRequestChange = () => {
         return `${contractId}_${typeCode}_${dateStr}`;
     };
 
+    // Xử lý khi chọn hợp đồng
     const handleContractChange = (contractId) => {
         const type = form.getFieldValue('requestType');
         if (type) {
@@ -186,6 +194,7 @@ const ContractRequestChange = () => {
         }
     };
 
+    // Xử lý khi chọn loại yêu cầu
     const handleRequestTypeChange = (type) => {
         setRequestType(type);
         const contractId = form.getFieldValue('contractId');
@@ -195,34 +204,78 @@ const ContractRequestChange = () => {
         }
     };
 
-    // Tìm kiếm khách hàng
-    const handleSearchCustomer = async () => {
-        if (!searchName && !searchIdentity) {
-            message.warning('Vui lòng nhập tên hoặc CMND/CCCD để tìm kiếm!');
+    // Search khách hàng theo 1 ô: tên hoặc SĐT (debounce)
+    const handleSearchCustomerAuto = (keyword) => {
+        setSearchText(keyword);
+
+        const kw = (keyword || '').trim();
+        if (kw.length < 2) {
+            setCustomerOptions([]);
+            setCustomers([]);
             return;
         }
 
-        setSearchLoading(true);
-        try {
-            const params = {};
-            if (searchName) params.customerName = searchName;
-            if (searchIdentity) params.identityNumber = searchIdentity;
+        // debounce tránh spam API
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
-            const response = await searchCustomers(params);
-            if (response.data && Array.isArray(response.data)) {
-                setCustomers(response.data);
-                if (response.data.length === 0) {
-                    message.info('Không tìm thấy khách hàng phù hợp!');
+        searchTimerRef.current = setTimeout(async () => {
+            setSearchLoading(true);
+            try {
+                const params = {};
+
+                // kiểm tra keyword có chứa chữ cái không
+                const hasLetter = /[a-zA-ZÀ-ỹ]/.test(kw);
+
+                if (!hasLetter) {
+                    // chỉ số/format phone: bỏ hết ký tự không phải số
+                    let digits = kw.replace(/\D/g, '');
+
+                    // normalize +84xxxx -> 0xxxx
+                    if (digits.startsWith('84') && digits.length >= 10) {
+                        digits = '0' + digits.slice(2);
+                    }
+
+                    // nếu đủ dài thì search phone
+                    if (digits.length >= 7) {
+                        params.phone = digits;
+                    } else {
+                        params.customerName = kw;
+                    }
                 } else {
-                    message.success(`Tìm thấy ${response.data.length} khách hàng!`);
+                    params.customerName = kw;
                 }
+
+                const response = await searchCustomers(params);
+                const list = Array.isArray(response?.data) ? response.data : [];
+
+                // lọc chính mình khỏi kết quả
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const selfAccountId = user?.id;
+                const selfCustomerId = user?.customerId;
+
+                const filtered = (list || []).filter(c => {
+                    if (selfCustomerId != null && c.id === selfCustomerId) return false;
+                    return !(selfAccountId != null && c.accountId === selfAccountId);
+                });
+
+                setCustomers(filtered);
+
+                // options dropdown: "Tên - SĐT"
+                setCustomerOptions(
+                    filtered.map(c => ({
+                        value: String(c.id),
+                        label: `${c.customerName} - ${c.phone || 'N/A'}`,
+                        _raw: c,
+                    }))
+                );
+            } catch (error) {
+                console.error("Auto search customers error:", error);
+                setCustomers([]);
+                setCustomerOptions([]);
+            } finally {
+                setSearchLoading(false);
             }
-        } catch (error) {
-            message.error('Lỗi khi tìm kiếm khách hàng!');
-            console.error("Search customers error:", error);
-        } finally {
-            setSearchLoading(false);
-        }
+        }, 350);
     };
 
     // Xử lý upload file
@@ -230,14 +283,16 @@ const ContractRequestChange = () => {
         setFileList(newFileList);
     };
 
+    // Kiểm tra file trước khi upload
     const beforeUpload = (file) => {
         const isLt10M = file.size / 1024 / 1024 < 10;
         if (!isLt10M) {
-            message.error('File phải nhỏ hơn 10MB!');
+            toast.error('File phải nhỏ hơn 10MB!');
         }
         return false; // Không upload tự động
     };
 
+    // Chuyển file thành base64
     const fileToBase64 = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -286,12 +341,7 @@ const ContractRequestChange = () => {
             const response = await createContractRequest(requestData);
 
             if (response.data) {
-                message.success('Tạo yêu cầu thành công!');
-
-                // Hiển thị request_number nếu có
-                if (response.data.requestNumber) {
-                    message.info(`Mã yêu cầu: ${response.data.requestNumber}`);
-                }
+                toast.success('Tạo yêu cầu thành công!');
 
                 // Chuyển về trang danh sách yêu cầu sau 1.5s
                 setTimeout(() => {
@@ -301,7 +351,7 @@ const ContractRequestChange = () => {
         } catch (error) {
             console.error('Create contract request error:', error);
             const errorMessage = error.response?.data?.message || 'Tạo yêu cầu thất bại!';
-            message.error(errorMessage);
+            toast.error(errorMessage);
         } finally {
             setSubmitting(false);
         }
@@ -314,6 +364,11 @@ const ContractRequestChange = () => {
 
     return (
         <div className="contract-request-change-container">
+            <ToastContainer
+                position="top-center"
+                autoClose={3000}
+                theme="colored"
+            />
             <div className="contract-request-change-header">
                 <Button
                     icon={<ArrowLeftOutlined />}
@@ -443,68 +498,76 @@ const ContractRequestChange = () => {
                             <>
                                 <Divider />
                                 <div className="form-section-title">Thông tin Chuyển nhượng</div>
+
                                 <Row gutter={16}>
                                     <Col xs={24}>
-                                        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#e6f7ff', borderRadius: '4px' }}>
-                                            <strong>Từ khách hàng:</strong> {fromCustomerFullName ? `${fromCustomerFullName}` : 'Đang tải...'}
+                                        <div
+                                            style={{
+                                                marginBottom: '16px',
+                                                padding: '12px',
+                                                backgroundColor: '#e6f7ff',
+                                                borderRadius: '4px',
+                                            }}
+                                        >
+                                            <strong>Từ khách hàng:</strong>{' '}
+                                            {fromCustomerFullName ? `${fromCustomerFullName}` : 'Đang tải...'}
                                         </div>
                                     </Col>
 
-                                    <Col xs={24} md={10}>
-                                        <Form.Item label="Tên khách hàng nhận chuyển nhượng">
-                                            <Input
-                                                placeholder="Nhập tên khách hàng"
-                                                value={searchName}
-                                                onChange={(e) => setSearchName(e.target.value)}
-                                            />
-                                        </Form.Item>
-                                    </Col>
+                                    {/* Lưu ID khách nhận chuyển nhượng (ẩn) */}
+                                    <Form.Item
+                                        name="toCustomerId"
+                                        rules={[
+                                            {
+                                                required: requestType === 'TRANSFER',
+                                                message: 'Vui lòng chọn khách hàng nhận chuyển nhượng!',
+                                            },
+                                        ]}
+                                        hidden
+                                    >
+                                        <Input />
+                                    </Form.Item>
 
-                                    <Col xs={24} md={10}>
-                                        <Form.Item label="CMND/CCCD">
-                                            <Input
-                                                placeholder="Nhập số CMND/CCCD"
-                                                value={searchIdentity}
-                                                onChange={(e) => setSearchIdentity(e.target.value)}
-                                            />
-                                        </Form.Item>
-                                    </Col>
-
-                                    <Col xs={24} md={4}>
-                                        <Form.Item label=" ">
-                                            <Button
-                                                type="primary"
-                                                icon={<SearchOutlined />}
-                                                onClick={handleSearchCustomer}
-                                                loading={searchLoading}
-                                                style={{ width: '100%' }}
-                                            >
-                                                Tìm
-                                            </Button>
-                                        </Form.Item>
-                                    </Col>
-
-                                    <Col xs={24}>
+                                    <Col xs={24} md={24}>
                                         <Form.Item
-                                            label="Chọn khách hàng nhận chuyển nhượng"
-                                            name="toCustomerId"
-                                            rules={[{ required: requestType === 'TRANSFER', message: 'Vui lòng chọn khách hàng nhận chuyển nhượng!' }]}
+                                            label="Tìm khách hàng nhận chuyển nhượng (Tên hoặc SĐT)"
+                                            required={requestType === 'TRANSFER'}
                                         >
-                                            <Select
-                                                showSearch
-                                                placeholder="Chọn khách hàng từ kết quả tìm kiếm"
-                                                optionFilterProp="children"
-                                                filterOption={(input, option) =>
-                                                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                                                }
-                                                disabled={customers.length === 0}
+                                            <AutoComplete
+                                                value={searchText}
+                                                options={customerOptions}
+                                                onSearch={handleSearchCustomerAuto}
+                                                onSelect={(value, option) => {
+                                                    // value chính là customer.id (string)
+                                                    form.setFieldsValue({ toCustomerId: Number(value) });
+
+                                                    // hiện text đã chọn lên ô input
+                                                    setSearchText(String(option.label || ''));
+
+                                                    // lưu thông tin khách đã chọn
+                                                    setSelectedToCustomer(option._raw || null);
+                                                }}
+                                                onChange={(val) => {
+                                                    setSearchText(val);
+                                                    // nếu user sửa lại input thì coi như chưa chọn khách
+                                                    form.setFieldsValue({ toCustomerId: undefined });
+                                                    setSelectedToCustomer(null);
+                                                }}
+                                                filterOption={false} // vì search remote
+                                                notFoundContent={searchLoading ? <Spin size="small" /> : 'Không có kết quả'}
                                             >
-                                                {customers.map(customer => (
-                                                    <Option key={customer.id} value={customer.id}>
-                                                        {customer.customerName} - {customer.identityNumber}
-                                                    </Option>
-                                                ))}
-                                            </Select>
+                                                <Input
+                                                    placeholder="Ví dụ: Nguyễn Văn A hoặc 0987xxxxxx"
+                                                    suffix={searchLoading ? <Spin size="small" /> : <SearchOutlined />}
+                                                />
+                                            </AutoComplete>
+
+                                            {/* Hiển thị thông tin khách đã chọn */}
+                                            {selectedToCustomer && (
+                                                <div style={{ marginTop: 8, padding: 10, background: '#fafafa', borderRadius: 6 }}>
+                                                    <strong>Đã chọn:</strong> {selectedToCustomer.customerName} - {selectedToCustomer.phone}
+                                                </div>
+                                            )}
                                         </Form.Item>
                                     </Col>
                                 </Row>

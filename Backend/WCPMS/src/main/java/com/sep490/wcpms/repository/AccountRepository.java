@@ -276,4 +276,20 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
           @Param("routeId") int routeId
   );
 
+    // --- [MỚI] HÀM TÌM KIẾM NHÂN VIÊN ---
+    @Query("SELECT a FROM Account a WHERE " +
+            "a.role.roleName NOT IN :excludedRoles " +
+            "AND (:department IS NULL OR a.department = :department) " +
+            "AND (:keyword IS NULL OR :keyword = '' OR " +
+            "    LOWER(a.staffCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "    LOWER(a.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "    LOWER(a.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            ")")
+    Page<Account> searchStaffAccounts(
+            @Param("excludedRoles") Collection<Role.RoleName> excludedRoles,
+            @Param("department") Account.Department department,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
 }

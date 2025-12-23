@@ -190,9 +190,11 @@ public class AccountingStaffController {
      */
     @GetMapping("/billing/pending-readings")
     public ResponseEntity<Page<PendingReadingDTO>> getPendingReadings(
+            @RequestParam(required = false) String keyword, 
             @PageableDefault(size = 10, sort = "readingDate", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        Page<PendingReadingDTO> readings = accountingService.getPendingReadings(pageable);
+        // Truyền keyword vào service
+        Page<PendingReadingDTO> readings = accountingService.getPendingReadings(keyword, pageable);
         return ResponseEntity.ok(readings);
     }
 

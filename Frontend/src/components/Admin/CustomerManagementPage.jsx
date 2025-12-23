@@ -10,7 +10,7 @@ const resolvePath = (source, path) => {
     return path.split('.').reduce((current, part) => {
         if (current == null) return undefined;
         const tokens = [];
-        const regex = /([^\[\]]+)|\[(\d+)\]/g;
+        const regex = /([^[\]]+)|\[(\d+)\]/g;
         let match;
         while ((match = regex.exec(part)) !== null) {
             if (match[1]) tokens.push(match[1]);
@@ -94,6 +94,24 @@ const METER_COLLECTION_PATHS = [
     'meterList'
 ];
 
+const CONTRACT_METER_CODE_PATHS = [
+    'meterCode',
+    'meter_code',
+    'waterMeterCode',
+    'water_meter_code',
+    'meter.meterCode',
+    'meter.meter_code',
+    'waterMeter.meterCode',
+    'waterMeter.meter_code'
+];
+
+const CONTRACT_METER_STATUS_PATHS = [
+    'meterStatus',
+    'meter_status',
+    'meter.status',
+    'waterMeter.status'
+];
+
 const getMeterDetails = (customer) => {
     if (!customer) return { code: null, status: null };
 
@@ -136,6 +154,7 @@ const CustomerManagementPage = () => {
     const [activeTab, setActiveTab] = useState('guests');
     const [guests, setGuests] = useState([]);
     const [customers, setCustomers] = useState([]);
+    const [customerMeters, setCustomerMeters] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
@@ -149,6 +168,18 @@ const CustomerManagementPage = () => {
         loading: false
     });
 
+    const parseCreatedAt = useCallback((value) => {
+        if (!value) return null;
+        const normalized = String(value).trim().replace(/\s+/g, ' ');
+        // Backend thường trả dạng: "YYYY-MM-DD HH:mm:ss" (không phải ISO)
+        // Chuyển sang ISO-ish để Date parse ổn định hơn.
+        const isoLike = normalized.includes(' ') && !normalized.includes('T')
+            ? normalized.replace(' ', 'T')
+            : normalized;
+        const date = new Date(isoLike);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }, []);
+
     // --- LOAD DATA ---
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -159,11 +190,60 @@ const CustomerManagementPage = () => {
                 setGuests(res.data || []);
             } else if (activeTab === 'customers') {
                 const res = await getAllCustomers();
-                const payload = res.data || res;
+                const raw = res?.data ?? res;
+                const payload = raw?.data ?? raw;
                 // Lấy mảng dữ liệu dù nó nằm ở đâu
-                const dataList = Array.isArray(payload) ? payload : (payload?.content || []);
+                const dataList = Array.isArray(payload) ? payload : (payload?.content || payload?.customers || []);
 
-                setCustomers(dataList);
+                // Sắp xếp: khách tạo mới nhất lên trên (như danh sách cũ)
+                const sortedCustomers = [...dataList].sort((a, b) => {
+                    const dateA = parseCreatedAt(a?.created_at ?? a?.createdAt);
+                    const dateB = parseCreatedAt(b?.created_at ?? b?.createdAt);
+
+                    if (dateA && dateB) return dateB.getTime() - dateA.getTime();
+                    if (dateA && !dateB) return -1;
+                    if (!dateA && dateB) return 1;
+
+                    const idA = Number(a?.customer_id ?? a?.customerId ?? a?.id ?? 0);
+                    const idB = Number(b?.customer_id ?? b?.customerId ?? b?.id ?? 0);
+                    return idB - idA;
+                });
+
+                setCustomers(sortedCustomers);
+
+                // Nếu API danh sách customer không trả thông tin đồng hồ, lấy bổ sung từ API hợp đồng
+                // (hiển thị mã đồng hồ ở cột "Đồng hồ")
+                const meterResults = await Promise.allSettled(
+                    sortedCustomers.map(async (customer) => {
+                        const customerId = customer.customer_id || customer.id || customer.customerId;
+                        if (!customerId) return null;
+                        const contractsRes = await getCustomerContracts(customerId);
+                        const contractsRaw = contractsRes?.data ?? contractsRes;
+                        const contractsPayload = contractsRaw?.data ?? contractsRaw;
+                        const contracts = Array.isArray(contractsPayload)
+                            ? contractsPayload
+                            : (contractsPayload?.content || contractsPayload?.contracts || []);
+                        if (!Array.isArray(contracts) || contracts.length === 0) {
+                            return [customerId, { code: null, status: null }];
+                        }
+
+                        const contractWithMeter = contracts.find((ct) => getFirstAvailableValue(ct, CONTRACT_METER_CODE_PATHS));
+                        const meterCode = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_CODE_PATHS) : null;
+                        const meterStatus = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_STATUS_PATHS) : null;
+                        return [customerId, { code: meterCode ?? null, status: meterStatus ?? null }];
+                    })
+                );
+
+                const nextCustomerMeters = {};
+                for (const r of meterResults) {
+                    if (r.status !== 'fulfilled') continue;
+                    const value = r.value;
+                    if (!value) continue;
+                    const [customerId, meterInfo] = value;
+                    if (!customerId) continue;
+                    nextCustomerMeters[customerId] = meterInfo;
+                }
+                setCustomerMeters(nextCustomerMeters);
             }
         } catch (err) {
             console.error("Lỗi tải dữ liệu:", err);
@@ -171,7 +251,7 @@ const CustomerManagementPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab]);
+    }, [activeTab, parseCreatedAt]);
 
     useEffect(() => {
         loadData();
@@ -338,8 +418,10 @@ const CustomerManagementPage = () => {
                                     const email = getFirstAvailableValue(c, FIELD_PATHS.email) || '---';
                                     const address = getFirstAvailableValue(c, FIELD_PATHS.address) || '---';
                                     const meterDetails = getMeterDetails(c);
-                                    const meterCode = meterDetails.code || '---';
-                                    const meterStatus = meterDetails.status;
+                                    const resolvedCustomerId = c.customer_id || c.id || c.customerId;
+                                    const apiMeter = resolvedCustomerId ? customerMeters[resolvedCustomerId] : null;
+                                    const meterCode = apiMeter?.code || meterDetails.code || '---';
+                                    const meterStatus = apiMeter?.status || meterDetails.status;
 
                                     return (
                                         <tr key={id}>

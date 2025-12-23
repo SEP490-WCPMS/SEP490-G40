@@ -49,6 +49,7 @@ const ContractRequestStatusList = () => {
                         ? changeData
                         : [];
 
+                // Thống nhất dữ liệu
                 const unified = [
                     ...creationList.map((r) => ({
                         kind: 'CREATE',
@@ -60,6 +61,7 @@ const ContractRequestStatusList = () => {
                         notes: r.notes,
                         requestType: 'CREATE'
                     })),
+                    // Thêm loại CHANGE
                     ...changeList.map((r) => ({
                         kind: 'CHANGE',
                         uid: `CHANGE-${r.id}`,
@@ -72,7 +74,8 @@ const ContractRequestStatusList = () => {
                         approvalStatus: r.approvalStatus,
                         requestType: r.requestType,
                         reason: r.reason,
-                        notes: r.notes
+                        notes: r.notes,
+                        rejectionReason: r.rejectionReason
                     }))
                 ].sort((a, b) => {
                     const da = a?.requestDate ? new Date(a.requestDate).getTime() : 0;

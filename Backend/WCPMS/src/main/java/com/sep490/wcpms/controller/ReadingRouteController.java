@@ -4,6 +4,7 @@ import com.sep490.wcpms.dto.ReadingRouteRequest;
 import com.sep490.wcpms.dto.ReadingRouteResponse;
 import com.sep490.wcpms.service.ReadingRouteService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,12 +30,13 @@ public class ReadingRouteController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ReadingRouteResponse>> list(
+    public ResponseEntity<Page<ReadingRouteResponse>> list(
             @RequestParam(name = "includeInactive", required = false, defaultValue = "false") boolean includeInactive,
-            @RequestParam(name = "search", required = false, defaultValue = "") String search
+            @RequestParam(name = "search", required = false, defaultValue = "") String search,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        // Truyền search vào service
-        return ResponseEntity.ok(service.list(includeInactive, search));
+        return ResponseEntity.ok(service.list(includeInactive, search, page, size));
     }
 
     @PutMapping("/{id}")

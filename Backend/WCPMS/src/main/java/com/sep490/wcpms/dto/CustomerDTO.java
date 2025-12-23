@@ -21,7 +21,9 @@ public class CustomerDTO {
     private String connectionType;
     private String connectionStatus;
     private String meterStatus;
+    private String phone;
 
+    // Chuyển đổi từ Entity sang DTO
     public static CustomerDTO fromEntity(Customer customer) {
         if (customer == null) return null;
 
@@ -37,6 +39,7 @@ public class CustomerDTO {
 
         if (customer.getAccount() != null) {
             dto.setAccountId(customer.getAccount().getId());
+            dto.setPhone(customer.getAccount().getPhone());
         }
 
         if (customer.getConnectionType() != null) {
