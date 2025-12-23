@@ -60,6 +60,18 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(body, HttpStatus.CONFLICT); // Trả về 409
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
+        // Trả về lỗi 400 Bad Request và chỉ lấy message (ví dụ: "Mã đồng hồ đã tồn tại")
+        return ResponseEntity.badRequest().body(ex.getMessage());
+    }
+
+    // Nếu bạn muốn bắt cả lỗi ResourceNotFoundException để hiển thị đẹp
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<String> handleResourceNotFoundException(ResourceNotFoundException ex) {
+        return ResponseEntity.status(404).body(ex.getMessage());
+    }
     // --- HẾT PHẦN THÊM ---
 }
 

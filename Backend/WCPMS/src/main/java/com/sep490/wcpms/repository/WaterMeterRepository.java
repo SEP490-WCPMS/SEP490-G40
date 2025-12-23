@@ -70,4 +70,16 @@ public interface WaterMeterRepository extends JpaRepository<WaterMeter, Integer>
             "AND mi.id = (SELECT MAX(mi2.id) FROM MeterInstallation mi2 WHERE mi2.waterMeter.id = wm.id)")
     List<CustomerMeterDTO> findActiveMetersByCustomerId(@Param("customerId") Integer customerId);
     // --- HẾT PHẦN SỬA ---
+
+    @Query("SELECT w FROM WaterMeter w WHERE " +
+            "(:keyword IS NULL OR :keyword = '' OR " +
+            "LOWER(w.meterCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(w.serialNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(w.meterName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:includeMaintenance = true OR w.meterStatus != com.sep490.wcpms.entity.WaterMeter.MeterStatus.UNDER_MAINTENANCE)")
+    Page<WaterMeter> searchWaterMeters(
+            @Param("keyword") String keyword,
+            @Param("includeMaintenance") boolean includeMaintenance,
+            Pageable pageable
+    );
 }
