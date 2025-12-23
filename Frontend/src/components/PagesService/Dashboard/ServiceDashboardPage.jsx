@@ -32,6 +32,7 @@ import ContractTable from '../ContractTable';
 import AssignSurveyModal from '../ContractCreation/AssignSurveyModal';
 import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
+import ContractEditModal from '../ContractCreation/ContractEditModal'; 
 
 // API Services
 import {
@@ -41,7 +42,8 @@ import {
     submitContractForSurvey,
     sendContractToSign,
     sendContractToInstallation,
-    terminateContract
+    terminateContract,
+    updateServiceContract 
 } from '../../Services/apiService';
 
 const { Title } = Typography;
@@ -91,6 +93,11 @@ const ServiceDashboardPage = () => {
     const [showSendToSignConfirm, setShowSendToSignConfirm] = useState(false);
     const [signingContract, setSigningContract] = useState(null);
     const [isSigning, setIsSigning] = useState(false);
+
+    // --- STATE MỚI CHO EDIT (Logic sửa hợp đồng bị từ chối) ---
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [contractToEdit, setContractToEdit] = useState(null);
+    const [editLoading, setEditLoading] = useState(false);
 
     const [chartData, setChartData] = useState({ labels: [], datasets: [] });
     const [dateRange, setDateRange] = useState([moment().subtract(6, 'days'), moment()]);
@@ -329,7 +336,21 @@ const ServiceDashboardPage = () => {
                 return;
             }
 
-            // --- SỬA LẠI: NÚT GỬI KÝ ---
+            // --- MỞ MODAL SỬA ---
+            if (action === 'edit') {
+                try {
+                    const res = await getServiceContractDetail(record.id);
+                    setContractToEdit(res.data);
+                    setIsEditModalOpen(true);
+                } catch (err) {
+                    toast.error('Không thể tải thông tin hợp đồng.');
+                } finally {
+                    setModalLoading(false);
+                }
+                return;
+            }
+
+            // --- NÚT GỬI KÝ ---
             if (action === 'sendToSign') {
                 // Kiểm tra điều kiện Guest
                 if (record.isGuest || !record.customerCode) {
@@ -379,7 +400,7 @@ const ServiceDashboardPage = () => {
                         try {
                             await terminateContract(record.id, reason);
                             toast.success('Đã chấm dứt hợp đồng');
-                            handleRefresh(false); // Ẩn toast loading
+                            handleRefresh(false); 
                         } catch (e) {
                             toast.error('Chấm dứt thất bại');
                         }
@@ -408,7 +429,7 @@ const ServiceDashboardPage = () => {
             toast.error('Có lỗi xảy ra khi tải dữ liệu!');
         } finally {
             // Chỉ tắt loading nếu chưa tắt ở trên (tránh tắt sớm khi đang chuyển modal)
-            if (action !== 'sendToSign' && action !== 'sendToInstallation') {
+            if (action !== 'sendToSign' && action !== 'sendToInstallation' && action !== 'edit') {
                 setModalLoading(false);
             }
         }
@@ -436,6 +457,25 @@ const ServiceDashboardPage = () => {
             return Promise.reject(err);
         }
     };
+
+    // --- HÀM LƯU SAU KHI SỬA ---
+    const handleEditSave = async (updatedData) => {
+        if (!contractToEdit) return;
+        setEditLoading(true);
+        try {
+            await updateServiceContract(contractToEdit.id, updatedData);
+            toast.success('Cập nhật hợp đồng thành công!');
+            setIsEditModalOpen(false);
+            setContractToEdit(null);
+            handleRefresh(false); // Reload danh sách
+        } catch (error) {
+            console.error(error);
+            toast.error('Cập nhật thất bại: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setEditLoading(false);
+        }
+    };
+    // ---------------------------------
 
     return (
         <div className="bg-gray-50 min-h-screen space-y-6">
@@ -597,6 +637,17 @@ const ServiceDashboardPage = () => {
                 initialData={selectedContract}
                 loading={modalLoading}
             />
+            
+            {/* --- MODAL EDIT --- */}
+            {isEditModalOpen && (
+                <ContractEditModal
+                    open={isEditModalOpen}
+                    contract={contractToEdit}
+                    onCancel={() => { setIsEditModalOpen(false); setContractToEdit(null); }}
+                    onSave={handleEditSave}
+                    loading={editLoading}
+                />
+            )}
 
             {/* Modal Xác nhận Gửi Lắp Đặt */}
             <ConfirmModal

@@ -224,6 +224,7 @@ export const searchCustomers = (params) => {
     const queryParams = {};
     if (params.customerName) queryParams.customerName = params.customerName;
     if (params.identityNumber) queryParams.identityNumber = params.identityNumber;
+    if (params.phone) queryParams.phone = params.phone;
     return apiClient.get('/accounts/customer', { params: queryParams });
 };
 

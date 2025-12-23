@@ -7,11 +7,14 @@ import {
     FileTextOutlined,
     CalendarOutlined,
     FilterOutlined,
-    CheckOutlined
+    CheckOutlined,
+    ToolOutlined,
+    InfoCircleOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import Pagination from '../../common/Pagination';
-import { getServiceContracts, getServiceContractDetail, renewContract, terminateContract, suspendContract, reactivateContract } from '../../Services/apiService';
+import { getServiceContracts, getServiceContractDetail, renewContract } from '../../Services/apiService'; // Đã bỏ terminate, suspend, reactivate
 import dayjs from 'dayjs';
 
 import { ToastContainer, toast } from 'react-toastify';
@@ -34,12 +37,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
     const [form] = Form.useForm();
 
     // Modal states
-    const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-    const [confirmAction, setConfirmAction] = useState(null);
-    const [confirmData, setConfirmData] = useState(null);
-    const [confirmLoading, setConfirmLoading] = useState(false);
-    const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
-    const [reactivating, setReactivating] = useState(false);
+    // Đã bỏ confirm cho terminate/suspend/reactivate
     const [showRenewConfirm, setShowRenewConfirm] = useState(false);
     const [renewData, setRenewData] = useState(null);
     const [renewing, setRenewing] = useState(false);
@@ -50,7 +48,8 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         totalElements: 0,
     });
 
-    const ACTIVE_GROUP_STATUSES = ['ACTIVE', 'SUSPENDED', 'TERMINATED', 'EXPIRED'];
+    // Cập nhật nhóm trạng thái: Bỏ SUSPENDED, giữ TERMINATED để hiển thị
+    const ACTIVE_GROUP_STATUSES = ['ACTIVE', 'TERMINATED', 'EXPIRED'];
 
     const normalizeStatus = (s) => {
         if (!s || s === 'all') return 'all';
@@ -99,7 +98,11 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
             });
 
             if (response.data) {
-                setContracts(response.data.content || []);
+                // Lọc client-side: Loại bỏ SUSPENDED khỏi danh sách nếu backend trả về
+                const rawContent = response.data.content || [];
+                const filteredContent = rawContent.filter(c => c.contractStatus !== 'SUSPENDED');
+
+                setContracts(filteredContent);
                 const pageInfo = response.data.page || response.data || {};
 
                 setPagination(prev => ({
@@ -129,21 +132,19 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         items: [
             { key: 'all', label: <div className="flex justify-between items-center w-full min-w-[120px]">Tất cả {filters.status === 'all' && <CheckOutlined className="text-blue-600" />}</div> },
             { key: 'ACTIVE', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-green-500 inline-block mr-2"></span>Đang hoạt động</div> {filters.status === 'ACTIVE' && <CheckOutlined className="text-blue-600" />}</div> },
-            { key: 'SUSPENDED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-orange-500 inline-block mr-2"></span>Tạm ngưng</div> {filters.status === 'SUSPENDED' && <CheckOutlined className="text-blue-600" />}</div> },
-            { key: 'TERMINATED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-2"></span>Đã chấm dứt</div> {filters.status === 'TERMINATED' && <CheckOutlined className="text-blue-600" />}</div> },
             { key: 'EXPIRED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-gray-500 inline-block mr-2"></span>Hết hạn</div> {filters.status === 'EXPIRED' && <CheckOutlined className="text-blue-600" />}</div> },
+            { key: 'TERMINATED', label: <div className="flex justify-between items-center w-full"><div><span className="w-2 h-2 rounded-full bg-red-500 inline-block mr-2"></span>Đã chấm dứt</div> {filters.status === 'TERMINATED' && <CheckOutlined className="text-blue-600" />}</div> },
         ],
         onClick: handleMenuClick
     };
 
-    // Helper render style badge (giống ContractTable)
+    // Helper render style badge
     const renderStatusBadge = (status) => {
         const s = (status || '').toUpperCase();
         const map = {
             ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
             EXPIRED: { text: 'Hết hạn', cls: 'bg-rose-100 text-rose-800' },
             TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
-            SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
             SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
         };
         // Fallback
@@ -156,7 +157,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         );
     };
 
-    // --- CARD VIEW CHO MOBILE (Đã cập nhật đủ nút hành động) ---
+    // --- CARD VIEW CHO MOBILE ---
     const MobileCard = ({ record }) => (
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
             <div className="flex justify-between items-start">
@@ -196,19 +197,8 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                 <div className="flex flex-wrap items-center gap-3 justify-end">
                     {/* Luôn hiện nút Chi tiết */}
                     <button onClick={() => handleOpenModal(record, 'view')} className="font-semibold text-indigo-600 hover:text-indigo-900 text-sm">Chi tiết</button>
-
-                    {/* Logic nút hành động trên Mobile giống Desktop */}
-                    {record.contractStatus === 'ACTIVE' && (
-                        <>
-                            <button onClick={() => handleOpenModal(record, 'suspend')} className="font-semibold text-amber-600 hover:text-amber-800 text-sm">Tạm ngưng</button>
-                            <button onClick={() => handleOpenModal(record, 'terminate')} className="font-semibold text-red-600 hover:text-red-800 text-sm">Chấm dứt</button>
-                        </>
-                    )}
                     {record.contractStatus === 'EXPIRED' && (
                         <button onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-blue-600 hover:text-blue-800 text-sm">Gia hạn</button>
-                    )}
-                    {record.contractStatus === 'SUSPENDED' && (
-                        <button onClick={() => handleOpenModal(record, 'reactivate')} className="font-semibold text-green-600 hover:text-green-800 text-sm">Kích hoạt lại</button>
                     )}
                 </div>
             </div>
@@ -226,26 +216,78 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
         return map[m] || method;
     };
 
+    const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
+    const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
+
     const renderModalContent = () => {
         if (modalType === 'view') {
             const c = selectedContract || {};
-            const fmtDate = (d) => (d ? dayjs(d).format('DD/MM/YYYY') : '—');
-            const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
             return (
                 <div className="space-y-4 pt-2">
+                    {/* 1. Header */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã Hợp đồng</div><div className="text-2xl font-bold text-blue-700">{c.contractNumber || '—'}</div></div>
                             <div className="text-right"><div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>{renderStatusBadge(c.contractStatus)}</div>
                         </div>
                     </div>
+
+                    {/* 2. Thông tin khách hàng */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Thông tin khách hàng</div>
+                        <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><UserOutlined className="mr-1" /> Thông tin khách hàng</div>
                         <div className="grid grid-cols-2 gap-4">
                             <div><div className="text-xs text-gray-500 mb-1">Tên khách hàng</div><div className="font-semibold text-gray-800">{c.customerName || '—'}</div></div>
                             {c.customerCode && (<div><div className="text-xs text-gray-500 mb-1">Mã khách hàng</div><div className="font-medium text-gray-800">{c.customerCode}</div></div>)}
                         </div>
                     </div>
+
+                    {/* 3. --- THÊM MỚI: THÔNG TIN KHẢO SÁT & KỸ THUẬT (Đã bổ sung) --- */}
+                    {(c?.surveyDate || c?.technicalStaffName || c?.technicalDesign || c?.estimatedCost != null) && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
+                                <ToolOutlined className="mr-1" /> Thông tin khảo sát & kỹ thuật
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                {c?.surveyDate && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Ngày khảo sát</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <CalendarOutlined className="text-green-500" />
+                                            {fmtDate(c.surveyDate)}
+                                        </div>
+                                    </div>
+                                )}
+                                {c?.technicalStaffName && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Nhân viên kỹ thuật</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <UserOutlined className="text-orange-500" />
+                                            {c.technicalStaffName}
+                                        </div>
+                                    </div>
+                                )}
+                                {c?.estimatedCost != null && (
+                                    <div className="col-span-2">
+                                        <div className="text-xs text-gray-500 mb-1">Chi phí ước tính</div>
+                                        <div className="font-bold text-lg text-orange-600">
+                                            {fmtMoney(c.estimatedCost)}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            {c?.technicalDesign && (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <div className="text-xs text-gray-500 mb-1">Thiết kế kỹ thuật</div>
+                                    <div className="bg-white p-3 rounded border border-gray-200 text-sm text-gray-800 whitespace-pre-wrap">
+                                        {c.technicalDesign}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {/* ------------------------------------------------------------------ */}
+
+                    {/* 4. Thông tin hợp đồng */}
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><CalendarOutlined className="mr-1" /> Thông tin hợp đồng</div>
                         <div className="grid grid-cols-2 gap-4">
@@ -253,10 +295,34 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                             {c.endDate && (<div><div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div><div className="font-medium text-gray-800 flex items-center gap-1"><CalendarOutlined className="text-red-500" />{fmtDate(c.endDate)}</div></div>)}
                             {c.contractValue != null && (<div><div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div><div className="font-bold text-lg text-green-600">{fmtMoney(c.contractValue)}</div></div>)}
                             {c.paymentMethod && (<div className="col-span-2"><div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div><div className="font-medium text-gray-800">{formatPaymentMethod(c.paymentMethod)}</div></div>)}
+                            
+                            {/* Thêm Staff phụ trách nếu có */}
+                            {c.serviceStaffName && (
+                                <div className="col-span-2">
+                                    <div className="text-xs text-gray-500 mb-1">Nhân viên dịch vụ phụ trách</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <UserOutlined className="text-blue-500" />
+                                        {c.serviceStaffName}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* 5. Ảnh lắp đặt */}
                     {c.installationImageBase64 && (<div className="bg-gray-50 p-4 rounded-lg border border-gray-200"><div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3"><FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ</div><div className="flex justify-center"><img src={`data:image/jpeg;base64,${c.installationImageBase64}`} alt="Installation" className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" /></div></div>)}
-                    {(c.notes || c.customerNotes) && (<div className="bg-blue-50 p-4 rounded-lg border border-blue-200"><div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2"><FileTextOutlined className="mr-1" /> Ghi chú</div><div className="text-sm text-gray-800 whitespace-pre-wrap">{c.notes || c.customerNotes || '—'}</div></div>)}
+                    
+                    {/* 6. Ghi chú */}
+                    {(c.notes || c.customerNotes) && (
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div className="flex items-center text-blue-700 text-xs uppercase font-bold tracking-wider mb-2">
+                                <InfoCircleOutlined className="mr-1" /> Ghi chú
+                            </div>
+                            <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {c.notes || c.customerNotes || '—'}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         } else if (modalType === 'renew') {
@@ -267,48 +333,23 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                         <p><strong>Ngày kết thúc hiện tại:</strong> {selectedContract?.endDate ? dayjs(selectedContract.endDate).format('DD/MM/YYYY') : 'Vô thời hạn'}</p>
                     </div>
                     <Form.Item name="newEndDate" label="Ngày kết thúc mới" rules={[{ required: true, message: 'Vui lòng chọn ngày!' }]}>
-                        <DatePicker
-                            style={{ width: '100%' }}
-                            format="DD/MM/YYYY"
-                            // Validate Frontend: Không cho chọn ngày quá khứ
-                            disabledDate={d => d && d.isBefore(dayjs(selectedContract?.endDate).add(1, 'day'))}
+                        <DatePicker 
+                            style={{ width: '100%' }} 
+                            format="DD/MM/YYYY" 
+                            disabledDate={d => d && d.isBefore(dayjs(selectedContract?.endDate).add(1, 'day'))} 
                         />
                     </Form.Item>
                 </Form>
             );
-        } else if (modalType === 'terminate' || modalType === 'suspend') {
-            return (
-                <Form form={form} layout="vertical">
-                    <div className={`p-3 mb-4 rounded ${modalType === 'terminate' ? 'bg-red-50 border-red-400' : 'bg-yellow-50 border-yellow-400'} border-l-4`}>
-                        <div className={`font-semibold text-sm ${modalType === 'terminate' ? 'text-red-900' : 'text-yellow-900'}`}>
-                            {modalType === 'terminate' ? 'Chấm dứt hợp đồng' : 'Tạm ngưng hợp đồng'}
-                        </div>
-                    </div>
-                    <Form.Item label="Số Hợp đồng"><Input value={selectedContract?.contractNumber} disabled style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} /></Form.Item>
-                    <Form.Item name="reason" label="Lý do" rules={[{ required: true, message: 'Vui lòng nhập lý do!' }]}>
-                        <TextArea rows={4} placeholder="Nhập lý do..." style={{ backgroundColor: '#fff', color: '#000', borderColor: '#d9d9d9' }} />
-                    </Form.Item>
-                </Form>
-            );
-        } else if (modalType === 'reactivate') {
-            return (
-                <div className="text-center py-6">
-                    <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4"><PlayCircleOutlined style={{ fontSize: '32px', color: '#16a34a' }} /></div>
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">Kích hoạt lại Hợp đồng?</h3>
-                    <p className="text-gray-600 mb-1">Hợp đồng số: <strong>{selectedContract?.contractNumber}</strong></p>
-                    <p className="text-gray-500 text-sm max-w-xs mx-auto">Trạng thái sẽ chuyển từ Tạm ngưng sang <span className="text-green-600 font-medium">Hoạt động</span>.</p>
-                </div>
-            );
         }
+        // Đã bỏ render form terminate/suspend/reactivate
         return null;
     };
 
     const getModalTitle = () => {
-        switch (modalType) {
+        switch(modalType) {
             case 'view': return 'Chi tiết hợp đồng';
             case 'renew': return 'Gia hạn hợp đồng';
-            case 'terminate': return 'Chấm dứt hợp đồng';
-            case 'suspend': return 'Tạm ngưng hợp đồng';
             default: return '';
         }
     };
@@ -330,27 +371,17 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
 
     const handleOpenModal = async (record, type) => {
         try {
-            if (type === 'reactivate') {
-                setSelectedContract(record);
-                setModalType(type);
-                setIsModalVisible(true);
-                return;
-            }
             setModalLoading(true);
             setIsModalVisible(true);
             const response = await getServiceContractDetail(record.id);
             const contractData = response.data;
             setSelectedContract(contractData);
             setModalType(type);
+            
             if (type === 'view') { form.setFieldsValue({}); }
             else if (type === 'renew') { form.setFieldsValue({ newEndDate: null, notes: '' }); }
-            else if (type === 'terminate' || type === 'suspend') {
-                form.setFieldsValue({
-                    contractNumber: contractData.contractNumber,
-                    customerName: contractData.customerName,
-                    reason: ''
-                });
-            }
+            // Đã bỏ logic set field cho terminate/suspend
+
             setIsModalVisible(true);
         } catch (error) {
             toast.error('Lỗi khi tải chi tiết hợp đồng!');
@@ -368,8 +399,6 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
 
     const handleSubmit = async () => {
         try {
-            if (modalType === 'reactivate') { setShowReactivateConfirm(true); return; }
-
             const values = await form.validateFields();
 
             if (modalType === 'renew') {
@@ -377,56 +406,18 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                 // Kiểm tra ngày: Nếu nhỏ hơn hoặc bằng hôm nay -> Báo lỗi
                 if (newDate && newDate.isBefore(dayjs(), 'day')) {
                     toast.error('Ngày kết thúc mới phải sau ngày hôm nay!');
-                    return;
+                    return; 
                 }
 
                 setRenewData({ endDate: newDate ? newDate.format('YYYY-MM-DD') : null, notes: values.notes });
                 setShowRenewConfirm(true);
-            } else if (modalType === 'terminate' || modalType === 'suspend') {
-                setConfirmData({ reason: values.reason, actionType: modalType });
-                setConfirmAction(modalType);
-                setConfirmModalVisible(true);
-            }
-        } catch (error) { console.error("Error:", error); } finally { setModalLoading(false); }
-    };
-
-    const handleConfirmAction = async () => {
-        try {
-            setConfirmLoading(true);
-            if (confirmAction === 'terminate') {
-                await terminateContract(selectedContract.id, confirmData.reason);
-                toast.success('Chấm dứt hợp đồng thành công!');
-            } else if (confirmAction === 'suspend') {
-                await suspendContract(selectedContract.id, confirmData.reason);
-                toast.success('Tạm ngưng hợp đồng thành công!');
-            }
-            setConfirmModalVisible(false);
-            handleCloseModal();
-            fetchContracts();
-        } catch (error) {
-            console.error("Error:", error);
-            toast.error(error.message || 'Có lỗi xảy ra!');
-        } finally {
-            setConfirmLoading(false);
+            } 
+        } catch (err) {
+            console.error("Validate fail", err);
         }
     };
 
-    const handleConfirmReactivate = async () => {
-        if (!selectedContract) return;
-        setReactivating(true);
-        try {
-            await reactivateContract(selectedContract.id);
-            setShowReactivateConfirm(false);
-            toast.success('Đã kích hoạt lại hợp đồng thành công!');
-            handleCloseModal();
-            fetchContracts();
-        } catch (error) {
-            setShowReactivateConfirm(false);
-            toast.error(error.message || 'Kích hoạt lại thất bại!');
-        } finally {
-            setReactivating(false);
-        }
-    };
+    // Đã bỏ handleConfirmAction và handleConfirmReactivate vì không còn dùng
 
     const handleConfirmRenew = async () => {
         if (!selectedContract || !renewData) return;
@@ -497,13 +488,9 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                                         <button key="detail" onClick={() => handleOpenModal(record, 'view')} className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out">Chi tiết</button>
                                     );
 
-                                    if (record.contractStatus === 'ACTIVE') {
-                                        actions.push(<button key="suspend" onClick={() => handleOpenModal(record, 'suspend')} className="font-semibold text-amber-600 hover:text-amber-800 transition duration-150 ease-in-out">Tạm ngưng</button>);
-                                        actions.push(<button key="terminate" onClick={() => handleOpenModal(record, 'terminate')} className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out">Chấm dứt</button>);
-                                    } else if (record.contractStatus === 'EXPIRED') {
-                                        actions.push(<button key="renew" onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out">Gia hạn</button>);
-                                    } else if (record.contractStatus === 'SUSPENDED') {
-                                        actions.push(<button key="reactivate" onClick={() => handleOpenModal(record, 'reactivate')} className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out">Kích hoạt lại</button>);
+                                    // Chỉ hiện nút Gia hạn cho Hợp đồng Hết hạn
+                                    if (record.contractStatus === 'EXPIRED') {
+                                        actions.push(<button key="renew" onClick={() => handleOpenModal(record, 'renew')} className="font-semibold text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out">Gia hạn</button>);
                                     }
 
                                     return (
@@ -545,20 +532,19 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                 onCancel={handleCloseModal}
                 onOk={modalType === 'view' ? handleCloseModal : handleSubmit}
                 confirmLoading={modalLoading}
-                okText={modalType === 'view' ? 'Đóng' : modalType === 'renew' ? 'Xác nhận Gia hạn' : modalType === 'terminate' ? 'Chấm dứt' : modalType === 'suspend' ? 'Tạm ngưng' : modalType === 'reactivate' ? 'Kích hoạt ngay' : 'Xác nhận'}
+                okText={modalType === 'view' ? 'Đóng' : 'Xác nhận Gia hạn'}
                 cancelText={modalType === 'view' ? undefined : 'Hủy'}
                 cancelButtonProps={modalType === 'view' ? { style: { display: 'none' } } : undefined}
                 destroyOnClose
-                width={modalType === 'reactivate' ? 400 : 700}
-                okButtonProps={{ danger: modalType === 'terminate', className: modalType === 'reactivate' ? 'bg-green-600 hover:bg-green-700' : '' }}
+                width={700}
                 centered
                 bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
                 style={{ top: 20 }}
             >
                 {renderModalContent()}
             </Modal>
-            <ConfirmModal isOpen={confirmModalVisible} onClose={() => setConfirmModalVisible(false)} onConfirm={handleConfirmAction} title={confirmAction === 'terminate' ? 'Xác nhận chấm dứt hợp đồng' : 'Xác nhận tạm ngưng hợp đồng'} message="Bạn có chắc chắn muốn thực hiện hành động này?" isLoading={confirmLoading} />
-            <ConfirmModal isOpen={showReactivateConfirm} onClose={() => setShowReactivateConfirm(false)} onConfirm={handleConfirmReactivate} title="Xác nhận kích hoạt lại hợp đồng" message={`Bạn có chắc chắn muốn kích hoạt lại hợp đồng ${selectedContract?.contractNumber} không?`} isLoading={reactivating} />
+            
+            {/* Chỉ giữ ConfirmModal cho Renew */}
             <ConfirmModal isOpen={showRenewConfirm} onClose={() => setShowRenewConfirm(false)} onConfirm={handleConfirmRenew} title="Xác nhận gia hạn hợp đồng" message={`Bạn có chắc chắn muốn gia hạn hợp đồng ${selectedContract?.contractNumber}?`} isLoading={renewing} />
         </div>
     );

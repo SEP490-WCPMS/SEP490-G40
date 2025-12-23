@@ -20,24 +20,29 @@ public class CustomerQueryServiceImpl implements CustomerQueryService {
 
     private final CustomerRepository customerRepository;
 
+    // Tìm kiếm khách hàng theo tên, số CMND/CCCD và số điện thoại
     @Override
-    public List<CustomerDTO> findCustomers(String customerName, String identityNumber) {
-        // Nếu cả 2 param đều null hoặc rỗng, trả về danh sách rỗng
-        if ((customerName == null || customerName.trim().isEmpty()) &&
-                (identityNumber == null || identityNumber.trim().isEmpty())) {
-            return customerRepository.findAll().stream()
+    public List<CustomerDTO> findCustomers(String customerName, String identityNumber, String phone) {
+        boolean emptyName = (customerName == null || customerName.trim().isEmpty());
+        boolean emptyId = (identityNumber == null || identityNumber.trim().isEmpty());
+        boolean emptyPhone = (phone == null || phone.trim().isEmpty());
+
+        if (emptyName && emptyId && emptyPhone) {
+            // Nếu không có tham số tìm kiếm, trả về tất cả khách hàng
+            return customerRepository.findAllWithAccount().stream()
                     .map(CustomerDTO::fromEntity)
                     .collect(Collectors.toList());
         }
 
-        List<Customer> customers = customerRepository.findByCustomerNameAndIdentityNumber(
-                customerName != null && !customerName.trim().isEmpty() ? customerName.trim() : null,
-                identityNumber != null && !identityNumber.trim().isEmpty() ? identityNumber.trim() : null
+        // Tìm kiếm với các tham số đã cho
+        List<Customer> customers = customerRepository.findByCustomerNameIdentityAndPhone(
+                !emptyName ? customerName.trim() : null,
+                !emptyId ? identityNumber.trim() : null,
+                !emptyPhone ? phone.trim() : null
         );
 
-        return customers.stream()
-                .map(CustomerDTO::fromEntity)
-                .collect(Collectors.toList());
+        // Chuyển đổi sang DTO và trả về
+        return customers.stream().map(CustomerDTO::fromEntity).collect(Collectors.toList());
     }
 
     @Override

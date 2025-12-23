@@ -1,19 +1,25 @@
 import React from 'react';
 import Pagination from '../common/Pagination';
 import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
-import { Tag, Tooltip, Space } from 'antd'; 
-import { PhoneOutlined, EnvironmentOutlined, UserOutlined } from '@ant-design/icons'; 
+import { Tag, Tooltip, Space } from 'antd';
+import { PhoneOutlined, EnvironmentOutlined, UserOutlined, EditOutlined, WarningOutlined } from '@ant-design/icons';
 import { toast } from 'react-toastify';
 
 // Helper: render trạng thái
 // Trả về một badge nhỏ (styled span) mô tả trạng thái hợp đồng
-const renderStatus = (status) => {
+const renderStatus = (record) => {
+  const status = record.contractStatus;
+  const note = record.notes || "";
+  // Check nếu bị từ chối (Status APPROVED và có note reject)
+  const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
+
   const s = status?.toUpperCase();
   const map = {
     DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
     PENDING: { text: 'Đang chờ khảo sát', cls: 'bg-yellow-100 text-yellow-800' },
     PENDING_SURVEY_REVIEW: { text: 'Đã khảo sát', cls: 'bg-orange-100 text-orange-800' },
-    APPROVED: { text: 'Đã duyệt', cls: 'bg-cyan-100 text-cyan-800' },
+    // Nếu bị reject thì đổi màu đỏ cho nổi bật
+    APPROVED: { text: isRejected ? 'Bị từ chối (Cần sửa)' : 'Đã duyệt', cls: isRejected ? 'bg-red-100 text-red-800' : 'bg-cyan-100 text-cyan-800' },
     PENDING_SIGN: { text: 'Khách đã ký', cls: 'bg-indigo-100 text-indigo-800' },
     SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
     ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
@@ -22,10 +28,18 @@ const renderStatus = (status) => {
     SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
   };
   const cfg = map[s] || { text: (status || 'N/A'), cls: 'bg-gray-100 text-gray-800' };
+  
   return (
-    <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
-      {cfg.text}
-    </span>
+    <div className="flex items-center gap-1">
+      <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
+        {cfg.text}
+      </span>
+      {isRejected && (
+        <Tooltip title="Khách hàng đã từ chối ký. Vui lòng xem lý do và sửa lại hợp đồng.">
+           <WarningOutlined className="text-red-500 animate-pulse" />
+        </Tooltip>
+      )}
+    </div>
   );
 };
 
@@ -34,6 +48,8 @@ const renderStatus = (status) => {
 // Các nút sẽ gọi `onViewDetails(record, action)` với action tương ứng.
 const renderActions = (record, onViewDetails) => {
   const status = record.contractStatus?.toUpperCase();
+  const note = record.notes || "";
+  const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
   const actions = [];
 
   // Chi tiết button (luôn có)
@@ -74,6 +90,7 @@ const renderActions = (record, onViewDetails) => {
   }
 
   if (status === 'APPROVED') {
+    // Chỉ hiện nút Gửi ký khi KHÔNG bị reject hoặc đã sửa xong (logic này tùy bạn, ở đây hiện luôn để gửi lại)
     actions.push(
       <button
         key="sendToSign"
@@ -97,6 +114,20 @@ const renderActions = (record, onViewDetails) => {
         Gửi ký
       </button>
     );
+
+    // --- THÊM NÚT SỬA (CHỈ KHI BỊ REJECT) ---
+    if (isRejected) {
+        actions.push(
+          <button
+            key="edit"
+            className="font-semibold text-orange-600 hover:text-orange-900 transition duration-150 ease-in-out ml-2"
+            onClick={() => onViewDetails(record, 'edit')} // Gọi action 'edit'
+          >
+            <EditOutlined /> Sửa
+          </button>
+        );
+    }
+    // ----------------------------------------
   }
 
   if (status === 'PENDING_SIGN') {
@@ -112,24 +143,7 @@ const renderActions = (record, onViewDetails) => {
   }
 
   if (status === 'ACTIVE') {
-    actions.push(
-      <button
-        key="suspend"
-        className="font-semibold text-orange-600 hover:text-orange-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'suspend')}
-      >
-        Tạm ngưng
-      </button>
-    );
-    actions.push(
-      <button
-        key="terminate"
-        className="font-semibold text-red-600 hover:text-red-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'terminate')}
-      >
-        Chấm dứt
-      </button>
-    );
+    // Đã bỏ nút Tạm ngưng và Chấm dứt theo yêu cầu
   }
 
   // --- NÚT GIA HẠN ---
@@ -146,15 +160,7 @@ const renderActions = (record, onViewDetails) => {
   }
 
   if (status === 'SUSPENDED') {
-    actions.push(
-      <button
-        key="reactivate"
-        className="font-semibold text-green-600 hover:text-green-800 transition duration-150 ease-in-out"
-        onClick={() => onViewDetails(record, 'reactivate')}
-      >
-        Kích hoạt lại
-      </button>
-    );
+     // Đã bỏ nút Kích hoạt lại theo yêu cầu
   }
 
   return (
@@ -194,7 +200,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
           <FileText size={16} />
           <span>{record.contractNumber}</span>
         </div>
-        {renderStatus(record.contractStatus)}
+        {renderStatus(record)}
       </div>
 
       {/* Hàng 2: Khách hàng */}
@@ -290,7 +296,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                             {record.address && <Tooltip title={record.address}><div className="flex items-center gap-1 max-w-[200px] truncate"><EnvironmentOutlined className="text-xs text-red-500"/> {record.address}</div></Tooltip>}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{renderStatus(record.contractStatus)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{renderStatus(record)}</td>
                         <td className="px-6 py-4 text-sm">{renderActions(record, onViewDetails)}</td>
                       </tr>
                     ))
