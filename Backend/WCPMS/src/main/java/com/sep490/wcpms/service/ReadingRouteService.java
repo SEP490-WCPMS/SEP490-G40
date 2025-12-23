@@ -36,9 +36,6 @@ public class ReadingRouteService {
         repository.findByRouteCode(req.getRouteCode()).ifPresent(r -> {
             throw new IllegalArgumentException("routeCode already exists");
         });
-        if (req.getAssignedReaderId() == null) {
-            throw new IllegalArgumentException("Vui lòng chọn nhân viên thu ngân.");
-        }
         if (req.getServiceStaffIds() != null && !req.getServiceStaffIds().isEmpty()) {
             validateServiceStaffAvailability(req.getServiceStaffIds(), null);
         }
@@ -49,9 +46,13 @@ public class ReadingRouteService {
         entity.setAreaCoverage(req.getAreaCoverage());
         entity.setStatus(ReadingRoute.Status.ACTIVE);
 
-        Account acc = accountRepository.findById(req.getAssignedReaderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản thu ngân ID: " + req.getAssignedReaderId()));
-        entity.setAssignedReader(acc);
+        if (req.getAssignedReaderId() != null) {
+            Account acc = accountRepository.findById(req.getAssignedReaderId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản thu ngân ID: " + req.getAssignedReaderId()));
+            entity.setAssignedReader(acc);
+        } else {
+            entity.setAssignedReader(null); // Cho phép null
+        }
 
         if (req.getServiceStaffIds() != null && !req.getServiceStaffIds().isEmpty()) {
             List<Account> serviceStaffs = accountRepository.findAllById(req.getServiceStaffIds());
@@ -108,15 +109,13 @@ public class ReadingRouteService {
         if (req.getRouteName() != null) r.setRouteName(req.getRouteName());
         if (req.getAreaCoverage() != null) r.setAreaCoverage(req.getAreaCoverage());
 
-        if (req.getAssignedReaderId() == null && r.getAssignedReader() == null) {
-            throw new IllegalArgumentException("Vui lòng chọn nhân viên thu ngân.");
-        }
-
         // Update Thu ngân
         if (req.getAssignedReaderId() != null) {
             Account acc = accountRepository.findById(req.getAssignedReaderId())
                     .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + req.getAssignedReaderId()));
             r.setAssignedReader(acc);
+        } else {
+            r.setAssignedReader(null);
         }
 
         // Update Service Staffs
@@ -132,19 +131,14 @@ public class ReadingRouteService {
     // --- HÀM VALIDATE RIÊNG ---
     private void validateServiceStaffAvailability(List<Integer> staffIds, Integer currentRouteId) {
         for (Integer staffId : staffIds) {
-            // Tìm xem nhân viên này đang nằm ở tuyến Active nào
             List<ReadingRoute> existingRoutes = repository.findActiveRoutesByServiceStaffId(staffId);
-
             for (ReadingRoute route : existingRoutes) {
-                // Nếu tuyến tìm thấy KHÁC với tuyến đang sửa (currentRouteId)
-                // -> Nghĩa là nhân viên này đang bận ở tuyến khác
+                // Nếu nhân viên đang ở tuyến khác -> Báo lỗi
                 if (!route.getId().equals(currentRouteId)) {
-                    // Lấy tên nhân viên để báo lỗi cho rõ
                     String staffName = accountRepository.findById(staffId)
                             .map(Account::getFullName).orElse("ID " + staffId);
-
                     throw new IllegalArgumentException(
-                            "Nhân viên '" + staffName + "' đang được gán cho tuyến '" + route.getRouteName() + "' (" + route.getRouteCode() + "). Vui lòng gỡ bỏ khỏi tuyến cũ trước."
+                            "Nhân viên '" + staffName + "' đang được gán cho tuyến '" + route.getRouteName() + "'. Vui lòng gỡ bỏ khỏi tuyến đó trước."
                     );
                 }
             }
