@@ -207,6 +207,15 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                         </div>
                                     </div>
                                 )}
+                                {initialData?.installationDate && (
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">Ngày lắp đặt</div>
+                                        <div className="font-medium text-gray-800 flex items-center gap-1">
+                                            <CalendarOutlined className="text-purple-500" />
+                                            {fmtDate(initialData.installationDate)}
+                                        </div>
+                                    </div>
+                                )}
                                 {initialData?.contractValue != null && (
                                     <div>
                                         <div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div>

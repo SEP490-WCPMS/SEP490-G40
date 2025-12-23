@@ -136,7 +136,7 @@ const ApprovedContractsPage = ({ refreshKey }) => {
                     title: 'Chưa thể gửi ký',
                     content: (
                         <div>
-                            <p>Khách hàng <b>{contract.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                            <p>Khách hàng <b>{contract.customerName}</b> hiện là Guest (Chưa có tài khoản).</p>
                             <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
                         </div>
                     ),
