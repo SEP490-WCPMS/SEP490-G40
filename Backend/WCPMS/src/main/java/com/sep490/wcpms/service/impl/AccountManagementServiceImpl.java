@@ -5,13 +5,16 @@ import com.sep490.wcpms.dto.RoleDTO;
 import com.sep490.wcpms.dto.StaffAccountResponseDTO;
 import com.sep490.wcpms.dto.UpdateStaffRequestDTO;
 import com.sep490.wcpms.entity.Account;
+import com.sep490.wcpms.entity.ActivityLog;
 import com.sep490.wcpms.entity.Role;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.exception.DuplicateResourceException; // (Bạn có thể cần tạo class Exception này)
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.RoleRepository;
 import com.sep490.wcpms.service.AccountManagementService;
+import com.sep490.wcpms.service.ActivityLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,9 @@ public class AccountManagementServiceImpl implements AccountManagementService {
     private final AccountRepository accountRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder; // Inject bộ mã hóa
+
+    @Autowired
+    private ActivityLogService activityLogService;
 
     @Override
     public List<RoleDTO> getAssignableRoles() {
@@ -102,6 +108,14 @@ public class AccountManagementServiceImpl implements AccountManagementService {
         account.setStatus(requestDTO.getStatus());
 
         Account savedAccount = accountRepository.save(account);
+        ActivityLog log = new ActivityLog();
+        log.setSubjectType("ACCOUNT");
+        log.setSubjectId(savedAccount.getUsername());
+        log.setAction("STAFF_CREATED");
+        log.setPayload("Role: " + savedAccount.getRole().getRoleName());
+        log.setActorType("ADMIN");
+        // log.setActorName(...)
+        activityLogService.save(log);
         return new StaffAccountResponseDTO(savedAccount);
     }
 
@@ -158,6 +172,15 @@ public class AccountManagementServiceImpl implements AccountManagementService {
 
         account.setStatus(status);
         Account updatedAccount = accountRepository.save(account);
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("ACCOUNT");
+            log.setSubjectId(account.getUsername());
+            // Log hành động Khóa (LOCKED) hoặc Mở khóa (ACTIVATED)
+            log.setAction(status == 0 ? "ACCOUNT_LOCKED" : "ACCOUNT_ACTIVATED");
+            log.setActorType("ADMIN");
+            activityLogService.save(log);
+        } catch (Exception e) {}
         return new StaffAccountResponseDTO(updatedAccount);
     }
 }

@@ -4,10 +4,12 @@ import com.sep490.wcpms.dto.ChangePasswordRequestDTO;
 import com.sep490.wcpms.dto.ProfileResponseDTO;
 import com.sep490.wcpms.dto.ProfileUpdateRequestDTO;
 import com.sep490.wcpms.entity.Account;
+import com.sep490.wcpms.entity.ActivityLog;
 import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.CustomerRepository;
+import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.service.ProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +27,9 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ActivityLogService activityLogService;
 
     // --- THÊM LOGIC ĐỔI MẬT KHẨU ---
     @Override
@@ -49,6 +54,16 @@ public class ProfileServiceImpl implements ProfileService {
 
         // 5. Lưu lại
         accountRepository.save(account);
+
+        // --- GHI LOG ĐỔI MẬT KHẨU ---
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("ACCOUNT_SECURITY");
+            log.setSubjectId(account.getUsername());
+            log.setAction("PASSWORD_CHANGED");
+            log.setActorType("USER"); // Chính chủ tự đổi
+            activityLogService.save(log);
+        } catch (Exception e) {}
     }
 
     @Override
