@@ -22,11 +22,13 @@ public class WaterMeterAdminController {
 
     @GetMapping
     public ResponseEntity<Page<WaterMeterAdminResponseDTO>> list(
-            @RequestParam(name = "includeRetired", required = false, defaultValue = "false") boolean includeRetired,
+            @RequestParam(name = "includeRetired", required = false, defaultValue = "false") boolean includeRetired, // Lưu ý: tham số này bạn đặt tên là includeRetired hay includeMaintenance thì giữ nguyên cho đồng bộ
+            @RequestParam(name = "search", required = false, defaultValue = "") String keyword, // <-- Thêm cái này
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
-        return ResponseEntity.ok(service.listAll(includeRetired, page, size));
+        // Truyền keyword xuống service
+        return ResponseEntity.ok(service.listAll(includeRetired, keyword, page, size));
     }
 
     @GetMapping("/{id}")

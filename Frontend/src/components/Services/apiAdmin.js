@@ -12,8 +12,8 @@ export const approveGuestRequest = (contractId) => {
 
 // (Tùy chọn) Lấy danh sách Customer chính thức
 export const getAllCustomers = () => {
-    // Giả sử dùng chung API users lọc theo role
-    return apiClient.get('/admin/users?role=CUSTOMER');
+    // Backend trả danh sách customer (customer_id, customer_code, ...)
+    return apiClient.get('/admin/customers');
 };
 
 export const getCustomerContracts = async (customerId) => {

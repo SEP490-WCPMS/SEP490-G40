@@ -60,9 +60,8 @@ const ServiceContractsManager = ({ initialTab }) => {
     else if (key === 'approved') setStatus('APPROVED');
     else if (key === 'signed') setStatus('SIGNED');
     
-    // --- FIX: Tab Active để mặc định là 'all' để con tự xử lý ---
+    // --- Tab Active để mặc định là 'all'  ---
     else if (key === 'active') setStatus('all'); 
-    // -----------------------------------------------------------
 
     else if (key === 'transfers') setStatus('TRANSFER');
     else if (key === 'annuls') setStatus('ANNUL');
@@ -77,7 +76,7 @@ const ServiceContractsManager = ({ initialTab }) => {
     PENDING_SIGN: 'signed',
     SIGNED: 'signed',
     ACTIVE: 'active',
-    SUSPENDED: 'active', 
+    // SUSPENDED: 'active', // Đã bỏ SUSPENDED khỏi map logic
     TERMINATED: 'active', 
     EXPIRED: 'active', 
     TRANSFER: 'transfers',
@@ -144,7 +143,6 @@ const ServiceContractsManager = ({ initialTab }) => {
                   <Option value="APPROVED">Đã duyệt</Option>
                   <Option value="SIGNED">Khách đã ký</Option>
                   <Option value="ACTIVE">Đang hoạt động</Option>
-                  <Option value="SUSPENDED">Đang tạm ngưng</Option>
                   <Option value="TERMINATED">Đã chấm dứt</Option>
                   <Option value="EXPIRED">Hết hạn</Option>
                   <Option value="TRANSFER">Yêu cầu chuyển nhượng</Option>
@@ -194,10 +192,10 @@ const ServiceContractsManager = ({ initialTab }) => {
                   userSelect: 'none'
                 }}
                 onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = '#e6f7ff';
+                  if (!isActive) e.currentTarget.style.backgroundColor = '#e6f7ff';
                 }}
                 onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = '#f5f5f5';
+                  if (!isActive) e.currentTarget.style.backgroundColor = '#f5f5f5';
                 }}
               >
                 {t.icon}

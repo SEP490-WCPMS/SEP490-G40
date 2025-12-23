@@ -5,10 +5,156 @@ import { AlertCircle, FileText } from 'lucide-react';
 import ConfirmModal from '../common/ConfirmModal';
 import CustomerContractsModal from '../Admin/CustomerContractsModal';
 
+const resolvePath = (source, path) => {
+    if (!source || !path) return undefined;
+    return path.split('.').reduce((current, part) => {
+        if (current == null) return undefined;
+        const tokens = [];
+        const regex = /([^[\]]+)|\[(\d+)\]/g;
+        let match;
+        while ((match = regex.exec(part)) !== null) {
+            if (match[1]) tokens.push(match[1]);
+            if (match[2]) tokens.push(Number(match[2]));
+        }
+        return tokens.reduce((target, token) => {
+            if (target == null) return undefined;
+            if (typeof token === 'number') {
+                return Array.isArray(target) ? target[token] : undefined;
+            }
+            return target[token];
+        }, current);
+    }, source);
+};
+
+const getFirstAvailableValue = (source, paths) => {
+    if (!source || !Array.isArray(paths)) return null;
+    for (const path of paths) {
+        const value = resolvePath(source, path);
+        if (value !== undefined && value !== null && value !== '') {
+            return value;
+        }
+    }
+    return null;
+};
+
+const FIELD_PATHS = {
+    code: ['customer_code', 'customerCode', 'code', 'customerCodeValue', 'user.customerCode'],
+    name: ['customer_name', 'customerName', 'fullName', 'name', 'user.fullName', 'user.name'],
+    phone: ['phone', 'phoneNumber', 'mobile', 'user.phoneNumber', 'contactPhone'],
+    email: ['email', 'user.email', 'emailAddress', 'contactEmail'],
+    address: ['address', 'customerAddress', 'location.address', 'user.address']
+};
+
+const METER_CODE_PATHS = [
+    'meter_code',
+    'meterCode',
+    'code',
+    'meter.meterCode',
+    'meter.meter_code',
+    'waterMeter.meterCode',
+    'waterMeter.meter_code',
+    'customerMeter.meterCode',
+    'customerMeter.meter_code',
+    'installedMeter.meterCode',
+    'meters[0].meterCode',
+    'meters[0].meter_code',
+    'waterMeters[0].meterCode',
+    'waterMeters[0].meter_code',
+    'meterAssignments[0].meterCode',
+    'meterAssignments[0].meter_code'
+];
+
+const METER_STATUS_PATHS = [
+    'meter_status',
+    'meterStatus',
+    'status',
+    'state',
+    'meter.status',
+    'waterMeter.status'
+];
+
+const METER_DIRECT_PATHS = [
+    'meter',
+    'waterMeter',
+    'primaryMeter',
+    'mainMeter',
+    'assignedMeter',
+    'meterInfo',
+    'meterDetails',
+    'currentMeter'
+];
+
+const METER_COLLECTION_PATHS = [
+    'meters',
+    'waterMeters',
+    'customerMeters',
+    'assignedMeters',
+    'meterAssignments',
+    'activeMeters',
+    'meterList'
+];
+
+const CONTRACT_METER_CODE_PATHS = [
+    'meterCode',
+    'meter_code',
+    'waterMeterCode',
+    'water_meter_code',
+    'meter.meterCode',
+    'meter.meter_code',
+    'waterMeter.meterCode',
+    'waterMeter.meter_code'
+];
+
+const CONTRACT_METER_STATUS_PATHS = [
+    'meterStatus',
+    'meter_status',
+    'meter.status',
+    'waterMeter.status'
+];
+
+const getMeterDetails = (customer) => {
+    if (!customer) return { code: null, status: null };
+
+    const buildFromCandidate = (candidate) => {
+        if (!candidate || typeof candidate !== 'object') return null;
+        const code = getFirstAvailableValue(candidate, METER_CODE_PATHS);
+        const status = getFirstAvailableValue(candidate, METER_STATUS_PATHS);
+        if (code || status) {
+            return { code, status };
+        }
+        return null;
+    };
+
+    for (const path of METER_DIRECT_PATHS) {
+        const candidate = resolvePath(customer, path);
+        const result = buildFromCandidate(candidate);
+        if (result) return result;
+    }
+
+    for (const collectionPath of METER_COLLECTION_PATHS) {
+        const collection = resolvePath(customer, collectionPath);
+        if (Array.isArray(collection)) {
+            for (const meterEntry of collection) {
+                const result = buildFromCandidate(meterEntry);
+                if (result) return result;
+            }
+        }
+    }
+
+    const fallbackCode = getFirstAvailableValue(customer, METER_CODE_PATHS);
+    const fallbackStatus = getFirstAvailableValue(customer, METER_STATUS_PATHS);
+    if (fallbackCode || fallbackStatus) {
+        return { code: fallbackCode, status: fallbackStatus };
+    }
+
+    return { code: null, status: null };
+};
+
 const CustomerManagementPage = () => {
     const [activeTab, setActiveTab] = useState('guests');
     const [guests, setGuests] = useState([]);
     const [customers, setCustomers] = useState([]);
+    const [customerMeters, setCustomerMeters] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
@@ -22,6 +168,18 @@ const CustomerManagementPage = () => {
         loading: false
     });
 
+    const parseCreatedAt = useCallback((value) => {
+        if (!value) return null;
+        const normalized = String(value).trim().replace(/\s+/g, ' ');
+        // Backend thường trả dạng: "YYYY-MM-DD HH:mm:ss" (không phải ISO)
+        // Chuyển sang ISO-ish để Date parse ổn định hơn.
+        const isoLike = normalized.includes(' ') && !normalized.includes('T')
+            ? normalized.replace(' ', 'T')
+            : normalized;
+        const date = new Date(isoLike);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }, []);
+
     // --- LOAD DATA ---
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -32,12 +190,60 @@ const CustomerManagementPage = () => {
                 setGuests(res.data || []);
             } else if (activeTab === 'customers') {
                 const res = await getAllCustomers();
-                const payload = res.data || res;
+                const raw = res?.data ?? res;
+                const payload = raw?.data ?? raw;
                 // Lấy mảng dữ liệu dù nó nằm ở đâu
-                const dataList = Array.isArray(payload) ? payload : (payload?.content || []);
+                const dataList = Array.isArray(payload) ? payload : (payload?.content || payload?.customers || []);
 
-                console.log("Customer Raw Data:", dataList); // Debug
-                setCustomers(dataList);
+                // Sắp xếp: khách tạo mới nhất lên trên (như danh sách cũ)
+                const sortedCustomers = [...dataList].sort((a, b) => {
+                    const dateA = parseCreatedAt(a?.created_at ?? a?.createdAt);
+                    const dateB = parseCreatedAt(b?.created_at ?? b?.createdAt);
+
+                    if (dateA && dateB) return dateB.getTime() - dateA.getTime();
+                    if (dateA && !dateB) return -1;
+                    if (!dateA && dateB) return 1;
+
+                    const idA = Number(a?.customer_id ?? a?.customerId ?? a?.id ?? 0);
+                    const idB = Number(b?.customer_id ?? b?.customerId ?? b?.id ?? 0);
+                    return idB - idA;
+                });
+
+                setCustomers(sortedCustomers);
+
+                // Nếu API danh sách customer không trả thông tin đồng hồ, lấy bổ sung từ API hợp đồng
+                // (hiển thị mã đồng hồ ở cột "Đồng hồ")
+                const meterResults = await Promise.allSettled(
+                    sortedCustomers.map(async (customer) => {
+                        const customerId = customer.customer_id || customer.id || customer.customerId;
+                        if (!customerId) return null;
+                        const contractsRes = await getCustomerContracts(customerId);
+                        const contractsRaw = contractsRes?.data ?? contractsRes;
+                        const contractsPayload = contractsRaw?.data ?? contractsRaw;
+                        const contracts = Array.isArray(contractsPayload)
+                            ? contractsPayload
+                            : (contractsPayload?.content || contractsPayload?.contracts || []);
+                        if (!Array.isArray(contracts) || contracts.length === 0) {
+                            return [customerId, { code: null, status: null }];
+                        }
+
+                        const contractWithMeter = contracts.find((ct) => getFirstAvailableValue(ct, CONTRACT_METER_CODE_PATHS));
+                        const meterCode = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_CODE_PATHS) : null;
+                        const meterStatus = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_STATUS_PATHS) : null;
+                        return [customerId, { code: meterCode ?? null, status: meterStatus ?? null }];
+                    })
+                );
+
+                const nextCustomerMeters = {};
+                for (const r of meterResults) {
+                    if (r.status !== 'fulfilled') continue;
+                    const value = r.value;
+                    if (!value) continue;
+                    const [customerId, meterInfo] = value;
+                    if (!customerId) continue;
+                    nextCustomerMeters[customerId] = meterInfo;
+                }
+                setCustomerMeters(nextCustomerMeters);
             }
         } catch (err) {
             console.error("Lỗi tải dữ liệu:", err);
@@ -45,7 +251,7 @@ const CustomerManagementPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab]);
+    }, [activeTab, parseCreatedAt]);
 
     useEffect(() => {
         loadData();
@@ -71,12 +277,9 @@ const CustomerManagementPage = () => {
         }
     };
 
-    // --- XEM HỢP ĐỒNG (ĐÃ SỬA LẠI LOGIC LẤY ID) ---
+    // --- XEM HỢP ĐỒNG ---
     const handleViewContracts = async (customer) => {
-        // Ưu tiên lấy customer_id (theo log của bạn), fallback sang id hoặc customerId
         const customerId = customer.customer_id || customer.id || customer.customerId;
-
-        // Ưu tiên lấy customer_name (theo log), fallback sang customerName hoặc fullName
         const name = customer.customer_name || customer.customerName || customer.fullName || 'Khách hàng';
 
         if (!customerId) {
@@ -190,40 +393,35 @@ const CustomerManagementPage = () => {
                     </div>
                 )}
 
-                {/* TAB CUSTOMERS */}
+                {/* TAB CUSTOMERS (Đã bỏ cột "Tài khoản") */}
                 {!loading && !error && activeTab === 'customers' && (
                     <div className="table-responsive">
                         <table className="responsive-table" style={{ width: '100%' }}>
                             <thead>
                                 <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                                    <th style={{ width: '90px' }}>Mã KH</th>
-                                    <th style={{ width: '180px' }}>Họ Tên</th>
-                                    <th style={{ width: '110px' }}>SĐT</th>
-                                    <th>Email</th>
+                                    <th style={{ width: '120px' }}>Mã KH</th>
+                                    <th style={{ width: '200px' }}>Họ Tên</th>
+                                    <th style={{ width: '120px' }}>SĐT</th>
+                                    <th style={{ width: '200px' }}>Email</th>
                                     <th>Địa chỉ</th>
-                                    <th style={{ width: '100px' }}>Đồng hồ</th>
-                                    <th style={{ width: '90px' }}>Tài khoản</th>
-                                    <th style={{ width: '80px' }}>HĐ</th>
+                                    <th style={{ width: '120px' }}>Đồng hồ</th>
+                                    <th style={{ width: '80px', textAlign: 'center' }}>HĐ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {customers.length === 0 && <tr><td colSpan="8" style={{ padding: '20px', textAlign: 'center' }}>Chưa có khách hàng nào.</td></tr>}
+                                {customers.length === 0 && <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Chưa có khách hàng nào.</td></tr>}
                                 {customers.map((c, index) => {
-                                    // --- SỬA QUAN TRỌNG: Map dữ liệu linh hoạt (cả snake_case và camelCase) ---
                                     const id = c.customer_id || c.id || c.customerId || index;
-                                    const code = c.customer_code || c.customerCode || '---';
-                                    const name = c.customer_name || c.customerName || c.fullName || '---';
-                                    const phone = c.phone || c.phoneNumber || '---'; // Trong log của bạn là 'phone'
-                                    const email = c.email || '---';
-                                    const address = c.address || '---';
-
-                                    // Xử lý status: DTO cũ là 'status', DTO mới là 'accountStatus' hoặc 'account_status'
-                                    const statusVal = (c.account_status !== undefined) ? c.account_status : (c.status !== undefined ? c.status : c.accountStatus);
-                                    const isActive = statusVal === 1;
-
-                                    // Xử lý đồng hồ: 'meter_code' hoặc 'meterCode'
-                                    const meterCode = c.meter_code || c.meterCode || '---';
-                                    const meterStatus = c.meter_status || c.meterStatus || null;
+                                    const code = getFirstAvailableValue(c, FIELD_PATHS.code) || '---';
+                                    const name = getFirstAvailableValue(c, FIELD_PATHS.name) || '---';
+                                    const phone = getFirstAvailableValue(c, FIELD_PATHS.phone) || '---';
+                                    const email = getFirstAvailableValue(c, FIELD_PATHS.email) || '---';
+                                    const address = getFirstAvailableValue(c, FIELD_PATHS.address) || '---';
+                                    const meterDetails = getMeterDetails(c);
+                                    const resolvedCustomerId = c.customer_id || c.id || c.customerId;
+                                    const apiMeter = resolvedCustomerId ? customerMeters[resolvedCustomerId] : null;
+                                    const meterCode = apiMeter?.code || meterDetails.code || '---';
+                                    const meterStatus = apiMeter?.status || meterDetails.status;
 
                                     return (
                                         <tr key={id}>
@@ -240,17 +438,7 @@ const CustomerManagementPage = () => {
                                                 </div>
                                             </td>
 
-                                            <td data-label="Tài khoản">
-                                                <span style={{
-                                                    padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
-                                                    backgroundColor: isActive ? '#dcfce7' : '#fee2e2',
-                                                    color: isActive ? '#166534' : '#991b1b'
-                                                }}>
-                                                    {isActive ? 'Active' : 'Inactive'}
-                                                </span>
-                                            </td>
-
-                                            <td data-label="HĐ">
+                                            <td data-label="HĐ" style={{ textAlign: 'center' }}>
                                                 <Button
                                                     size="sm"
                                                     variant="outline"

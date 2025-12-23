@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios"; // Dùng axios mặc định
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const CustomerProfileUpdate = () => {
@@ -10,11 +10,8 @@ const CustomerProfileUpdate = () => {
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem("user"));
-
-    // --- SỬA 1: Đọc token từ đúng key ---
     const token = localStorage.getItem("token");
 
-    // --- SỬA 2: Kiểm tra cả user.id và token ---
     if (!currentUser || !currentUser.id || !token) {
       navigate("/login");
       return;
@@ -22,13 +19,11 @@ const CustomerProfileUpdate = () => {
 
     const fetchProfileData = async () => {
       try {
-        // --- SỬA 3: Thêm Header Authorization vào request ---
         const response = await axios.get(`http://localhost:8080/api/profile/${currentUser.id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
-
         setUser(response.data);
       } catch (error) {
         console.error("Lỗi: Không thể tải hồ sơ khách hàng:", error);
@@ -52,24 +47,22 @@ const CustomerProfileUpdate = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!user.fullName || !user.email || !user.phone || !user.address || !user.street || !user.district || !user.province) {
-      setMessage("❌ Vui lòng điền đầy đủ tất cả các trường thông tin.");
+    // --- SỬA: Chỉ validate các trường còn hiển thị ---
+    if (!user.fullName || !user.email || !user.phone) {
+      setMessage("❌ Vui lòng điền đầy đủ thông tin (Họ tên, Email, SĐT).");
       return;
     }
 
-    // Lấy lại token từ localStorage
     const token = localStorage.getItem("token");
-
     if (!token) {
       setMessage("❌ Lỗi xác thực. Vui lòng đăng nhập lại.");
       return;
     }
 
     try {
+      // Vẫn gửi toàn bộ object user (bao gồm cả địa chỉ cũ) để tránh mất dữ liệu phía BE
       const updatedData = { ...user };
 
-      // --- SỬA 4: Thêm Header Authorization vào request PUT ---
-      // Lưu ý: Dùng user.id (vì DTO của back-end đã đổi)
       const res = await axios.put(`http://localhost:8080/api/profile/update/${user.id}`, updatedData, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -78,9 +71,8 @@ const CustomerProfileUpdate = () => {
 
       setMessage("✅ Cập nhật thông tin thành công!");
 
-      // Cập nhật lại localStorage với thông tin MỚI NHẤT
+      // Cập nhật lại localStorage
       const currentUserData = JSON.parse(localStorage.getItem("user"));
-      // Gộp thông tin user cũ (id, roleName) với thông tin mới (fullName, address...)
       const updatedUser = {
         ...currentUserData,
         ...res.data.user
@@ -93,17 +85,15 @@ const CustomerProfileUpdate = () => {
     }
   };
 
-  // Hiển thị loading trong khi chờ fetch
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '50px' }}>Đang tải hồ sơ...</div>;
   }
 
-  // Nếu fetch xong mà user vẫn null (ví dụ API lỗi)
   if (!user) {
     return <div style={{ textAlign: 'center', padding: '50px', color: 'red' }}>{message || "Không thể tải hồ sơ."}</div>;
   }
 
-  // Giao diện của component
+  // --- STYLES ---
   const styles = {
     section: {
       minHeight: '100vh',
@@ -116,7 +106,7 @@ const CustomerProfileUpdate = () => {
     },
     container: {
       width: '100%',
-      maxWidth: '900px',
+      maxWidth: '800px', // Thu nhỏ width lại một chút cho cân đối vì bớt field
       backgroundColor: '#ffffff',
       borderRadius: '16px',
       boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
@@ -173,7 +163,7 @@ const CustomerProfileUpdate = () => {
       padding: '40px',
     },
     formSection: {
-      marginBottom: '40px',
+      marginBottom: '20px', // Giảm margin bottom vì chỉ còn 1 section
     },
     sectionTitle: {
       display: 'flex',
@@ -196,15 +186,12 @@ const CustomerProfileUpdate = () => {
     },
     formGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gridTemplateColumns: '1fr', // Chuyển về 1 cột cho đẹp vì ít field
       gap: '24px',
     },
     formGroup: {
       display: 'flex',
       flexDirection: 'column',
-    },
-    formGroupFullWidth: {
-      gridColumn: '1 / -1',
     },
     label: {
       fontSize: '14px',
@@ -233,7 +220,7 @@ const CustomerProfileUpdate = () => {
     formActions: {
       display: 'flex',
       gap: '12px',
-      marginTop: '40px',
+      marginTop: '30px',
       paddingTop: '32px',
       borderTop: '2px solid #f0f4f9',
     },
@@ -274,89 +261,17 @@ const CustomerProfileUpdate = () => {
       backgroundColor: '#f0f4f9',
       color: '#1f2937',
     },
-    '@media': {
-      mobile: {
-        header: {
-          padding: '25px 16px',
-          gap: '15px',
-        },
-        headerIcon: {
-          width: '60px',
-          height: '60px',
-          fontSize: '32px',
-        },
-        headerH1: {
-          fontSize: '20px',
-        },
-      },
-      tablet: {
-        section: {
-          padding: '20px 16px',
-        },
-        header: {
-          padding: '30px 20px',
-          flexDirection: 'column',
-          textAlign: 'center',
-        },
-        headerIcon: {
-          width: '70px',
-          height: '70px',
-          fontSize: '40px',
-        },
-        headerH1: {
-          fontSize: '24px',
-        },
-        form: {
-          padding: '30px 20px',
-        },
-      },
-    },
   };
 
   return (
     <section style={styles.section}>
       <style>{`
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        input::placeholder {
-          color: #6b7280;
-          opacity: 0.6;
-        }
-        input:hover:not(:focus) {
-          border-color: #d1d5db;
-          background-color: #fafbfc;
-        }
-        button:hover:not(:disabled) {
-          transform: translateY(-2px);
-        }
-        @media (max-width: 768px) {
-          section {
-            padding: 20px 16px !important;
-          }
-        }
-        @media (max-width: 480px) {
-          section {
-            padding: 20px 16px !important;
-          }
-        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        input::placeholder { color: #6b7280; opacity: 0.6; }
+        input:hover:not(:focus) { border-color: #d1d5db; background-color: #fafbfc; }
+        button:hover:not(:disabled) { transform: translateY(-2px); }
+        @media (max-width: 768px) { section { padding: 20px 16px !important; } }
       `}</style>
       <div style={styles.container}>
         {/* Header */}
@@ -364,7 +279,7 @@ const CustomerProfileUpdate = () => {
           <div style={styles.headerIcon}>👤</div>
           <div>
             <h1 style={styles.headerH1}>Chỉnh sửa hồ sơ cá nhân</h1>
-            <p style={styles.headerP}>Cập nhật thông tin tài khoản của bạn</p>
+            <p style={styles.headerP}>Cập nhật thông tin liên hệ của bạn</p>
           </div>
         </div>
 
@@ -381,8 +296,8 @@ const CustomerProfileUpdate = () => {
           {/* Section 1: Thông tin cá nhân */}
           <div style={styles.formSection}>
             <div style={styles.sectionTitle}>
-              <span style={styles.sectionIcon}>👤</span>
-              <h3 style={styles.sectionH3}>Thông tin cá nhân</h3>
+              <span style={styles.sectionIcon}>📝</span>
+              <h3 style={styles.sectionH3}>Thông tin liên hệ</h3>
             </div>
             <div style={styles.formGrid}>
               <div style={styles.formGroup}>
@@ -425,76 +340,6 @@ const CustomerProfileUpdate = () => {
                   value={user.phone}
                   onChange={handleChange}
                   placeholder="Nhập số điện thoại"
-                  required
-                  onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
-                  onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Địa chỉ */}
-          <div style={styles.formSection}>
-            <div style={styles.sectionTitle}>
-              <span style={styles.sectionIcon}>📍</span>
-              <h3 style={styles.sectionH3}>Địa chỉ</h3>
-            </div>
-            <div style={styles.formGrid}>
-              <div style={{ ...styles.formGroup, ...styles.formGroupFullWidth }}>
-                <label htmlFor="address" style={styles.label}>Địa chỉ</label>
-                <input
-                  type="text"
-                  id="address"
-                  style={styles.input}
-                  name="address"
-                  value={user.address}
-                  onChange={handleChange}
-                  placeholder="Nhập địa chỉ đầy đủ"
-                  required
-                  onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
-                  onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
-                />
-              </div>
-              <div style={{ ...styles.formGroup, ...styles.formGroupFullWidth }}>
-                <label htmlFor="street" style={styles.label}>Đường/Phố</label>
-                <input
-                  type="text"
-                  id="street"
-                  style={styles.input}
-                  name="street"
-                  value={user.street}
-                  onChange={handleChange}
-                  placeholder="Nhập tên đường/phố"
-                  required
-                  onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
-                  onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label htmlFor="district" style={styles.label}>Quận/Huyện</label>
-                <input
-                  type="text"
-                  id="district"
-                  style={styles.input}
-                  name="district"
-                  value={user.district}
-                  onChange={handleChange}
-                  placeholder="Nhập quận/huyện"
-                  required
-                  onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
-                  onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label htmlFor="province" style={styles.label}>Tỉnh/Thành phố</label>
-                <input
-                  type="text"
-                  id="province"
-                  style={styles.input}
-                  name="province"
-                  value={user.province}
-                  onChange={handleChange}
-                  placeholder="Nhập tỉnh/thành phố"
                   required
                   onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
                   onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}

@@ -222,8 +222,9 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
               <FileTextOutlined className="mr-1" /> Minh chứng
             </div>
-            <div className="flex justify-center">
+            <div className="flex justify-center flex-wrap gap-4">
               {Array.isArray(data.attachedEvidence) ? (
+                // Trường hợp là mảng file/link
                 data.attachedEvidence.map((f, idx) => (
                   <div key={idx} className="mb-4">
                     {f && (f.url || f.base64) ? (
@@ -238,12 +239,22 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
                   </div>
                 ))
               ) : (
+                // Trường hợp là chuỗi đơn (Base64 hoặc URL)
                 <>
                   {typeof data.attachedEvidence === 'string' ? (
-                    (data.attachedEvidence.startsWith('data:image') || data.attachedEvidence.length > 200) ? (
-                      <img src={`data:image/png;base64,${data.attachedEvidence}`} alt="evidence" className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" />
+                    // Kiểm tra xem có phải Base64 không (đôi khi BE trả về chuỗi base64 trần)
+                    // Nếu là URL (bắt đầu bằng http) -> Hiển thị Link
+                    (data.attachedEvidence.startsWith('http')) ? (
+                         <a href={data.attachedEvidence} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{data.attachedEvidence}</a>
                     ) : (
-                      <a href={data.attachedEvidenceUrl || '#'} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{data.attachedEvidence}</a>
+                        // Nếu là Base64 -> Hiển thị ảnh
+                        // Cần check xem chuỗi có prefix chưa, nếu chưa thì thêm vào
+                        <img 
+                            src={data.attachedEvidence.startsWith('data:image') ? data.attachedEvidence : `data:image/jpeg;base64,${data.attachedEvidence}`} 
+                            alt="evidence" 
+                            className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" 
+                            onError={(e) => { e.target.onerror = null; e.target.src="https://via.placeholder.com/300x200?text=Invalid+Image"; }}
+                        />
                     )
                   ) : (
                     <span className="text-gray-600">{asString(data.attachedEvidence)}</span>
