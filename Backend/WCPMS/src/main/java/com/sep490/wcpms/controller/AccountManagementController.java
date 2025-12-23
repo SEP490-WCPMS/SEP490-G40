@@ -35,9 +35,10 @@ public class AccountManagementController {
     public ResponseEntity<Page<StaffAccountResponseDTO>> getAllStaffAccounts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Account.Department department // Tham số lọc phòng ban
+            @RequestParam(required = false) Account.Department department,
+            @RequestParam(required = false, defaultValue = "") String search // <-- Thêm tham số này
     ) {
-        return ResponseEntity.ok(accountService.getAllStaffAccounts(page, size, department));
+        return ResponseEntity.ok(accountService.getAllStaffAccounts(page, size, department, search));
     }
 
     // (R)EAD - Lấy một tài khoản theo ID
