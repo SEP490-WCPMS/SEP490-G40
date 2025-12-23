@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const ContractRequestDetailModal = ({
-                                        isOpen,
-                                        kind,         // 'CREATE' | 'CHANGE' (optional)
-                                        requestId,    // id của transfer/annul request (optional)
-                                        contractId,   // id contract (dùng cho create request) (optional)
-                                        accountId,
-                                        token,
-                                        onClose
-                                    }) => {
+    isOpen,
+    kind,         // 'CREATE' | 'CHANGE' (optional)
+    requestId,    // id của transfer/annul request (optional)
+    contractId,   // id contract (dùng cho create request) (optional)
+    accountId,
+    token,
+    onClose
+}) => {
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -193,13 +193,19 @@ const ContractRequestDetailModal = ({
             fontWeight: 600,
         },
         section: {
-            marginBottom: '30px',
+            marginBottom: '24px',
+        },
+        sectionCard: {
+            padding: '16px',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
         },
         sectionTitle: {
             fontSize: '16px',
             fontWeight: 600,
             color: '#1f2937',
-            marginBottom: '16px',
+            marginBottom: '12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -278,154 +284,156 @@ const ContractRequestDetailModal = ({
             {/* Thông tin hợp đồng cơ bản */}
             <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>📋 Thông tin hợp đồng</h3>
-                <div style={styles.grid}>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Số hợp đồng:</span>
-                        <span style={styles.value}>
-              {detail.contractNumber || (isCreation ? 'N/A' : 'N/A')}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Trạng thái:</span>
-                        <span style={styles.statusBadge(statusObj.className)}>
-              {statusObj.text}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Ngày gửi yêu cầu:</span>
-                        <span style={styles.value}>
-              {formatDate(detail.applicationDate)}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Loại yêu cầu:</span>
-                        <span style={styles.value}>
-              {getRequestTypeText(detail.requestType)}
-            </span>
-                    </div>
-
-                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                        <span style={styles.label}>Ghi chú:</span>
-                        <span style={styles.value}>
-              {detail.notes || '(Không có)'}
-            </span>
-                    </div>
-
-                    {detail.attachedEvidence && (
-                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                            <span style={styles.label}>Minh chứng:</span>
+                <div style={styles.sectionCard}>
+                    <div style={styles.grid}>
+                        <div style={styles.row}>
+                            <span style={styles.label}>Số hợp đồng:</span>
                             <span style={styles.value}>
-                {(() => {
-                    const src = buildEvidenceSrc(detail.attachedEvidence);
-                    if (!src) return '(Không hiển thị được)';
-                    return (
-                        <img
-                            src={src}
-                            alt="attachedEvidence"
-                            style={{ maxWidth: '100%', borderRadius: '10px' }}
-                        />
-                    );
-                })()}
-              </span>
+                                {detail.contractNumber || (isCreation ? 'N/A' : 'N/A')}
+                            </span>
                         </div>
-                    )}
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Trạng thái:</span>
+                            <span style={styles.statusBadge(statusObj.className)}>
+                                {statusObj.text}
+                            </span>
+                        </div>
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Ngày gửi yêu cầu:</span>
+                            <span style={styles.value}>
+                                {formatDate(detail.applicationDate)}
+                            </span>
+                        </div>
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Loại yêu cầu:</span>
+                            <span style={styles.value}>
+                                {getRequestTypeText(detail.requestType)}
+                            </span>
+                        </div>
+
+                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                            <span style={styles.label}>Ghi chú:</span>
+                            <span style={styles.value}>
+                                {detail.notes || '(Không có)'}
+                            </span>
+                        </div>
+
+                        {detail.attachedEvidence && (
+                            <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                                <span style={styles.label}>Minh chứng:</span>
+                                <span style={styles.value}>
+                                    {(() => {
+                                        const src = buildEvidenceSrc(detail.attachedEvidence);
+                                        if (!src) return '(Không hiển thị được)';
+                                        return (
+                                            <img
+                                                src={src}
+                                                alt="attachedEvidence"
+                                                style={{ maxWidth: '100%', borderRadius: '10px' }}
+                                            />
+                                        );
+                                    })()}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Thông tin khách hàng */}
             <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>👤 Thông tin khách hàng</h3>
-                <div style={styles.grid}>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Tên khách hàng:</span>
-                        <span style={styles.value}>
-              {detail.customerName || 'N/A'}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Mã khách hàng:</span>
-                        <span style={styles.value}>
-              {detail.customerCode || 'N/A'}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Tuyến đọc:</span>
-                        <span style={styles.value}>
-              {(detail.routeCode ? `${detail.routeCode} — ` : '') + (detail.routeName || detail.routeId || 'N/A')}
-            </span>
-                    </div>
-
-                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                        <span style={styles.label}>Địa chỉ:</span>
-                        <span style={styles.value}>
-              {detail.address || 'N/A'}
-            </span>
-                    </div>
-
-                    {detail.contactPersonName && (
+                <div style={styles.sectionCard}>
+                    <div style={styles.grid}>
                         <div style={styles.row}>
-                            <span style={styles.label}>Người liên hệ:</span>
-                            <span style={styles.value}>{detail.contactPersonName}</span>
+                            <span style={styles.label}>Tên khách hàng:</span>
+                            <span style={styles.value}>
+                                {detail.customerName || 'N/A'}
+                            </span>
                         </div>
-                    )}
-                    {detail.contactPersonPhone && (
+
                         <div style={styles.row}>
-                            <span style={styles.label}>Số điện thoại:</span>
-                            <span style={styles.value}>{detail.contactPersonPhone}</span>
+                            <span style={styles.label}>Mã khách hàng:</span>
+                            <span style={styles.value}>
+                                {detail.customerCode || 'N/A'}
+                            </span>
                         </div>
-                    )}
-                    {detail.identityNumber && (
+
                         <div style={styles.row}>
-                            <span style={styles.label}>Số CMND/CCCD:</span>
-                            <span style={styles.value}>{detail.identityNumber}</span>
+                            <span style={styles.label}>Tuyến đọc:</span>
+                            <span style={styles.value}>
+                                {(detail.routeCode ? `${detail.routeCode} — ` : '') + (detail.routeName || detail.routeId || 'N/A')}
+                            </span>
                         </div>
-                    )}
+
+                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                            <span style={styles.label}>Địa chỉ:</span>
+                            <span style={styles.value}>
+                                {detail.address || 'N/A'}
+                            </span>
+                        </div>
+
+                        {detail.contactPersonName && (
+                            <div style={styles.row}>
+                                <span style={styles.label}>Người liên hệ:</span>
+                                <span style={styles.value}>{detail.contactPersonName}</span>
+                            </div>
+                        )}
+                        {detail.contactPersonPhone && (
+                            <div style={styles.row}>
+                                <span style={styles.label}>Số điện thoại:</span>
+                                <span style={styles.value}>{detail.contactPersonPhone}</span>
+                            </div>
+                        )}
+                        {detail.identityNumber && (
+                            <div style={styles.row}>
+                                <span style={styles.label}>Số CMND/CCCD:</span>
+                                <span style={styles.value}>{detail.identityNumber}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Thông tin loại giá nước */}
             <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>💧 Thông tin loại giá nước</h3>
-                <div style={styles.grid}>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Loại giá nước:</span>
-                        <span style={styles.value}>{detail.priceTypeName || 'N/A'}</span>
-                    </div>
-                    {detail.usagePurpose && (
+                <div style={styles.sectionCard}>
+                    <div style={styles.grid}>
                         <div style={styles.row}>
-                            <span style={styles.label}>Mục đích sử dụng:</span>
-                            <span style={styles.value}>{detail.usagePurpose}</span>
+                            <span style={styles.label}>Loại giá nước:</span>
+                            <span style={styles.value}>{detail.priceTypeName || 'N/A'}</span>
                         </div>
-                    )}
+                        {detail.usagePurpose && (
+                            <div style={styles.row}>
+                                <span style={styles.label}>Mục đích sử dụng:</span>
+                                <span style={styles.value}>{detail.usagePurpose}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Thông tin sử dụng nước */}
             <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>📊 Thông tin sử dụng nước</h3>
-                <div style={styles.grid}>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Số người sử dụng:</span>
-                        <span style={styles.value}>
-              {detail.occupants ? `${detail.occupants} người` : 'N/A'}
-            </span>
-                    </div>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Phần trăm sử dụng:</span>
-                        <span style={styles.value}>
-              {detail.usagePercentage ? `${detail.usagePercentage}%` : 'N/A'}
-            </span>
-                    </div>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Lượng tiêu thụ dự tính:</span>
-                        <span style={styles.value}>
-              {detail.estimatedMonthlyConsumption ? `${detail.estimatedMonthlyConsumption} m³/tháng` : 'N/A'}
-            </span>
+                <div style={styles.sectionCard}>
+                    <div style={styles.grid}>
+                        <div style={styles.row}>
+                            <span style={styles.label}>Số người sử dụng:</span>
+                            <span style={styles.value}>
+                                {detail.occupants ? `${detail.occupants} người` : 'N/A'}
+                            </span>
+                        </div>
+                        <div style={styles.row}>
+                            <span style={styles.label}>Phần trăm sử dụng:</span>
+                            <span style={styles.value}>
+                                {detail.usagePercentage ? `${detail.usagePercentage}%` : 'N/A'}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -437,75 +445,79 @@ const ContractRequestDetailModal = ({
             {/* CHANGE: chỉ hiển thị đúng cái form ContractRequestChange đã gửi */}
             <div style={styles.section}>
                 <h3 style={styles.sectionTitle}>📋 Thông tin yêu cầu</h3>
-                <div style={styles.grid}>
-                    <div style={styles.row}>
-                        <span style={styles.label}>Số hợp đồng:</span>
-                        <span style={styles.value}>{detail.contractNumber || detail.contractId || 'N/A'}</span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Mã yêu cầu:</span>
-                        <span style={styles.value}>{detail.requestNumber || 'N/A'}</span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Trạng thái:</span>
-                        <span style={styles.statusBadge(statusObj.className)}>
-              {statusObj.text}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Ngày gửi yêu cầu:</span>
-                        <span style={styles.value}>
-              {formatDate(detail.requestDate || detail.createdAt)}
-            </span>
-                    </div>
-
-                    <div style={styles.row}>
-                        <span style={styles.label}>Loại yêu cầu:</span>
-                        <span style={styles.value}>
-              {getRequestTypeText(detail.requestType)}
-            </span>
-                    </div>
-
-                    <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                        <span style={styles.label}>Lý do:</span>
-                        <span style={styles.value}>{detail.reason || '(Không có)'}</span>
-                    </div>
-
-                    {detail.attachedEvidence && (
-                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                            <span style={styles.label}>Minh chứng:</span>
-                            <span style={styles.value}>
-                {(() => {
-                    const src = buildEvidenceSrc(detail.attachedEvidence);
-                    if (!src) return '(Không hiển thị được)';
-                    return (
-                        <img
-                            src={src}
-                            alt="attachedEvidence"
-                            style={{ maxWidth: '100%', borderRadius: '10px' }}
-                        />
-                    );
-                })()}
-              </span>
+                <div style={styles.sectionCard}>
+                    <div style={styles.grid}>
+                        <div style={styles.row}>
+                            <span style={styles.label}>Số hợp đồng:</span>
+                            <span style={styles.value}>{detail.contractNumber || detail.contractId || 'N/A'}</span>
                         </div>
-                    )}
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Mã yêu cầu:</span>
+                            <span style={styles.value}>{detail.requestNumber || 'N/A'}</span>
+                        </div>
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Trạng thái:</span>
+                            <span style={styles.statusBadge(statusObj.className)}>
+                                {statusObj.text}
+                            </span>
+                        </div>
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Ngày gửi yêu cầu:</span>
+                            <span style={styles.value}>
+                                {formatDate(detail.requestDate || detail.createdAt)}
+                            </span>
+                        </div>
+
+                        <div style={styles.row}>
+                            <span style={styles.label}>Loại yêu cầu:</span>
+                            <span style={styles.value}>
+                                {getRequestTypeText(detail.requestType)}
+                            </span>
+                        </div>
+
+                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                            <span style={styles.label}>Lý do:</span>
+                            <span style={styles.value}>{detail.reason || '(Không có)'}</span>
+                        </div>
+
+                        {detail.attachedEvidence && (
+                            <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                                <span style={styles.label}>Minh chứng:</span>
+                                <span style={styles.value}>
+                                    {(() => {
+                                        const src = buildEvidenceSrc(detail.attachedEvidence);
+                                        if (!src) return '(Không hiển thị được)';
+                                        return (
+                                            <img
+                                                src={src}
+                                                alt="attachedEvidence"
+                                                style={{ maxWidth: '100%', borderRadius: '10px' }}
+                                            />
+                                        );
+                                    })()}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {detail.requestType === 'TRANSFER' && (
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>👤 Thông tin chuyển nhượng</h3>
-                    <div style={styles.grid}>
-                        <div style={styles.row}>
-                            <span style={styles.label}>Từ khách hàng:</span>
-                            <span style={styles.value}>{detail.fromCustomerName || 'N/A'}</span>
-                        </div>
-                        <div style={styles.row}>
-                            <span style={styles.label}>Đến khách hàng:</span>
-                            <span style={styles.value}>{detail.toCustomerName || 'N/A'}</span>
+                    <div style={styles.sectionCard}>
+                        <div style={styles.grid}>
+                            <div style={styles.row}>
+                                <span style={styles.label}>Từ khách hàng:</span>
+                                <span style={styles.value}>{detail.fromCustomerName || 'N/A'}</span>
+                            </div>
+                            <div style={styles.row}>
+                                <span style={styles.label}>Đến khách hàng:</span>
+                                <span style={styles.value}>{detail.toCustomerName || 'N/A'}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -515,10 +527,12 @@ const ContractRequestDetailModal = ({
             {detail.approvalStatus === 'REJECTED' && (detail.rejectionReason || detail.notes) && (
                 <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>🛑 Phản hồi từ chối</h3>
-                    <div style={styles.grid}>
-                        <div style={{ ...styles.row, ...styles.rowFullWidth }}>
-                            <span style={styles.label}>Lý do từ chối:</span>
-                            <span style={styles.value}>{detail.rejectionReason || detail.notes}</span>
+                    <div style={styles.sectionCard}>
+                        <div style={styles.grid}>
+                            <div style={{ ...styles.row, ...styles.rowFullWidth }}>
+                                <span style={styles.label}>Lý do từ chối:</span>
+                                <span style={styles.value}>{detail.rejectionReason || detail.notes}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -529,11 +543,16 @@ const ContractRequestDetailModal = ({
     return (
         <div style={styles.overlay} onClick={onClose}>
             <style>{`
-        button:hover {
-          transform: translateY(-2px);
-        }
+        .crd-modal button:hover { transform: translateY(-2px); }
+        .crd-modal button:active { transform: translateY(0); }
       `}</style>
-            <div style={styles.content} onClick={(e) => e.stopPropagation()}>
+            <div
+                className="crd-modal"
+                style={styles.content}
+                role="dialog"
+                aria-modal="true"
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div style={styles.header}>
                     <h2 style={styles.headerTitle}>📄 Chi tiết Yêu cầu Hợp đồng</h2>
                     <button
