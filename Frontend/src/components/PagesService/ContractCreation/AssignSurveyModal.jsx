@@ -82,17 +82,19 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
       };
 
       await onSave(payload);
-      
+
       // Đóng confirm modal
       setShowConfirm(false);
-      
-      // Đóng modal chính (nếu parent không tự đóng)
-      // onCancel();
-      
-      // Gọi callback để parent xử lý toast + refresh
-      if (onSuccess) {
-        onSuccess();
+
+      // Thực hiện callback parent nếu có (ví dụ: toast, refresh danh sách)
+      try {
+        if (onSuccess) await onSuccess();
+      } catch (e) {
+        console.error('onSuccess callback failed', e);
       }
+
+      // Đóng modal chính (auto-close)
+      if (typeof onCancel === 'function') onCancel();
     } catch (error) {
       // Chỉ log lỗi quan trọng, toast lỗi do parent hoặc apiService xử lý
       console.error('Error in handleConfirmSubmit:', error);
