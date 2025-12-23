@@ -420,7 +420,7 @@ public class ContractAnnulTransferRequestService {
                 }
 
                 // C. [MỚI] Update Đồng hồ -> NGỪNG GHI NƯỚC (RETIRED)
-                Optional<MeterInstallation> installOpt = meterInstallationRepository.findByContract(contract);
+                Optional<MeterInstallation> installOpt = meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(contract);
                 if (installOpt.isPresent()) {
                     WaterMeter meter = installOpt.get().getWaterMeter();
                     if (meter != null) {
@@ -458,18 +458,18 @@ public class ContractAnnulTransferRequestService {
 
                 // C. [MỚI] Sang tên Biên bản lắp đặt -> ĐỂ LỊCH SỬ ĐỒNG HỒ ĐÚNG CHỦ
                 // (Optional<MeterInstallation> đã lấy ở trên, nhưng ở đây cần lấy lại hoặc dùng chung)
-                Optional<MeterInstallation> installOpt = meterInstallationRepository.findByContract(contract);
+                Optional<MeterInstallation> installOpt = meterInstallationRepository.findTopByContractOrderByInstallationDateDesc(contract);
                 if (installOpt.isPresent()) {
-                    MeterInstallation install = installOpt.get();
-                    install.setCustomer(newOwner);
-                    // Cập nhật lại WaterServiceContract trong Installation (nếu cần thiết, nhưng thường nó trỏ theo object nên tự update)
-                    // Nếu có HĐ Dịch vụ liên kết với hợp đồng này, đảm bảo bản ghi lắp đặt cũng trỏ tới HĐ Dịch vụ vừa cập nhật
-                    WaterServiceContract latestWsc = contract.getPrimaryWaterContract();
-                    if (latestWsc != null) {
-                        install.setWaterServiceContract(latestWsc);
-                    }
-                    meterInstallationRepository.save(install);
-                }
+                     MeterInstallation install = installOpt.get();
+                     install.setCustomer(newOwner);
+                     // Cập nhật lại WaterServiceContract trong Installation (nếu cần thiết, nhưng thường nó trỏ theo object nên tự update)
+                     // Nếu có HĐ Dịch vụ liên kết với hợp đồng này, đảm bảo bản ghi lắp đặt cũng trỏ tới HĐ Dịch vụ vừa cập nhật
+                     WaterServiceContract latestWsc = contract.getPrimaryWaterContract();
+                     if (latestWsc != null) {
+                         install.setWaterServiceContract(latestWsc);
+                     }
+                     meterInstallationRepository.save(install);
+                 }
 
                 log.info("[APPROVAL] Transfer approved - contract {} moved to customer {}", contract.getId(), entity.getToCustomer().getId());
             }
