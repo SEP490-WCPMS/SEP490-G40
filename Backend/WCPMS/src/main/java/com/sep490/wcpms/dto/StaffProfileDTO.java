@@ -15,6 +15,7 @@ public class StaffProfileDTO {
     private Integer id;
     private String fullName;
     private String username;
+    private String staffCode;
     private String email;
     private String phone;
     private String roleName;
@@ -33,6 +34,7 @@ public class StaffProfileDTO {
                 account.getId(),
                 account.getFullName(),
                 account.getUsername(),
+                account.getStaffCode(),
                 account.getEmail(),
                 account.getPhone(),
                 account.getRole() != null ? account.getRole().getRoleName().name() : null,

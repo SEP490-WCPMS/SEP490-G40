@@ -92,8 +92,9 @@ const StaffProfileView = () => {
             padding: '30px',
         },
         infoRow: {
-            display: 'flex',
-            justifyContent: 'space-between',
+            display: 'grid',
+            gridTemplateColumns: '160px 1fr',
+            columnGap: '16px',
             marginBottom: '16px',
             paddingBottom: '16px',
             borderBottom: '1px solid #e5e7eb',
@@ -112,6 +113,9 @@ const StaffProfileView = () => {
             fontSize: '14px',
             fontWeight: 500,
             color: '#1f2937',
+            justifySelf: 'end',
+            textAlign: 'right',
+            wordBreak: 'break-word',
         },
         footer: {
             padding: '16px 30px',
@@ -124,6 +128,20 @@ const StaffProfileView = () => {
         },
     };
 
+    const infoItems = [
+        { label: 'Họ và tên:', value: profileData.fullName },
+        {
+            label: 'Mã nhân viên:',
+            value: profileData.staffCode || 'Chưa cập nhật',
+            valueStyle: { color: '#0A77E2', fontWeight: 'bold' }
+        },
+        { label: 'Tên đăng nhập:', value: profileData.username },
+        { label: 'Email:', value: profileData.email },
+        { label: 'Số điện thoại:', value: profileData.phone },
+        { label: 'Vai trò:', value: profileData.roleName },
+        ...(profileData.department ? [{ label: 'Phòng ban:', value: profileData.department }] : []),
+    ];
+
     return (
         <div style={styles.container}>
             <div style={styles.card}>
@@ -134,36 +152,18 @@ const StaffProfileView = () => {
                     </span>
                 </div>
                 <div style={styles.body}>
-                    <div style={styles.infoRow}>
-                        <span style={styles.label}>Họ và tên:</span>
-                        <span style={styles.value}>{profileData.fullName}</span>
-                    </div>
-                    <div style={styles.infoRow}>
-                        <span style={styles.label}>Tên đăng nhập:</span>
-                        <span style={styles.value}>{profileData.username}</span>
-                    </div>
-                    <div style={styles.infoRow}>
-                        <span style={styles.label}>Email:</span>
-                        <span style={styles.value}>{profileData.email}</span>
-                    </div>
-                    <div style={styles.infoRow}>
-                        <span style={styles.label}>Số điện thoại:</span>
-                        <span style={styles.value}>{profileData.phone}</span>
-                    </div>
-                    <div style={styles.infoRow}>
-                        <span style={styles.label}>Vai trò:</span>
-                        <span style={styles.value}>{profileData.roleName}</span>
-                    </div>
-                    {profileData.department && (
-                        <div style={styles.infoRow}>
-                            <span style={styles.label}>Phòng ban:</span>
-                            <span style={styles.value}>{profileData.department}</span>
-                        </div>
-                    )}
-                    <div style={{ ...styles.infoRow, ...styles.infoRowLast }}>
-                        <span style={styles.label}>Địa chỉ:</span>
-                        <span style={styles.value}>{profileData.address || 'N/A'}</span>
-                    </div>
+                    {infoItems.map((item, index) => {
+                        const isLast = index === infoItems.length - 1;
+                        return (
+                            <div
+                                key={`${item.label}-${index}`}
+                                style={isLast ? { ...styles.infoRow, ...styles.infoRowLast } : styles.infoRow}
+                            >
+                                <span style={styles.label}>{item.label}</span>
+                                <span style={{ ...styles.value, ...(item.valueStyle || {}) }}>{item.value ?? '---'}</span>
+                            </div>
+                        );
+                    })}
                 </div>
                 <div style={styles.footer}>
                     <span>📅 Ngày tạo: {new Date(profileData.createdAt).toLocaleDateString('vi-VN')}</span>

@@ -42,20 +42,16 @@ public class AccountManagementServiceImpl implements AccountManagementService {
     }
 
     @Override
-    public Page<StaffAccountResponseDTO> getAllStaffAccounts(int page, int size, Account.Department department) {
+    public Page<StaffAccountResponseDTO> getAllStaffAccounts(int page, int size, Account.Department department, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
 
         List<Role.RoleName> excludedRoles = Arrays.asList(
                 Role.RoleName.CUSTOMER, Role.RoleName.GUEST, Role.RoleName.ADMIN
         );
 
-        Page<Account> pageResult;
-
-        if (department != null) {
-            pageResult = accountRepository.findStaffAccountsByDepartment(department, excludedRoles, pageable);
-        } else {
-            pageResult = accountRepository.findStaffAccounts(excludedRoles, pageable);
-        }
+        // Gọi hàm search mới trong repository
+        // Nếu search là null hoặc rỗng thì repository sẽ tự xử lý (nhờ điều kiện :keyword IS NULL OR ...)
+        Page<Account> pageResult = accountRepository.searchStaffAccounts(excludedRoles, department, search, pageable);
 
         return pageResult.map(StaffAccountResponseDTO::new);
     }
