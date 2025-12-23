@@ -277,25 +277,23 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                         await renewContract(selectedContract.id, {
                             endDate: values.newEndDate.format('YYYY-MM-DD')
                         });
-                        toast.success('Gia hạn hợp đồng thành công!'); // <--- THÊM TOAST
+                        toast.success('Gia hạn hợp đồng thành công!'); 
                     }
                 });
                 setConfirmVisible(true);
             }
-            // Đã bỏ logic submit cho suspend/terminate
         } catch (err) {
             console.error("Validate fail", err);
         }
     };
 
-    // Thực hiện action đã cấu hình trong confirmConfig (gửi ký, gửi lắp, gia hạn, tạm ngưng, chấm dứt...)
+    // Thực hiện action đã cấu hình trong confirmConfig (gửi ký, gửi lắp, gia hạn, ...)
     // Thực hiện API call và reload danh sách khi thành công
     const handleConfirmAction = async () => {
         if (!confirmConfig.action) return;
         setConfirmLoading(true);
         try {
             await confirmConfig.action();
-            toast.success('Thao tác thành công!');
             setConfirmVisible(false);
             setModalVisible(false);
             fetchContracts(pagination.page, pagination.size, externalKeyword, externalStatus);

@@ -62,10 +62,7 @@ const Footer = () => {
                 <Link to="/contract-request">Đăng ký cấp nước mới</Link>
             </li>
             <li>
-                <Link to="/contract-request-change">Sang tên / Hủy hợp đồng</Link>
-            </li>
-            <li>
-                <Link to="/my-invoices">Thanh toán hóa đơn</Link> {/* Trỏ về DS hóa đơn */}
+                <Link to="/contract-request-change">Chuyển nhượng / Hủy hợp đồng</Link>
             </li>
             <li>
                 <Link to="/my-invoices">Tra cứu hóa đơn</Link>

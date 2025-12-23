@@ -580,16 +580,18 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PendingReadingDTO> getPendingReadings(Pageable pageable) {
-        // CŨ: Lấy TẤT CẢ reading chưa bill
-        // Page<MeterReading> readingsPage = meterReadingRepository.findCompletedReadingsNotBilled(pageable);
-
-        // MỚI: Chỉ lấy reading được ASSIGN cho Accounting Staff hiện tại
+    public Page<PendingReadingDTO> getPendingReadings(String keyword, Pageable pageable) {
+        // 1. Lấy ID nhân viên đang đăng nhập
         Integer currentAccountingStaffId = getCurrentAccountingStaffId();
-        Page<MeterReading> readingsPage = meterReadingRepository
-                .findCompletedReadingsNotBilledByAccountingStaff(currentAccountingStaffId, pageable);
 
-        // 2. Map sang DTO (Constructor đã có accountingStaffId và accountingStaffName)
+        // 2. Xử lý keyword (trim)
+        String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
+
+        // 3. Gọi hàm Repository (logic lọc theo Staff ID)
+        Page<MeterReading> readingsPage = meterReadingRepository
+                .searchPendingReadings(currentAccountingStaffId, searchKeyword, pageable);
+
+        // 4. Map sang DTO
         return readingsPage.map(PendingReadingDTO::new);
     }
 

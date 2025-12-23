@@ -153,6 +153,7 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         // 1. Validate trạng thái cho phép sửa
         if (contract.getContractStatus() != ContractStatus.DRAFT &&
+                contract.getContractStatus() != ContractStatus.PENDING_SURVEY_REVIEW &&
                 contract.getContractStatus() != ContractStatus.APPROVED &&
                 contract.getContractStatus() != ContractStatus.ACTIVE) {
             throw new RuntimeException("Cannot update contract in status: " + contract.getContractStatus());
