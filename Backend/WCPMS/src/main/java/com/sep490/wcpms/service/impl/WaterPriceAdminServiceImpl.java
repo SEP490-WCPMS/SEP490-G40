@@ -4,11 +4,13 @@ import com.sep490.wcpms.dto.CreateWaterPriceRequestDTO;
 import com.sep490.wcpms.dto.UpdateWaterPriceRequestDTO;
 import com.sep490.wcpms.dto.WaterPriceAdminResponseDTO;
 import com.sep490.wcpms.dto.WaterPriceTypeAdminResponseDTO;
+import com.sep490.wcpms.entity.ActivityLog;
 import com.sep490.wcpms.entity.WaterPrice;
 import com.sep490.wcpms.entity.WaterPriceType;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.WaterPriceRepository;
 import com.sep490.wcpms.repository.WaterPriceTypeRepository;
+import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.service.WaterPriceAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,8 @@ public class WaterPriceAdminServiceImpl implements WaterPriceAdminService {
 
     private final WaterPriceRepository priceRepository;
     private final WaterPriceTypeRepository priceTypeRepository;
+
+    private final ActivityLogService activityLogService;
 
     @Override
     public Page<WaterPriceAdminResponseDTO> listAll(boolean includeInactive, int page, int size) {
@@ -72,7 +76,19 @@ public class WaterPriceAdminServiceImpl implements WaterPriceAdminService {
         p.setEffectiveDate(req.getEffectiveDate());
         p.setApprovedBy(req.getApprovedBy());
         p.setStatus(WaterPrice.Status.ACTIVE);
-        return toDto(priceRepository.save(p));
+        WaterPrice saved = priceRepository.save(p);
+
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("WATER_PRICE");
+            log.setSubjectId(saved.getTypeName());
+            log.setAction("PRICE_CREATED");
+            log.setPayload("Tạo giá: " + saved.getUnitPrice());
+            log.setActorType("ADMIN");
+            activityLogService.save(log);
+        } catch (Exception ex) {}
+
+        return toDto(saved);
     }
 
     @Override
@@ -98,7 +114,24 @@ public class WaterPriceAdminServiceImpl implements WaterPriceAdminService {
         if (req.getStatus() != null) {
             try { p.setStatus(WaterPrice.Status.valueOf(req.getStatus())); } catch (Exception ignore) {}
         }
-        return toDto(priceRepository.save(p));
+        // Lưu xuống DB trước
+        WaterPrice saved = priceRepository.save(p);
+
+        // Ghi Log ngay sau khi lưu thành công
+        try {
+            ActivityLog log = new ActivityLog();
+            log.setSubjectType("WATER_PRICE");
+            log.setSubjectId(saved.getTypeName()); // Lưu tên loại giá (VD: Giá sinh hoạt)
+            log.setAction("PRICE_UPDATED");
+            log.setPayload("Cập nhật giá mới: " + saved.getUnitPrice() + " VNĐ");
+            log.setActorType("ADMIN");
+
+            activityLogService.save(log);
+        } catch (Exception ex) {
+            // Bỏ qua lỗi log để không ảnh hưởng luồng chính
+        }
+
+        return toDto(saved);
     }
 
     private void validatePriceData(BigDecimal unitPrice, BigDecimal envFee, BigDecimal vatRate) {

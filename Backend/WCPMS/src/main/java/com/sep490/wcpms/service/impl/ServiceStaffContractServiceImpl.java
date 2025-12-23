@@ -419,14 +419,30 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         Contract updated = contractRepository.save(contract);
         // Ghi log
         try {
+            Integer currentUserId = getCurrentUserId();
+            Account currentUser = null;
+            if (currentUserId != null) {
+                currentUser = accountRepository.findById(currentUserId).orElse(null);
+            }
+
             ActivityLog log = new ActivityLog();
             log.setSubjectType("CONTRACT");
-            log.setSubjectId(String.valueOf(updated.getId()));
+            log.setSubjectId(updated.getContractNumber() != null ? updated.getContractNumber() : String.valueOf(updated.getId()));
             log.setAction("CONTRACT_RENEWED");
-            // Set actor info...
+
+            if (currentUser != null) {
+                log.setActorType("STAFF");
+                log.setActorId(currentUser.getId());
+                log.setActorName(currentUser.getFullName());
+                log.setInitiatorType("STAFF");
+                log.setInitiatorId(currentUser.getId());
+                log.setInitiatorName(currentUser.getFullName());
+            } else {
+                log.setActorType("SYSTEM");
+            }
+
             activityLogService.save(log);
         } catch (Exception e) {}
-
         return convertToDTO(updated);
     }
 
@@ -830,12 +846,27 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         // Ghi Log
         try {
+            Integer currentUserId = getCurrentUserId();
+            Account currentUser = null;
+            if (currentUserId != null) {
+                currentUser = accountRepository.findById(currentUserId).orElse(null);
+            }
+
             ActivityLog log = new ActivityLog();
             log.setSubjectType("CONTRACT");
-            log.setSubjectId(updated.getContractNumber());
+            log.setSubjectId(updated.getContractNumber()); // Lưu contract number
             log.setAction("SENT_TO_CUSTOMER_FOR_SIGN");
-            log.setActorType("STAFF");
-            // Set ID staff nếu lấy được từ context...
+
+            if (currentUser != null) {
+                log.setActorType("STAFF");
+                log.setActorId(currentUser.getId());
+                log.setActorName(currentUser.getFullName());
+                log.setInitiatorType("STAFF");
+                log.setInitiatorId(currentUser.getId());
+                log.setInitiatorName(currentUser.getFullName());
+            } else {
+                log.setActorType("SYSTEM");
+            }
             activityLogService.save(log);
         } catch (Exception e) {}
         return convertToDTO(updated);
