@@ -343,11 +343,6 @@ const ContractRequestChange = () => {
             if (response.data) {
                 toast.success('Tạo yêu cầu thành công!');
 
-                // Hiển thị request_number nếu có
-                if (response.data.requestNumber) {
-                    toast.info(`Mã yêu cầu: ${response.data.requestNumber}`);
-                }
-
                 // Chuyển về trang danh sách yêu cầu sau 1.5s
                 setTimeout(() => {
                     navigate('/my-requests');
