@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-// import { Input } from '../ui/input'; // Đảm bảo import đúng
-// import { Button } from '../ui/button';
 
 const ContractRequestForm = () => {
     const navigate = useNavigate();
@@ -13,6 +11,7 @@ const ContractRequestForm = () => {
     });
     const [priceTypes, setPriceTypes] = useState([]);
     const [priceDetails, setPriceDetails] = useState([]);
+    // SỬA 1: Khởi tạo mảng rỗng
     const [readingRoutes, setReadingRoutes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -32,7 +31,6 @@ const ContractRequestForm = () => {
                 setToken(storedToken);
 
                 // MAP DỮ LIỆU TỰ ĐỘNG
-                // Nếu là khách hàng đăng nhập, tự điền Tên và SĐT
                 setFormData(prev => ({
                     ...prev,
                     fullName: storedUser.fullName || storedUser.username || '',
@@ -46,13 +44,27 @@ const ContractRequestForm = () => {
                 const [resTypes, resDetails, resRoutes] = await Promise.all([
                     axios.get('http://localhost:8080/api/water-price-types/active'),
                     axios.get('http://localhost:8080/api/water-prices/active-details'),
+                    // Lưu ý: API này giờ có thể trả về Page<DTO>
                     axios.get('http://localhost:8080/api/admin/reading-routes?includeInactive=false')
                 ]);
+
                 setPriceTypes(resTypes.data);
                 setPriceDetails(resDetails.data);
-                setReadingRoutes(resRoutes.data || []);
+
+                // --- SỬA 2: Xử lý dữ liệu Routes an toàn (Hỗ trợ cả List và Page) ---
+                const routeData = resRoutes.data;
+                if (Array.isArray(routeData)) {
+                    setReadingRoutes(routeData);
+                } else if (routeData && Array.isArray(routeData.content)) {
+                    setReadingRoutes(routeData.content); // Lấy content từ Page
+                } else {
+                    setReadingRoutes([]);
+                }
+                // --------------------------------------------------------------------
+
             } catch (err) {
                 console.error("Lỗi tải dữ liệu:", err);
+                setReadingRoutes([]); // Fallback nếu lỗi
             }
         };
         fetchData();
@@ -63,9 +75,8 @@ const ContractRequestForm = () => {
         setFormData(prev => ({ ...prev, [id]: value }));
     };
 
-    // --- [MỚI] HÀM VALIDATE SỐ ĐIỆN THOẠI CHUẨN VN ---
+    // --- HÀM VALIDATE SỐ ĐIỆN THOẠI CHUẨN VN ---
     const validateVietnamesePhone = (phone) => {
-        // Regex: Bắt đầu bằng 03, 05, 07, 08, 09 và theo sau là 8 chữ số
         const regex = /^(03|05|07|08|09)\d{8}$/;
         return regex.test(phone);
     };
@@ -98,19 +109,16 @@ const ContractRequestForm = () => {
             };
 
             if (user && token) {
-                // Khách hàng đã đăng nhập
                 await axios.post('http://localhost:8080/api/contract-request/request', payload, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 navigate('/my-requests');
             } else {
-                // Khách vãng lai (Guest)
                 await axios.post('http://localhost:8080/api/public/contracts/guest-request', payload);
                 setMessage("🎉 Gửi yêu cầu thành công! Nhân viên sẽ sớm liên hệ với bạn qua SĐT đã cung cấp.");
                 setTimeout(() => navigate('/'), 5000);
             }
         } catch (err) {
-            // Hiển thị lỗi từ Backend (ví dụ: SĐT đã tồn tại)
             const msg = err.response?.data?.message || err.response?.data || "Gửi yêu cầu thất bại.";
             setError(msg);
         } finally {
@@ -121,7 +129,7 @@ const ContractRequestForm = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : 'N/A';
 
-    // Styles (Giữ nguyên style của bạn)
+    // Styles
     const styles = {
         container: { maxWidth: '900px', margin: '40px auto', padding: '40px', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)', fontFamily: "'Inter', sans-serif" },
         title: { fontSize: '28px', fontWeight: '700', color: '#0A77E2', marginBottom: '8px', textAlign: 'center' },
@@ -132,7 +140,6 @@ const ContractRequestForm = () => {
         formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '250px' },
         label: { fontSize: '14px', fontWeight: '600', color: '#374151' },
         input: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', transition: 'all 0.2s' },
-        inputReadOnly: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#e5e7eb', width: '100%', color: '#6b7280', cursor: 'not-allowed', fontWeight: '500' },
         select: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%' },
         small: { fontSize: '12px', color: '#6b7280', marginTop: '4px' },
         textarea: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', minHeight: '100px', resize: 'vertical' },
@@ -192,7 +199,8 @@ const ContractRequestForm = () => {
                             <label htmlFor="routeId" style={styles.label}>Tuyến đọc (Khu vực) (*)</label>
                             <select id="routeId" style={styles.select} value={formData.routeId} onChange={handleChange} required>
                                 <option value="" disabled>-- Chọn khu vực --</option>
-                                {readingRoutes.map(r => (
+                                {/* SỬA 3: Kiểm tra Array.isArray để tránh crash */}
+                                {Array.isArray(readingRoutes) && readingRoutes.map(r => (
                                     <option key={r.id} value={r.id}>{r.routeName}</option>
                                 ))}
                             </select>
@@ -218,7 +226,7 @@ const ContractRequestForm = () => {
                         <div style={styles.tableWrapper}>
                             <label style={{ fontWeight: 600, marginBottom: '10px', display: 'block', color: '#4b5563' }}>📊 Bảng giá tham khảo</label>
                             <table style={styles.table}>
-                                y={!!user} // Khóa nếu đã đăng nhập    <thead>
+                                <thead>
                                     <tr>
                                         <th style={styles.th}>Loại</th>
                                         <th style={styles.th}>Đơn giá</th>
