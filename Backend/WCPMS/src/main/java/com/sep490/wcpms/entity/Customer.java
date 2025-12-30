@@ -145,6 +145,10 @@ public class Customer {
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Address> addresses;
 
+    // Một khách hàng có thể sở hữu nhiều đồng hồ (theo lịch sử hoặc hiện tại)
+    @OneToMany(mappedBy = "customer")
+    private List<WaterMeter> waterMeters;
+
     public enum ConnectionType { RESIDENTIAL, COMMERCIAL, ADMINISTRATIVE }
     public enum ConnectionStatus { ACTIVE, INACTIVE, SUSPENDED, TERMINATED }
     public enum MeterStatus { WORKING, BROKEN, STOLEN, UNDER_MAINTENANCE }
