@@ -5,11 +5,14 @@ import com.sep490.wcpms.dto.InstallationDetailDTO;
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.service.CustomerService;
 import com.sep490.wcpms.exception.AccessDeniedException;
+import com.sep490.wcpms.service.impl.ContractPdfStampService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,6 +26,7 @@ import java.util.List;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final ContractPdfStampService contractPdfStampService;
 
     // Hàm helper lấy ID user (Giả định đã có)
     private Integer getAuthenticatedUserId() {
@@ -87,4 +91,20 @@ public class CustomerController {
         return ResponseEntity.ok(detail);
     }
     // ---
+
+    // GET /api/customer/contracts/{contractId}/pdf
+    @GetMapping("/contracts/{contractId}/pdf")
+    public ResponseEntity<byte[]> downloadMyContractPdf(@PathVariable Integer contractId) {
+        Integer customerAccountId = getAuthenticatedUserId();
+
+        byte[] pdfBytes = contractPdfStampService.exportForCustomer(customerAccountId, contractId);
+
+        String filename = "HopDong_" + contractId + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .body(pdfBytes);
+    }
 }

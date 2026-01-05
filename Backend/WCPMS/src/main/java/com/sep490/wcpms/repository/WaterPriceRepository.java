@@ -33,4 +33,11 @@ public interface WaterPriceRepository extends JpaRepository<WaterPrice, Integer>
             "LIMIT 1")
     Optional<WaterPrice> findActivePriceForDate(@Param("priceType") WaterPriceType priceType,
                                                 @Param("readingDate") LocalDate readingDate);
+
+    // Lấy dòng mới nhất (ACTIVE, <= date)
+    Optional<WaterPrice> findTopByPriceTypeAndStatusAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
+            WaterPriceType priceType,
+            WaterPrice.Status status,
+            LocalDate effectiveDate
+    );
 }

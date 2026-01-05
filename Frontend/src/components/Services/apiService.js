@@ -277,6 +277,12 @@ export const rejectCustomerSign = (contractId, reason) => {
     return apiClient.post(`/v1/contracts/${contractId}/customer-reject-sign`, { reason });
 };
 
+export const downloadMyContractPdf = (contractId) => {
+    return apiClient.get(`/customer/contracts/${contractId}/pdf`, {
+        responseType: 'blob',
+    });
+};
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {

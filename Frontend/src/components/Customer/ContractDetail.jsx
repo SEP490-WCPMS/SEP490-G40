@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag, Image } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import {getContractByIdGeneral, getAccountById, getCustomerById, getWaterMeterDetailByContract} from '../Services/apiService';
+import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag, Image, Tooltip } from 'antd';
+import { ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { getContractByIdGeneral, getCustomerById, getWaterMeterDetailByContract, downloadMyContractPdf } from '../Services/apiService';
 
 const { Title } = Typography;
 
 const ContractDetail = () => {
     const [contract, setContract] = useState(null);
     const [customerName, setCustomerName] = useState('Đang tải...');
-    const [serviceStaffName, setServiceStaffName] = useState('Đang tải...');
-    const [technicalStaffName, setTechnicalStaffName] = useState('Đang tải...');
+    const [customerAddress, setCustomerAddress] = useState('Đang tải...');
     const [waterMeterData, setWaterMeterData] = useState(null);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const contractId = searchParams.get('id');
+    const location = useLocation();
     const fromPage = location.state?.from;
 
     const pageContainerStyle = {
@@ -27,19 +27,25 @@ const ContractDetail = () => {
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
     };
 
-    // Hàm format tiền tệ
     const formatCurrency = (value) => {
         if (value === null || value === undefined) return "N/A";
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
     };
 
-    // Hàm format ngày
     const formatDate = (dateString) => {
         if (!dateString) return "N/A";
         return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
-    // Hiển thị payment method
+    const formatAddressFromCustomerDto = (c) => {
+        if (!c) return '';
+        if (c.address && String(c.address).trim()) return String(c.address).trim();
+        const parts = [c.street, c.district, c.province].map(v => (v ?? '').toString().trim()).filter(Boolean);
+        return parts.join(', ');
+    };
+
+    const isActiveContract = String(contract?.contractStatus || '').toUpperCase() === 'ACTIVE';
+
     const renderPaymentMethod = (method) => {
         const methods = {
             'CASH': 'Tiền mặt',
@@ -49,7 +55,6 @@ const ContractDetail = () => {
         return methods[method] || method || 'N/A';
     };
 
-    // Hiển thị trạng thái với màu sắc
     const renderStatus = (status) => {
         let color;
         let displayText;
@@ -106,31 +111,31 @@ const ContractDetail = () => {
         return <Tag color={color}>{displayText}</Tag>;
     };
 
-    const fetchAccountName = async (accountId, setName) => {
-        if (!accountId) return setName('N/A');
-        try {
-            const res = await getAccountById(accountId);
-            const fullName = res?.data?.data?.fullName ?? res?.data?.fullName ?? res?.fullName ?? null;
-            setName(fullName || 'N/A');
-        } catch (e) {
-            console.error('Lỗi profile:', e);
-            setName('N/A');
+    // Lấy thông tin khách hàng
+    const fetchCustomerInfo = async (customerId) => {
+        // guest
+        if (!customerId) {
+            setCustomerName(prev => (prev && prev !== 'Đang tải...' ? prev : 'N/A'));
+            setCustomerAddress(prev => (prev && prev !== 'Đang tải...' ? prev : 'N/A'));
+            return;
         }
-    };
-
-    const fetchCustomerName = async (customerId) => {
-        if (!customerId) return setCustomerName('N/A');
         try {
             const res = await getCustomerById(customerId);
-            const name = res?.data?.data?.customerName ?? res?.data?.customerName ?? res?.customerName ?? null;
-            setCustomerName(name || 'N/A');
+            const dto = res?.data?.data ?? res?.data ?? res;
+
+            const name = dto?.customerName ?? null;
+            const addr = formatAddressFromCustomerDto(dto);
+
+            if (name && String(name).trim()) setCustomerName(String(name).trim());
+            if (addr && String(addr).trim()) setCustomerAddress(String(addr).trim());
         } catch (e) {
             console.error('Lỗi customer:', e);
-            setCustomerName('N/A');
+            // Chỉ set N/A nếu vẫn đang ở trạng thái loading text
+            setCustomerName(prev => (prev === 'Đang tải...' ? 'N/A' : prev));
+            setCustomerAddress(prev => (prev === 'Đang tải...' ? 'N/A' : prev));
         }
     };
 
-    // Lấy thông tin đồng hồ nước
     const fetchWaterMeterDetail = async () => {
         if (!contractId) return;
 
@@ -141,11 +146,9 @@ const ContractDetail = () => {
             }
         } catch (error) {
             console.error('Lỗi khi tải thông tin đồng hồ:', error);
-            // Không hiển thị message error để tránh spam nếu chưa có đồng hồ
         }
     };
 
-    // Lấy chi tiết hợp đồng
     const fetchContractDetail = async () => {
         if (!contractId) {
             message.error('Không tìm thấy ID hợp đồng!');
@@ -159,16 +162,13 @@ const ContractDetail = () => {
                 const contractData = response.data.data;
                 setContract(contractData);
 
-                // Khách hàng (CUSTOMER)
-                await fetchCustomerName(contractData.customerId); // dùng getCustomerById
+                // Ưu tiên dùng field từ ContractDTO nếu có
+                if (contractData.customerName) setCustomerName(contractData.customerName);
+                if (contractData.customerAddress) setCustomerAddress(contractData.customerAddress);
 
-                // Nhân viên Dịch vụ (ACCOUNT)
-                await fetchAccountName(contractData.serviceStaffId, setServiceStaffName);
+                // fallback bằng getCustomerById
+                await fetchCustomerInfo(contractData.customerId);
 
-                // Nhân viên Kỹ thuật (ACCOUNT)
-                await fetchAccountName(contractData.technicalStaffId, setTechnicalStaffName);
-
-                // Lấy thông tin đồng hồ nước
                 await fetchWaterMeterDetail();
             }
         } catch (error) {
@@ -183,15 +183,42 @@ const ContractDetail = () => {
         fetchContractDetail();
     }, [contractId]);
 
-    // Quay lại đúng màn gọi
     const handleBack = () => {
         if (fromPage === 'pending-sign') {
             navigate('/pending-sign-contract');
         } else if (fromPage === 'contract-list') {
             navigate('/contract-list');
         } else {
-            // fallback: quay lại history
             navigate(-1);
+        }
+    };
+
+    // Xử lý tải PDF hợp đồng
+    const handleDownloadPdf = async () => {
+        if (!contractId) return;
+
+        if (!isActiveContract) {
+            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng PDF.');
+            return;
+        }
+
+        try {
+            const res = await downloadMyContractPdf(contractId);
+
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `HopDong_${contract?.contractNumber || contractId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Download contract pdf error:', error);
+            message.error('Không tải được hợp đồng PDF!');
         }
     };
 
@@ -200,15 +227,24 @@ const ContractDetail = () => {
             <div style={pageContainerStyle}>
                 <Row gutter={16} align="middle" style={{ marginBottom: '24px' }}>
                     <Col>
-                        <Button
-                            icon={<ArrowLeftOutlined />}
-                            onClick={handleBack}
-                        >
+                        <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
                             Quay lại
                         </Button>
                     </Col>
                     <Col>
                         <Title level={3} className="!mb-0">Chi tiết Hợp đồng</Title>
+                    </Col>
+                    <Col>
+                        <Tooltip title={isActiveContract ? '' : 'Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng'}>
+                            <Button
+                                type="primary"
+                                icon={<DownloadOutlined />}
+                                onClick={handleDownloadPdf}
+                                disabled={!contractId || !isActiveContract}
+                            >
+                                Tải hợp đồng (PDF)
+                            </Button>
+                        </Tooltip>
                     </Col>
                 </Row>
 
@@ -216,28 +252,34 @@ const ContractDetail = () => {
                     {contract && (
                         <Card>
                             <Descriptions bordered column={{ xs: 1, sm: 1, md: 2 }}>
-                                <Descriptions.Item label="Số Hợp đồng" span={2}>
-                                    <strong>{contract.contractNumber}</strong>
-                                </Descriptions.Item>
-
-                                <Descriptions.Item label="Khách hàng">
-                                    {customerName}
+                                {/* Row 1: số hợp đồng + trạng thái */}
+                                <Descriptions.Item label="Số Hợp đồng">
+                                    <strong style={{ wordBreak: 'break-all' }}>
+                                        {contract.contractNumber}
+                                    </strong>
                                 </Descriptions.Item>
 
                                 <Descriptions.Item label="Trạng thái">
                                     {renderStatus(contract.contractStatus)}
                                 </Descriptions.Item>
 
+                                {/* Row 2: khách hàng full-width */}
+                                <Descriptions.Item label="Khách hàng" span={2}>
+                                    {customerName}
+                                </Descriptions.Item>
+
+                                {/* Row 3: địa chỉ full-width */}
+                                <Descriptions.Item label="Địa chỉ" span={2}>
+                                    {customerAddress || 'N/A'}
+                                </Descriptions.Item>
+
+                                {/* Các field còn lại giữ nguyên */}
                                 <Descriptions.Item label="Ngày đăng ký">
                                     {formatDate(contract.applicationDate)}
                                 </Descriptions.Item>
 
                                 <Descriptions.Item label="Ngày khảo sát">
                                     {formatDate(contract.surveyDate)}
-                                </Descriptions.Item>
-
-                                <Descriptions.Item label="Thiết kế Kỹ thuật" span={2}>
-                                    {contract.technicalDesign || 'Chưa có'}
                                 </Descriptions.Item>
 
                                 <Descriptions.Item label="Chi phí Ước tính">
@@ -256,20 +298,12 @@ const ContractDetail = () => {
                                     {formatDate(contract.endDate)}
                                 </Descriptions.Item>
 
-                                <Descriptions.Item label="Giá trị Hợp đồng">
+                                <Descriptions.Item label="Giá trị Lắp đặt">
                                     {formatCurrency(contract.contractValue)}
                                 </Descriptions.Item>
 
                                 <Descriptions.Item label="Phương thức Thanh toán">
                                     {renderPaymentMethod(contract.paymentMethod)}
-                                </Descriptions.Item>
-
-                                <Descriptions.Item label="Nhân viên Dịch vụ">
-                                    {serviceStaffName}
-                                </Descriptions.Item>
-
-                                <Descriptions.Item label="Nhân viên Kỹ thuật">
-                                    {technicalStaffName}
                                 </Descriptions.Item>
 
                                 <Descriptions.Item label="Mã đồng hồ">
@@ -301,10 +335,6 @@ const ContractDetail = () => {
                                     ) : (
                                         <span style={{ color: '#999' }}>Chưa có ảnh lắp đặt</span>
                                     )}
-                                </Descriptions.Item>
-
-                                <Descriptions.Item label="Ghi chú" span={2}>
-                                    {contract.notes || 'Không có ghi chú'}
                                 </Descriptions.Item>
                             </Descriptions>
                         </Card>
