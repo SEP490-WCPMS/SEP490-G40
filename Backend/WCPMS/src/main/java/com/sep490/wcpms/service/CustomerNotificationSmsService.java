@@ -40,7 +40,7 @@ public class CustomerNotificationSmsService {
                 return;
             }
 
-            String phone = resolveCustomerPhone(customer);
+            String phone = resolveCustomerPhone(customer, notification);
             if (phone == null) {
                 log.warn("[CN-SMS] customer id={} không có số điện thoại, bỏ qua SMS.", customer.getId());
                 return;
@@ -433,24 +433,63 @@ public class CustomerNotificationSmsService {
         }
     }
 
-    private String resolveCustomerPhone(Customer customer) {
+    private String resolveCustomerPhone(Customer customer, CustomerNotification n) {
         if (customer == null) return null;
 
-        if (customer.getContactPersonPhone() != null
-                && !customer.getContactPersonPhone().isBlank()) {
-            return customer.getContactPersonPhone().trim();
+        // 1) Ưu tiên phone trong Customer
+        String p = firstNonBlank(
+                customer.getContactPersonPhone(),
+                customer.getAccount() != null ? customer.getAccount().getPhone() : null,
+                customer.getAccount() != null ? customer.getAccount().getUsername() : null
+        );
+
+        p = sanitizePhoneCandidate(p);
+        if (p != null) return p;
+
+        // 2) FALLBACK: lấy từ Contract (guest hay nằm ở đây)
+        // - Với hóa đơn tiền nước/lắp đặt/dịch vụ: notification thường có invoice
+        Invoice inv = (n != null) ? n.getInvoice() : null;
+        if (inv != null && inv.getContract() != null) {
+            String cPhone = sanitizePhoneCandidate(inv.getContract().getContactPhone());
+            if (cPhone != null) return cPhone;
+
+            // fallback thêm: nếu contract có customer khác (trường hợp đặc biệt)
+            Customer c2 = inv.getContract().getCustomer();
+            if (c2 != null && c2.getId() != null && (customer.getId() == null || !c2.getId().equals(customer.getId()))) {
+                String p2 = sanitizePhoneCandidate(
+                        firstNonBlank(
+                                c2.getContactPersonPhone(),
+                                c2.getAccount() != null ? c2.getAccount().getPhone() : null,
+                                c2.getAccount() != null ? c2.getAccount().getUsername() : null
+                        )
+                );
+                if (p2 != null) return p2;
+            }
         }
 
-        if (customer.getAccount() != null) {
-            if (customer.getAccount().getPhone() != null
-                    && !customer.getAccount().getPhone().isBlank()) {
-                return customer.getAccount().getPhone().trim();
-            }
-            String username = customer.getAccount().getUsername();
-            if (username != null && username.matches("\\d{9,11}")) {
-                return username;
-            }
+        return null;
+    }
+
+    private String firstNonBlank(String... vals) {
+        if (vals == null) return null;
+        for (String v : vals) {
+            if (v != null && !v.isBlank()) return v.trim();
         }
+        return null;
+    }
+
+    private String sanitizePhoneCandidate(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isBlank()) return null;
+
+        // giữ lại số và dấu +
+        String cleaned = t.replaceAll("[^0-9+]", "");
+        if (cleaned.isBlank()) return null;
+
+        // accept +84..., 0..., 84..., hoặc chuỗi số dài hợp lý
+        if (cleaned.matches("^\\+?\\d{9,15}$")) return cleaned;
+
         return null;
     }
 
