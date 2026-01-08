@@ -8,14 +8,14 @@ import com.sep490.wcpms.dto.InvoiceDTO;
 import com.sep490.wcpms.entity.ReadingRoute;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.AccountingStaffService;
+import com.sep490.wcpms.service.impl.InvoicePdfDownloadService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -42,6 +42,7 @@ import java.util.List;
 public class AccountingStaffController {
 
     private final AccountingStaffService accountingService;
+    private final InvoicePdfDownloadService invoicePdfDownloadService;
 
     // Hàm helper lấy ID user (Giả định đã có)
     private Integer getAuthenticatedStaffId() {
@@ -308,5 +309,29 @@ public class AccountingStaffController {
     public ResponseEntity<BulkInvoiceResponseDTO> bulkCreateServiceInvoices(@RequestBody List<Integer> calibrationIds) {
         Integer staffId = getAuthenticatedStaffId();
         return ResponseEntity.ok(accountingService.createBulkServiceInvoices(calibrationIds, staffId));
+    }
+
+    /**
+     * Tải PDF hóa đơn đã phát hành (Accounting Staff).
+     * GET /api/accounting/invoices/{invoiceId}/pdf
+     */
+    @GetMapping("/invoices/{invoiceId}/pdf")
+    public ResponseEntity<byte[]> downloadInvoicePdf(@PathVariable Integer invoiceId) {
+        Integer staffId = getAuthenticatedStaffId();
+
+        InvoicePdfDownloadService.PdfResult pdf = invoicePdfDownloadService
+                .downloadForAccounting(staffId, invoiceId);
+
+        String safeInvoiceNumber = (pdf.invoiceNumber() == null || pdf.invoiceNumber().isBlank())
+                ? String.valueOf(invoiceId)
+                : pdf.invoiceNumber();
+
+        String filename = "HoaDon_" + safeInvoiceNumber + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .body(pdf.bytes());
     }
 }

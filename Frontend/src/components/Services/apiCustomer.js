@@ -108,4 +108,13 @@ export const getMyCustomerNotifications = () => {
     return apiClient.get('/customer/notifications');
 }
 
-// (Ví dụ: Lấy profile, Lấy danh sách hợp đồng...)
+// --- THÊM HÀM MỚI ---
+/**
+ * Tải về file PDF của Hóa đơn
+ * @param {number} invoiceId - ID của Hóa đơn
+ */
+export const downloadMyInvoicePdf = (invoiceId) => {
+    return apiClient.get(`/customer/invoices/${invoiceId}/pdf`, {
+        responseType: 'blob'
+    });
+};

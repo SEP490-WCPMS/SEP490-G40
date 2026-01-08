@@ -6,6 +6,7 @@ import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
 import com.sep490.wcpms.service.CustomerService;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import com.sep490.wcpms.service.impl.ContractPdfStampService;
+import com.sep490.wcpms.service.impl.InvoicePdfDownloadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ public class CustomerController {
 
     private final CustomerService customerService;
     private final ContractPdfStampService contractPdfStampService;
+    private final InvoicePdfDownloadService invoicePdfDownloadService;
 
     // Hàm helper lấy ID user (Giả định đã có)
     private Integer getAuthenticatedUserId() {
@@ -106,5 +108,29 @@ public class CustomerController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
                 .body(pdfBytes);
+    }
+
+    /**
+     * Tải PDF hóa đơn đã phát hành (Customer).
+     * GET /api/customer/invoices/{invoiceId}/pdf
+     */
+    @GetMapping("/invoices/{invoiceId}/pdf")
+    public ResponseEntity<byte[]> downloadMyInvoicePdf(@PathVariable Integer invoiceId) {
+        Integer customerAccountId = getAuthenticatedUserId();
+
+        InvoicePdfDownloadService.PdfResult pdf = invoicePdfDownloadService
+                .downloadForCustomer(customerAccountId, invoiceId);
+
+        String safeInvoiceNumber = (pdf.invoiceNumber() == null || pdf.invoiceNumber().isBlank())
+                ? String.valueOf(invoiceId)
+                : pdf.invoiceNumber();
+
+        String filename = "HoaDon_" + safeInvoiceNumber + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .body(pdf.bytes());
     }
 }

@@ -240,3 +240,9 @@ export const bulkCreateInstallationInvoices = (contractIds) => {
 export const bulkCreateServiceInvoices = (calibrationIds) => {
     return apiClient.post('/accounting/invoices/service/bulk', calibrationIds);
 };
+
+export const downloadInvoicePdf = (invoiceId) => {
+    return apiClient.get(`/accounting/invoices/${invoiceId}/pdf`, {
+        responseType: 'blob'
+    });
+};
