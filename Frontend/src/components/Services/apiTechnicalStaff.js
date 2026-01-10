@@ -111,3 +111,11 @@ export const getMyMaintenanceRequestDetail = (ticketId) => {
     return apiClient.get(`/technical/maintenance-requests/${ticketId}`);
 };
 // --- HẾT PHẦN THÊM ---
+
+// === DOWNLOAD TEMPLATE (EXCEL) ===
+// Tải bảng tham khảo chi phí vật liệu (Excel) dùng cho khảo sát/báo giá
+export const downloadMaterialCostExcel = () => {
+    return apiClient.get('/technical/templates/material-cost-excel', {
+        responseType: 'blob'
+    });
+};

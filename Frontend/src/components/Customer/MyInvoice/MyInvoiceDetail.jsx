@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMyInvoiceDetail, createPayOSLink } from '../../Services/apiCustomer';
-import { ArrowLeft, CheckCircle, Clock, FileText, User, Home, Calendar, DollarSign, AlertCircle } from 'lucide-react';
+import { getMyInvoiceDetail, createPayOSLink, downloadMyInvoicePdf } from '../../Services/apiCustomer';
+import { ArrowLeft, CheckCircle, Clock, FileText, User, Home, Calendar, DollarSign, AlertCircle, Download } from 'lucide-react';
 import moment from 'moment';
 
 // 1. IMPORT TOAST
@@ -75,6 +75,26 @@ function InvoiceDetail() {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            const res = await downloadMyInvoicePdf(invoiceId);
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+
+            const safeInvoiceNumber = invoice?.invoiceNumber || invoiceId;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `HoaDon_${safeInvoiceNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Không thể tải file PDF hóa đơn.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -129,18 +149,40 @@ function InvoiceDetail() {
                 {/* CỘT TRÁI: CHI TIẾT HÓA ĐƠN */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow border border-gray-200 space-y-6">
                     {/* Header Hóa đơn */}
-                    <div className="pb-4 border-b border-gray-200 flex justify-between items-start">
-                        <div>
+                    <div className="pb-4 border-b border-gray-200 flex items-start justify-between gap-3">
+                        {/* Left */}
+                        <div className="min-w-0">
                             <h1 className="text-xl font-bold text-gray-800 mb-1">
                                 {isServiceInvoice ? "Hóa Đơn Dịch Vụ" : "Hóa Đơn Tiền Nước"}
                             </h1>
-                            <p className="text-sm text-gray-500">Số HĐ: <span className="font-mono font-medium">{invoice.invoiceNumber}</span></p>
+                            <p className="text-sm text-gray-500 truncate">
+                                Số HĐ:{" "}
+                                <span className="font-mono font-medium text-gray-700">
+                                {invoice.invoiceNumber}
+                              </span>
+                            </p>
                         </div>
-                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getStatusClass(invoice.paymentStatus)}`}>
-                            {getStatusText(invoice.paymentStatus)}
-                        </span>
-                    </div>
 
+                        {/* Right: actions + status */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={handleDownloadPdf}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 active:scale-[0.99] transition"
+                                title="Tải hóa đơn PDF"
+                            >
+                                <Download size={16} />
+                                <span className="hidden sm:inline">Tải PDF</span>
+                            </button>
+
+                            <span
+                                className={`px-3 py-1 inline-flex items-center text-sm font-semibold rounded-full ${getStatusClass(
+                                    invoice.paymentStatus
+                                )}`}
+                            >
+                              {getStatusText(invoice.paymentStatus)}
+                            </span>
+                        </div>
+                    </div>
                     {/* Thông tin Khách hàng */}
                     <div>
                         <h3 className="text-sm font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">

@@ -482,4 +482,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
             "LEFT JOIN FETCH i.contract ctr " +
             "WHERE i.id = :id")
     Optional<Invoice> findByIdWithDetails(@Param("id") Integer id);
+
+    /**
+     * Tìm Hóa đơn theo ID và ID Kế toán được phân công (Bảo mật).
+     * (Dùng cho màn chi tiết/tải PDF của Accounting Staff)
+     */
+    Optional<Invoice> findByIdAndAccountingStaff_Id(Integer invoiceId, Integer staffId);
 }

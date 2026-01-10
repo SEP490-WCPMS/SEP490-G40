@@ -277,6 +277,19 @@ export const rejectCustomerSign = (contractId, reason) => {
     return apiClient.post(`/v1/contracts/${contractId}/customer-reject-sign`, { reason });
 };
 
+export const downloadMyContractPdf = (contractId) => {
+    return apiClient.get(`/customer/contracts/${contractId}/pdf`, {
+        responseType: 'blob',
+    });
+};
+
+export const downloadMyAcceptancePdf = (contractId) => {
+    return apiClient.get(`/customer/contracts/${contractId}/acceptance-pdf`, {
+        responseType: 'blob',
+    });
+};
+
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
@@ -291,6 +304,19 @@ export const updateContractStatus = (contractId, newStatus, reason) => {
     return apiClient.put(`/service/contracts/${contractId}/status`, {
         status: newStatus,
         reason: reason
+    });
+};
+
+// Service Staff tải PDF hợp đồng/phiếu nghiệm thu
+export const downloadServiceContractPdf = (contractId) => {
+    return apiClient.get(`/service/contracts/${contractId}/pdf`, {
+        responseType: 'blob',
+    });
+};
+
+export const downloadServiceAcceptancePdf = (contractId) => {
+    return apiClient.get(`/service/contracts/${contractId}/acceptance-pdf`, {
+        responseType: 'blob',
     });
 };
 
