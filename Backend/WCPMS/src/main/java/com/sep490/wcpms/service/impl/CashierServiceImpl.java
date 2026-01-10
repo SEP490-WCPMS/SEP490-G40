@@ -17,6 +17,7 @@ import com.sep490.wcpms.repository.ReceiptRepository;
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.CashierService;
 import com.sep490.wcpms.service.ActivityLogService;
+import com.sep490.wcpms.service.InvoiceNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +47,7 @@ public class CashierServiceImpl implements CashierService {
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final MeterReadingRepository meterReadingRepository;
+    private final InvoiceNotificationService invoiceNotificationService;
     private final ActivityLogService activityLogService; // NEW injection
 
     @Override
@@ -119,6 +121,14 @@ public class CashierServiceImpl implements CashierService {
         receipt.setNotes("Thu tiền mặt tại quầy.");
 
         Receipt savedReceipt = receiptRepository.save(receipt);
+
+        // 7. Gửi thông báo thanh toán thành công (Email + SMS)
+        try {
+            invoiceNotificationService.sendInvoicePaymentSuccess(invoice, "Tiền mặt");
+        } catch (Exception ex) {
+            // Không chặn nghiệp vụ thu tiền mặt nếu lỗi gửi thông báo
+            System.err.println(">>> WARN: Không gửi được thông báo thanh toán thành công: " + ex.getMessage());
+        }
 
         // Persist activity log for payment (actor = cashier)
         try {

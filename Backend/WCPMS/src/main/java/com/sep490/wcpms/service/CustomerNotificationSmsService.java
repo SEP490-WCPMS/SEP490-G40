@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -192,40 +194,46 @@ public class CustomerNotificationSmsService {
                                            Invoice invoice) {
         if (invoice == null) return null;
 
+        // Ky MM/yyyy (uu tien fromDate)
         String ky = "";
-        LocalDate from = invoice.getFromDate();
-        if (from != null) {
-            ky = from.format(MONTH_YEAR_FMT); // MM/yyyy
+        if (invoice.getFromDate() != null) {
+            ky = invoice.getFromDate().format(MONTH_YEAR_FMT);
+        } else if (invoice.getToDate() != null) {
+            ky = invoice.getToDate().format(MONTH_YEAR_FMT);
         }
 
-        String base;
-        if (!ky.isEmpty()) {
-            base = String.format(
-                    "Cap nuoc Phu Tho: Da phat hanh hoa don tien nuoc ky %s, so %s, so tien %sđ. ",
-                    ky,
-                    safe(invoice.getInvoiceNumber()),
-                    invoice.getTotalAmount().toPlainString()
-            );
-        } else {
-            base = String.format(
-                    "Cap nuoc Phu Tho: Da phat hanh hoa don tien nuoc so %s, so tien %sđ. ",
-                    safe(invoice.getInvoiceNumber()),
-                    invoice.getTotalAmount().toPlainString()
-            );
+        // Ma KH
+        String customerCode = (customer != null) ? safe(customer.getCustomerCode()) : "";
+
+        // Ghi ngay: lay ngay trong thang tu meterReading.readingDate
+        String readingDay = "";
+        try {
+            if (invoice.getMeterReading() != null && invoice.getMeterReading().getReadingDate() != null) {
+                readingDay = String.valueOf(invoice.getMeterReading().getReadingDate().getDayOfMonth());
+            }
+        } catch (Exception ignored) {
         }
 
-        String bankLine = buildBankTransferLine(invoice);
+        // SD m3 (bo .00)
+        String consumption = formatNumberNoTrailingZeros(invoice.getTotalConsumption());
 
-        if (hasEmail) {
-            return base
-                    + "Quy khach co the thanh toan tai diem thu hoac chuyen khoan theo thong tin duoi day. "
-                    + bankLine
-                    + " Vui long kiem tra email de xem chi tiet hoa don.";
-        } else {
-            return base
-                    + "Quy khach co the thanh toan tai diem thu hoac chuyen khoan theo thong tin duoi day. "
-                    + bankLine;
-        }
+        // So tien d (lam tron ve dong)
+        String amount = formatVnd(invoice.getTotalAmount());
+
+        String payFrom = invoice.getInvoiceDate() != null ? invoice.getInvoiceDate().format(DATE_FMT) : "";
+        String payTo = invoice.getDueDate() != null ? invoice.getDueDate().format(DATE_FMT) : "";
+
+        // Format dung theo mau ban dua (khong dau, 1 dong)
+        return String.format(
+                "TB tien nuoc %s: KH %s, ghi ngay %s, SD %sm3, so tien %sd. De nghi thanh toan tu %s den %s hoac chuyen khoan qua ngan hang.",
+                safe(ky),
+                customerCode,
+                readingDay,
+                safe(consumption),
+                safe(amount),
+                safe(payFrom),
+                safe(payTo)
+        );
     }
 
     private String buildInstallationInvoiceIssuedSms(CustomerNotification n,
@@ -467,6 +475,23 @@ public class CustomerNotificationSmsService {
             }
         }
 
+        // 3) FALLBACK: lấy từ relatedType/relatedId (các notification scheduler/event không có invoice)
+        if (n != null && n.getRelatedId() != null) {
+            CustomerNotification.CustomerNotificationRelatedType rt = n.getRelatedType();
+            if (rt == CustomerNotification.CustomerNotificationRelatedType.CONTRACT
+                    || rt == CustomerNotification.CustomerNotificationRelatedType.REGISTRATION) {
+                try {
+                    Contract c = contractRepository.findById(n.getRelatedId()).orElse(null);
+                    if (c != null) {
+                        String cPhone = sanitizePhoneCandidate(c.getContactPhone());
+                        if (cPhone != null) return cPhone;
+                    }
+                } catch (Exception ignored) {
+                    // ignore
+                }
+            }
+        }
+
         return null;
     }
 
@@ -503,5 +528,23 @@ public class CustomerNotificationSmsService {
 
     private String safe(String s) {
         return s == null ? "" : s;
+    }
+
+    private String formatVnd(BigDecimal amount) {
+        if (amount == null) return "";
+        try {
+            return amount.setScale(0, RoundingMode.HALF_UP).toPlainString();
+        } catch (Exception e) {
+            return amount.toPlainString();
+        }
+    }
+
+    private String formatNumberNoTrailingZeros(BigDecimal val) {
+        if (val == null) return "";
+        try {
+            return val.stripTrailingZeros().toPlainString();
+        } catch (Exception e) {
+            return val.toPlainString();
+        }
     }
 }
