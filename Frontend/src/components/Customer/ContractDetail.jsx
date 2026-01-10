@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Descriptions, Typography, message, Spin, Button, Row, Col, Tag, Image, Tooltip } from 'antd';
 import { ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { getContractByIdGeneral, getCustomerById, getWaterMeterDetailByContract, downloadMyContractPdf } from '../Services/apiService';
+import { getContractByIdGeneral, getCustomerById, getWaterMeterDetailByContract, downloadMyContractPdf, downloadMyAcceptancePdf } from '../Services/apiService';
 
 const { Title } = Typography;
 
@@ -222,6 +222,25 @@ const ContractDetail = () => {
         }
     };
 
+    const handleDownloadAcceptancePdf = async () => {
+        try {
+            setLoading(true);
+            const res = await downloadMyAcceptancePdf(contractId);
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `PhieuNghiemThu_${contractId}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) {
+            console.error('Download acceptance pdf error:', e);
+            message.error('Không thể tải phiếu nghiệm thu. (Có thể hợp đồng chưa có dữ liệu lắp đặt)');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div style={{ padding: '24px 0' }}>
             <div style={pageContainerStyle}>
@@ -245,6 +264,15 @@ const ContractDetail = () => {
                                 Tải hợp đồng (PDF)
                             </Button>
                         </Tooltip>
+                        {isActiveContract && (
+                            <Button
+                                icon={<DownloadOutlined />}
+                                onClick={handleDownloadAcceptancePdf}
+                                style={{ marginLeft: 8 }}
+                            >
+                                Tải Phiếu nghiệm thu
+                            </Button>
+                        )}
                     </Col>
                 </Row>
 

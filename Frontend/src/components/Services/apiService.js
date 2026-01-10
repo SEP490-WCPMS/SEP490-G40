@@ -283,6 +283,13 @@ export const downloadMyContractPdf = (contractId) => {
     });
 };
 
+export const downloadMyAcceptancePdf = (contractId) => {
+    return apiClient.get(`/customer/contracts/${contractId}/acceptance-pdf`, {
+        responseType: 'blob',
+    });
+};
+
+
 // === QUẢN LÝ HỢP ĐỒNG (SERVICE STAFF) ===
 
 export const getContractById = (contractId) => {
