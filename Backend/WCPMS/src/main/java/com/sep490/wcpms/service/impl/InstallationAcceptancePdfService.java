@@ -365,6 +365,232 @@ public class InstallationAcceptancePdfService {
         }
     }
 
+    /**
+     * Service Staff tải PDF phiếu nghiệm thu (không giới hạn theo owner).
+     * Controller: GET /api/service/contracts/{contractId}/acceptance-pdf
+     */
+    @Transactional
+    public byte[] exportForServiceStaff(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found: " + contractId));
+
+        // Lấy bản lắp đặt mới nhất + đồng hồ
+        MeterInstallation mi = findLatestInstallation(contract);
+        WaterMeter wm = (mi != null) ? mi.getWaterMeter() : null;
+
+        // ====== data ======
+        String contractNumber = safe(contract.getContractNumber());
+        String soPhieu = isBlank(contractNumber) ? "" : (contractNumber + "/KH-CN");
+
+        LocalDate acceptanceDate = (mi != null && mi.getInstallationDate() != null)
+                ? mi.getInstallationDate()
+                : (contract.getInstallationDate() != null ? contract.getInstallationDate() : LocalDate.now());
+
+        // Chỉ điền TÊN KỸ THUẬT, bỏ tên dịch vụ
+        String companyRep1 = "";
+        if (mi != null && mi.getTechnicalStaff() != null) {
+            companyRep1 = safe(mi.getTechnicalStaff().getFullName());
+        }
+        if (isBlank(companyRep1) && contract.getTechnicalStaff() != null) {
+            companyRep1 = safe(contract.getTechnicalStaff().getFullName());
+        }
+
+        Customer customer = contract.getCustomer();
+        String customerRep = "";
+        if (customer != null) {
+            customerRep = firstNonBlank(
+                    customer.getContactPersonName(),
+                    customer.getCustomerName(),
+                    customer.getAccount() != null ? customer.getAccount().getFullName() : null
+            );
+        }
+
+        String address = "";
+        if (contract.getAddress() != null) {
+            address = buildAddress(contract.getAddress());
+        }
+        if (isBlank(address) && customer != null) {
+            address = buildCustomerAddress(customer);
+        }
+
+        String meterType = "";
+        String meterPhi = "";
+        String serial = "";
+        if (wm != null) {
+            meterType = firstNonBlank(wm.getMeterName(), wm.getMeterType());
+            meterPhi = safe(wm.getSize());
+            serial = safe(wm.getSerialNumber());
+        }
+
+        String initialReading = "";
+        if (mi != null && mi.getInitialReading() != null) {
+            initialReading = stripTrailingZeros(mi.getInitialReading());
+        }
+
+        String technicalCondition = "";
+        if (mi != null) technicalCondition = safe(mi.getNotes());
+        if (isBlank(technicalCondition)) {
+            technicalCondition = "Đồng hồ và phụ kiện lắp đặt đảm bảo kỹ thuật, vận hành ổn định.";
+        }
+
+        // ====== tick logic ======
+        String notesLower = technicalCondition.toLowerCase(Locale.ROOT);
+        boolean tickLapMoi = containsAny(notesLower, "lắp mới", "lap moi");
+        boolean tickThay = containsAny(notesLower, "thay", "thay thế", "thay the");
+        boolean tickLapThem = containsAny(notesLower, "lắp thêm", "lap them", "bổ sung", "bo sung");
+        if (!tickLapMoi && !tickThay && !tickLapThem) tickLapMoi = true;
+
+        PurposeTick purposeTick = inferPurpose(contract, customer);
+
+        // ====== Render PDF (dùng đúng helper đang có trong file) ======
+        try (
+                InputStream templateIs = new ClassPathResource(TEMPLATE_CLASSPATH).getInputStream();
+                PDDocument doc = PDDocument.load(templateIs);
+                InputStream fontIs = new ClassPathResource(FONT_CLASSPATH).getInputStream();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream()
+        ) {
+            PDType0Font font = PDType0Font.load(doc, fontIs, true);
+
+            PDPage page = doc.getPage(0);
+            PDRectangle box = page.getMediaBox();
+            float pageH = box.getHeight();
+
+            try (PDPageContentStream cs = new PDPageContentStream(
+                    doc, page, PDPageContentStream.AppendMode.APPEND, true, true
+            )) {
+
+                // ====== 1) Số: phủ trắng rộng để không bị "đè ...", rồi vẽ lại ======
+                fillWhiteRectTop(cs, pageH, 92.000f, TOP_SO_RECT_YMIN, 250.000f, TOP_SO_RECT_YMAX);
+
+                // vẽ lại label "Số:"
+                drawTop(cs, font, FONT_12, pageH, TOP_SO_LABEL_X, TOP_SO_BASELINE, "Số:");
+
+                // số phiếu: co font nếu quá dài để tránh đè
+                float soMaxWidth = 250.000f - TOP_SO_X - 2f;
+                float soFont = fontSizeToFit(font, FONT_12, 9.0f, soPhieu, soMaxWidth);
+                drawTop(cs, font, soFont, pageH, TOP_SO_X, TOP_SO_BASELINE, soPhieu);
+
+                // ====== 2) Ngày / tháng / năm: xóa dải “...” mỏng + canh giữa ======
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_DATE_BASELINE,
+                        TOP_DAY_X, TOP_DAY_RECT_XMAX,
+                        TOP_DATE_RECT_YMIN, TOP_DATE_RECT_YMAX,
+                        pad2(acceptanceDate.getDayOfMonth()),
+                        Align.CENTER, 0f, NUDGE_BASELINE_UP);
+
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_DATE_BASELINE,
+                        TOP_MONTH_X, TOP_MONTH_RECT_XMAX,
+                        TOP_DATE_RECT_YMIN, TOP_DATE_RECT_YMAX,
+                        pad2(acceptanceDate.getMonthValue()),
+                        Align.CENTER, 0f, NUDGE_BASELINE_UP);
+
+                // Fix “năm2025” bị dính chữ: nudge X sang phải một chút
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_DATE_BASELINE,
+                        TOP_YEAR_X, TOP_YEAR_RECT_XMAX,
+                        TOP_DATE_RECT_YMIN, TOP_DATE_RECT_YMAX,
+                        String.valueOf(acceptanceDate.getYear()),
+                        Align.CENTER, 6f, NUDGE_BASELINE_UP);
+
+                // ====== 3) Đại diện công ty (kỹ thuật) ======
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_COMPANY1_BASELINE,
+                        TOP_COMPANY1_X, TOP_COMPANY1_RECT_XMAX,
+                        TOP_COMPANY1_RECT_YMIN, TOP_COMPANY1_RECT_YMAX,
+                        companyRep1,
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                // ====== 4) Đại diện khách hàng ======
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_CUSTOMER_BASELINE,
+                        TOP_CUSTOMER_X, TOP_CUSTOMER_RECT_XMAX,
+                        TOP_CUSTOMER_RECT_YMIN, TOP_CUSTOMER_RECT_YMAX,
+                        customerRep,
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                // ====== 5) Địa chỉ ======
+                String addrFit = fitText(font, FONT_12, address, TOP_ADDRESS_RECT_XMAX - TOP_ADDRESS_X);
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_ADDRESS_BASELINE,
+                        TOP_ADDRESS_X, TOP_ADDRESS_RECT_XMAX,
+                        TOP_ADDRESS_RECT_YMIN, TOP_ADDRESS_RECT_YMAX,
+                        addrFit,
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                // ====== 6) Loại đồng hồ + phi ======
+                String typeFit = fitText(font, FONT_12, meterType, TOP_METER_TYPE_RECT_XMAX - TOP_METER_TYPE_X);
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_METER_TYPE_BASELINE,
+                        TOP_METER_TYPE_X, TOP_METER_TYPE_RECT_XMAX,
+                        TOP_METER_TYPE_RECT_YMIN, TOP_METER_TYPE_RECT_YMAX,
+                        typeFit,
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                String phiFit = fitText(font, FONT_12, meterPhi, TOP_METER_PHI_RECT_XMAX - TOP_METER_PHI_X);
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_METER_PHI_BASELINE,
+                        TOP_METER_PHI_X, TOP_METER_PHI_RECT_XMAX,
+                        TOP_METER_PHI_RECT_YMIN, TOP_METER_PHI_RECT_YMAX,
+                        phiFit,
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                // ====== 7) Serial ======
+                String serialFit = fitText(font, FONT_12, serial, TOP_SERIAL_RECT_XMAX - TOP_SERIAL_X);
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_SERIAL_BASELINE,
+                        TOP_SERIAL_X, TOP_SERIAL_RECT_XMAX,
+                        TOP_SERIAL_RECT_YMIN, TOP_SERIAL_RECT_YMAX,
+                        serialFit,
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                // ====== 8) Chỉ số khi lắp: canh giữa ======
+                String readingFit = fitText(font, FONT_12, initialReading, TOP_INITIAL_READING_RECT_XMAX - TOP_INITIAL_READING_X);
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_INITIAL_READING_BASELINE,
+                        TOP_INITIAL_READING_X, TOP_INITIAL_READING_RECT_XMAX,
+                        TOP_INITIAL_READING_RECT_YMIN, TOP_INITIAL_READING_RECT_YMAX,
+                        readingFit,
+                        Align.CENTER, 2f, NUDGE_BASELINE_UP);
+
+                // ====== 9) Tình trạng kỹ thuật: 2 dòng ======
+                TwoLines tl = wrapTwoLines(font, FONT_12, technicalCondition,
+                        TOP_TECH_LINE1_RECT_XMAX - TOP_TECH_LINE1_X,
+                        TOP_TECH_LINE2_RECT_XMAX - TOP_TECH_LINE2_X
+                );
+
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_TECH_LINE1_BASELINE,
+                        TOP_TECH_LINE1_X, TOP_TECH_LINE1_RECT_XMAX,
+                        TOP_TECH_LINE1_RECT_YMIN, TOP_TECH_LINE1_RECT_YMAX,
+                        tl.line1(),
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                drawOnDotsFieldTopClean(cs, font, FONT_12, pageH,
+                        TOP_TECH_LINE2_BASELINE,
+                        TOP_TECH_LINE2_X, TOP_TECH_LINE2_RECT_XMAX,
+                        TOP_TECH_LINE2_RECT_YMIN, TOP_TECH_LINE2_RECT_YMAX,
+                        tl.line2(),
+                        Align.LEFT, 0f, NUDGE_BASELINE_UP);
+
+                // ====== 10) Tick: dùng 3 cột chung để 2 hàng cân nhau ======
+                if (tickLapMoi) drawTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE, "X");
+                if (tickThay) drawTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE, "X");
+                if (tickLapThem) drawTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE, "X");
+
+                if (purposeTick.sinhHoat) drawTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE, "X");
+                if (purposeTick.sanXuat) drawTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE, "X");
+                if (purposeTick.kinhDoanh) drawTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE, "X");
+            }
+
+            doc.save(baos);
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to export acceptance PDF: " + e.getMessage(), e);
+        }
+    }
+
     // ========================= Finder (không tạo method repo mới) =========================
 
     private MeterInstallation findLatestInstallation(Contract contract) {

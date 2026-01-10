@@ -307,6 +307,19 @@ export const updateContractStatus = (contractId, newStatus, reason) => {
     });
 };
 
+// Service Staff tải PDF hợp đồng/phiếu nghiệm thu
+export const downloadServiceContractPdf = (contractId) => {
+    return apiClient.get(`/service/contracts/${contractId}/pdf`, {
+        responseType: 'blob',
+    });
+};
+
+export const downloadServiceAcceptancePdf = (contractId) => {
+    return apiClient.get(`/service/contracts/${contractId}/acceptance-pdf`, {
+        responseType: 'blob',
+    });
+};
+
 // ✅ TÁCH RIÊNG 2 API CHO ANNUL VÀ TRANSFER
 /**
  * Lấy danh sách yêu cầu HỦY hợp đồng (PENDING status)

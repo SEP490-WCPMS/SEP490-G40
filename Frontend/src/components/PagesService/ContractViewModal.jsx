@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
-import { Modal, Spin } from 'antd';
-import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
+import { Modal, Spin, Button, Tooltip, message } from 'antd';
+import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined, DownloadOutlined } from '@ant-design/icons';
 import moment from 'moment';
+
+import { downloadServiceAcceptancePdf, downloadServiceContractPdf } from '../Services/apiService';
 
 // Các trạng thái hợp lệ và tên hiển thị
 const CONTRACT_STATUS_MAP = {
@@ -57,13 +59,66 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const fmtDate = (d) => (d ? moment(d).format('DD/MM/YYYY') : '—');
     // Định dạng số tiền theo locale vi-VN và thêm 'đ'
     const fmtMoney = (v) => (v || v === 0 ? `${Number(v).toLocaleString('vi-VN')} đ` : '—');
-    
+
     // Helper format phương thức thanh toán
     const formatPaymentMethod = (method) => {
         if (!method) return '—';
         const m = String(method).trim().toUpperCase();
         const map = { 'BANK_TRANSFER': 'Chuyển khoản', 'CASH': 'Tiền mặt' };
         return map[m] || method;
+    };
+
+    const [downloading, setDownloading] = useState(false);
+
+    const contractId = initialData?.id ?? initialData?.contractId ?? initialData?.contractID;
+    const isActiveContract = String(initialData?.contractStatus || '').toUpperCase() === 'ACTIVE';
+
+    const triggerDownload = (blobData, filename) => {
+        const blob = new Blob([blobData], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const handleDownloadContractPdf = async () => {
+        if (!contractId) return;
+        if (!isActiveContract) {
+            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng PDF.');
+            return;
+        }
+        try {
+            setDownloading(true);
+            const res = await downloadServiceContractPdf(contractId);
+            triggerDownload(res.data, `HopDong_${initialData?.contractNumber || contractId}.pdf`);
+        } catch (e) {
+            console.error('Download service contract pdf error:', e);
+            message.error('Không tải được hợp đồng PDF!');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    const handleDownloadAcceptancePdf = async () => {
+        if (!contractId) return;
+        if (!isActiveContract) {
+            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải phiếu nghiệm thu.');
+            return;
+        }
+        try {
+            setDownloading(true);
+            const res = await downloadServiceAcceptancePdf(contractId);
+            triggerDownload(res.data, `PhieuNghiemThu_${initialData?.contractNumber || contractId}.pdf`);
+        } catch (e) {
+            console.error('Download service acceptance pdf error:', e);
+            message.error('Không thể tải phiếu nghiệm thu. (Có thể hợp đồng chưa có dữ liệu lắp đặt)');
+        } finally {
+            setDownloading(false);
+        }
     };
 
     return (
@@ -85,7 +140,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
             bodyStyle={{ maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}
             style={{ top: 20 }}
         >
-            <Spin spinning={loading}>
+            <Spin spinning={loading || downloading}>
                 <div className="space-y-4 pt-2">
                     {/* 1. Header: Mã HĐ và Trạng thái */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
@@ -98,6 +153,26 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Trạng thái</div>
                                 {statusBadge(initialData?.contractStatus)}
                             </div>
+                        </div>
+                        {/* Actions: tải PDF */}
+                        <div className="mt-3 pt-3 border-t border-blue-200 flex justify-end gap-2 flex-wrap">
+                            <Tooltip title={isActiveContract ? '' : 'Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng'}>
+                                <Button
+                                    type="primary"
+                                    icon={<DownloadOutlined />}
+                                    onClick={handleDownloadContractPdf}
+                                    disabled={!contractId || !isActiveContract}
+                                >
+                                    Tải hợp đồng (PDF)
+                                </Button>
+                            </Tooltip>
+                            <Button
+                                icon={<DownloadOutlined />}
+                                onClick={handleDownloadAcceptancePdf}
+                                disabled={!contractId || !isActiveContract}
+                            >
+                                Tải Phiếu nghiệm thu
+                            </Button>
                         </div>
                     </div>
 
@@ -136,7 +211,6 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                     </div>
 
                     {/* 3. Thông tin Khảo sát & Kỹ thuật */}
-                    {/* Phần này hiển thị khi đã qua bước khảo sát (có ngày khảo sát, nhân viên kỹ thuật hoặc chi phí dự kiến) */}
                     {(initialData?.surveyDate || initialData?.technicalStaffName || initialData?.technicalDesign || initialData?.estimatedCost != null) && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
@@ -182,7 +256,6 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                     )}
 
                     {/* 4. Thông tin Hợp đồng */}
-                    {/* Phần này hiển thị khi hợp đồng đã được tạo (có ngày bắt đầu, giá trị hợp đồng, v.v.) */}
                     {(initialData?.startDate || initialData?.endDate || initialData?.contractValue != null || initialData?.paymentMethod || initialData?.serviceStaffName) && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
@@ -246,17 +319,16 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                     )}
 
                     {/* 5. Ảnh lắp đặt đồng hồ */}
-                    {/* Chỉ hiển thị nếu có ảnh (thường là sau khi lắp đặt xong - trạng thái ACTIVE, SIGNED...) */}
                     {initialData?.installationImageBase64 && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
                                 <FileTextOutlined className="mr-1" /> Ảnh lắp đặt đồng hồ
                             </div>
                             <div className="flex justify-center">
-                                <img 
-                                    src={`data:image/jpeg;base64,${initialData.installationImageBase64}`} 
-                                    alt="Installation" 
-                                    className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md" 
+                                <img
+                                    src={`data:image/jpeg;base64,${initialData.installationImageBase64}`}
+                                    alt="Installation"
+                                    className="max-w-full max-h-96 rounded-lg border-2 border-gray-300 shadow-md"
                                 />
                             </div>
                         </div>

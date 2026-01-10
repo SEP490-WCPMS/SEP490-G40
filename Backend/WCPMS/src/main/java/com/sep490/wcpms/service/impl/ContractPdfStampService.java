@@ -183,6 +183,99 @@ public class ContractPdfStampService {
         }
     }
 
+    /**
+     * Service Staff tải PDF hợp đồng (không giới hạn theo owner).
+     * Controller: GET /api/service/contracts/{contractId}/pdf
+     */
+    @Transactional
+    public byte[] exportForServiceStaff(Integer contractId) {
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contract not found: " + contractId));
+
+        try (
+                InputStream templateIs = new ClassPathResource(TEMPLATE_CLASSPATH).getInputStream();
+                PDDocument doc = PDDocument.load(templateIs);
+                InputStream fontIs = new ClassPathResource(FONT_CLASSPATH).getInputStream()
+        ) {
+            PDType0Font font = PDType0Font.load(doc, fontIs, true);
+
+            // ========= Data cần điền =========
+            String contractNumber = safe(contract.getContractNumber());
+
+            LocalDate contractEffectiveDate = contract.getStartDate();
+            if (contractEffectiveDate == null) contractEffectiveDate = contract.getApplicationDate();
+            if (contractEffectiveDate == null) {
+                LocalDateTime createdAt = contract.getCreatedAt();
+                contractEffectiveDate = createdAt != null ? createdAt.toLocalDate() : LocalDate.now();
+            }
+
+            int day = contractEffectiveDate.getDayOfMonth();
+            int month = contractEffectiveDate.getMonthValue();
+            int year = contractEffectiveDate.getYear();
+
+            Customer customer = contract.getCustomer();
+
+            String customerName = "";
+            String phone = "";
+            String customerCode = "";
+
+            if (customer != null) {
+                customerName = firstNonBlank(
+                        customer.getContactPersonName(),
+                        customer.getCustomerName(),
+                        customer.getAccount() != null ? customer.getAccount().getFullName() : null
+                );
+
+                phone = firstNonBlank(
+                        customer.getContactPersonPhone(),
+                        customer.getAccount() != null ? customer.getAccount().getPhone() : null,
+                        contract.getContactPhone()
+                );
+
+                customerCode = firstNonBlank(
+                        customer.getCustomerCode(),
+                        customer.getAccount() != null ? customer.getAccount().getCustomerCode() : null
+                );
+            } else {
+                phone = safe(contract.getContactPhone());
+            }
+
+            String address = "";
+            if (contract.getAddress() != null) address = buildAddress(contract.getAddress());
+            if (isBlank(address) && customer != null) address = buildCustomerAddress(customer);
+
+            WaterMeter wm = findLatestWaterMeter(contract);
+            String meterCode = wm != null ? safe(wm.getMeterCode()) : "";
+            String serial = wm != null ? safe(wm.getSerialNumber()) : "";
+
+            Map<String, BigDecimal> percentByType = mapPercentByType(contract.getContractUsageDetails());
+
+            LocalDate effectiveDate = contractEffectiveDate;
+            Map<String, String> priceByType = new HashMap<>();
+            for (ContractPdfRow row : ContractPdfRow.values()) {
+                String typeCode = row.typeCode;
+                WaterPriceType wpt = findPriceTypeFromContractUsage(contract.getContractUsageDetails(), typeCode);
+                if (wpt != null) {
+                    String price = resolveUnitPrice(wpt, effectiveDate);
+                    priceByType.put(typeCode, price);
+                }
+            }
+
+            fillPage0(doc, font, contractNumber, day, month, year,
+                    customerName, address, customerCode, phone);
+
+            fillPage3Table(doc, font, meterCode, serial, percentByType, priceByType);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            doc.save(baos);
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Không tạo được PDF hợp đồng: " + e.getMessage(), e);
+        }
+    }
+
     private void fillPage0(PDDocument doc, PDType0Font font,
                            String contractNumber,
                            int day, int month, int year,
