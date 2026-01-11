@@ -16,4 +16,7 @@ public interface AdminService {
 
     // Trong interface AdminService
     List<ContractDetailsDTO> getContractsByCustomerId(Integer customerId);
+
+    // Đếm số lượng Guest đang chờ tạo tài khoản (Dùng cho Badge Menu)
+    long countPendingGuestRequests();
 }

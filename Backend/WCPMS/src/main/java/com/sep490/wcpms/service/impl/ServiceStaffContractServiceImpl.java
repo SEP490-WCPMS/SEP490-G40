@@ -219,18 +219,18 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             }
         }
 
-        // b. Xử lý trạng thái REJECTED -> Chuyển thành ĐÃ XỬ LÝ
-        if (contract.getContractStatus() == ContractStatus.APPROVED &&
-                currentNotes != null &&
-                currentNotes.contains("[Customer Reject Sign]")) {
-
-            // Đánh dấu hệ thống
-            currentNotes += "\n[System] Info updated on " + LocalDateTime.now();
-
-            // QUAN TRỌNG: Đổi tag để mất trạng thái Reject trên UI
-            // Thay "[Customer Reject Sign]" thành "[Rejection Handled]" (Giữ lịch sử nhưng đổi cờ)
-            currentNotes = currentNotes.replace("[Customer Reject Sign]", "[Rejection Handled]");
-        }
+//        // b. Xử lý trạng thái REJECTED -> Chuyển thành ĐÃ XỬ LÝ
+//        if (contract.getContractStatus() == ContractStatus.APPROVED &&
+//                currentNotes != null &&
+//                currentNotes.contains("[Customer Reject Sign]")) {
+//
+//            // Đánh dấu hệ thống
+//            currentNotes += "\n[System] Info updated on " + LocalDateTime.now();
+//
+//            // QUAN TRỌNG: Đổi tag để mất trạng thái Reject trên UI
+//            // Thay "[Customer Reject Sign]" thành "[Rejection Handled]" (Giữ lịch sử nhưng đổi cờ)
+//            currentNotes = currentNotes.replace("[Customer Reject Sign]", "[Rejection Handled]");
+//        }
 
         contract.setNotes(currentNotes);
         Contract updated = contractRepository.save(contract);
@@ -831,17 +831,16 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         if (contract.getContractStatus() != ContractStatus.APPROVED) {
             throw new IllegalStateException("Only APPROVED contracts can be sent to customer for signing.");
         }
-        // Theo luồng: APPROVED -> PENDING_CUSTOMER_SIGN (gửi cho khách ký)
-        // Sau khi khách ký, trạng thái sẽ chuyển từ PENDING_CUSTOMER_SIGN -> PENDING_SIGN
-        // xử lý khi gửi lại (khách từ chối ký)
-        // Nếu có dòng "[Customer Reject Sign]" trong notes, ta sẽ:
-        // 1. Xóa dòng đó đi để ghi chú sạch sẽ
-        // 2. Hoặc ghi đè thêm dòng mới "[Service Staff] Resent for signing"
-        // Ở đây mình chọn cách ghi log thêm để dễ trace
-        if (contract.getNotes() != null && contract.getNotes().contains("[Customer Reject Sign]")) {
-            String newNote = "\n[Service Staff] Adjusted and Resent for signing at " + LocalDateTime.now();
-            contract.setNotes(contract.getNotes() + newNote);
-        }
+
+//        // xử lý khi gửi lại (khách từ chối ký)
+//        // Nếu có dòng "[Customer Reject Sign]" trong notes, ta sẽ:
+//        // 1. Xóa dòng đó đi để ghi chú sạch sẽ
+//        // 2. Hoặc ghi đè thêm dòng mới "[Service Staff] Resent for signing"
+//        // Ở đây mình chọn cách ghi log thêm để dễ trace
+//        if (contract.getNotes() != null && contract.getNotes().contains("[Customer Reject Sign]")) {
+//            String newNote = "\n[Service Staff] Adjusted and Resent for signing at " + LocalDateTime.now();
+//            contract.setNotes(contract.getNotes() + newNote);
+//        }
         contract.setContractStatus(ContractStatus.PENDING_CUSTOMER_SIGN);
         Contract updated = contractRepository.save(contract);
 

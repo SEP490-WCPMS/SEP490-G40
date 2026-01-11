@@ -507,11 +507,11 @@ const AdminDashboard = () => {
         //Nếu action liên quan đến lắp đặt -> Kỹ thuật, Hóa đơn -> Kế toán...
         const action = (record.action || '').toUpperCase();
         if (action.includes('INSTALLATION') || action.includes('METER') || action.includes('SURVEY')) {
-             typeLabel = 'Nhân viên Kỹ thuật';
+             typeLabel = 'Nhân viên';
         } else if (action.includes('INVOICE') || action.includes('PAYMENT') || action.includes('BILL')) {
-             typeLabel = 'Nhân viên Kế toán';
+             typeLabel = 'Nhân viên';
         } else if (action.includes('CONTRACT') || action.includes('CUSTOMER')) {
-             typeLabel = 'Nhân viên Dịch vụ';
+             typeLabel = 'Nhân viên';
         } else {
              typeLabel = 'Nhân viên';
         }
