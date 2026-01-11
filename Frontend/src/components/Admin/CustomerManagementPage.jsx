@@ -120,6 +120,7 @@ const CustomerManagementPage = () => {
     const [error, setError] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
     const [confirmLoading, setConfirmLoading] = useState(false);
+    const [guestCount, setGuestCount] = useState(0);
 
     // --- [MỚI] State thông báo ---
     const [notification, setNotification] = useState({ type: '', message: '' });
@@ -144,9 +145,11 @@ const CustomerManagementPage = () => {
         setError(null);
         // Không reset notification ở đây để giữ thông báo thành công
         try {
+            const guestsRes = await getPendingGuestRequests();
+            const guestsData = guestsRes.data || [];
+            setGuestCount(guestsData.length);
             if (activeTab === 'guests') {
-                const res = await getPendingGuestRequests();
-                setGuests(res.data || []);
+                setGuests(guestsData);
             } else if (activeTab === 'customers') {
                 const res = await getAllCustomers();
                 const raw = res?.data ?? res;
@@ -223,6 +226,8 @@ const CustomerManagementPage = () => {
 
             setConfirmModal({ isOpen: false, contractId: null });
             loadData();
+            // Gửi tín hiệu badgae khi thay đổi
+            window.dispatchEvent(new Event('guestRequestUpdated'));
         } catch (err) {
             // Hiển thị lỗi bằng notification (hoặc alert nếu muốn giữ lỗi critical dạng popup)
             const msg = err.response?.data || "Có lỗi xảy ra khi duyệt.";
@@ -283,10 +288,30 @@ const CustomerManagementPage = () => {
                     style={{
                         backgroundColor: activeTab === 'guests' ? '#0A77E2' : 'white',
                         color: activeTab === 'guests' ? 'white' : '#64748b',
-                        border: '1px solid #e2e8f0'
+                        border: '1px solid #e2e8f0',
+                        position: 'relative', // Để căn chỉnh badge(hoặc flex)
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px' // Khoảng cách giữa chữ và số
                     }}
                 >
                     Guest (Chờ duyệt)
+                    {/* --- Hiển thị badge số lượng --- */}
+                    {guestCount > 0 && (
+                        <span style={{
+                            backgroundColor: '#ef4444', // Màu đỏ
+                            color: 'white',
+                            fontSize: '0.75rem', // Nhỏ hơn chữ chính
+                            fontWeight: 'bold',
+                            padding: '2px 8px',
+                            borderRadius: '999px', // Hình tròn/oval
+                            lineHeight: '1',
+                            minWidth: '20px', // Độ rộng tối thiểu cho số
+                            textAlign: 'center'
+                        }}>
+                            {guestCount}
+                        </span>
+                    )}
                 </Button>
                 <Button
                     onClick={() => { setActiveTab('customers'); setNotification({ type: '', message: '' }); }}

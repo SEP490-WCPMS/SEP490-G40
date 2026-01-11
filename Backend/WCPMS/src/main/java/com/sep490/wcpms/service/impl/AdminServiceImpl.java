@@ -107,6 +107,18 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    public long countPendingGuestRequests() {
+        // Lấy các hợp đồng chưa có Customer và trạng thái là PENDING_SURVEY_REVIEW hoặc APPROVED
+        List<Contract.ContractStatus> targetStatuses = Arrays.asList(
+                Contract.ContractStatus.PENDING_SURVEY_REVIEW,
+                Contract.ContractStatus.APPROVED
+        );
+
+        // Gọi repository để đếm
+        return contractRepository.countByCustomerIsNullAndContractStatusIn(targetStatuses);
+    }
+
+    @Override
     @Transactional
     public void approveGuestAndCreateAccount(Integer contractId) {
         // 1. Lấy hợp đồng
