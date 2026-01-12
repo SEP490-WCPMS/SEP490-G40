@@ -4,10 +4,14 @@ import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.ContractAnnulTransferRequest;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import com.sep490.wcpms.service.ServiceStaffContractService;
+import com.sep490.wcpms.service.impl.ContractPdfStampService;
+import com.sep490.wcpms.service.impl.InstallationAcceptancePdfService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +34,8 @@ public class ServiceStaffContractController {
 
     private final ServiceStaffContractService service;
     private final CustomerFeedbackService customerFeedbackService; // Inject service feedback
+    private final ContractPdfStampService contractPdfStampService;
+    private final InstallationAcceptancePdfService installationAcceptancePdfService;
 
     // === HÀM HELPER LẤY ID (Giữ nguyên) ===
     private Integer getAuthenticatedStaffId() {
@@ -395,6 +401,40 @@ public class ServiceStaffContractController {
     public ResponseEntity<ServiceStaffContractDTO> sendToInstallation(@PathVariable Integer id) {
         ServiceStaffContractDTO dto = service.sendContractToInstallation(id);
         return ResponseEntity.ok(dto);
+    }
+
+    // ===== PDF DOWNLOAD (SERVICE STAFF) =====
+
+    /**
+     * Tải PDF Hợp đồng (Service Staff).
+     * GET /api/service/contracts/{contractId}/pdf
+     */
+    @GetMapping("/{contractId}/pdf")
+    public ResponseEntity<byte[]> downloadContractPdf(@PathVariable Integer contractId) {
+        byte[] pdfBytes = contractPdfStampService.exportForServiceStaff(contractId);
+        String filename = "HopDong_" + contractId + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .body(pdfBytes);
+    }
+
+    /**
+     * Tải PDF Phiếu nghiệm thu lắp đặt đồng hồ (Service Staff).
+     * GET /api/service/contracts/{contractId}/acceptance-pdf
+     */
+    @GetMapping("/{contractId}/acceptance-pdf")
+    public ResponseEntity<byte[]> downloadAcceptancePdf(@PathVariable Integer contractId) {
+        byte[] pdfBytes = installationAcceptancePdfService.exportForServiceStaff(contractId);
+        String filename = "PhieuNghiemThu_" + contractId + ".pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .body(pdfBytes);
     }
 
 //    /**

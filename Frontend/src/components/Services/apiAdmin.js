@@ -10,6 +10,11 @@ export const approveGuestRequest = (contractId) => {
     return apiClient.post(`/admin/guest-requests/${contractId}/approve`);
 };
 
+// Lấy số lượng Guest Requests (để hiện Badge trên Menu)
+export const getGuestRequestsCount = () => {
+    return apiClient.get('/admin/guest-requests/count');
+};
+
 // (Tùy chọn) Lấy danh sách Customer chính thức
 export const getAllCustomers = () => {
     // Backend trả danh sách customer (customer_id, customer_code, ...)
@@ -29,5 +34,6 @@ export const getCustomerContracts = async (customerId) => {
 export default {
     getPendingGuestRequests,
     approveGuestRequest,
-    getAllCustomers
+    getAllCustomers,
+    getGuestRequestsCount
 };

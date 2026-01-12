@@ -100,13 +100,24 @@ public class SmsService {
      */
     private String normalizePhone(String phone) {
         if (phone == null) return null;
-        String p = phone.trim().replace(" ", "");
-        if (p.startsWith("+")) {
-            return p;
-        }
-        if (p.startsWith("0")) {
-            return "+84" + p.substring(1);
-        }
+
+        // giữ lại số và dấu +
+        String p = phone.trim().replaceAll("[^0-9+]", "");
+        if (p.isBlank()) return null;
+
+        // đổi 00xx -> +xx
+        if (p.startsWith("00")) p = "+" + p.substring(2);
+
+        // nếu bắt đầu bằng + thì giữ
+        if (p.startsWith("+")) return p;
+
+        // Vietnam common cases
+        if (p.startsWith("0")) return "+84" + p.substring(1);
+        if (p.startsWith("84")) return "+84" + p.substring(2);
+
+        // fallback: chuỗi số thuần -> coi như VN nếu dài 9-11
+        if (p.matches("^\\d{9,11}$")) return "+84" + p.replaceFirst("^0+", "");
+
         return p;
     }
 

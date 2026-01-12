@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInvoiceDetail, cancelInvoice } from '../Services/apiAccountingStaff'; // Import thêm cancelInvoice
-import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, XCircle, CheckCircle } from 'lucide-react';
+import { getInvoiceDetail, cancelInvoice, downloadInvoicePdf } from '../Services/apiAccountingStaff'; // Import thêm cancelInvoice
+import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, XCircle, CheckCircle, Download } from 'lucide-react';
 import moment from 'moment';
 
 // 1. IMPORT CÁC THÀNH PHẦN MỚI
@@ -103,6 +103,26 @@ function InvoiceDetail() {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            const res = await downloadInvoicePdf(invoiceId);
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+
+            const safeInvoiceNumber = invoiceDetail?.invoiceNumber || invoiceId;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `HoaDon_${safeInvoiceNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Không thể tải file PDF hóa đơn.', { position: 'top-center' });
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;
 
     // Nếu không có dữ liệu sau khi load xong
@@ -140,6 +160,15 @@ function InvoiceDetail() {
                 </div>
 
                 {/* Nút Hủy (Chỉ hiện khi PENDING) */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleDownloadPdf}
+                        className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md shadow-sm hover:bg-gray-50 transition-colors focus:outline-none"
+                        title="Tải hóa đơn PDF"
+                    >
+                        <Download size={18} className="mr-2" />
+                        Tải PDF
+                    </button>
                 {invoiceDetail.paymentStatus === 'PENDING' && (
                     <button
                         onClick={handlePreCancel}
@@ -154,6 +183,7 @@ function InvoiceDetail() {
                         {processing ? 'Đang xử lý...' : 'Hủy Hóa Đơn'}
                     </button>
                 )}
+                </div>
             </div>
 
             {/* Box Thông tin Gốc */}
