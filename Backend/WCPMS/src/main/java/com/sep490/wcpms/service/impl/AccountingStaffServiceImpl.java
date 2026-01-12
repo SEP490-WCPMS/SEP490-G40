@@ -696,7 +696,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setTotalAmount(totalAmount);
 
         invoice.setInvoiceDate(LocalDate.now());
-        invoice.setDueDate(LocalDate.now().plusDays(10)); // (Cần logic lấy hạn TT từ HĐ)
+        invoice.setDueDate(LocalDate.now().plusDays(5)); // (Cần logic lấy hạn TT từ HĐ)
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
 
         // [QUAN TRỌNG] Gán nhân viên vừa tìm được vào Hóa đơn

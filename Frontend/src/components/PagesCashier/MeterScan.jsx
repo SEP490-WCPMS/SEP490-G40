@@ -98,7 +98,12 @@ function MeterScan() {
         if (name === 'reading') {
             // Thay thế tất cả ký tự KHÔNG phải số bằng rỗng
             // Điều này chặn cả dấu chấm (.), dấu phẩy (,), dấu trừ (-)
-            const numericValue = value.replace(/\D/g, '');
+            let numericValue = value.replace(/\D/g, '');
+            // --- THÊM MỚI: Giới hạn tối đa 8 ký tự ---
+            if (numericValue.length > 8) {
+                numericValue = numericValue.slice(0, 8);
+            }
+            // ------------------------------------------
 
             setFormData(prev => ({ ...prev, [name]: numericValue }));
         }
@@ -229,6 +234,7 @@ function MeterScan() {
                                 name="reading"
                                 value={formData.reading}
                                 onChange={handleChange}
+                                maxLength={8}
                                 placeholder="Nhập chỉ số (VD: 123)"
                                 className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 font-bold text-gray-800"
                             />

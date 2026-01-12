@@ -21,7 +21,7 @@ function CreateServiceInvoice() {
     const [formData, setFormData] = useState({
         invoiceNumber: '',
         invoiceDate: moment().format('YYYY-MM-DD'),
-        dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
+        dueDate: moment().add(5, 'days').format('YYYY-MM-DD'),
         subtotalAmount: 0,
         vatAmount: 0,
         totalAmount: 0,
@@ -57,7 +57,7 @@ function CreateServiceInvoice() {
                 setFormData({
                     invoiceNumber: `DVKD${calibrationId}${moment().format('MMYYYY')}`,
                     invoiceDate: moment().format('YYYY-MM-DD'),
-                    dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
+                    dueDate: moment().add(5, 'days').format('YYYY-MM-DD'),
                     subtotalAmount: subtotal,
                     vatAmount: vat,
                     totalAmount: total,

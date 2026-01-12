@@ -53,6 +53,24 @@ public class MeterReadingServiceImpl implements MeterReadingService {
                 .orElseThrow(() -> new ResourceNotFoundException("MeterInstallation (bản ghi lắp đặt mới nhất) not found for meter: " + meterCode));
         // --- HẾT PHẦN SỬA ---
 
+        // === [THÊM LOGIC CHẶN SPAM GHI CHỈ SỐ] ===
+        // Kiểm tra xem có bản ghi đọc số nào mới nhất đang ở trạng thái COMPLETED không?
+        Optional<MeterReading> latestReadingOpt = meterReadingRepository
+                .findTopByMeterInstallationOrderByReadingDateDesc(installation);
+
+        if (latestReadingOpt.isPresent()) {
+            MeterReading latestReading = latestReadingOpt.get();
+
+            // Nếu trạng thái là COMPLETED -> Nghĩa là chưa được lập hóa đơn (chưa chuyển sang VERIFIED)
+            if (latestReading.getReadingStatus() == MeterReading.ReadingStatus.COMPLETED) {
+                throw new IllegalStateException(
+                        "Đồng hồ này đã được ghi chỉ số và đang chờ Kế toán lập hóa đơn. " +
+                                "Vui lòng đợi hóa đơn được tạo trước khi ghi chỉ số kỳ tiếp theo."
+                );
+            }
+        }
+        // ==========================================
+
         // 3. LẤY HỢP ĐỒNG DỊCH VỤ (BẢNG 9) TỪ LẮP ĐẶT
         WaterServiceContract serviceContract = installation.getWaterServiceContract();
         if (serviceContract == null) {
