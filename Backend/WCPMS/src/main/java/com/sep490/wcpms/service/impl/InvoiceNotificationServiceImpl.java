@@ -439,9 +439,17 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
         n.setMessageContent(body);
 
         notificationRepository.save(n);
-        emailService.sendEmail(n);
-        // Gửi SMS xác nhận thanh toán (BANK_TRANSFER hoặc CASH đều dùng messageType này)
-        smsNotificationService.sendForNotification(n);
+        try {
+            emailService.sendEmail(n);
+        } catch (Exception ex) {
+            log.error("[InvoiceNotification] Gửi email lỗi (payment-success) invoiceId={}: {}", invoice.getId(), ex.getMessage(), ex);
+        }
+
+        try {
+            smsNotificationService.sendForNotification(n);
+        } catch (Exception ex) {
+            log.error("[InvoiceNotification] Gửi SMS lỗi (payment-success) invoiceId={}: {}", invoice.getId(), ex.getMessage(), ex);
+        }
     }
 
     // Helper nội bộ: dùng chung nhãn loại hóa đơn
