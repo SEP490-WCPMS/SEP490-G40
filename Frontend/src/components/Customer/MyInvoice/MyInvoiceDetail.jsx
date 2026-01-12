@@ -164,14 +164,40 @@ function InvoiceDetail() {
                             <h3 className="text-sm font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
                                 <FileText size={16} /> Chi tiết Tiêu thụ
                             </h3>
-                            <div className="grid grid-cols-2 gap-4 text-sm bg-blue-50 p-4 rounded-md border border-blue-100">
-                                <div>
-                                    <p className="text-gray-600 mb-1">Kỳ hóa đơn</p>
-                                    <p className="font-medium">{moment(invoice.fromDate).format('DD/MM')} - {moment(invoice.toDate).format('DD/MM/YYYY')}</p>
+                            <div className="bg-blue-50 p-4 rounded-md border border-blue-100 space-y-3">
+                                
+                                {/* Hàng 1: Mã đồng hồ & Kỳ hóa đơn */}
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Mã đồng hồ</p>
+                                        <p className="font-mono font-bold text-gray-900 bg-white inline-block px-2 rounded border border-blue-100">
+                                            {invoice.meterCode || '---'}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Thời hạn thanh toán</p>
+                                        <p className="font-medium text-gray-900">
+                                            {moment(invoice.toDate).format('DD/MM')} - {moment(invoice.dueDate).format('DD/MM/YYYY')}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-gray-600 mb-1">Tổng tiêu thụ</p>
-                                    <p className="font-bold text-blue-700 text-lg">{invoice.totalConsumption} m³</p>
+
+                                {/* Hàng 2: Chỉ số cũ & Chỉ số mới */}
+                                <div className="grid grid-cols-2 gap-4 text-sm pt-3 border-t border-blue-200">
+                                    <div>
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Chỉ số cũ</p>
+                                        <p className="font-mono text-gray-600 text-base">{invoice.oldIndex ?? '0'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Chỉ số mới</p>
+                                        <p className="font-mono font-bold text-blue-800 text-base">{invoice.newIndex ?? '0'}</p>
+                                    </div>
+                                </div>
+
+                                {/* Hàng 3: Tổng tiêu thụ */}
+                                <div className="pt-3 border-t border-blue-200 flex justify-between items-center">
+                                    <span className="text-gray-700 font-medium text-sm">Tổng lượng tiêu thụ:</span>
+                                    <span className="font-extrabold text-blue-700 text-xl">{invoice.totalConsumption} m³</span>
                                 </div>
                             </div>
                         </div>

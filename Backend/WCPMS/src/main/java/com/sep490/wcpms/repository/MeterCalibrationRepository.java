@@ -2,6 +2,7 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.MeterCalibration;
+import com.sep490.wcpms.entity.WaterMeter;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -84,5 +85,10 @@ public interface MeterCalibrationRepository extends JpaRepository<MeterCalibrati
             "AND m.invoice IS NULL")
     long countUnbilledFeesByStaff(@Param("staffId") Integer staffId);
     // --- HẾT PHẦN THÊM ---
+
+    /**
+     * Kiểm tra xem đồng hồ này có phiếu kiểm định nào chưa có Invoice (invoice_id IS NULL) không.
+     */
+    boolean existsByMeterAndInvoiceIsNull(WaterMeter meter);
 }
 
