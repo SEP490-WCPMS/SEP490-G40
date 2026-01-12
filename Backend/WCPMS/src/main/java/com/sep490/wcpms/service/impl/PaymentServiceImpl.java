@@ -16,7 +16,9 @@ import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.service.InvoiceNotificationService;
 import com.sep490.wcpms.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
@@ -43,7 +45,10 @@ public class PaymentServiceImpl implements PaymentService {
     private final ReceiptRepository receiptRepository;
     private final AccountRepository accountRepository; // Để lấy NV Thu ngân (nếu cần)
     private final ActivityLogService activityLogService; // NEW
-    private final InvoiceNotificationService invoiceNotificationService;
+
+    @Autowired
+    @Lazy
+    private InvoiceNotificationService invoiceNotificationService;
 
     @Value("${payos.client-id}")
     private String clientId;
