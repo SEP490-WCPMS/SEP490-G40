@@ -440,6 +440,15 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             // Thông tin KH
             if (contract.getCustomer() != null) {
                 dto.setCustomerName(contract.getCustomer().getCustomerName());
+
+                String customerCode = contract.getCustomer().getCustomerCode();
+                if (customerCode == null || customerCode.isBlank()) {
+                    customerCode = (contract.getCustomer().getAccount() != null)
+                            ? contract.getCustomer().getAccount().getCustomerCode()
+                            : null;
+                }
+                dto.setCustomerCode(customerCode);
+
                 if (contract.getCustomer().getAccount() != null) {
                     dto.setCustomerPhone(contract.getCustomer().getAccount().getPhone());
                 }

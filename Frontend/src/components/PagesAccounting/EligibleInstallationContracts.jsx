@@ -169,7 +169,7 @@ function EligibleInstallationContracts() {
                             <th className="px-4 py-2 text-left">Mã HĐ</th>
                             <th className="px-4 py-2 text-left">Khách hàng</th>
                             <th className="px-4 py-2 text-left">Địa chỉ</th>
-                            <th className="px-4 py-2 text-left">Giá trị HĐ</th>
+                            <th className="px-4 py-2 text-left">Chi phí lắp đặt</th>
                             <th className="px-4 py-2 text-left">Ngày lắp đặt</th>
                             <th className="px-4 py-2 text-left">Trạng thái</th>
                             <th className="px-4 py-2 text-center">Thao tác</th>
