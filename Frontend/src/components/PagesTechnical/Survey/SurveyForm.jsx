@@ -152,7 +152,7 @@ function SurveyForm() {
             const filename = decodeURIComponent(match?.[1] || match?.[2] || 'Bang_tham_khao_chi_phi_vat_lieu.xlsx');
 
             const contentType = res.headers?.['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-            const blob = new Blob([res.data], { type: contentType });
+            const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: contentType });
 
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -161,7 +161,7 @@ function SurveyForm() {
             document.body.appendChild(a);
             a.click();
             a.remove();
-            window.URL.revokeObjectURL(url);
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
         } catch (err) {
             console.error('Lỗi tải file Excel:', err);
             toast.error(err.response?.data?.message || 'Không thể tải bảng chi phí vật liệu.');

@@ -44,7 +44,10 @@ const ContractDetail = () => {
         return parts.join(', ');
     };
 
-    const isActiveContract = String(contract?.contractStatus || '').toUpperCase() === 'ACTIVE';
+    const contractStatusUpper = String(contract?.contractStatus || '').toUpperCase();
+    const canDownloadContractPdf =
+        contractStatusUpper === 'ACTIVE' || contractStatusUpper === 'PENDING_CUSTOMER_SIGN' || contractStatusUpper === 'PENDING_SIGN';
+    const isActiveContract = contractStatusUpper === 'ACTIVE';
 
     const renderPaymentMethod = (method) => {
         const methods = {
@@ -197,8 +200,8 @@ const ContractDetail = () => {
     const handleDownloadPdf = async () => {
         if (!contractId) return;
 
-        if (!isActiveContract) {
-            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng PDF.');
+        if (!canDownloadContractPdf) {
+            message.warning('Chỉ hợp đồng ở trạng thái Đang hoạt động hoặc Đang chờ khách ký mới có thể tải hợp đồng PDF.');
             return;
         }
 
@@ -215,7 +218,7 @@ const ContractDetail = () => {
             a.click();
             a.remove();
 
-            window.URL.revokeObjectURL(url);
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
         } catch (error) {
             console.error('Download contract pdf error:', error);
             message.error('Không tải được hợp đồng PDF!');
@@ -254,12 +257,12 @@ const ContractDetail = () => {
                         <Title level={3} className="!mb-0">Chi tiết Hợp đồng</Title>
                     </Col>
                     <Col>
-                        <Tooltip title={isActiveContract ? '' : 'Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng'}>
+                        <Tooltip title={canDownloadContractPdf ? '' : 'Chỉ hợp đồng ở trạng thái Đang hoạt động hoặc Đang chờ khách ký mới có thể tải hợp đồng'}>
                             <Button
                                 type="primary"
                                 icon={<DownloadOutlined />}
                                 onClick={handleDownloadPdf}
-                                disabled={!contractId || !isActiveContract}
+                                disabled={!contractId || !canDownloadContractPdf}
                             >
                                 Tải hợp đồng (PDF)
                             </Button>
@@ -310,7 +313,7 @@ const ContractDetail = () => {
                                     {formatDate(contract.surveyDate)}
                                 </Descriptions.Item>
 
-                                <Descriptions.Item label="Chi phí Ước tính">
+                                <Descriptions.Item label="Chi phí Lắp đặt Ước tính">
                                     {formatCurrency(contract.estimatedCost)}
                                 </Descriptions.Item>
 
@@ -326,7 +329,7 @@ const ContractDetail = () => {
                                     {formatDate(contract.endDate)}
                                 </Descriptions.Item>
 
-                                <Descriptions.Item label="Giá trị Lắp đặt">
+                                <Descriptions.Item label="Chi phí Lắp đặt Thực tế">
                                     {formatCurrency(contract.contractValue)}
                                 </Descriptions.Item>
 

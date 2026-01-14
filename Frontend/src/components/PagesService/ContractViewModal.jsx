@@ -82,7 +82,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         document.body.appendChild(a);
         a.click();
         a.remove();
-        window.URL.revokeObjectURL(url);
+        setTimeout(() => window.URL.revokeObjectURL(url), 10000);
     };
 
     const handleDownloadContractPdf = async () => {

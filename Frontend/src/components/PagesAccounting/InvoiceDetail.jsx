@@ -117,7 +117,7 @@ function InvoiceDetail() {
             a.click();
             a.remove();
 
-            window.URL.revokeObjectURL(url);
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Không thể tải file PDF hóa đơn.', { position: 'top-center' });
         }
