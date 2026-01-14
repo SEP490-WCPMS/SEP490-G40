@@ -40,7 +40,20 @@ function ReadingConfirmation() {
         setLoading(true);
         getReadingConfirmationDataByMeterCode(physicalMeterId)
             .then(response => setConfirmationData(response.data))
-            .catch(err => toast.error("Lỗi tải dữ liệu hợp đồng."))
+            .catch(err => {
+                // --- XỬ LÝ LỖI CHẶN SPAM ---
+                console.error("Lỗi tải dữ liệu:", err);
+                
+                // Hiển thị thông báo lỗi chi tiết từ Backend
+                const errorMessage = err.response?.data?.message || "Đồng hồ này đã được ghi chỉ số và đang chờ Kế toán lập hóa đơn. Vui lòng đợi hóa đơn được tạo trước khi ghi chỉ số kỳ tiếp theo.";
+                toast.error(errorMessage, { autoClose: 4000 });
+
+                // Nếu lỗi là do chặn spam (có từ khóa đặc biệt hoặc status code cụ thể), quay về trang scan
+                // Ở đây mình check chung, nếu lỗi load data thì quay về scan sau 3s
+                setTimeout(() => {
+                     navigate('/cashier/scan'); 
+                }, 3000);
+            })
             .finally(() => setLoading(false)); 
 
     }, [physicalMeterId]);
