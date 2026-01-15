@@ -401,7 +401,7 @@ const ContractCreate = () => {
 
                             <Col xs={24} md={12}>
                                 <Form.Item
-                                    label="Giá trị Hợp đồng (VNĐ)"
+                                    label="Chi phí Lắp đặt (VNĐ)"
                                     name="contractValue"
                                 >
                                     <InputNumber

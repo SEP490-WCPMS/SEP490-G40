@@ -183,8 +183,12 @@ function CreateInstallationInvoice() {
                                 {contract.contractNumber || `#${contract.id}`}
                             </p>
                             <p>
-                                <span className="font-medium text-gray-600">ID Khách hàng: </span>
-                                {contract.customerId ?? '-'}
+                                <span className="font-medium text-gray-600">Khách hàng: </span>
+                                {contract.customerName || contract.customerFullName || '-'}
+                            </p>
+                            <p>
+                                <span className="font-medium text-gray-600">Mã khách hàng: </span>
+                                {contract.customerCode || '-'}
                             </p>
                             <p>
                                 <span className="font-medium text-gray-600">Ngày lắp đặt: </span>
