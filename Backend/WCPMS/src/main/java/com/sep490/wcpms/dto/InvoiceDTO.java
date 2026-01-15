@@ -56,4 +56,8 @@ public class InvoiceDTO {
 
     // --- Nhân viên ---
     private String accountingStaffName; // Tên Kế toán lập HĐ
+
+    private String evidenceImageBase64; // Ảnh bằng chứng (nếu có)
+    private String receiptNumber;       // Số biên lai
+    private String paymentMethod;       // Phương thức thanh toán
 }
