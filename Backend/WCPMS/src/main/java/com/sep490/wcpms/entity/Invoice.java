@@ -97,6 +97,11 @@ public class Invoice {
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<InvoiceDetail> invoiceDetails;
 
+    // === THÊM ĐOẠN NÀY VÀO ĐÂY ===
+    @OneToMany(mappedBy = "invoice", fetch = FetchType.LAZY)
+    private List<Receipt> receipts;
+    // =============================
+
     public enum PaymentStatus {
         PENDING, PAID, OVERDUE, CANCELLED, PARTIALLY_PAID
     }

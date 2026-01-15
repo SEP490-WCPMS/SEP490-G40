@@ -81,7 +81,7 @@ public class CashierServiceImpl implements CashierService {
 
     @Override
     @Transactional
-    public ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid) {
+    public ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid, String evidenceImage) {
 
         // 1. Lấy Thu ngân (người đang đăng nhập)
         Account cashier = accountRepository.findById(cashierId)
@@ -119,6 +119,12 @@ public class CashierServiceImpl implements CashierService {
         receipt.setPaymentMethod(Receipt.PaymentMethod.CASH); // <-- Thanh toán TIỀN MẶT
         receipt.setCashier(cashier);
         receipt.setNotes("Thu tiền mặt tại quầy.");
+        // === LƯU ẢNH BẰNG CHỨNG ===
+        if (evidenceImage == null || evidenceImage.isBlank()) {
+            throw new IllegalArgumentException("Bắt buộc phải upload ảnh bằng chứng (chữ ký khách hàng) khi thu tiền mặt.");
+        }
+        receipt.setEvidenceImageBase64(evidenceImage);
+        // ==========================
 
         Receipt savedReceipt = receiptRepository.save(receipt);
 

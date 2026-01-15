@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCashierInvoiceDetail, processCashPayment } from '../Services/apiCashierStaff';
-import { ArrowLeft, User, Phone, Mail, DollarSign, CheckCircle, FileText, Droplets, Calendar, CreditCard, AlertCircle } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, DollarSign, CheckCircle, FileText, Droplets, Calendar, CreditCard, AlertCircle, Camera, X, Gauge } from 'lucide-react';
 import moment from 'moment';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -18,6 +18,11 @@ function RouteInvoiceDetail() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+    // --- STATE MỚI CHO ẢNH BẰNG CHỨNG ---
+    const [evidenceFile, setEvidenceFile] = useState(null); // Base64
+    const [evidencePreview, setEvidencePreview] = useState(null); // URL Preview
+    // -------------------------------------
 
     useEffect(() => {
         if (!invoiceId) {
@@ -38,8 +43,39 @@ function RouteInvoiceDetail() {
             .finally(() => setLoading(false));
     }, [invoiceId]);
 
+    // --- HÀM XỬ LÝ ẢNH ---
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const previewUrl = URL.createObjectURL(file);
+            setEvidencePreview(previewUrl);
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result.split(',')[1];
+                setEvidenceFile(base64String);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const resetEvidence = () => {
+        setEvidenceFile(null);
+        setEvidencePreview(null);
+    };
+    // ---------------------
+
     const handlePreSubmit = () => {
         if (!invoice) return;
+
+        // VALIDATE: Bắt buộc phải có ảnh
+        if (!evidenceFile) {
+            toast.warn("Vui lòng chụp ảnh biên lai/chữ ký khách hàng làm bằng chứng!", {
+                autoClose: 3000
+            });
+            return;
+        }
+
         setShowConfirmModal(true);
     };
 
@@ -48,10 +84,13 @@ function RouteInvoiceDetail() {
         setShowConfirmModal(false);
 
         try {
-            // Sửa lại cách gọi API: truyền object { amountPaid: ... } nếu backend yêu cầu object
-            // hoặc truyền thẳng số tiền nếu bạn đã sửa apiCashierStaff.js theo cách 1
-            // Ở đây tôi giả định bạn đã sửa apiCashierStaff.js để nhận object data
-            const receipt = await processCashPayment(invoice.id, { amountPaid: invoice.totalAmount });
+            // Gửi payload gồm amount và evidenceImage
+            const payload = { 
+                amountPaid: invoice.totalAmount,
+                evidenceImage: evidenceFile // Gửi chuỗi base64
+            };
+
+            const receipt = await processCashPayment(invoice.id, payload);
             
             toast.success(`Thanh toán thành công! Biên lai: ${receipt.data.receiptNumber}`, {
                 position: "top-center",
@@ -155,53 +194,42 @@ function RouteInvoiceDetail() {
                                         <p className="text-gray-500 text-xs">Họ tên</p>
                                         <p className="font-bold text-gray-900 text-base">{invoice.customerName}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-gray-500 text-xs">Mã Khách hàng</p>
-                                        <p className="font-medium text-gray-900">{invoice.customerCode || '---'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-500 text-xs">Số điện thoại</p>
-                                        <p className="font-medium text-gray-900 flex items-center gap-1">
-                                            <Phone size={12} /> {invoice.customerPhone || 'Chưa cập nhật'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-500 text-xs">Email</p>
-                                        <p className="font-medium text-gray-900 flex items-center gap-1">
-                                            <Mail size={12} /> {invoice.customerEmail || 'Chưa cập nhật'}
-                                        </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <p className="text-gray-500 text-xs">Mã KH</p>
+                                            <p className="font-medium text-gray-900">{invoice.customerCode || '---'}</p>
+                                        </div>
+                                        <div>
+                                             <p className="text-gray-500 text-xs">SĐT</p>
+                                             <p className="font-medium text-gray-900">{invoice.customerPhone || '---'}</p>
+                                        </div>
                                     </div>
                                     <div>
                                         <p className="text-gray-500 text-xs">Địa chỉ</p>
-                                        <p className="font-medium text-gray-900">{invoice.customerAddress}</p>
-                                    </div>
-                                    <div className="pt-2 border-t border-gray-200">
-                                        <p className="text-gray-500 text-xs">Hợp Đồng Lắp Đặt</p>
-                                        <p className="font-bold text-blue-600">#{invoice.contractId || '---'}</p>
+                                        <p className="font-medium text-gray-900 break-words">{invoice.customerAddress}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Cột 2: Chi tiết Sử dụng (Nước/Dịch vụ) */}
+                        {/* Cột 2: Thông tin Nước (Nếu có) */}
                         <div className="lg:col-span-1 space-y-4">
                             <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 h-full">
                                 <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2 border-b pb-2">
                                     <Droplets size={18} className="text-blue-500" /> Chi tiết Sử dụng
                                 </h3>
-                                
+
                                 {invoice.meterReadingId ? (
                                     <div className="space-y-4">
-                                        <div className="flex justify-between items-center bg-white p-2 rounded shadow-sm border border-blue-100">
-                                            <span className="text-gray-600 text-sm flex items-center gap-1"><Calendar size={14}/> Kỳ hóa đơn:</span>
-                                            <div className="text-right">
-                                                <span className="block font-bold text-blue-800 text-xs">
-                                                    {invoice.fromDate ? moment(invoice.fromDate).format('DD/MM/YY') : '...'} - 
-                                                    {invoice.toDate ? moment(invoice.toDate).format('DD/MM/YY') : '...'}
-                                                </span>
-                                            </div>
+                                        <div className="bg-white p-2 rounded shadow-sm border border-blue-100 flex justify-between items-center">
+                                            <span className="text-gray-600 text-sm flex items-center gap-1">
+                                                <Gauge size={14} /> Mã ĐH:
+                                            </span>
+                                            <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-300">
+                                                {invoice.meterCode || 'N/A'}
+                                            </span>
                                         </div>
-                                        
+
                                         <div className="grid grid-cols-2 gap-2 text-center">
                                             <div className="bg-white p-2 rounded border border-gray-200">
                                                 <p className="text-xs text-gray-500">Chỉ số Cũ</p>
@@ -229,38 +257,30 @@ function RouteInvoiceDetail() {
                             </div>
                         </div>
 
-                        {/* Cột 3: Thanh toán */}
+                        {/* Cột 3: Thanh toán & UPLOAD ẢNH */}
                         <div className="lg:col-span-1">
                             <div className="bg-white p-4 rounded-lg border border-gray-200 h-full flex flex-col justify-between shadow-sm">
                                 <div>
                                     <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 border-b pb-2">
-                                        <CreditCard size={18} /> Chi tiết Thanh toán
+                                        <CreditCard size={18} /> Thanh toán
                                     </h3>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Thành tiền (Chưa thuế):</span>
-                                            <span className="font-medium">
-                                                {invoice.subtotalAmount?.toLocaleString('vi-VN')} đ
-                                            </span>
+                                            <span className="text-gray-600">Thành tiền:</span>
+                                            <span className="font-medium">{invoice.subtotalAmount?.toLocaleString('vi-VN')} đ</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Thuế GTGT (VAT):</span>
-                                            <span className="font-medium">
-                                                {invoice.vatAmount?.toLocaleString('vi-VN')} đ
-                                            </span>
+                                            <span className="text-gray-600">VAT:</span>
+                                            <span className="font-medium">{invoice.vatAmount?.toLocaleString('vi-VN')} đ</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Phí BVMT:</span>
-                                            <span className="font-medium">
-                                                {invoice.environmentFeeAmount?.toLocaleString('vi-VN')} đ
-                                            </span>
+                                            <span className="font-medium">{invoice.environmentFeeAmount?.toLocaleString('vi-VN')} đ</span>
                                         </div>
                                         {invoice.latePaymentFee > 0 && (
-                                            <div className="flex justify-between text-red-600 bg-red-50 p-1 rounded">
+                                            <div className="flex justify-between text-red-600">
                                                 <span className="font-medium">Phí trễ hạn:</span>
-                                                <span className="font-bold">
-                                                    {invoice.latePaymentFee?.toLocaleString('vi-VN')} đ
-                                                </span>
+                                                <span className="font-bold">{invoice.latePaymentFee?.toLocaleString('vi-VN')} đ</span>
                                             </div>
                                         )}
                                         
@@ -284,21 +304,61 @@ function RouteInvoiceDetail() {
                                     </div>
 
                                     {!isPaid && (
-                                        <button
-                                            onClick={handlePreSubmit}
-                                            disabled={submitting}
-                                            className="w-full py-3 bg-green-600 text-white font-bold rounded-md shadow hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                                        >
-                                            {submitting ? 'Đang xử lý...' : (
-                                                <> <DollarSign size={20} /> Xác Nhận Đã Thu Tiền </>
-                                            )}
-                                        </button>
+                                        <div className="space-y-4">
+                                            {/* --- KHU VỰC UPLOAD ẢNH BẰNG CHỨNG --- */}
+                                            <div className="border-t pt-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Ảnh bằng chứng (Biên lai ký/Tiền mặt) <span className="text-red-500">*</span>
+                                                </label>
+                                                
+                                                {!evidencePreview ? (
+                                                    <div className="flex items-center justify-center w-full">
+                                                        <label htmlFor="evidence-upload" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                                <Camera className="w-8 h-8 text-gray-400 mb-1" />
+                                                                <p className="text-xs text-gray-500">Chạm để chụp/tải ảnh</p>
+                                                            </div>
+                                                            <input 
+                                                                id="evidence-upload" 
+                                                                type="file" 
+                                                                accept="image/*" 
+                                                                capture="environment" 
+                                                                className="hidden" 
+                                                                onChange={handleFileChange}
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                ) : (
+                                                    <div className="relative">
+                                                        <img src={evidencePreview} alt="Evidence Preview" className="w-full h-32 object-cover rounded-lg border border-gray-300" />
+                                                        <button 
+                                                            onClick={resetEvidence}
+                                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                                            title="Xóa ảnh"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* ----------------------------------- */}
+
+                                            <button
+                                                onClick={handlePreSubmit}
+                                                disabled={submitting}
+                                                className="w-full py-3 bg-green-600 text-white font-bold rounded-md shadow hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            >
+                                                {submitting ? 'Đang xử lý...' : (
+                                                    <> <DollarSign size={20} /> Xác Nhận Đã Thu Tiền </>
+                                                )}
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         </div>
-
                     </div>
+
                 </div>
             </div>
 
@@ -307,7 +367,7 @@ function RouteInvoiceDetail() {
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmPayment}
                 title="Xác nhận thu tiền"
-                message={`Bạn xác nhận đã nhận đủ ${invoice.totalAmount?.toLocaleString('vi-VN')} VNĐ tiền mặt từ khách hàng ${invoice.customerName}?`}
+                message={`Bạn xác nhận đã nhận đủ ${invoice.totalAmount?.toLocaleString('vi-VN')} VNĐ tiền mặt và đã tải ảnh bằng chứng?`}
                 isLoading={submitting}
             />
         </div>
