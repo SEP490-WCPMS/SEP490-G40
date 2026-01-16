@@ -86,8 +86,7 @@ public class ContractPdfStampService {
         }
 
         try (
-                InputStream templateIs = new ClassPathResource(TEMPLATE_CLASSPATH).getInputStream();
-                PDDocument doc = PDDocument.load(templateIs);
+                PDDocument doc = loadTemplateAsPlainDocument(TEMPLATE_CLASSPATH);
                 InputStream fontIs = new ClassPathResource(FONT_CLASSPATH).getInputStream()
         ) {
             PDType0Font font = PDType0Font.load(doc, fontIs, true);
@@ -194,8 +193,7 @@ public class ContractPdfStampService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found: " + contractId));
 
         try (
-                InputStream templateIs = new ClassPathResource(TEMPLATE_CLASSPATH).getInputStream();
-                PDDocument doc = PDDocument.load(templateIs);
+                PDDocument doc = loadTemplateAsPlainDocument(TEMPLATE_CLASSPATH);
                 InputStream fontIs = new ClassPathResource(FONT_CLASSPATH).getInputStream()
         ) {
             PDType0Font font = PDType0Font.load(doc, fontIs, true);
@@ -731,5 +729,32 @@ public class ContractPdfStampService {
         String t = s.trim();
         if (t.length() <= max) return t;
         return t.substring(0, max - 1) + "…";
+    }
+
+    private PDDocument loadTemplateAsPlainDocument(String classpath) throws Exception {
+        // Rewrite template using PDFBox so output is compatible with more viewers and
+        // avoid "COSStream has been closed" (happens when importing pages from a closed source doc).
+        try (InputStream is = new ClassPathResource(classpath).getInputStream();
+             PDDocument src = PDDocument.load(is)) {
+
+            if (src.getDocumentCatalog() != null) {
+                src.getDocumentCatalog().setStructureTreeRoot(null);
+                src.getDocumentCatalog().setMetadata(null);
+                src.getDocumentCatalog().setMarkInfo(null);
+            }
+            src.setVersion(1.4f);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            src.save(baos);
+
+            PDDocument dst = PDDocument.load(baos.toByteArray());
+            dst.setVersion(1.4f);
+            if (dst.getDocumentCatalog() != null) {
+                dst.getDocumentCatalog().setStructureTreeRoot(null);
+                dst.getDocumentCatalog().setMetadata(null);
+                dst.getDocumentCatalog().setMarkInfo(null);
+            }
+            return dst;
+        }
     }
 }

@@ -146,25 +146,39 @@ function SurveyForm() {
         try {
             const res = await downloadMaterialCostExcel();
 
-            // Ưu tiên lấy filename từ header Content-Disposition
             const disposition = res.headers?.['content-disposition'] || '';
             const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
             const filename = decodeURIComponent(match?.[1] || match?.[2] || 'Bang_tham_khao_chi_phi_vat_lieu.xlsx');
 
-            const contentType = res.headers?.['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-            const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: contentType });
+            const contentType =
+                res.headers?.['content-type'] ||
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+            // res.data là ArrayBuffer
+            const u8 = new Uint8Array(res.data);
+
+            // XLSX chuẩn phải bắt đầu bằng "PK" (0x50 0x4B)
+            if (!(u8[0] === 0x50 && u8[1] === 0x4B)) {
+                // thường là server trả JSON/HTML (401/403/500) nhưng FE vẫn save
+                const text = new TextDecoder('utf-8').decode(u8);
+                console.error('Download template failed, received text:', text);
+                toast.error('Không thể tải file (có thể do hết phiên đăng nhập / thiếu quyền).');
+                return;
+            }
+
+            const blob = new Blob([res.data], { type: contentType });
 
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = filename;
+            a.download = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
             document.body.appendChild(a);
             a.click();
             a.remove();
             setTimeout(() => window.URL.revokeObjectURL(url), 10000);
         } catch (err) {
             console.error('Lỗi tải file Excel:', err);
-            toast.error(err.response?.data?.message || 'Không thể tải bảng chi phí vật liệu.');
+            toast.error('Không thể tải bảng chi phí vật liệu.');
         }
     };
 
