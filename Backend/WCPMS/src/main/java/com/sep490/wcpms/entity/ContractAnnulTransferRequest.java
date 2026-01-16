@@ -46,7 +46,7 @@ public class ContractAnnulTransferRequest {
     private String reason;
 
     @Lob
-    @Column(name = "attached_evidence", columnDefinition = "TEXT")
+    @Column(name = "attached_evidence", columnDefinition = "LONGTEXT")
     private String attachedEvidence;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

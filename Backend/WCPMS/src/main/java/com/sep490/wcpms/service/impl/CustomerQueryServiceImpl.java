@@ -1,4 +1,3 @@
-
 package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.dto.CustomerDTO;
@@ -34,14 +33,34 @@ public class CustomerQueryServiceImpl implements CustomerQueryService {
                     .collect(Collectors.toList());
         }
 
-        // Tìm kiếm với các tham số đã cho
+        // Normalize phone để search được cả trường hợp lưu "0xxx" / "84xxx" / "+84xxx".
+        // Chiến lược: lấy phần "tail" của số (bỏ +, khoảng trắng, ký tự lạ; bỏ prefix 0/84 nếu có)
+        // rồi dùng LIKE '%tail%'.
+        String normalizedPhone = null;
+        if (!emptyPhone) {
+            String raw = phone.trim();
+            String digits = raw.replaceAll("\\D", "");
+
+            if (!digits.isEmpty()) {
+                if (digits.startsWith("84") && digits.length() > 2) {
+                    digits = digits.substring(2);
+                }
+                if (digits.startsWith("0") && digits.length() > 1) {
+                    digits = digits.substring(1);
+                }
+                normalizedPhone = digits;
+            } else {
+                // fallback: nếu không extract được digits thì vẫn search theo raw
+                normalizedPhone = raw;
+            }
+        }
+
         List<Customer> customers = customerRepository.findByCustomerNameIdentityAndPhone(
                 !emptyName ? customerName.trim() : null,
                 !emptyId ? identityNumber.trim() : null,
-                !emptyPhone ? phone.trim() : null
+                normalizedPhone
         );
 
-        // Chuyển đổi sang DTO và trả về
         return customers.stream().map(CustomerDTO::fromEntity).collect(Collectors.toList());
     }
 
