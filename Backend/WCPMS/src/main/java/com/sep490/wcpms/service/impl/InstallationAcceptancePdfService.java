@@ -220,8 +220,7 @@ public class InstallationAcceptancePdfService {
 
         // ====== Render PDF ======
         try (
-                InputStream templateIs = new ClassPathResource(TEMPLATE_CLASSPATH).getInputStream();
-                PDDocument doc = PDDocument.load(templateIs);
+                PDDocument doc = loadTemplateAsPlainDocument(TEMPLATE_CLASSPATH);
                 InputStream fontIs = new ClassPathResource(FONT_CLASSPATH).getInputStream();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream()
         ) {
@@ -444,8 +443,7 @@ public class InstallationAcceptancePdfService {
 
         // ====== Render PDF (dùng đúng helper đang có trong file) ======
         try (
-                InputStream templateIs = new ClassPathResource(TEMPLATE_CLASSPATH).getInputStream();
-                PDDocument doc = PDDocument.load(templateIs);
+                PDDocument doc = loadTemplateAsPlainDocument(TEMPLATE_CLASSPATH);
                 InputStream fontIs = new ClassPathResource(FONT_CLASSPATH).getInputStream();
                 ByteArrayOutputStream baos = new ByteArrayOutputStream()
         ) {
@@ -875,5 +873,32 @@ public class InstallationAcceptancePdfService {
         if (!isBlank(district)) sb.append(sb.length() == 0 ? "" : ", ").append(district);
         if (!isBlank(province)) sb.append(sb.length() == 0 ? "" : ", ").append(province);
         return sb.toString();
+    }
+
+    private PDDocument loadTemplateAsPlainDocument(String classpath) throws Exception {
+        // Rewrite template using PDFBox so output is compatible with more viewers and
+        // avoid "COSStream has been closed" (happens when importing pages from a closed source doc).
+        try (InputStream is = new ClassPathResource(classpath).getInputStream();
+             PDDocument src = PDDocument.load(is)) {
+
+            if (src.getDocumentCatalog() != null) {
+                src.getDocumentCatalog().setStructureTreeRoot(null);
+                src.getDocumentCatalog().setMetadata(null);
+                src.getDocumentCatalog().setMarkInfo(null);
+            }
+            src.setVersion(1.4f);
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            src.save(baos);
+
+            PDDocument dst = PDDocument.load(baos.toByteArray());
+            dst.setVersion(1.4f);
+            if (dst.getDocumentCatalog() != null) {
+                dst.getDocumentCatalog().setStructureTreeRoot(null);
+                dst.getDocumentCatalog().setMetadata(null);
+                dst.getDocumentCatalog().setMarkInfo(null);
+            }
+            return dst;
+        }
     }
 }
