@@ -126,7 +126,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
             title={
                 <div className="flex items-center gap-2">
                     <FileTextOutlined className="text-blue-600 text-xl" />
-                    <span className="text-xl font-bold text-gray-800">Chi tiết Hợp đồng</span>
+                    <span className="text-xl font-bold text-gray-800">Chi tiết</span>
                 </div>
             }
             open={isOpen}
@@ -255,11 +255,11 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                     )}
 
-                    {/* 4. Thông tin Hợp đồng */}
+                    {/* 4. Thông tin chi tiết*/}
                     {(initialData?.startDate || initialData?.endDate || initialData?.contractValue != null || initialData?.paymentMethod || initialData?.serviceStaffName) && (
                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
-                                <CheckCircleOutlined className="mr-1" /> Thông tin hợp đồng
+                                <CheckCircleOutlined className="mr-1" /> Thông tin chi tiết
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 {initialData?.startDate && (
