@@ -24,7 +24,7 @@ import {
 
 const { TextArea } = Input;
 
-const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, refreshKey }) => {
+const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, refreshKey, highlightId }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -382,6 +382,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                 onPageChange={handlePageChange}
                 showActionsForAll={true}
                 onViewDetails={handleViewDetails}
+                highlightId={highlightId}
             />
 
             {/* Pagination is rendered inside ContractTable; duplicate removed. */}

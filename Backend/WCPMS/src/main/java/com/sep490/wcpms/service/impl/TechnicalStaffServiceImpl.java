@@ -10,6 +10,7 @@ import com.sep490.wcpms.mapper.ContractMapper;
 import com.sep490.wcpms.mapper.SupportTicketMapper; // <-- THÊM
 import com.sep490.wcpms.repository.*; // Import tất cả Repo
 import com.sep490.wcpms.security.services.UserDetailsImpl; // THAY TÊN ĐÚNG
+import com.sep490.wcpms.service.InternalNotificationService;
 import com.sep490.wcpms.service.TechnicalStaffService; // <-- SỬA TÊN INTERFACE
 import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.ContractRepository;
@@ -82,6 +83,8 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
     @Autowired
     private RoleRepository roleRepository;
     // -----------------------------------------------------------
+    @Autowired
+    private InternalNotificationService internalNotificationService;
 
     /**
      * Hàm helper lấy Account object từ ID
@@ -151,6 +154,15 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
                 savedContract.getCustomer() != null ? savedContract.getCustomer().getCustomerName() : null,
                 LocalDateTime.now()
         ));
+
+        internalNotificationService.createNotification(
+                null,
+                "ADMIN",
+                "Đã khảo sát đơn",
+                "Bên kỹ thuật đã khảo sát xong cho đơn " + savedContract.getContractNumber() + ". Có thể tạo tài khoản.",
+                savedContract.getId(),
+                InternalNotification.NotificationType.GUEST_NEEDS_ACCOUNT // Dùng tạm enum này hoặc tạo cái mới SURVEY_DONE
+        );
 
         return contractMapper.toDto(savedContract);
     }

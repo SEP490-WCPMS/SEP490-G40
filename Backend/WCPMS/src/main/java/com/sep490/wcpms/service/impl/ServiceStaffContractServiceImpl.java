@@ -4,22 +4,19 @@ import com.sep490.wcpms.dto.*;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.entity.Contract.ContractStatus;
 import com.sep490.wcpms.entity.Contract.PaymentMethod;
-import com.sep490.wcpms.repository.ServiceStaffContractRepository;
-import com.sep490.wcpms.repository.AccountRepository;
+import com.sep490.wcpms.repository.*;
+import com.sep490.wcpms.service.InternalNotificationService;
+import com.sep490.wcpms.entity.InternalNotification;
 import com.sep490.wcpms.service.ServiceStaffContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import com.sep490.wcpms.mapper.SupportTicketMapper;
-import com.sep490.wcpms.repository.CustomerFeedbackRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.ApplicationEventPublisher; // publish domain events
 import com.sep490.wcpms.event.SurveyReportApprovedEvent;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
-import com.sep490.wcpms.repository.CustomerRepository; // <-- THÊM IMPORT NÀY
-import com.sep490.wcpms.repository.WaterMeterRepository;
-import com.sep490.wcpms.repository.MeterInstallationRepository; // Thêm import
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,20 +25,16 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 // Import mới cho việc tạo hợp đồng dịch vụ nước
-import com.sep490.wcpms.repository.WaterServiceContractRepository;
-import com.sep490.wcpms.repository.WaterPriceTypeRepository;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.sep490.wcpms.security.services.UserDetailsImpl;
 import lombok.extern.slf4j.Slf4j;
-import com.sep490.wcpms.repository.ContractAnnulTransferRequestRepository;
 import com.sep490.wcpms.service.ContractAnnulTransferRequestService; // thêm import
 import com.sep490.wcpms.dto.ContractAnnulTransferRequestUpdateDTO; // thêm import
 import com.sep490.wcpms.service.ActivityLogService;
 import com.sep490.wcpms.entity.ActivityLog;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.sep490.wcpms.repository.AddressRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -61,6 +54,8 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
     private final ContractAnnulTransferRequestService contractAnnulTransferRequestService; // delegate to central service
     private final ApplicationEventPublisher eventPublisher;
     private final AddressRepository addressRepository;
+    private final InternalNotificationService internalNotificationService;
+    private final InternalNotificationRepository internalNotificationRepository;
     // private final ContractMapper contractMapper;
 
     @Autowired
@@ -330,6 +325,46 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
 
         contract.setContractStatus(ContractStatus.APPROVED);
         Contract updated = contractRepository.save(contract);
+
+        // === THÔNG BÁO CHO ADMIN KHI SERVICE STAFF "TẠO HD" CHO GUEST ===
+        if (updated.getCustomer() == null) {
+            try {
+                boolean exists = internalNotificationRepository.existsByReferenceIdAndReferenceTypeAndRecipientRole(
+                        updated.getId(),
+                        InternalNotification.NotificationType.GUEST_CONTRACT_CREATED,
+                        "ADMIN"
+                );
+
+                if (!exists) {
+                    String guestName = "Khách hàng";
+                    String rawNote = updated.getNotes();
+                    if (rawNote != null && rawNote.contains("KHÁCH:")) {
+                        try {
+                            int start = rawNote.indexOf("KHÁCH:") + 6;
+                            int end = rawNote.indexOf("|", start);
+                            if (end == -1) end = rawNote.indexOf("\n", start);
+                            if (end == -1) end = rawNote.length();
+                            String extractedName = rawNote.substring(start, end).trim();
+                            if (!extractedName.isEmpty()) guestName = extractedName;
+                        } catch (Exception ignored) {
+                            // keep default
+                        }
+                    }
+
+                    internalNotificationService.createNotification(
+                            null,
+                            "ADMIN",
+                            "HĐ đã được tạo cho Guest",
+                            "Bên Dịch vụ đã tạo HĐ cấp nước cho " + guestName + ". Vui lòng kiểm tra và tạo tài khoản.",
+                            updated.getId(),
+                            InternalNotification.NotificationType.GUEST_CONTRACT_CREATED
+                    );
+                }
+            } catch (Exception e) {
+                log.error("Failed to create ADMIN notification for guest contract created (contractId={})", updated.getId(), e);
+            }
+        }
+        // ============================================================
 
         // Phát hành sự kiện duyệt khảo sát
         eventPublisher.publishEvent(new SurveyReportApprovedEvent(
@@ -793,9 +828,9 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         if (installContract.getContractStatus() != ContractStatus.APPROVED) {
             throw new IllegalStateException("Only APPROVED contracts can generate Water Service Contract.");
         }
-        if (installContract.getCustomer() == null) {
-            throw new IllegalStateException("Contract missing customer");
-        }
+//        if (installContract.getCustomer() == null) {
+//            throw new IllegalStateException("Contract missing customer");
+//        }
         if (priceTypeId == null) {
             throw new IllegalArgumentException("priceTypeId is required");
         }
@@ -819,6 +854,53 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         // Gắn vào hợp đồng lắp đặt làm primary_water_contract_id
         installContract.setPrimaryWaterContract(saved);
         contractRepository.save(installContract);
+
+        // === THÔNG BÁO CHO ADMIN ===
+        log.info(">>>> CHECKING GUEST NOTIFICATION CONDITION: Customer is {}",
+                installContract.getCustomer() == null ? "NULL (Is Guest)" : "NOT NULL");
+        if (installContract.getCustomer() == null) {
+            // 1. Lấy tên Guest từ Note
+            String guestName = "Khách hàng"; // Mặc định
+            String rawNote = installContract.getNotes();
+
+            if (rawNote != null && rawNote.contains("KHÁCH:")) {
+                try {
+                    int start = rawNote.indexOf("KHÁCH:") + 6; // Độ dài của "KHÁCH:" là 6
+                    int end = rawNote.indexOf("|", start);
+
+                    // Nếu không có dấu |, thử tìm xuống dòng
+                    if (end == -1) end = rawNote.indexOf("\n", start);
+
+                    // Nếu vẫn không có, lấy đến hết chuỗi
+                    if (end == -1) end = rawNote.length();
+
+                    // Cắt chuỗi và trim
+                    String extractedName = rawNote.substring(start, end).trim();
+                    if (!extractedName.isEmpty()) {
+                        guestName = extractedName;
+                    }
+                } catch (Exception e) {
+                    // Nếu lỗi format, giữ nguyên mặc định là "Khách hàng"
+                    log.warn("Failed to extract guest name from note: {}", e.getMessage());
+                }
+            }
+
+            // 2. Tạo thông báo với nội dung mới
+            try {
+                internalNotificationService.createNotification(
+                        null,
+                        "ADMIN",
+                        "HĐ đã được tạo cho Guest",
+                        "Bên Dịch vụ đã tạo HĐ cấp nước cho " + guestName + ". Vui lòng kiểm tra và tạo tài khoản.",
+                        installContract.getId(),
+                        InternalNotification.NotificationType.GUEST_CONTRACT_CREATED
+                );
+                log.info(">>>> NOTIFICATION SENT SUCCESSFULLY!");
+            } catch (Exception e) {
+                log.error(">>>> FAILED TO SEND NOTIFICATION: ", e);
+            }
+        }
+        // =====================================
 
         return convertToDTO(installContract);
     }

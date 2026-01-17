@@ -33,6 +33,7 @@ public class AdminServiceImpl implements AdminService {
     private final CustomerNotificationRepository notificationRepository;
     private final CustomerNotificationEmailService emailService;
     private final CustomerNotificationSmsService customerNotificationSmsService;
+    private final InternalNotificationService internalNotificationService;
 
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
@@ -216,6 +217,19 @@ public class AdminServiceImpl implements AdminService {
         notificationRepository.save(notification);
         emailService.sendEmail(notification);
         customerNotificationSmsService.sendForNotification(notification);
+
+        // === THÔNG BÁO CHO SERVICE STAFF ĐÃ TẠO TÀI KHOẢN ===
+        if (contract.getServiceStaff() != null) {
+            internalNotificationService.createNotification(
+                    contract.getServiceStaff().getId(),
+                    null,
+                    "Đã tạo tài khoản cho khách",
+                    "Khách hàng " + fullName + " (HĐ: " + contractNumber + ") đã có tài khoản. Bạn có thể gửi hợp đồng đi ký.",
+                    contract.getId(),
+                    InternalNotification.NotificationType.GUEST_ACCOUNT_CREATED
+            );
+        }
+        // ====================================================
 
         // 8. Gửi SMS
         String smsContent = String.format(

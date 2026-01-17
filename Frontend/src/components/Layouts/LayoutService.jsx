@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth';
 import { Home, LogOut } from 'lucide-react';
 import { ServiceSidebar } from './ServiceSidebar';
+import NotificationBell from '../common/NotificationBell';
 import './LayoutService.css';
 import axios from 'axios';
 
@@ -85,6 +86,8 @@ const LayoutService = () => {
           
           {/* User Menu */}
           <div className="ml-auto flex items-center gap-3 relative shrink-0">
+            {/* Chuông thông báo */}
+            <NotificationBell />
             <div className="text-right">
                 <div className="text-sm text-gray-900 truncate">Xin chào, {user?.fullName || 'Dịch Vụ'}</div>
             </div>
