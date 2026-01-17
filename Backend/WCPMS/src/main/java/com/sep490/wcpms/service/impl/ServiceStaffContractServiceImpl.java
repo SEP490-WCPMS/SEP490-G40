@@ -673,6 +673,12 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
             }
         }
 
+        // --- MAP READING ROUTE ---
+        if (c.getReadingRoute() != null) {
+            dto.setReadingRouteId(c.getReadingRoute().getId());
+            dto.setReadingRouteName(c.getReadingRoute().getRouteName());
+        }
+
         return dto;
     }
 
