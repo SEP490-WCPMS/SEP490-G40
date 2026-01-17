@@ -409,7 +409,7 @@ const ContractCreate = () => {
                                         min={0}
                                         formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                         parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                                        placeholder="Nhập giá trị hợp đồng"
+                                        placeholder="Nhập chi phí lắp đặt"
                                     />
                                 </Form.Item>
                             </Col>
@@ -468,7 +468,7 @@ const ContractCreate = () => {
                 title="Xác nhận tạo Hợp đồng chính thức"
                 message={
                     sourceContract
-                        ? `Bạn có chắc chắn muốn tạo Hợp đồng chính thức cho yêu cầu ${sourceContract.requestNumber} của khách hàng ${sourceContract.customerName} không?`
+                        ? `Bạn có chắc chắn muốn tạo Hợp đồng chính thức cho khách hàng ${sourceContract.customerName} không?`
                         : 'Bạn có chắc chắn muốn tạo Hợp đồng chính thức từ thông tin hiện tại không?'
                 }
                 isLoading={submitting}
