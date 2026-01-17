@@ -1135,6 +1135,64 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         } else {
             dto.setToCustomerName(null);
         }
+
+        // --- Thêm trường cho TRANSFER/ANNUL UI (codes/phones/addresses) ---
+        try {
+            Customer from = request.getFromCustomer();
+            if (from == null && request.getContract() != null) {
+                from = request.getContract().getCustomer();
+            }
+            Customer to = request.getToCustomer();
+
+            if (from != null) {
+                dto.setFromCustomerCode(from.getCustomerCode());
+                // phone: prefer Account.phone, fallback customer.phone (if exists), then contract.contactPhone
+                String phone = null;
+                if (from.getAccount() != null) phone = from.getAccount().getPhone();
+                if ((phone == null || phone.isBlank())) {
+                    try {
+                        // some projects store phone directly on customer
+                        var m = from.getClass().getMethod("getPhone");
+                        Object v = m.invoke(from);
+                        if (v != null) phone = String.valueOf(v);
+                    } catch (Exception ignored) {
+                    }
+                }
+                if ((phone == null || phone.isBlank()) && request.getContract() != null) {
+                    phone = request.getContract().getContactPhone();
+                }
+                dto.setFromCustomerPhone(phone);
+
+                // address: prefer customer.address, fallback contract.address.address
+                String addr = from.getAddress();
+                if ((addr == null || addr.isBlank()) && request.getContract() != null && request.getContract().getAddress() != null) {
+                    addr = request.getContract().getAddress().getAddress();
+                }
+                dto.setFromCustomerAddress(addr);
+            }
+
+            if (to != null) {
+                dto.setToCustomerCode(to.getCustomerCode());
+                String phone = null;
+                if (to.getAccount() != null) phone = to.getAccount().getPhone();
+                if ((phone == null || phone.isBlank())) {
+                    try {
+                        var m = to.getClass().getMethod("getPhone");
+                        Object v = m.invoke(to);
+                        if (v != null) phone = String.valueOf(v);
+                    } catch (Exception ignored) {
+                    }
+                }
+                dto.setToCustomerPhone(phone);
+
+                String addr = to.getAddress();
+                dto.setToCustomerAddress(addr);
+            }
+        } catch (Exception ex) {
+            // don't break list API because of mapping edge cases
+            log.debug("convertToAnnulTransferDTO: failed to enrich from/to contact info. requestId={}", request.getId(), ex);
+        }
+
         return dto;
     }
 }

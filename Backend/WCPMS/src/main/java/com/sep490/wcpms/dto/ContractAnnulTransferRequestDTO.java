@@ -44,6 +44,16 @@ public class ContractAnnulTransferRequestDTO {
     private String fromCustomerName;
     private String toCustomerName;
 
+    private String fromCustomerCode;
+    private String toCustomerCode;
+
+    private String fromCustomerPhone;
+    private String toCustomerPhone;
+
+    // (optional) address cho FE hiển thị
+    private String fromCustomerAddress;
+    private String toCustomerAddress;
+
     private String notes;
 
     private LocalDateTime createdAt;

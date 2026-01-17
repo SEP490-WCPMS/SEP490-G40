@@ -15,6 +15,14 @@ const renderStatus = (record) => {
   // const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
   const isRejected = false;
   const s = status?.toUpperCase();
+  
+  // Map trạng thái phê duyệt cho yêu cầu chuyển nhượng/hủy
+  const approvalStatusMap = {
+    PENDING: { text: 'Đang chờ xử lý', cls: 'bg-yellow-100 text-yellow-800' },
+    APPROVED: { text: 'Đã duyệt', cls: 'bg-green-100 text-green-800' },
+    REJECTED: { text: 'Đã từ chối', cls: 'bg-red-100 text-red-800' },
+  };
+  
   const map = {
     DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
     PENDING: { text: 'Đang chờ khảo sát', cls: 'bg-yellow-100 text-yellow-800' },
@@ -29,6 +37,22 @@ const renderStatus = (record) => {
     TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
     SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
   };
+  
+  // Xử lý đặc biệt cho yêu cầu chuyển nhượng và hủy
+  if (s === 'TRANSFER_REQUEST' || s === 'ANNUL_REQUEST') {
+    const requestType = s === 'TRANSFER_REQUEST' ? 'Yêu cầu chuyển nhượng' : 'Yêu cầu hủy HĐ';
+    const approvalStatus = (record._approvalStatus || 'PENDING').toUpperCase();
+    const approvalCfg = approvalStatusMap[approvalStatus] || approvalStatusMap.PENDING;
+    
+    return (
+      <div className="flex items-center gap-1">
+        <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${approvalCfg.cls}`}>
+          {requestType} ({approvalCfg.text})
+        </span>
+      </div>
+    );
+  }
+  
   const cfg = map[s] || { text: (status || 'N/A'), cls: 'bg-gray-100 text-gray-800' };
 
   return (
@@ -164,6 +188,20 @@ const renderActions = (record, onViewDetails) => {
 
   if (status === 'SUSPENDED') {
     // Đã bỏ nút Kích hoạt lại theo yêu cầu
+  }
+
+  // --- Yêu cầu chuyển nhượng và hủy: Hiện nút "Chi tiết & Xử lý" ---
+  if (status === 'TRANSFER_REQUEST' || status === 'ANNUL_REQUEST') {
+    // Thay nút "Chi tiết" bằng "Chi tiết & Xử lý" để phân biệt
+    actions[0] = (
+      <button
+        key="detail"
+        onClick={() => onViewDetails(record, 'viewRequest')}
+        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+      >
+        Chi tiết & Xử lý
+      </button>
+    );
   }
 
   return (
@@ -304,10 +342,18 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                             <UserOutlined className="text-gray-400" />
                             <div>
                               <div className="font-medium">{record.customerName || 'Guest'}</div>
+                              {/* Hiển thị customerCode hoặc tag "Chưa có tài khoản" */}
                               {(record.isGuest || !record.customerCode) ? (
                                 <Tag color="orange" className="mt-1 border-0 text-[10px] px-1">Chưa có tài khoản</Tag>
                               ) : (
                                 <div className="text-xs text-gray-500">{record.customerCode}</div>
+                              )}
+                              {/* Hiện thêm info cho Transfer request: người nhận */}
+                              {record.contractStatus === 'TRANSFER_REQUEST' && record._toCustomerName && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  → <span className="font-bold text-blue-700">{record._toCustomerName}</span>
+                                  {record._toCustomerCode && <span className="text-gray-500 ml-1">({record._toCustomerCode})</span>}
+                                </div>
                               )}
                             </div>
                           </div>

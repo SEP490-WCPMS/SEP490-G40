@@ -97,6 +97,11 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
           message = err.message;
       }
 
+      // 3. Mapping lại message cho dễ hiểu hơn
+      if (message.toLowerCase().includes('pending') && (message.toLowerCase().includes('invoice') || message.toLowerCase().includes('hóa đơn'))) {
+          message = 'Không thể duyệt. Hợp đồng vẫn còn hóa đơn đang chờ xử lý. Cần xử lý những hóa đơn chưa thanh toán đó trước khi duyệt yêu cầu.';
+      }
+
       // 2. Hiển thị Toast (Sửa errorMessage thành message)
       toast.error(message);
     } finally {

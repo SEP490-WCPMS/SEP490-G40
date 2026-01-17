@@ -400,7 +400,7 @@ public class ContractAnnulTransferRequestService {
             // Chỉ chặn duyệt nếu còn hóa đơn ở trạng thái PENDING (theo yêu cầu):
             List<Invoice.PaymentStatus> debtStatuses = Collections.singletonList(Invoice.PaymentStatus.PENDING);
             if (invoiceRepository.existsByContract_IdAndPaymentStatusIn(contract.getId(), debtStatuses)) {
-                throw new IllegalStateException("Không thể duyệt: Hợp đồng vẫn còn hóa đơn đang PENDING. Vui lòng xử lý (thanh toán/hủy) những hóa đơn PENDING trước khi duyệt hủy.");
+                throw new IllegalStateException("Không thể duyệt. Hợp đồng vẫn còn hóa đơn đang chờ xử lý. Cần xử lý những hóa đơn chưa thanh toán đó trước khi duyệt yêu cầu.");
             }
 
             // 1. XỬ LÝ HỦY HỢP ĐỒNG (ANNUL)
