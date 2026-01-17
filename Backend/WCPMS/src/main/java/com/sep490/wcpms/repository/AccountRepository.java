@@ -110,10 +110,10 @@ public interface AccountRepository extends JpaRepository<Account, Integer> {
           FROM meter_readings mr
           LEFT JOIN invoices i
               ON i.meter_reading_id = mr.id
-             AND i.invoice_number LIKE 'TN%%'
           WHERE mr.reading_status = 'COMPLETED'
+            AND mr.consumption > 0
             AND mr.accounting_staff_id IS NOT NULL
-            AND i.id IS NULL              -- chỉ tính reading chưa có HĐ tiền nước
+            AND i.id IS NULL              -- chỉ tính reading chưa có hóa đơn
           GROUP BY mr.accounting_staff_id
       ) w ON w.acc_id = a.id
       WHERE a.department = 'ACCOUNTING'

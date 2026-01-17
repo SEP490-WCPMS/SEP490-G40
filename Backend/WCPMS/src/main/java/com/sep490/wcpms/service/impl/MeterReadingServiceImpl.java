@@ -5,7 +5,6 @@ import com.sep490.wcpms.dto.ReadingConfirmationDTO;
 import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.AccountRepository;
-import com.sep490.wcpms.repository.ContractRepository;
 import com.sep490.wcpms.repository.MeterInstallationRepository;
 import com.sep490.wcpms.repository.MeterReadingRepository;
 import com.sep490.wcpms.service.MeterReadingService;
@@ -15,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.sep490.wcpms.entity.AiScanLog; // <-- IMPORT MỚI
 import com.sep490.wcpms.repository.AiScanLogRepository; // <-- IMPORT MỚI
 import com.sep490.wcpms.repository.WaterMeterRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor; // <-- Đổi sang @RequiredArgsConstructor
 
 import java.math.BigDecimal;
@@ -26,7 +24,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MeterReadingServiceImpl implements MeterReadingService {
 
-    @Autowired private ContractRepository contractRepository;
     @Autowired private MeterInstallationRepository meterInstallationRepository;
     @Autowired private MeterReadingRepository meterReadingRepository;
     @Autowired private AccountRepository accountRepository;
@@ -195,22 +192,16 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         newReading.setReadingStatus(MeterReading.ReadingStatus.COMPLETED); // Trạng thái "đã hoàn thành"
         newReading.setNotes(dto.getNotes());
 
-        // ========== 4. TỰ ĐỘNG ASSIGN CHO ACCOUNTING STAFF ÍT VIỆC NHẤT ==========
+        // ========== AUTO-ASSIGN cho accounting staff ít việc nhất ==========
+        // Workload = số MeterReading COMPLETED chưa có hóa đơn (invoice.meter_reading_id)
         Account assignedAccountant = accountRepository
-            .findLeastBusyAccountingStaffForWaterBillingTask()
-            .orElseThrow(() -> new IllegalStateException(
-                "Không tìm thấy nhân viên kế toán active để phân công lập hóa đơn tiền nước."
-            ));
-
+                .findLeastBusyAccountingStaffForWaterBillingTask()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Không tìm thấy nhân viên kế toán active để phân công lập hóa đơn tiền nước."
+                ));
         newReading.setAccountingStaff(assignedAccountant);
 
-        // Log để debug và tracking
-        System.out.println("✅ [AUTO-ASSIGN] Meter Reading ID: " + newReading.getId() +
-                         " được phân công cho Accounting Staff: " +
-                         assignedAccountant.getFullName() + " (ID: " + assignedAccountant.getId() + ")");
-        // ======================================================================
-
-        // 5. Lưu vào DB (với accounting_staff_id đã được set)
+        // 5. Lưu vào DB
         meterReadingRepository.save(newReading);
 
         // --- BƯỚC 2: LƯU LOG  (Bảng Mới AiScanLogs) ---

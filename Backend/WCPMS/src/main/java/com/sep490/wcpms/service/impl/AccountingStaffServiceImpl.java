@@ -26,7 +26,7 @@ import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.MeterCalibration;
 import com.sep490.wcpms.dto.ServiceInvoiceCreateDTO; // <-- THÊM IMPORT
 import com.sep490.wcpms.entity.Customer; // <-- THÊM IMPORT
-import com.sep490.wcpms.entity.Contract; // <-- THÊM IMPORT
+import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.dto.PendingReadingDTO;
 import com.sep490.wcpms.entity.MeterReading;
 import com.sep490.wcpms.entity.WaterPrice;
@@ -640,8 +640,32 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             throw new IllegalStateException("Chỉ số này đã được lập hóa đơn.");
         }
 
+        // 2.1 Người tạo hóa đơn = kế toán đang đăng nhập
+        Integer currentStaffId = getCurrentAccountingStaffId();
+        Account currentStaff = accountRepository.findById(currentStaffId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Kế toán: " + currentStaffId));
+
+        // Không cho phép tạo nếu reading đã được phân công cho kế toán khác (tránh tranh chấp)
+        if (reading.getAccountingStaff() != null && !reading.getAccountingStaff().getId().equals(currentStaffId)) {
+            throw new IllegalStateException("Chỉ số này đang được phân công cho kế toán khác (ID=" + reading.getAccountingStaff().getId() + ").");
+        }
+
+        // Nếu chưa assign thì gán luôn cho người hiện tại (để list pending-readings đồng bộ)
+        if (reading.getAccountingStaff() == null) {
+            Account assignedAccountant = accountRepository.findLeastBusyAccountingStaffForWaterBillingTask()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Không tìm thấy nhân viên kế toán active để phân công lập hóa đơn tiền nước."
+                    ));
+            reading.setAccountingStaff(assignedAccountant);
+            meterReadingRepository.save(reading);
+        }
+
+        // Chỉ cho phép đúng người được phân công tạo hóa đơn
+        if (!reading.getAccountingStaff().getId().equals(currentStaffId)) {
+            throw new IllegalStateException("Chỉ số này đang được phân công cho kế toán khác (ID=" + reading.getAccountingStaff().getId() + ").");
+        }
+
         // 3. Tìm Hợp đồng Dịch vụ (WaterServiceContract) mới nhất đang ACTIVE của cái đồng hồ này.
-        // (Thay vì lấy qua getMeterInstallation cũ có thể bị sai)
         MeterInstallation installation = reading.getMeterInstallation();
 
         // Dùng Repo để tìm HĐ mới nhất (chủ mới)
@@ -661,15 +685,10 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         Customer customer = serviceContract.getCustomer(); // Khách hàng mới
         WaterPriceType priceType = serviceContract.getPriceType();
 
-        // --- [LOGIC GÁN VIỆC MỚI] ---
-        // Tự động tìm nhân viên kế toán rảnh nhất (dựa trên số lượng Invoice Pending)
-        // Bỏ qua tham số accountingStaffId cũ
-        Account assignedStaff = getAutoAssignedAccountingStaff();
-        // ---------------------------
-
         // 4. Tìm biểu giá chính xác tại ngày đọc số
         WaterPrice price = waterPriceRepository.findActivePriceForDate(priceType, reading.getReadingDate())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biểu giá (" + priceType.getTypeName() + ") có hiệu lực cho ngày " + reading.getReadingDate()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy biểu giá (" + priceType.getTypeName() + ") có hiệu lực cho ngày " + reading.getReadingDate()));
 
         // 5. Lấy các giá trị từ biểu giá
         BigDecimal consumption = reading.getConsumption(); // Số lượng
@@ -677,17 +696,25 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         BigDecimal envFeeRate = price.getEnvironmentFee(); // Phí BVMT
         BigDecimal vatRate = price.getVatRate();         // VAT % (ví dụ: 5.00)
 
-        // 6. Áp dụng CÔNG THỨC TÍNH TIỀN
-        // Tiền trước thuế = Số lượng X Đơn giá
-        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(0, RoundingMode.HALF_UP);
-        // Phí BVMT = Số lượng X Phí BVMT
-        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(0, RoundingMode.HALF_UP);
-        // Thuế VAT = %VAT * (Tiền trước thuế)
-        BigDecimal vatAmount = subtotal.multiply(vatRate.divide(new BigDecimal(100))).setScale(0, RoundingMode.HALF_UP);
-        // Tổng tiền = Tiền trước thuế + Phí BVMT + Thuế VAT
-        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount);
+        // 6. Tính tiền (luôn scale=2 để khớp DECIMAL(15,2))
+        //Tiền trước thuế = Số lượng * Đơn giá
+        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP);
+        //Phí BVMT = Số lượng * Phí BVMT
+        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(2, RoundingMode.HALF_UP);
+        //Thuế VAT = Tiền trước thuế * VAT%
+        BigDecimal vatAmount = subtotal
+                .multiply(vatRate.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP))
+                .setScale(2, RoundingMode.HALF_UP);
+        //Tổng tiền = Tiền trước thuế + Phí BVMT + Thuế VAT
+        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount).setScale(2, RoundingMode.HALF_UP);
 
-        // 7. Tạo Hóa đơn (Bảng 17)
+        // 6.1 Validate giới hạn DB DECIMAL(15,2) => max 9999999999999.99
+        BigDecimal maxMoney = new BigDecimal("9999999999999.99");
+        if (subtotal.compareTo(maxMoney) > 0 || envAmount.compareTo(maxMoney) > 0 || vatAmount.compareTo(maxMoney) > 0 || totalAmount.compareTo(maxMoney) > 0) {
+            throw new IllegalStateException("Số tiền hóa đơn vượt giới hạn lưu trữ hiện tại (DECIMAL(15,2)).");
+        }
+
+        // 7. Tạo Hóa đơn
         Invoice invoice = new Invoice();
         // Sinh mã HĐ không chứa ký tự '-' để tránh vấn đề khi quét QR/Thanh toán ngân hàng
         invoice.setInvoiceNumber("HD" + meterReadingId + System.currentTimeMillis()); // (Nên có logic sinh số HĐ tốt hơn)
@@ -698,52 +725,38 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setFromDate(reading.getReadingDate().withDayOfMonth(1)); // (Cần logic xác định kỳ HĐ)
         invoice.setToDate(reading.getReadingDate()); // (Cần logic xác định kỳ HĐ)
 
-        invoice.setTotalConsumption(consumption);
+        invoice.setTotalConsumption(consumption.setScale(2, RoundingMode.HALF_UP));
         invoice.setSubtotalAmount(subtotal);
         invoice.setEnvironmentFeeAmount(envAmount);
         invoice.setVatAmount(vatAmount);
         invoice.setTotalAmount(totalAmount);
 
         invoice.setInvoiceDate(LocalDate.now());
-        invoice.setDueDate(LocalDate.now().plusDays(5)); // (Cần logic lấy hạn TT từ HĐ)
+        invoice.setDueDate(LocalDate.now().plusDays(5));
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
 
-        // [QUAN TRỌNG] Gán nhân viên vừa tìm được vào Hóa đơn
-        invoice.setAccountingStaff(assignedStaff);
-
+        // Gửi thông báo + PDF hóa đơn TIỀN NƯỚC
+        // QUAN TRỌNG: gán invoice cho người tạo (để /api/accounting/invoices filter đúng)
+        invoice.setAccountingStaff(reading.getAccountingStaff());
+        // persist activity log for water bill generation
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
         // Gửi thông báo + PDF hóa đơn TIỀN NƯỚC
         invoiceNotificationService.sendWaterBillIssued(savedInvoice, reading);
 
-        // persist activity log for water bill generation
+        // persist activity log: actor = current user
         try {
             ActivityLog al = new ActivityLog();
             al.setSubjectType("INVOICE");
             al.setSubjectId(savedInvoice.getInvoiceNumber() != null ? savedInvoice.getInvoiceNumber() : String.valueOf(savedInvoice.getId()));
             al.setAction("WATER_INVOICE_GENERATED");
 
-            // <--- [SỬA LOGIC GHI LOG: LẤY CURRENT USER] --->
-            Integer currentUserId = getCurrentAccountingStaffId(); // Helper method lấy user đang login
-            Account currentUser = accountRepository.findById(currentUserId).orElse(null);
-
-            if (currentUser != null) {
-                // Người thực hiện = User đang login (bấm nút)
-                al.setActorType("STAFF");
-                al.setActorId(currentUser.getId());
-                al.setActorName(currentUser.getFullName());
-                al.setInitiatorType("STAFF");
-                al.setInitiatorId(currentUser.getId());
-                al.setInitiatorName(currentUser.getFullName());
-                // Ghi chú thêm về việc auto-assign
-                al.setPayload("Người tạo: " + currentUser.getFullName() + ". Phân công cho: " + assignedStaff.getFullName());
-            } else {
-                // Fallback (hiếm khi xảy ra)
-                al.setActorType("SYSTEM");
-                al.setPayload("Tự động gán cho Kế toán: " + assignedStaff.getFullName());
-            }
-            // <--- [HẾT PHẦN SỬA] --->
-
+            al.setActorType("STAFF");
+            al.setActorId(currentStaff.getId());
+            al.setActorName(currentStaff.getFullName());
+            al.setInitiatorType("STAFF");
+            al.setInitiatorId(currentStaff.getId());
+            al.setInitiatorName(currentStaff.getFullName());
             activityLogService.save(al);
         } catch (Exception ex) {
             // swallow
@@ -751,12 +764,6 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
 
         // 8. Cập nhật trạng thái bản ghi đọc số
         reading.setReadingStatus(MeterReading.ReadingStatus.VERIFIED);
-
-        // --- [QUAN TRỌNG] Cập nhật ngược lại nhân viên quản lý vào bản ghi Reading ---
-        // Để đồng bộ dữ liệu: Hóa đơn của ai thì Reading của người đó
-        reading.setAccountingStaff(assignedStaff);
-        // ---------------------------------------------------------------------------
-
         meterReadingRepository.save(reading);
 
         // 9. Trả về DTO của Hóa đơn vừa tạo
@@ -784,10 +791,12 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         BigDecimal envFeeRate = price.getEnvironmentFee();
         BigDecimal vatRate = price.getVatRate();
 
-        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal vatAmount = subtotal.multiply(vatRate.divide(new BigDecimal(100))).setScale(0, RoundingMode.HALF_UP);
-        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount);
+        BigDecimal subtotal = consumption.multiply(unitPrice).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal envAmount = consumption.multiply(envFeeRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal vatAmount = subtotal
+                .multiply(vatRate.divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalAmount = subtotal.add(envAmount).add(vatAmount).setScale(2, RoundingMode.HALF_UP);
 
         // 3. Trả về DTO
         WaterBillCalculationDTO dto = new WaterBillCalculationDTO();
@@ -1154,3 +1163,4 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoiceNotificationService.sendServiceInvoiceIssued(savedInvoice, "Phí kiểm định định kỳ", "5%");
     }
 }
+
