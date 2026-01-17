@@ -1,0 +1,137 @@
+/* Wrapper cho toàn bộ component chuông */
+.notification-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Nút chuông */
+.bell-button {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  color: #4b5563; /* text-gray-600 */
+}
+
+.bell-button:hover {
+  background-color: #f3f4f6; /* bg-gray-100 */
+}
+
+/* Chấm đỏ đếm số lượng */
+.badge-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #ef4444; /* red-500 */
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid white;
+  transform: translate(25%, -25%);
+}
+
+/* Dropdown container */
+.notification-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 10px;
+  width: 320px;
+  background-color: white;
+  border: 1px solid #e5e7eb; /* border-gray-200 */
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  z-index: 1000;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Header của dropdown */
+.notification-header {
+  padding: 12px 16px;
+  background-color: #f9fafb; /* bg-gray-50 */
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+  color: #374151; /* text-gray-700 */
+  font-size: 14px;
+}
+
+/* Danh sách thông báo (có scroll) */
+.notification-list {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+/* Từng item thông báo */
+.notification-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background-color: #f9fafb;
+}
+
+/* Item chưa đọc (nền xanh nhạt) */
+.notification-item.unread {
+  background-color: #eff6ff; /* blue-50 */
+}
+
+.notification-item.unread:hover {
+  background-color: #dbeafe; /* blue-100 */
+}
+
+/* Nội dung text trong item */
+.noti-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827; /* gray-900 */
+  margin-bottom: 4px;
+}
+
+.noti-message {
+  font-size: 13px;
+  color: #4b5563; /* gray-600 */
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Giới hạn 2 dòng */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.noti-time {
+  font-size: 11px;
+  color: #9ca3af; /* gray-400 */
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* Trạng thái trống */
+.empty-noti {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -128,10 +128,10 @@ const AssignSurveyModal = ({ visible, open, onCancel, onSave, loading, initialDa
     >
       <Spin spinning={loading}>
         <Form form={form} layout="vertical" className="pt-2">
-          {/* Box thông tin hợp đồng - Style giống Gia hạn */}
+          {/* Box thông tin chi tiết - Style giống Gia hạn */}
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
             <div className="flex items-center text-gray-500 text-xs uppercase font-bold tracking-wider mb-3">
-              <FileTextOutlined className="mr-1" /> Thông tin hợp đồng
+              <FileTextOutlined className="mr-1" /> Thông tin chi tiết
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>

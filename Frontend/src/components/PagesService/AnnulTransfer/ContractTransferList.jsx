@@ -92,7 +92,7 @@ const ContractTransferList = ({ refreshKey, keyword }) => {
       className: 'px-6 py-4 text-sm text-gray-900'
     },
     { 
-        title: 'Ngày tạo đơn', 
+        title: 'Ngày tạo yêu cầu', 
         dataIndex: 'requestDate', 
         key: 'requestDate',
         onHeaderCell: () => ({ className: headerClass }),

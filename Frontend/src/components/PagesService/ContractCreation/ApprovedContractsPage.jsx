@@ -10,7 +10,7 @@ import ContractViewModal from '../ContractViewModal';
 import ConfirmModal from '../../common/ConfirmModal';
 import ContractEditModal from './ContractEditModal'; // Import Modal Sửa
 import { getServiceContracts, getServiceContractDetail, updateServiceContract, sendContractToSign, generateWaterServiceContract } from '../../Services/apiService';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import moment from 'moment';
 
 const { Paragraph } = Typography;
@@ -24,6 +24,8 @@ const ApprovedContractsPage = ({ refreshKey }) => {
     const [modalLoading, setModalLoading] = useState(false);
     const [generateModalOpen, setGenerateModalOpen] = useState(false);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const highlightId = searchParams.get('highlight'); // Lấy ID cần highlight
     
     const [showSendToSignConfirm, setShowSendToSignConfirm] = useState(false);
     const [sendingContract, setSendingContract] = useState(null);
@@ -239,6 +241,7 @@ const ApprovedContractsPage = ({ refreshKey }) => {
                     onPageChange={({ current }) => handlePageChange({ current })}
                     onViewDetails={handleViewDetails}
                     showStatusFilter={false}
+                    highlightId={highlightId}
                 />
             </Spin>
 

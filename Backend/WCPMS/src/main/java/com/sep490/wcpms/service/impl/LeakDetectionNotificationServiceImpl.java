@@ -27,7 +27,7 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
     private final CustomerNotificationEmailService emailService;
     private final CustomerNotificationSmsService smsNotificationService;
 
-    private static final BigDecimal THRESHOLD_RATIO = new BigDecimal("1.5");
+    private static final BigDecimal THRESHOLD_RATIO = new BigDecimal("3");
 
     @Override
     public void checkAndSendLeakWarning(Invoice currentWaterInvoice) {
@@ -51,7 +51,7 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
             List<Invoice> recent = invoiceRepository
                     .findTop4ByCustomerAndMeterReadingIsNotNullOrderByInvoiceDateDesc(customer);
 
-            if (recent.size() < 4) {
+            if (recent.size() < 2) {
                 return;
             }
 
@@ -65,11 +65,15 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
                 return;
             }
 
+            int prevCount = Math.min(3, recent.size() - 1); // số kỳ trước đang có (1..3)
+
             BigDecimal sumPrev = BigDecimal.ZERO;
-            for (int i = 1; i <= 3; i++) {
+            for (int i = 1; i <= prevCount; i++) {
                 sumPrev = sumPrev.add(safe(recent.get(i).getTotalConsumption()));
             }
-            BigDecimal avgPrev = sumPrev.divide(BigDecimal.valueOf(3), 2, RoundingMode.HALF_UP);
+
+            BigDecimal avgPrev = sumPrev.divide(BigDecimal.valueOf(prevCount), 2, RoundingMode.HALF_UP);
+
             if (avgPrev.compareTo(BigDecimal.ZERO) <= 0) {
                 return;
             }

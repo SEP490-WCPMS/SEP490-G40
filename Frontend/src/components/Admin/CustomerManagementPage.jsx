@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getPendingGuestRequests, approveGuestRequest, getAllCustomers, getCustomerContracts } from '../Services/apiAdmin';
 import { Button } from '../ui/button';
 import { AlertCircle, FileText, CheckCircle, X } from 'lucide-react'; // Import thêm icon
@@ -121,6 +122,10 @@ const CustomerManagementPage = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [guestCount, setGuestCount] = useState(0);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const rowRefs = useRef({}); // Lưu ref của các dòng
+    const lastProcessedUrl = useRef(''); // Lưu URL đã xử lý để tránh xử lý lại khi activeTab thay đổi
 
     // --- [MỚI] State thông báo ---
     const [notification, setNotification] = useState({ type: '', message: '' });
@@ -203,9 +208,37 @@ const CustomerManagementPage = () => {
         }
     }, [activeTab, parseCreatedAt]);
 
+    // --- EFFECT XỬ LÝ URL PARAMS (chỉ chạy khi URL thực sự thay đổi từ bên ngoài) ---
+    useEffect(() => {
+        // Tạo key từ URL hiện tại để so sánh
+        const currentUrlKey = searchParams.toString();
+        
+        // Chỉ xử lý nếu URL thay đổi (ví dụ: navigate từ notification)
+        if (currentUrlKey !== lastProcessedUrl.current) {
+            const tabParam = searchParams.get('tab');
+            if (tabParam && (tabParam === 'guests' || tabParam === 'customers')) {
+                setActiveTab(tabParam);
+            }
+            lastProcessedUrl.current = currentUrlKey;
+        }
+    }, [searchParams]);
+
+    // --- EFFECT LOAD DATA khi activeTab thay đổi ---
     useEffect(() => {
         loadData();
     }, [loadData]);
+    // 3. Effect cuộn tới dòng highlight SAU KHI data đã load xong
+    useEffect(() => {
+        const highlightId = searchParams.get('highlight');
+        if (highlightId && !loading && guests.length > 0) {
+            const el = rowRefs.current[highlightId];
+            if (el) {
+                setTimeout(() => {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 500); // Delay một chút để chắc chắn render xong
+            }
+        }
+    }, [loading, guests, searchParams]);
 
     const handleApprove = (contractId) => {
         setConfirmModal({ isOpen: true, contractId });
@@ -284,7 +317,14 @@ const CustomerManagementPage = () => {
 
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
                 <Button
-                    onClick={() => { setActiveTab('guests'); setNotification({ type: '', message: '' }); }}
+                    onClick={() => { 
+                        setActiveTab('guests'); 
+                        setNotification({ type: '', message: '' });
+                        // Xóa query params khi user click tab thủ công để tránh conflict
+                        if (searchParams.has('tab') || searchParams.has('highlight')) {
+                            setSearchParams({}, { replace: true });
+                        }
+                    }}
                     style={{
                         backgroundColor: activeTab === 'guests' ? '#0A77E2' : 'white',
                         color: activeTab === 'guests' ? 'white' : '#64748b',
@@ -314,7 +354,14 @@ const CustomerManagementPage = () => {
                     )}
                 </Button>
                 <Button
-                    onClick={() => { setActiveTab('customers'); setNotification({ type: '', message: '' }); }}
+                    onClick={() => { 
+                        setActiveTab('customers'); 
+                        setNotification({ type: '', message: '' });
+                        // Xóa query params khi user click tab thủ công để tránh conflict
+                        if (searchParams.has('tab') || searchParams.has('highlight')) {
+                            setSearchParams({}, { replace: true });
+                        }
+                    }}
                     style={{
                         backgroundColor: activeTab === 'customers' ? '#0A77E2' : 'white',
                         color: activeTab === 'customers' ? 'white' : '#64748b',
@@ -351,23 +398,28 @@ const CustomerManagementPage = () => {
                                     <th>Tên Khách</th>
                                     <th>SĐT</th>
                                     <th>Địa chỉ</th>
-                                    <th style={{ width: '120px' }}>Trạng thái</th>
+                                    {/* <th style={{ width: '120px' }}>Trạng thái</th> */}
                                     <th style={{ width: '140px' }}>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {guests.length === 0 && <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
+                                {guests.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
                                 {guests.map(g => (
-                                    <tr key={g.contractId}>
+                                    <tr 
+                                        key={g.contractId}
+                                        // --- GÁN REF VÀ STYLE HIGHLIGHT ---
+                                        ref={el => rowRefs.current[String(g.contractId)] = el}
+                                        style={String(g.contractId) === searchParams.get('highlight') ? { backgroundColor: '#fef9c3', transition: 'background-color 0.5s' } : {}}
+                                    >
                                         <td data-label="Mã HĐ">{g.contractNumber}</td>
                                         <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
                                         <td data-label="SĐT">{g.guestPhone}</td>
                                         <td data-label="Địa chỉ">{g.guestAddress}</td>
-                                        <td data-label="Trạng thái">
+                                        {/* <td data-label="Trạng thái">
                                             <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
                                                 {g.status}
                                             </span>
-                                        </td>
+                                        </td> */}
                                         <td data-label="Hành động">
                                             <Button size="sm" onClick={() => handleApprove(g.contractId)} style={{ backgroundColor: '#10b981', color: 'white', width: '100%' }}>
                                                 Duyệt & Tạo TK

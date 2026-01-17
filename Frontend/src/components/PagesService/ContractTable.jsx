@@ -4,6 +4,7 @@ import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
 import { Tag, Tooltip, Space } from 'antd';
 import { PhoneOutlined, EnvironmentOutlined, UserOutlined, EditOutlined, WarningOutlined } from '@ant-design/icons';
 import { toast } from 'react-toastify';
+import { useEffect, useRef } from 'react';
 
 // Helper: render trạng thái
 // Trả về một badge nhỏ (styled span) mô tả trạng thái hợp đồng
@@ -14,6 +15,14 @@ const renderStatus = (record) => {
   // const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
   const isRejected = false;
   const s = status?.toUpperCase();
+  
+  // Map trạng thái phê duyệt cho yêu cầu chuyển nhượng/hủy
+  const approvalStatusMap = {
+    PENDING: { text: 'Đang chờ xử lý', cls: 'bg-yellow-100 text-yellow-800' },
+    APPROVED: { text: 'Đã duyệt', cls: 'bg-green-100 text-green-800' },
+    REJECTED: { text: 'Đã từ chối', cls: 'bg-red-100 text-red-800' },
+  };
+  
   const map = {
     DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
     PENDING: { text: 'Đang chờ khảo sát', cls: 'bg-yellow-100 text-yellow-800' },
@@ -28,8 +37,24 @@ const renderStatus = (record) => {
     TERMINATED: { text: 'Đã chấm dứt', cls: 'bg-red-100 text-red-800' },
     SUSPENDED: { text: 'Bị tạm ngưng', cls: 'bg-pink-100 text-pink-800' },
   };
-  const cfg = map[s] || { text: (status || 'N/A'), cls: 'bg-gray-100 text-gray-800' };
   
+  // Xử lý đặc biệt cho yêu cầu chuyển nhượng và hủy
+  if (s === 'TRANSFER_REQUEST' || s === 'ANNUL_REQUEST') {
+    const requestType = s === 'TRANSFER_REQUEST' ? 'Yêu cầu chuyển nhượng' : 'Yêu cầu hủy HĐ';
+    const approvalStatus = (record._approvalStatus || 'PENDING').toUpperCase();
+    const approvalCfg = approvalStatusMap[approvalStatus] || approvalStatusMap.PENDING;
+    
+    return (
+      <div className="flex items-center gap-1">
+        <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${approvalCfg.cls}`}>
+          {requestType} ({approvalCfg.text})
+        </span>
+      </div>
+    );
+  }
+  
+  const cfg = map[s] || { text: (status || 'N/A'), cls: 'bg-gray-100 text-gray-800' };
+
   return (
     <div className="flex items-center gap-1">
       <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
@@ -162,7 +187,21 @@ const renderActions = (record, onViewDetails) => {
   }
 
   if (status === 'SUSPENDED') {
-     // Đã bỏ nút Kích hoạt lại theo yêu cầu
+    // Đã bỏ nút Kích hoạt lại theo yêu cầu
+  }
+
+  // --- Yêu cầu chuyển nhượng và hủy: Hiện nút "Chi tiết & Xử lý" ---
+  if (status === 'TRANSFER_REQUEST' || status === 'ANNUL_REQUEST') {
+    // Thay nút "Chi tiết" bằng "Chi tiết & Xử lý" để phân biệt
+    actions[0] = (
+      <button
+        key="detail"
+        onClick={() => onViewDetails(record, 'viewRequest')}
+        className="font-semibold text-indigo-600 hover:text-indigo-900 transition duration-150 ease-in-out"
+      >
+        Chi tiết & Xử lý
+      </button>
+    );
   }
 
   return (
@@ -180,7 +219,20 @@ const renderActions = (record, onViewDetails) => {
 // Component ContractTable
 // - Hiển thị hàng hợp đồng, trạng thái, thông tin liên hệ và các hành động.
 // - `onPageChange` nhận object pagination (AntD-style) hoặc số trang.
-const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, showStatusFilter = false }) => {
+const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, highlightId, showStatusFilter = false }) => {
+  const rowRefs = useRef({}); // Lưu ref của các dòng
+  // Auto scroll khi có highlightId
+  useEffect(() => {
+    // Ép kiểu về string để so sánh an toàn
+    const idStr = String(highlightId);
+
+    // Kiểm tra xem ref của dòng đó có tồn tại không
+    if (highlightId && rowRefs.current[idStr]) {
+      // Cuộn tới dòng cần highlight
+      rowRefs.current[idStr].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId, data]); // Chạy lại khi highlightId thay đổi hoặc data load xong
+
   // Convert pagination từ Ant Design format sang Pagination component format
   const currentPage = pagination?.current ? pagination.current - 1 : 0; // Ant Design dùng 1-indexed, Pagination dùng 0-indexed
   const pageSize = pagination?.pageSize || 10;
@@ -193,7 +245,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
     }
   };
 
-// --- CARD VIEW CHO MOBILE ---
+  // --- CARD VIEW CHO MOBILE ---
   const MobileCard = ({ record }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
       {/* Hàng 1: Mã HĐ + Status */}
@@ -211,9 +263,9 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
         <div>
           <div className="font-medium text-gray-800">{record.customerName || 'Guest'}</div>
           {(record.isGuest || !record.customerCode) ? (
-             <span className="text-xs text-orange-500 bg-orange-50 px-1 rounded">Chưa có TK</span>
+            <span className="text-xs text-orange-500 bg-orange-50 px-1 rounded">Chưa có TK</span>
           ) : (
-             <div className="text-xs text-gray-500">{record.customerCode}</div>
+            <div className="text-xs text-gray-500">{record.customerCode}</div>
           )}
         </div>
       </div>
@@ -277,25 +329,39 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                 <tbody className="bg-white divide-y divide-gray-200">
                   {data && data.length > 0 ? (
                     data.map((record) => (
-                      <tr key={record.id} className="hover:bg-gray-50">
+                      <tr
+                        key={record.id}
+                        // gán ref và style highlight
+                        ref={el => rowRefs.current[String(record.id)] = el}
+                        className={`hover:bg-gray-50 transition-colors duration-1000 ${String(record.id) === String(highlightId) ? 'bg-yellow-100' : ''
+                          }`}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.contractNumber}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           <div className="flex items-center gap-2">
                             <UserOutlined className="text-gray-400" />
                             <div>
                               <div className="font-medium">{record.customerName || 'Guest'}</div>
+                              {/* Hiển thị customerCode hoặc tag "Chưa có tài khoản" */}
                               {(record.isGuest || !record.customerCode) ? (
                                 <Tag color="orange" className="mt-1 border-0 text-[10px] px-1">Chưa có tài khoản</Tag>
                               ) : (
                                 <div className="text-xs text-gray-500">{record.customerCode}</div>
+                              )}
+                              {/* Hiện thêm info cho Transfer request: người nhận */}
+                              {record.contractStatus === 'TRANSFER_REQUEST' && record._toCustomerName && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  → <span className="font-bold text-blue-700">{record._toCustomerName}</span>
+                                  {record._toCustomerCode && <span className="text-gray-500 ml-1">({record._toCustomerCode})</span>}
+                                </div>
                               )}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           <div className="flex flex-col gap-1">
-                            {record.contactPhone && <div className="flex items-center gap-1"><PhoneOutlined className="text-xs text-blue-500"/> {record.contactPhone}</div>}
-                            {record.address && <Tooltip title={record.address}><div className="flex items-center gap-1 max-w-[200px] truncate"><EnvironmentOutlined className="text-xs text-red-500"/> {record.address}</div></Tooltip>}
+                            {record.contactPhone && <div className="flex items-center gap-1"><PhoneOutlined className="text-xs text-blue-500" /> {record.contactPhone}</div>}
+                            {record.address && <Tooltip title={record.address}><div className="flex items-center gap-1 max-w-[200px] truncate"><EnvironmentOutlined className="text-xs text-red-500" /> {record.address}</div></Tooltip>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">{renderStatus(record)}</td>

@@ -11,6 +11,7 @@ import AssignSurveyModal from './ContractCreation/AssignSurveyModal';
 import ConfirmModal from '../common/ConfirmModal';
 import Pagination from '../common/Pagination';
 import ContractEditModal from './ContractCreation/ContractEditModal'; 
+import RequestDetailModal from './AnnulTransfer/RequestDetailModal';
 
 import {
     getServiceContracts,
@@ -19,12 +20,15 @@ import {
     sendContractToSign,
     sendContractToInstallation,
     renewContract,
-    updateServiceContract 
+    updateServiceContract,
+    getTransferRequests,
+    getAnnulRequests,
+    getServiceRequestDetail
 } from '../Services/apiService';
 
 const { TextArea } = Input;
 
-const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, refreshKey }) => {
+const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, refreshKey, highlightId }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -57,37 +61,100 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
     const [editLoading, setEditLoading] = useState(false);
     // --------------------------------------------------------
 
+    // --- STATE CHO REQUEST DETAIL MODAL (Yêu cầu chuyển nhượng/hủy) ---
+    const [requestDetailOpen, setRequestDetailOpen] = useState(false);
+    const [requestDetailLoading, setRequestDetailLoading] = useState(false);
+    const [requestDetailData, setRequestDetailData] = useState(null);
+    // ------------------------------------------------------------------
+
     // --- FETCH DATA ---
     // Lấy danh sách hợp đồng từ backend và xử lý phân trang
-    // - Nếu đang xem tab 'all' (status null) thì fetch 1 block lớn để lọc client-side
+    // - Nếu đang xem tab 'all' (status null) thì fetch contracts + transfer requests + annul requests
     // - Ngược lại gọi API theo trang/size/status
     const fetchContracts = useCallback(async (pageIndex, pageSize, currentKeyword, currentStatus) => {
         setLoading(true);
         try {
             // Xử lý status: nếu 'all' thì gửi null/undefined lên API
             const statusParam = (currentStatus === 'all' || !currentStatus) ? null : currentStatus;
-            // If viewing ALL (no status filter) we fetch a larger set and paginate client-side
+            // If viewing ALL (no status filter) we fetch contracts + transfer + annul requests
             if (!statusParam) {
                 // fetch a larger block so we can filter out intermediate statuses reliably
                 const fetchSize = Math.max(200, pageSize * 10);
-                const response = await getServiceContracts({ page: 0, size: fetchSize, status: null, keyword: currentKeyword, sort: 'updatedAt,desc' });
-                const payload = response?.data || {};
-                let items = payload?.content ?? payload ?? [];
+                
+                // Fetch cả 3 loại data song song
+                const [contractsRes, transferRes, annulRes] = await Promise.all([
+                    getServiceContracts({ page: 0, size: fetchSize, status: null, keyword: currentKeyword, sort: 'updatedAt,desc' }),
+                    getTransferRequests({ page: 0, size: 100, keyword: currentKeyword }),
+                    getAnnulRequests({ page: 0, size: 100, keyword: currentKeyword })
+                ]);
+
+                // Parse contracts
+                const contractsPayload = contractsRes?.data || {};
+                let contractItems = contractsPayload?.content ?? contractsPayload ?? [];
 
                 // Exclude internal intermediate statuses from the "All" tab
-                // NOTE: keep PENDING_SIGN included in the All tab (do not exclude)
                 const excludeStatuses = new Set(['PENDING', 'SIGNED', 'PENDING_CUSTOMER_SIGN']);
-                items = (Array.isArray(items) ? items : []).filter(it => {
+                contractItems = (Array.isArray(contractItems) ? contractItems : []).filter(it => {
                     const s = (it.contractStatus || '').toUpperCase();
                     if (excludeStatuses.has(s)) return false;
                     if (s.includes('CUSTOMER') && s.includes('SIGN')) return false;
                     return true;
                 });
 
-                const total = items.length;
+                // Parse transfer requests và chuyển đổi format
+                const transferPayload = transferRes?.data || {};
+                const transferRaw = transferPayload?.content || transferPayload?.items || transferPayload?.list || [];
+                const transferItems = (Array.isArray(transferRaw) ? transferRaw : []).map(it => ({
+                    id: it.id,
+                    contractNumber: it.contractNumber || '—',
+                    customerName: it.fromCustomerName || `KH #${it.fromCustomerId}`,
+                    customerCode: it.fromCustomerCode || null, // Sử dụng field mới từ Backend
+                    contactPhone: it.fromCustomerPhone || null, // Sử dụng field mới từ Backend
+                    address: it.fromCustomerAddress || null, // Sử dụng field mới từ Backend
+                    contractStatus: 'TRANSFER_REQUEST', // Status đặc biệt để nhận diện
+                    isGuest: !it.fromCustomerCode, // Nếu không có customerCode thì coi như guest
+                    // Thêm info cho hiển thị
+                    _requestType: 'TRANSFER',
+                    _toCustomerName: it.toCustomerName,
+                    _toCustomerCode: it.toCustomerCode,
+                    _toCustomerPhone: it.toCustomerPhone,
+                    _requestDate: it.createdDate || it.createdAt,
+                    _approvalStatus: it.status || it.approvalStatus || 'PENDING',
+                    updatedAt: it.updatedAt || it.createdDate || it.createdAt
+                }));
+
+                // Parse annul requests và chuyển đổi format
+                const annulPayload = annulRes?.data || {};
+                const annulRaw = annulPayload?.content || annulPayload?.items || annulPayload?.list || [];
+                const annulItems = (Array.isArray(annulRaw) ? annulRaw : []).map(it => ({
+                    id: it.id,
+                    contractNumber: it.contractNumber || '—',
+                    customerName: it.customerName || it.fromCustomerName || `KH #${it.customerId || it.fromCustomerId}`,
+                    customerCode: it.fromCustomerCode || null, // Sử dụng field mới từ Backend
+                    contactPhone: it.fromCustomerPhone || null, // Sử dụng field mới từ Backend
+                    address: it.fromCustomerAddress || null, // Sử dụng field mới từ Backend
+                    contractStatus: 'ANNUL_REQUEST', // Status đặc biệt để nhận diện
+                    isGuest: !it.fromCustomerCode, // Nếu không có customerCode thì coi như guest
+                    // Thêm info cho hiển thị
+                    _requestType: 'ANNUL',
+                    _reason: it.reason,
+                    _requestDate: it.createdDate || it.createdAt,
+                    _approvalStatus: it.status || it.approvalStatus || 'PENDING',
+                    updatedAt: it.updatedAt || it.createdDate || it.createdAt
+                }));
+
+                // Merge tất cả và sort theo updatedAt desc
+                let allItems = [...contractItems, ...transferItems, ...annulItems];
+                allItems.sort((a, b) => {
+                    const dateA = new Date(a.updatedAt || 0);
+                    const dateB = new Date(b.updatedAt || 0);
+                    return dateB - dateA;
+                });
+
+                const total = allItems.length;
                 // Client-side paginate the filtered items
                 const start = (pageIndex || 0) * pageSize;
-                const paged = items.slice(start, start + pageSize);
+                const paged = allItems.slice(start, start + pageSize);
 
                 setData(paged);
                 setPagination(prev => ({ ...prev, page: pageIndex || 0, size: pageSize, totalElements: total }));
@@ -143,13 +210,43 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
 
     // --- XỬ LÝ HÀNH ĐỘNG (Nút bấm từ Table) ---
     // Xử lý các hành động từ các nút trong ContractTable
-    // action có thể: 'view', 'submit', 'sendToSign', 'sendToInstallation', 'reactivate', 'generateWater', 'edit'...
+    // action có thể: 'view', 'submit', 'sendToSign', 'sendToInstallation', 'reactivate', 'generateWater', 'edit', 'viewRequest'...
     const handleViewDetails = async (record, action = 'view') => {
         try {
             if (action === 'generateWater') {
                 navigate('/service/contract-create', { state: { sourceContractId: record.id } });
                 return;
             }
+
+            // --- LOGIC MỚI: MỞ REQUEST DETAIL MODAL (Yêu cầu chuyển nhượng/hủy) ---
+            if (action === 'viewRequest') {
+                setRequestDetailLoading(true);
+                setRequestDetailOpen(true);
+                try {
+                    const res = await getServiceRequestDetail(record.id);
+                    const core = res?.data || {};
+                    setRequestDetailData({
+                        id: record.id,
+                        requestId: record.id,
+                        contractNumber: core.contractNumber || record.contractNumber,
+                        requestDate: record._requestDate,
+                        requestType: record._requestType, // 'TRANSFER' hoặc 'ANNUL'
+                        status: core.approvalStatus || record._approvalStatus,
+                        reason: core.reason || record._reason,
+                        fromCustomerName: core.fromCustomerName || record.customerName,
+                        toCustomerName: core.toCustomerName || record._toCustomerName,
+                        attachedEvidence: core.attachedEvidence,
+                        approvalNote: core.approvalNote,
+                    });
+                } catch (err) {
+                    toast.error('Lỗi tải chi tiết yêu cầu');
+                    setRequestDetailOpen(false);
+                } finally {
+                    setRequestDetailLoading(false);
+                }
+                return;
+            }
+            // ------------------------------------------------------------------------
 
             // --- LOGIC MỚI: MỞ MODAL SỬA ---
             if (action === 'edit') {
@@ -382,6 +479,7 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                 onPageChange={handlePageChange}
                 showActionsForAll={true}
                 onViewDetails={handleViewDetails}
+                highlightId={highlightId}
             />
 
             {/* Pagination is rendered inside ContractTable; duplicate removed. */}
@@ -445,6 +543,22 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                 title={confirmConfig.title}
                 message={confirmConfig.message}
                 isLoading={confirmLoading}
+            />
+
+            {/* --- REQUEST DETAIL MODAL (Transfer/Annul) --- */}
+            <RequestDetailModal
+                visible={requestDetailOpen}
+                onCancel={() => {
+                    setRequestDetailOpen(false);
+                    setRequestDetailData(null);
+                }}
+                data={requestDetailData}
+                loading={requestDetailLoading}
+                onSuccess={() => {
+                    setRequestDetailOpen(false);
+                    setRequestDetailData(null);
+                    loadData(); // Refresh data after approve/reject
+                }}
             />
         </div>
     );
