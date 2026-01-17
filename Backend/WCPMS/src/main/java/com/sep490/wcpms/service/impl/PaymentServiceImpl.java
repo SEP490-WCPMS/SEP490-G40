@@ -74,7 +74,7 @@ public class PaymentServiceImpl implements PaymentService {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice not found"));
 
-        int amount = invoice.getTotalAmount().intValue();
+        long amount = invoice.getTotalAmount().longValue();
         if (amount < 2000) throw new IllegalArgumentException("Số tiền phải >= 2000 VND");
 
         // 2. TẠO ORDER CODE (Dùng nanoTime để không bao giờ trùng)
