@@ -237,4 +237,7 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
             Pageable pageable
     );
 
+    // Đếm số lượng hợp đồng chưa có khách hàng (Guest) và trạng thái nằm trong danh sách
+    long countByCustomerIsNullAndContractStatusIn(Collection<Contract.ContractStatus> statuses);
+
 }

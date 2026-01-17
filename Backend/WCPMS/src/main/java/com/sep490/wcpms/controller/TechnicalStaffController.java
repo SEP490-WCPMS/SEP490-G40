@@ -1,12 +1,16 @@
 package com.sep490.wcpms.controller;
 
 import com.sep490.wcpms.dto.*; // Import hết
+import com.sep490.wcpms.service.TemplateFileService;
 import lombok.RequiredArgsConstructor; // Dùng RequiredArgsConstructor
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.InstallationCompleteRequestDTO;
 import com.sep490.wcpms.dto.SurveyReportRequestDTO;
 import com.sep490.wcpms.service.TechnicalStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 // --- Import các thư viện cần thiết ---
@@ -38,6 +42,9 @@ public class TechnicalStaffController {
 
     @Autowired
     private TechnicalStaffService technicalStaffService;
+
+    @Autowired
+    private final TemplateFileService templateFileService;
 
     /**
      * TODO: Thay thế hàm này bằng logic lấy ID từ Spring Security Principal
@@ -187,4 +194,19 @@ public class TechnicalStaffController {
         return ResponseEntity.ok(ticketDetail);
     }
     // --- HẾT PHẦN THÊM ---
+
+    @GetMapping("/templates/material-cost-excel")
+    public ResponseEntity<Resource> downloadMaterialCostExcel() {
+        Resource resource = templateFileService.getMaterialCostExcel();
+
+        String filename = "Bang_tham_khao_chi_phi_vat_lieu.xlsx";
+        MediaType contentType = MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+
+        return ResponseEntity.ok()
+                .contentType(contentType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(resource);
+    }
 }

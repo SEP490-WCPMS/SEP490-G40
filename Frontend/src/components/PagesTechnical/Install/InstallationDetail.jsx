@@ -55,11 +55,17 @@ function InstallationDetail() {
     // Hàm xử lý khi người dùng nhập text/số
     const handleChange = (e) => {
         const { name, value } = e.target;
-        // 1. Xử lý riêng cho Chỉ Số Ban Đầu (Chỉ nhận số nguyên)
+        
+        // 1. Xử lý riêng cho Chỉ Số Ban Đầu
         if (name === 'initialReading') {
-            // Sử dụng Regex thay thế tất cả ký tự KHÔNG phải số bằng rỗng
-            // Ví dụ: gõ "123a" -> thành "123"
-            const numericValue = value.replace(/\D/g, '');
+            // Xóa ký tự không phải số
+            let numericValue = value.replace(/\D/g, '');
+
+            // --- THÊM MỚI: Cắt chuỗi nếu dài quá 8 ký tự ---
+            if (numericValue.length > 8) {
+                numericValue = numericValue.slice(0, 8);
+            }
+            // ------------------------------------------------
 
             setInstallData(prev => ({ ...prev, [name]: numericValue }));
             return;
@@ -312,6 +318,7 @@ function InstallationDetail() {
                                 name="initialReading"
                                 value={installData.initialReading}
                                 onChange={handleChange}
+                                maxLength={8} // <--- THÊM DÒNG NÀY (Hỗ trợ trình duyệt chặn nhập quá 8 ký tự)
                                 placeholder="Nhập chỉ số (vd: 0)"
                                 // Chặn ký tự lạ (dấu chấm, phẩy, e, dấu trừ...)
                                 onKeyDown={(e) => {

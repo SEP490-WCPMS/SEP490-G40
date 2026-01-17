@@ -1,11 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, message, Spin, Typography, Divider } from 'antd';
+import { Card, Form, Input, Select, DatePicker, InputNumber, Button, Row, Col, Spin, Typography, Divider } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getServiceContractDetail, getTechnicalStaffList, approveServiceContract, updateServiceContract } from '../../Services/apiService';
 import moment from 'moment';
 import ConfirmModal from '../../common/ConfirmModal';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './ContractCreatePage.css';
 
 const { Title, Text } = Typography;
@@ -33,6 +34,7 @@ const ContractCreate = () => {
         fetchInitialData();
     }, [sourceContractId]);
 
+    // Hàm lấy dữ liệu ban đầu
     const fetchInitialData = async () => {
         setLoading(true);
         try {
@@ -75,7 +77,7 @@ const ContractCreate = () => {
                 }
             }
         } catch (error) {
-            message.error('Lỗi khi tải dữ liệu!');
+            toast.error('Lỗi khi tải dữ liệu!');
             console.error("Fetch initial data error:", error);
         } finally {
             setLoading(false);
@@ -85,14 +87,14 @@ const ContractCreate = () => {
     // Xử lý submit form
     const handleSubmit = async (values) => {
         if (!sourceContractId) {
-            message.error('Thiếu sourceContractId. Không xác định được hợp đồng cần cập nhật!');
+            toast.error('Thiếu sourceContractId. Không xác định được hợp đồng cần cập nhật!');
             return;
         }
 
         // (Guard) chỉ cho approve nếu đang ở PENDING_SURVEY_REVIEW
         const currentStatus = sourceContract?.contractStatus || sourceContract?.status;
         if (currentStatus && currentStatus !== 'PENDING_SURVEY_REVIEW') {
-            message.warning('Chỉ có thể phê duyệt hợp đồng ở trạng thái PENDING_SURVEY_REVIEW.');
+            toast.warning('Chỉ có thể phê duyệt hợp đồng ở trạng thái PENDING_SURVEY_REVIEW.');
             return;
         }
 
@@ -121,9 +123,7 @@ const ContractCreate = () => {
 
             console.log('Sending contract data:', contractData);
 
-            // Cập nhật các trường chi tiết cho hợp đồng từ form
-            // (Removed client-side `lastAction` fallback — backend now supplies actor info)
-
+            // Cập nhật hợp đồng dịch vụ
             await updateServiceContract(sourceContractId, {
                 installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
                 startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : null,
@@ -135,17 +135,20 @@ const ContractCreate = () => {
                 serviceStaffId: currentUserId,
             });
             await approveServiceContract(sourceContractId);
-                message.success('Tạo hợp đồng thành công!');
-                navigate('/service/approved-contracts');
+            toast.success('Tạo hợp đồng thành công!');
+            setConfirmOpen(false);
+            setPendingValues(null);
+            setTimeout(() => { navigate('/service/approved-contracts') }, 1500);
         } catch (error) {
             console.error('Approve contract error:', error);
             const errorMessage = error?.response?.data?.message || 'Không thể tạo hợp đồng!';
-            message.error(errorMessage);
+            toast.error(errorMessage);
         } finally {
             setSubmitting(false);
         }
     };
 
+    // Xử lý khi nhấn nút Tạo Hợp đồng
     const handleFinish = (values) => {
         setPendingValues(values);
         setConfirmOpen(true);
@@ -158,11 +161,38 @@ const ContractCreate = () => {
 
     // Disable các ngày trong quá khứ
     const disabledDate = (current) => {
-        return current && current < moment().startOf('day');
+        return current && current.valueOf() < moment().startOf('day').valueOf();
+    };
+
+    // EndDate: phải >= StartDate + 1 năm
+    const disabledEndDate = (current) => {
+        if (!current) return false;
+
+        if (current.valueOf() < moment().startOf('day').valueOf()) return true;
+
+        const start = form.getFieldValue('startDate');
+        if (!start) return false;
+
+        const minEnd = moment(start).add(1, 'year').startOf('day');
+        return current.valueOf() < minEnd.valueOf();
+    };
+
+    // Khi thay đổi StartDate, kiểm tra lại EndDate
+    const handleStartDateChange = (date) => {
+        const end = form.getFieldValue('endDate');
+        if (!date || !end) return;
+
+        const minEnd = moment(date).add(1, 'year').startOf('day');
+
+        if (end.valueOf() < minEnd.valueOf()) {
+            form.setFieldsValue({ endDate: null });
+        }
     };
 
     return (
         <div className="contract-create-container">
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
+
             <div className="contract-create-header">
                 <Button
                     icon={<ArrowLeftOutlined />}
@@ -332,6 +362,7 @@ const ContractCreate = () => {
                                         format="DD/MM/YYYY"
                                         placeholder="Chọn ngày bắt đầu"
                                         disabledDate={disabledDate}
+                                        onChange={handleStartDateChange}
                                     />
                                 </Form.Item>
                             </Col>
@@ -340,19 +371,37 @@ const ContractCreate = () => {
                                 <Form.Item
                                     label="Ngày kết thúc"
                                     name="endDate"
+                                    dependencies={['startDate']}
+                                    // Chỉ cần validate nếu endDate có giá trị
+                                    rules={[
+                                        ({ getFieldValue }) => ({
+                                            validator: (_, value) => {
+                                                const start = getFieldValue('startDate');
+                                                if (!value || !start) return Promise.resolve();
+
+                                                const minEnd = moment(start).add(1, 'year').startOf('day');
+
+                                                if (value.valueOf() >= minEnd.valueOf()) return Promise.resolve();
+
+                                                return Promise.reject(
+                                                    new Error('Ngày kết thúc phải ít nhất 1 năm sau ngày bắt đầu.')
+                                                );
+                                            }
+                                        }),
+                                    ]}
                                 >
                                     <DatePicker
                                         style={{ width: '100%' }}
                                         format="DD/MM/YYYY"
                                         placeholder="Chọn ngày kết thúc"
-                                        disabledDate={disabledDate}
+                                        disabledDate={disabledEndDate}
                                     />
                                 </Form.Item>
                             </Col>
 
                             <Col xs={24} md={12}>
                                 <Form.Item
-                                    label="Giá trị Hợp đồng (VNĐ)"
+                                    label="Chi phí Lắp đặt (VNĐ)"
                                     name="contractValue"
                                 >
                                     <InputNumber
@@ -360,7 +409,7 @@ const ContractCreate = () => {
                                         min={0}
                                         formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                         parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                                        placeholder="Nhập giá trị hợp đồng"
+                                        placeholder="Nhập chi phí lắp đặt"
                                     />
                                 </Form.Item>
                             </Col>
@@ -411,6 +460,7 @@ const ContractCreate = () => {
                 isOpen={confirmOpen}
                 onClose={() => setConfirmOpen(false)}
                 onConfirm={() => {
+                    setConfirmOpen(false);
                     if (pendingValues) {
                         handleSubmit(pendingValues);
                     }
@@ -418,7 +468,7 @@ const ContractCreate = () => {
                 title="Xác nhận tạo Hợp đồng chính thức"
                 message={
                     sourceContract
-                        ? `Bạn có chắc chắn muốn tạo Hợp đồng chính thức cho yêu cầu ${sourceContract.requestNumber} của khách hàng ${sourceContract.customerName} không?`
+                        ? `Bạn có chắc chắn muốn tạo Hợp đồng chính thức cho khách hàng ${sourceContract.customerName} không?`
                         : 'Bạn có chắc chắn muốn tạo Hợp đồng chính thức từ thông tin hiện tại không?'
                 }
                 isLoading={submitting}

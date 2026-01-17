@@ -72,21 +72,30 @@ public class CashierController {
     /**
      * API Xử lý Thanh toán Tiền mặt.
      * Path: POST /api/cashier/invoices/{invoiceId}/pay-cash
-     * Body: { "amountPaid": 123456 }
+     * Body: { "amountPaid": 123456, "evidenceImage": "base64String..." }
      */
     @PostMapping("/invoices/{invoiceId}/pay-cash")
     public ResponseEntity<ReceiptDTO> processCashPayment(
             @PathVariable Integer invoiceId,
-            @RequestBody Map<String, BigDecimal> payload
+            @RequestBody Map<String, Object> payload // <--- Đổi thành Object để nhận cả String và BigDecimal
     ) {
         Integer cashierId = getAuthenticatedStaffId();
-        BigDecimal amountPaid = payload.get("amountPaid");
 
-        if (amountPaid == null) {
+        // 1. Lấy Amount
+        if (!payload.containsKey("amountPaid")) {
             throw new IllegalArgumentException("Missing 'amountPaid' in request body.");
         }
+        // Chuyển đổi an toàn từ Object sang BigDecimal
+        BigDecimal amountPaid = new BigDecimal(payload.get("amountPaid").toString());
 
-        ReceiptDTO receipt = cashierService.processCashPayment(invoiceId, cashierId, amountPaid);
+        // 2. Lấy Evidence Image
+        String evidenceImage = null;
+        if (payload.containsKey("evidenceImage")) {
+            evidenceImage = (String) payload.get("evidenceImage");
+        }
+
+        // Gọi Service
+        ReceiptDTO receipt = cashierService.processCashPayment(invoiceId, cashierId, amountPaid, evidenceImage);
         return ResponseEntity.ok(receipt);
     }
 

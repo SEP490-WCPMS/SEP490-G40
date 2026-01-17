@@ -17,6 +17,7 @@ import com.sep490.wcpms.repository.ReceiptRepository;
 import com.sep490.wcpms.repository.*;
 import com.sep490.wcpms.service.CashierService;
 import com.sep490.wcpms.service.ActivityLogService;
+import com.sep490.wcpms.service.InvoiceNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +47,7 @@ public class CashierServiceImpl implements CashierService {
     private final ReadingRouteRepository readingRouteRepository;
     private final WaterServiceContractRepository waterServiceContractRepository;
     private final MeterReadingRepository meterReadingRepository;
+    private final InvoiceNotificationService invoiceNotificationService;
     private final ActivityLogService activityLogService; // NEW injection
 
     @Override
@@ -79,7 +81,7 @@ public class CashierServiceImpl implements CashierService {
 
     @Override
     @Transactional
-    public ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid) {
+    public ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid, String evidenceImage) {
 
         // 1. Lấy Thu ngân (người đang đăng nhập)
         Account cashier = accountRepository.findById(cashierId)
@@ -117,8 +119,22 @@ public class CashierServiceImpl implements CashierService {
         receipt.setPaymentMethod(Receipt.PaymentMethod.CASH); // <-- Thanh toán TIỀN MẶT
         receipt.setCashier(cashier);
         receipt.setNotes("Thu tiền mặt tại quầy.");
+        // === LƯU ẢNH BẰNG CHỨNG ===
+        if (evidenceImage == null || evidenceImage.isBlank()) {
+            throw new IllegalArgumentException("Bắt buộc phải upload ảnh bằng chứng (chữ ký khách hàng) khi thu tiền mặt.");
+        }
+        receipt.setEvidenceImageBase64(evidenceImage);
+        // ==========================
 
         Receipt savedReceipt = receiptRepository.save(receipt);
+
+        // 7. Gửi thông báo thanh toán thành công (Email + SMS)
+        try {
+            invoiceNotificationService.sendInvoicePaymentSuccess(invoice, "Tiền mặt");
+        } catch (Exception ex) {
+            // Không chặn nghiệp vụ thu tiền mặt nếu lỗi gửi thông báo
+            System.err.println(">>> WARN: Không gửi được thông báo thanh toán thành công: " + ex.getMessage());
+        }
 
         // Persist activity log for payment (actor = cashier)
         try {

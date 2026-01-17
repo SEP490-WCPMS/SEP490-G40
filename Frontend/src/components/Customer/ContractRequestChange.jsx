@@ -29,6 +29,8 @@ const ContractRequestChange = () => {
     const [customerOptions, setCustomerOptions] = useState([]);
     const [selectedToCustomer, setSelectedToCustomer] = useState(null);
     const searchTimerRef = useRef(null);
+    const [evidencePreviewUrl, setEvidencePreviewUrl] = useState(null);
+    const evidenceObjectUrlRef = useRef(null);
 
     // Lấy danh sách hợp đồng khi component mount
     useEffect(() => {
@@ -46,7 +48,6 @@ const ContractRequestChange = () => {
             const res = await searchContractRequests({
                 page: 0,
                 size: 1000,
-                // KHÔNG truyền status -> lấy mọi request, đúng nghĩa "đã tạo yêu cầu rồi"
                 // Chỉ chặn những hợp đồng đang có request PENDING (đang xử lý).
                 status: "PENDING",
             });
@@ -71,7 +72,7 @@ const ContractRequestChange = () => {
             return idSet;
         } catch (err) {
             console.error('Fetch contract-requests error:', err);
-            return new Set(); // lỗi thì thôi, không chặn
+            return new Set();
         }
     };
 
@@ -281,6 +282,23 @@ const ContractRequestChange = () => {
     // Xử lý upload file
     const handleFileChange = ({ fileList: newFileList }) => {
         setFileList(newFileList);
+
+        // reset preview cũ
+        if (evidenceObjectUrlRef.current) {
+            URL.revokeObjectURL(evidenceObjectUrlRef.current);
+            evidenceObjectUrlRef.current = null;
+        }
+
+        const fileObj = newFileList?.[0]?.originFileObj;
+        const isImage = !!fileObj?.type && String(fileObj.type).startsWith('image/');
+
+        if (fileObj && isImage) {
+            const url = URL.createObjectURL(fileObj);
+            evidenceObjectUrlRef.current = url;
+            setEvidencePreviewUrl(url);
+        } else {
+            setEvidencePreviewUrl(null);
+        }
     };
 
     // Kiểm tra file trước khi upload
@@ -489,6 +507,24 @@ const ContractRequestChange = () => {
                                     >
                                         <Button icon={<UploadOutlined />}>Tải lên file</Button>
                                     </Upload>
+
+                                    {/* Preview minh chứng (nếu là ảnh) */}
+                                    {evidencePreviewUrl && (
+                                        <div style={{ marginTop: 12 }}>
+                                            <img
+                                                src={evidencePreviewUrl}
+                                                alt="Minh chứng"
+                                                style={{
+                                                    maxWidth: '100%',
+                                                    maxHeight: 280,
+                                                    borderRadius: 8,
+                                                    border: '1px solid #eee',
+                                                    objectFit: 'contain',
+                                                    background: '#fafafa',
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </Form.Item>
                             </Col>
                         </Row>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getContractDetails, submitSurveyReport } from '../../Services/apiTechnicalStaff';
-import { ArrowLeft, Save, AlertCircle, FileText } from 'lucide-react';
+import { getContractDetails, submitSurveyReport, downloadMaterialCostExcel } from '../../Services/apiTechnicalStaff';
+import { ArrowLeft, Save, AlertCircle, FileText, Download } from 'lucide-react';
 import moment from 'moment';
 
 // 1. IMPORT TOAST VÀ MODAL
@@ -141,6 +141,47 @@ function SurveyForm() {
         setFormData(prev => ({ ...prev, estimatedCost: rawValue }));
     };
 
+    // Tải file Excel tham khảo chi phí vật liệu từ backend
+    const handleDownloadMaterialCostExcel = async () => {
+        try {
+            const res = await downloadMaterialCostExcel();
+
+            const disposition = res.headers?.['content-disposition'] || '';
+            const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+            const filename = decodeURIComponent(match?.[1] || match?.[2] || 'Bang_tham_khao_chi_phi_vat_lieu.xlsx');
+
+            const contentType =
+                res.headers?.['content-type'] ||
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+            // res.data là ArrayBuffer
+            const u8 = new Uint8Array(res.data);
+
+            // XLSX chuẩn phải bắt đầu bằng "PK" (0x50 0x4B)
+            if (!(u8[0] === 0x50 && u8[1] === 0x4B)) {
+                // thường là server trả JSON/HTML (401/403/500) nhưng FE vẫn save
+                const text = new TextDecoder('utf-8').decode(u8);
+                console.error('Download template failed, received text:', text);
+                toast.error('Không thể tải file (có thể do hết phiên đăng nhập / thiếu quyền).');
+                return;
+            }
+
+            const blob = new Blob([res.data], { type: contentType });
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+        } catch (err) {
+            console.error('Lỗi tải file Excel:', err);
+            toast.error('Không thể tải bảng chi phí vật liệu.');
+        }
+    };
+
     // --- Loading State ---
     if (loading) {
         return (
@@ -191,6 +232,15 @@ function SurveyForm() {
                     <h1 className="text-2xl font-bold text-gray-800 mb-1">Báo Cáo Khảo Sát & Báo Giá</h1>
                     <p className="text-sm text-gray-600">Điền thông tin khảo sát và chi phí dự kiến cho hợp đồng.</p>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleDownloadMaterialCostExcel}
+                    className="sm:ml-auto inline-flex items-center justify-center px-4 py-2 border border-blue-200 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+                    title="Tải về bảng tham khảo chi phí vật liệu (Excel)"
+                >
+                    <Download size={18} className="mr-2" />
+                    Tải bảng chi phí vật liệu
+                </button>
             </div>
 
             {/* Box thông tin Hợp đồng (Read-only) */}

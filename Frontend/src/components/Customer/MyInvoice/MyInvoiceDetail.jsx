@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMyInvoiceDetail, createPayOSLink } from '../../Services/apiCustomer';
-import { ArrowLeft, CheckCircle, Clock, FileText, User, Home, Calendar, DollarSign, AlertCircle } from 'lucide-react';
+import { getMyInvoiceDetail, createPayOSLink, downloadMyInvoicePdf } from '../../Services/apiCustomer';
+import { ArrowLeft, CheckCircle, Clock, FileText, User, Home, Calendar, DollarSign, AlertCircle, Download, XCircle } from 'lucide-react';
 import moment from 'moment';
 
 // 1. IMPORT TOAST
@@ -17,8 +17,10 @@ function InvoiceDetail() {
 
     const [invoice, setInvoice] = useState(null);
     const [loading, setLoading] = useState(true);
-    // const [error, setError] = useState(null); // Bỏ state error UI cũ
     const [payOSData, setPayOSData] = useState(null);
+    
+    // State Zoom ảnh
+    const [isZoomed, setIsZoomed] = useState(false);
 
     // 1. Lấy chi tiết hóa đơn
     useEffect(() => {
@@ -50,7 +52,6 @@ function InvoiceDetail() {
                 .then(res => setPayOSData(res.data))
                 .catch(err => {
                     console.error("Lỗi tạo PayOS link", err);
-                    // Không cần toast lỗi này để tránh spam, chỉ cần không hiện QR là được
                 });
         }
     }, [invoice]);
@@ -75,6 +76,26 @@ function InvoiceDetail() {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            const res = await downloadMyInvoicePdf(invoiceId);
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+
+            const safeInvoiceNumber = invoice?.invoiceNumber || invoiceId;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `HoaDon_${safeInvoiceNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Không thể tải file PDF hóa đơn.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -86,7 +107,6 @@ function InvoiceDetail() {
         );
     }
 
-    // Nếu không có dữ liệu (do lỗi)
     if (!invoice) {
         return (
             <div className="p-8 text-center bg-gray-50 min-h-screen flex flex-col items-center pt-20">
@@ -103,19 +123,12 @@ function InvoiceDetail() {
         );
     }
 
-    // Xác định loại HĐ
     const isServiceInvoice = !invoice.meterReadingId;
     const isPaid = invoice.paymentStatus === 'PAID';
 
     return (
         <div className="space-y-6 p-4 md:p-8 max-w-5xl mx-auto bg-gray-50 min-h-screen">
-            
-            {/* 3. TOAST CONTAINER */}
-            <ToastContainer 
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Nút Quay lại */}
             <button onClick={() => navigate(-1)} className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
@@ -136,9 +149,24 @@ function InvoiceDetail() {
                             </h1>
                             <p className="text-sm text-gray-500">Số HĐ: <span className="font-mono font-medium">{invoice.invoiceNumber}</span></p>
                         </div>
-                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getStatusClass(invoice.paymentStatus)}`}>
-                            {getStatusText(invoice.paymentStatus)}
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={handleDownloadPdf}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-300 active:scale-[0.99] transition"
+                                title="Tải hóa đơn PDF"
+                            >
+                                <Download size={16} />
+                                <span className="hidden sm:inline">Tải PDF</span>
+                            </button>
+
+                            <span
+                                className={`px-3 py-1 inline-flex items-center text-sm font-semibold rounded-full ${getStatusClass(
+                                    invoice.paymentStatus
+                                )}`}
+                            >
+                              {getStatusText(invoice.paymentStatus)}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Thông tin Khách hàng */}
@@ -164,14 +192,37 @@ function InvoiceDetail() {
                             <h3 className="text-sm font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
                                 <FileText size={16} /> Chi tiết Tiêu thụ
                             </h3>
-                            <div className="grid grid-cols-2 gap-4 text-sm bg-blue-50 p-4 rounded-md border border-blue-100">
-                                <div>
-                                    <p className="text-gray-600 mb-1">Kỳ hóa đơn</p>
-                                    <p className="font-medium">{moment(invoice.fromDate).format('DD/MM')} - {moment(invoice.toDate).format('DD/MM/YYYY')}</p>
+                            <div className="bg-blue-50 p-4 rounded-md border border-blue-100 space-y-3">
+                                {/* Hàng 1 */}
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Mã đồng hồ</p>
+                                        <p className="font-mono font-bold text-gray-900 bg-white inline-block px-2 rounded border border-blue-100">
+                                            {invoice.meterCode || '---'}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Thời hạn thanh toán</p>
+                                        <p className="font-medium text-gray-900">
+                                            {moment(invoice.toDate).format('DD/MM')} - {moment(invoice.dueDate).format('DD/MM/YYYY')}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-gray-600 mb-1">Tổng tiêu thụ</p>
-                                    <p className="font-bold text-blue-700 text-lg">{invoice.totalConsumption} m³</p>
+                                {/* Hàng 2 */}
+                                <div className="grid grid-cols-2 gap-4 text-sm pt-3 border-t border-blue-200">
+                                    <div>
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Chỉ số cũ</p>
+                                        <p className="font-mono text-gray-600 text-base">{invoice.oldIndex ?? '0'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Chỉ số mới</p>
+                                        <p className="font-mono font-bold text-blue-800 text-base">{invoice.newIndex ?? '0'}</p>
+                                    </div>
+                                </div>
+                                {/* Hàng 3 */}
+                                <div className="pt-3 border-t border-blue-200 flex justify-between items-center">
+                                    <span className="text-gray-700 font-medium text-sm">Tổng lượng tiêu thụ:</span>
+                                    <span className="font-extrabold text-blue-700 text-xl">{invoice.totalConsumption} m³</span>
                                 </div>
                             </div>
                         </div>
@@ -209,13 +260,11 @@ function InvoiceDetail() {
 
                             <div className="border-t border-dashed border-gray-300 my-2"></div>
 
-                            {/* Tổng cộng */}
                             <div className="flex justify-between items-center">
                                 <span className="text-base font-bold text-gray-800">TỔNG CỘNG:</span>
                                 <span className="text-lg font-bold text-gray-900">{invoice.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
                             </div>
 
-                            {/* Trừ ví */}
                             {invoice.deductedAmount > 0 && (
                                 <div className="flex justify-between items-center text-green-600">
                                     <span>Đã trừ Ví tích lũy:</span>
@@ -223,7 +272,6 @@ function InvoiceDetail() {
                                 </div>
                             )}
 
-                            {/* Thực thu */}
                             <div className="flex justify-between items-center bg-gray-100 p-3 rounded-lg mt-2">
                                 <span className="text-sm font-bold text-gray-700">CẦN THANH TOÁN:</span>
                                 <span className="text-2xl font-extrabold text-red-600">
@@ -254,12 +302,10 @@ function InvoiceDetail() {
                         )}
                     </div>
 
-                    {/* Card QR Code (Chỉ hiện khi chưa thanh toán) */}
+                    {/* Card QR Code */}
                     {!isPaid && payOSData && (
                         <div className="bg-white p-6 rounded-lg shadow border border-blue-200 text-center">
                             <h4 className="font-bold text-gray-800 mb-4">Quét Mã Để Thanh Toán</h4>
-                            
-                            {/* Ảnh QR VietQR */}
                             <div className="border-2 border-gray-200 rounded-lg p-2 inline-block bg-white">
                                 <img
                                     src={`https://img.vietqr.io/image/${payOSData.bin}-${payOSData.accountNumber}-compact.png?amount=${payOSData.amount}&addInfo=${encodeURIComponent(payOSData.description)}&accountName=${encodeURIComponent(payOSData.accountName)}`}
@@ -267,11 +313,7 @@ function InvoiceDetail() {
                                     className="w-full max-w-[200px] h-auto"
                                 />
                             </div>
-
-                            <p className="text-xs text-gray-500 mt-3">
-                                Hỗ trợ bởi <strong>PayOS</strong> & <strong>VietQR</strong>
-                            </p>
-                            
+                            <p className="text-xs text-gray-500 mt-3">Hỗ trợ bởi <strong>PayOS</strong> & <strong>VietQR</strong></p>
                             <div className="mt-4 pt-4 border-t border-gray-100">
                                 <a 
                                     href={payOSData.checkoutUrl} 
@@ -290,9 +332,55 @@ function InvoiceDetail() {
                         <p className="font-semibold mb-1 flex items-center gap-1"><AlertCircle size={14}/> Cần hỗ trợ?</p>
                         <p>Nếu có thắc mắc về hóa đơn, vui lòng liên hệ hotline <strong>0210 6251998 / 0210 3992369</strong> hoặc tạo yêu cầu hỗ trợ.</p>
                     </div>
-
                 </div>
             </div>
+
+            {/* === KHU VỰC HIỂN THỊ ẢNH BẰNG CHỨNG (MỚI THÊM) === */}
+            {invoice && invoice.paymentStatus === 'PAID' && invoice.evidenceImageBase64 && (
+                <div className="bg-white p-6 rounded-lg shadow border border-green-200 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <h3 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
+                        <FileText size={20} /> Biên lai & Bằng chứng thanh toán
+                    </h3>
+                    
+                    <div className="flex flex-col sm:flex-row gap-6 items-start">
+                        <div className="w-full sm:w-48 shrink-0">
+                             <img 
+                                src={`data:image/jpeg;base64,${invoice.evidenceImageBase64}`} 
+                                alt="Evidence" 
+                                className="w-full h-auto rounded border border-gray-300 cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => setIsZoomed(true)}
+                            />
+                            <p className="text-xs text-center text-gray-500 mt-2">(Chạm để xem rõ hơn)</p>
+                        </div>
+                        
+                        <div className="text-sm space-y-3 flex-1">
+                            <div className="bg-green-50 p-4 rounded border border-green-100">
+                                <p className="font-bold text-green-900 mb-1">Xác nhận đã thu tiền mặt</p>
+                                <p className="text-green-700">Thu ngân đã tải lên hình ảnh biên lai có chữ ký của quý khách để đối chiếu.</p>
+                            </div>
+                            <p><strong>Mã biên lai:</strong> <span className="font-mono">{invoice.receiptNumber || '---'}</span></p>
+                            <p><strong>Thời gian:</strong> {moment(invoice.paidDate).format('DD/MM/YYYY')}</p>
+                        </div>
+                    </div>
+                </div>
+             )}
+
+             {/* MODAL ZOOM */}
+             {isZoomed && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setIsZoomed(false)}
+                >
+                    <img 
+                        src={`data:image/jpeg;base64,${invoice.evidenceImageBase64}`} 
+                        alt="Zoomed Evidence" 
+                        className="max-w-full max-h-full rounded"
+                    />
+                    <button className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full">
+                        <XCircle size={32} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

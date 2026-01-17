@@ -11,15 +11,16 @@ const renderStatus = (record) => {
   const status = record.contractStatus;
   const note = record.notes || "";
   // Check nếu bị từ chối (Status APPROVED và có note reject)
-  const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
-
+  // const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
+  const isRejected = false;
   const s = status?.toUpperCase();
   const map = {
     DRAFT: { text: 'Yêu cầu tạo đơn', cls: 'bg-blue-100 text-blue-800' },
     PENDING: { text: 'Đang chờ khảo sát', cls: 'bg-yellow-100 text-yellow-800' },
     PENDING_SURVEY_REVIEW: { text: 'Đã khảo sát', cls: 'bg-orange-100 text-orange-800' },
     // Nếu bị reject thì đổi màu đỏ cho nổi bật
-    APPROVED: { text: isRejected ? 'Bị từ chối (Cần sửa)' : 'Đã duyệt', cls: isRejected ? 'bg-red-100 text-red-800' : 'bg-cyan-100 text-cyan-800' },
+    // APPROVED: { text: isRejected ? 'Bị từ chối (Cần sửa)' : 'Đã duyệt', cls: isRejected ? 'bg-red-100 text-red-800' : 'bg-cyan-100 text-cyan-800' },
+    APPROVED: { text: 'Đã duyệt', cls: 'bg-cyan-100 text-cyan-800' },
     PENDING_SIGN: { text: 'Khách đã ký', cls: 'bg-indigo-100 text-indigo-800' },
     SIGNED: { text: 'Chờ lắp đặt', cls: 'bg-purple-100 text-purple-800' },
     ACTIVE: { text: 'Đang hoạt động', cls: 'bg-green-100 text-green-800' },
@@ -34,11 +35,11 @@ const renderStatus = (record) => {
       <span className={`px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${cfg.cls}`}>
         {cfg.text}
       </span>
-      {isRejected && (
+      {/* {isRejected && (
         <Tooltip title="Khách hàng đã từ chối ký. Vui lòng xem lý do và sửa lại hợp đồng.">
            <WarningOutlined className="text-red-500 animate-pulse" />
         </Tooltip>
-      )}
+      )} */}
     </div>
   );
 };
@@ -49,7 +50,8 @@ const renderStatus = (record) => {
 const renderActions = (record, onViewDetails) => {
   const status = record.contractStatus?.toUpperCase();
   const note = record.notes || "";
-  const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
+  // const isRejected = status === 'APPROVED' && note.includes("[Customer Reject Sign]");
+  const isRejected = false;
   const actions = [];
 
   // Chi tiết button (luôn có)
@@ -100,7 +102,7 @@ const renderActions = (record, onViewDetails) => {
           if (record.isGuest || !record.customerCode) {
             const contentNode = (
               <div>
-                <p>Khách hàng <b>{record.customerName}</b> hiện là khách vãng lai (Chưa có tài khoản).</p>
+                <p>Khách hàng <b>{record.customerName}</b> hiện là Guest (Chưa có tài khoản).</p>
                 <p>Vui lòng liên hệ Admin để tạo tài khoản cho khách hàng này trước khi gửi hợp đồng ký điện tử.</p>
               </div>
             );
@@ -116,17 +118,17 @@ const renderActions = (record, onViewDetails) => {
     );
 
     // --- THÊM NÚT SỬA (CHỈ KHI BỊ REJECT) ---
-    if (isRejected) {
-        actions.push(
-          <button
-            key="edit"
-            className="font-semibold text-orange-600 hover:text-orange-900 transition duration-150 ease-in-out ml-2"
-            onClick={() => onViewDetails(record, 'edit')} // Gọi action 'edit'
-          >
-            <EditOutlined /> Sửa
-          </button>
-        );
-    }
+    // if (isRejected) {
+    //     actions.push(
+    //       <button
+    //         key="edit"
+    //         className="font-semibold text-orange-600 hover:text-orange-900 transition duration-150 ease-in-out ml-2"
+    //         onClick={() => onViewDetails(record, 'edit')} // Gọi action 'edit'
+    //       >
+    //         <EditOutlined /> Sửa
+    //       </button>
+    //     );
+    // }
     // ----------------------------------------
   }
 
@@ -207,7 +209,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
       <div className="flex items-start gap-2 mt-1">
         <User size={16} className="text-gray-400 mt-1 shrink-0" />
         <div>
-          <div className="font-medium text-gray-800">{record.customerName || 'Khách vãng lai'}</div>
+          <div className="font-medium text-gray-800">{record.customerName || 'Guest'}</div>
           {(record.isGuest || !record.customerCode) ? (
              <span className="text-xs text-orange-500 bg-orange-50 px-1 rounded">Chưa có TK</span>
           ) : (
@@ -281,7 +283,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                           <div className="flex items-center gap-2">
                             <UserOutlined className="text-gray-400" />
                             <div>
-                              <div className="font-medium">{record.customerName || 'Khách vãng lai'}</div>
+                              <div className="font-medium">{record.customerName || 'Guest'}</div>
                               {(record.isGuest || !record.customerCode) ? (
                                 <Tag color="orange" className="mt-1 border-0 text-[10px] px-1">Chưa có tài khoản</Tag>
                               ) : (

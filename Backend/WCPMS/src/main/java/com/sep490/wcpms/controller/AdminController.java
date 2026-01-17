@@ -39,4 +39,11 @@ public class AdminController {
     public ResponseEntity<List<ContractDetailsDTO>> getCustomerContracts(@PathVariable Integer customerId) {
         return ResponseEntity.ok(adminService.getContractsByCustomerId(customerId));
     }
+
+    // API lấy số lượng yêu cầu Guest cần xử lý (cho Badge trên Menu)
+    @GetMapping("/guest-requests/count")
+    public ResponseEntity<Long> getGuestRequestsCount() {
+        long count = adminService.countPendingGuestRequests();
+        return ResponseEntity.ok(count);
+    }
 }

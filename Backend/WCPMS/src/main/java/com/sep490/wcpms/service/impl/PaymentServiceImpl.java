@@ -13,9 +13,12 @@ import com.sep490.wcpms.repository.AccountRepository;
 import com.sep490.wcpms.repository.InvoiceRepository;
 import com.sep490.wcpms.repository.ReceiptRepository;
 import com.sep490.wcpms.service.ActivityLogService;
+import com.sep490.wcpms.service.InvoiceNotificationService;
 import com.sep490.wcpms.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
@@ -42,6 +45,10 @@ public class PaymentServiceImpl implements PaymentService {
     private final ReceiptRepository receiptRepository;
     private final AccountRepository accountRepository; // Để lấy NV Thu ngân (nếu cần)
     private final ActivityLogService activityLogService; // NEW
+
+    @Autowired
+    @Lazy
+    private InvoiceNotificationService invoiceNotificationService;
 
     @Value("${payos.client-id}")
     private String clientId;
@@ -211,6 +218,14 @@ public class PaymentServiceImpl implements PaymentService {
         invoice.setPaymentStatus(Invoice.PaymentStatus.PAID);
         invoice.setPaidDate(LocalDate.now());
         invoiceRepository.save(invoice);
+        // 8. Gửi thông báo thanh toán thành công (Email + SMS)
+        // (Service đã tự chặn gửi trùng theo invoice + messageType)
+        try {
+            invoiceNotificationService.sendInvoicePaymentSuccess(invoice, "Chuyển khoản/PayOS");
+        } catch (Exception ex) {
+            // Không làm fail webhook chỉ vì lỗi gửi thông báo
+            System.err.println(">>> WARN: Không gửi được thông báo thanh toán thành công: " + ex.getMessage());
+        }
 
         // 7. Tạo biên lai
         Receipt receipt = new Receipt();

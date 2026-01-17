@@ -91,12 +91,22 @@ function MeterReplacementForm() {
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        // Danh sách các trường cần ép kiểu SỐ NGUYÊN (Không chữ, không thập phân)
+        // Danh sách các trường cần ép kiểu SỐ NGUYÊN
         const integerFields = ['oldMeterFinalReading', 'newMeterInitialReading', 'calibrationCost'];
 
         if (integerFields.includes(name)) {
-            // Thay thế tất cả ký tự KHÔNG phải số bằng rỗng
-            const numericValue = value.replace(/\D/g, '');
+            // 1. Thay thế tất cả ký tự KHÔNG phải số bằng rỗng
+            let numericValue = value.replace(/\D/g, '');
+
+            // 2. --- THÊM MỚI: Kiểm tra độ dài tối đa 8 số ---
+            // Chỉ áp dụng cho Chỉ số cũ và Chỉ số mới (Chi phí kiểm định có thể dài hơn tùy bạn)
+            if (['oldMeterFinalReading', 'newMeterInitialReading'].includes(name)) {
+                if (numericValue.length > 8) {
+                    numericValue = numericValue.slice(0, 8); // Cắt lấy 8 số đầu
+                }
+            }
+            // ------------------------------------------------
+
             setFormData(prev => ({ ...prev, [name]: numericValue }));
             return;
         }
@@ -289,6 +299,7 @@ function MeterReplacementForm() {
                                 name="oldMeterFinalReading"
                                 value={formData.oldMeterFinalReading}
                                 onChange={handleChange}
+                                maxLength={8}
                                 placeholder={`Phải >= ${foundMeterInfo.lastReading || 0}`}
                                 required
                                 className="appearance-none block w-full md:w-1/2 border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"
@@ -320,6 +331,7 @@ function MeterReplacementForm() {
                                     name="newMeterInitialReading"
                                     value={formData.newMeterInitialReading}
                                     onChange={handleChange}
+                                    maxLength={8}
                                     placeholder="Ví dụ: 0"
                                     required
                                     className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 font-bold"

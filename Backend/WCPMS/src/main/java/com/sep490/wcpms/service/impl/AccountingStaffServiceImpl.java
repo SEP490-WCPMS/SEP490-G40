@@ -440,6 +440,15 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             // Thông tin KH
             if (contract.getCustomer() != null) {
                 dto.setCustomerName(contract.getCustomer().getCustomerName());
+
+                String customerCode = contract.getCustomer().getCustomerCode();
+                if (customerCode == null || customerCode.isBlank()) {
+                    customerCode = (contract.getCustomer().getAccount() != null)
+                            ? contract.getCustomer().getAccount().getCustomerCode()
+                            : null;
+                }
+                dto.setCustomerCode(customerCode);
+
                 if (contract.getCustomer().getAccount() != null) {
                     dto.setCustomerPhone(contract.getCustomer().getAccount().getPhone());
                 }
@@ -696,7 +705,7 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setTotalAmount(totalAmount);
 
         invoice.setInvoiceDate(LocalDate.now());
-        invoice.setDueDate(LocalDate.now().plusDays(10)); // (Cần logic lấy hạn TT từ HĐ)
+        invoice.setDueDate(LocalDate.now().plusDays(5)); // (Cần logic lấy hạn TT từ HĐ)
         invoice.setPaymentStatus(Invoice.PaymentStatus.PENDING);
 
         // [QUAN TRỌNG] Gán nhân viên vừa tìm được vào Hóa đơn

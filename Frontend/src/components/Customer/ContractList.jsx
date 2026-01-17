@@ -85,7 +85,7 @@ const ContractList = () => {
                 break;
             case 'APPROVED':
                 color = 'cyan';
-                displayText = 'Đã duyệt';
+                displayText = 'Đang chờ tạo hợp đồng';
                 break;
             case 'PENDING_CUSTOMER_SIGN':
                 color = 'geekblue';
@@ -97,7 +97,7 @@ const ContractList = () => {
                 break;
             case 'SIGNED':
                 color = 'purple';
-                displayText = ', chờ lắp đặt';
+                displayText = 'Đang chờ lắp đặt';
                 break;
             case 'ACTIVE':
                 color = 'green';
@@ -142,13 +142,20 @@ const ContractList = () => {
             width: '30%',
         },
         {
-            title: 'Thiết kế Kỹ thuật',
-            dataIndex: 'technicalDesign',
-            key: 'technicalDesign',
+            title: 'Ngày hiệu lực',
+            key: 'startDate',
             ellipsis: true,
-            width: '40%',
-            render: (text) => text || 'Chưa có',
+            width: '20%',
+            render: (_, record) => record?.startDate || record?.start_date || 'Chưa có',
         },
+        {
+            title: 'Ngày hết hiệu lực',
+            key: 'endDate',
+            ellipsis: true,
+            width: '20%',
+            render: (_, record) => record?.endDate || record?.end_date || 'Chưa có',
+        },
+
         {
             title: 'Trạng thái',
             dataIndex: 'contractStatus',

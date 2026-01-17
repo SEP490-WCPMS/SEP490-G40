@@ -48,6 +48,9 @@ public class Receipt {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "evidence_image_base64", columnDefinition = "LONGTEXT")
+    private String evidenceImageBase64; // <-- Thêm trường này
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -8,7 +8,7 @@ const ContractRequestForm = () => {
 
     // State
     const [formData, setFormData] = useState({
-        fullName: '', phone: '', address: '', priceTypeId: '', routeId: '', occupants: 1, notes: ''
+        fullName: '', phone: '', address: '', priceTypeId: '', routeId: '', notes: ''
     });
     const [priceTypes, setPriceTypes] = useState([]);
     const [priceDetails, setPriceDetails] = useState([]);
@@ -18,6 +18,7 @@ const ContractRequestForm = () => {
     const [error, setError] = useState('');
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
+    const [focusedId, setFocusedId] = useState(null);
 
     // --- 1. Load Data & Auto-map Customer Info ---
     useEffect(() => {
@@ -103,7 +104,6 @@ const ContractRequestForm = () => {
                 ...formData,
                 priceTypeId: parseInt(formData.priceTypeId),
                 routeId: parseInt(formData.routeId),
-                occupants: parseInt(formData.occupants),
                 accountId: user ? user.id : null
             };
 
@@ -133,29 +133,131 @@ const ContractRequestForm = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('vi-VN') : 'N/A';
 
+    const handleFocus = (e) => setFocusedId(e.target.id);
+    const handleBlur = () => setFocusedId(null);
+
+    const fieldBase = {
+        padding: '12px 14px',
+        border: '1px solid #d1d5db',
+        borderRadius: '10px',
+        fontSize: '14px',
+        backgroundColor: '#f9fafb',
+        width: '100%',
+        transition: 'all 0.15s ease',
+        color: '#111827'
+    };
+
+    const fieldFocused = {
+        backgroundColor: '#ffffff',
+        borderColor: '#0A77E2',
+        boxShadow: '0 0 0 4px rgba(10, 119, 226, 0.15)'
+    };
+
+    const fieldStyle = (id) => (focusedId === id ? { ...fieldBase, ...fieldFocused } : fieldBase);
+    const textareaStyle = (id) => ({ ...fieldStyle(id), minHeight: '110px', resize: 'vertical' });
+
     const styles = {
-        container: { maxWidth: '900px', margin: '40px auto', padding: '40px', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)', fontFamily: "'Inter', sans-serif" },
-        title: { fontSize: '28px', fontWeight: '700', color: '#0A77E2', marginBottom: '8px', textAlign: 'center' },
-        description: { fontSize: '14px', color: '#6b7280', marginBottom: '30px', textAlign: 'center' },
-        alert: (isError) => ({ padding: '14px', borderRadius: '10px', fontSize: '14px', fontWeight: '500', marginBottom: '20px', marginTop: '20px', backgroundColor: isError ? '#fef2f2' : '#ecfdf5', color: isError ? '#991b1b' : '#065f46', borderLeft: `4px solid ${isError ? '#ef4444' : '#10b981'}` }),
-        sectionTitle: { fontSize: '18px', fontWeight: '600', color: '#374151', borderBottom: '2px solid #f3f4f6', paddingBottom: '10px', marginBottom: '20px', marginTop: '10px' },
-        formRow: { display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' },
-        formGroup: { flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '250px' },
-        label: { fontSize: '14px', fontWeight: '600', color: '#374151' },
-        input: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', transition: 'all 0.2s' },
-        select: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%' },
-        small: { fontSize: '12px', color: '#6b7280', marginTop: '4px' },
-        textarea: { padding: '12px 16px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', backgroundColor: '#f9fafb', width: '100%', minHeight: '100px', resize: 'vertical' },
-        tableWrapper: { marginTop: '10px', padding: '15px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e5e7eb', overflowX: 'auto' },
+        page: {
+            minHeight: '100vh',
+            padding: '40px 20px',
+            background:
+                'radial-gradient(1200px 600px at 20% 0%, rgba(10, 119, 226, 0.14), transparent 60%), radial-gradient(900px 500px at 80% 10%, rgba(16, 185, 129, 0.10), transparent 55%), #f3f4f6'
+        },
+        container: {
+            maxWidth: '900px',
+            margin: '40px auto',
+            padding: '32px',
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.08)',
+            border: '1px solid rgba(229, 231, 235, 0.8)',
+            fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
+        },
+        title: {
+            fontSize: '28px',
+            fontWeight: '800',
+            color: '#0A77E2',
+            marginBottom: '8px',
+            textAlign: 'center',
+            letterSpacing: '-0.02em'
+        },
+        description: { fontSize: '14px', color: '#6b7280', marginBottom: '24px', textAlign: 'center' },
+        alert: (isError) => ({
+            padding: '14px',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontWeight: '600',
+            marginTop: '14px',
+            marginBottom: '10px',
+            backgroundColor: isError ? '#fef2f2' : '#ecfdf5',
+            color: isError ? '#991b1b' : '#065f46',
+            borderLeft: `4px solid ${isError ? '#ef4444' : '#10b981'}`
+        }),
+        sectionTitle: {
+            fontSize: '16px',
+            fontWeight: '700',
+            color: '#374151',
+            borderBottom: '2px solid #f3f4f6',
+            paddingBottom: '10px',
+            marginBottom: '14px',
+            marginTop: '18px'
+        },
+        formRow: {
+            display: 'flex',
+            gap: '16px',
+            marginBottom: '16px',
+            flexWrap: 'wrap'
+        },
+        formGroup: {
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            minWidth: '260px'
+        },
+        label: { fontSize: '14px', fontWeight: '650', color: '#374151' },
+        field: fieldStyle,
+        small: { fontSize: '12px', color: '#6b7280', marginTop: '-2px' },
+        textarea: textareaStyle,
+        tableWrapper: {
+            marginTop: '10px',
+            padding: '14px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '12px',
+            border: '1px solid #e5e7eb',
+            overflowX: 'auto'
+        },
+        tableLabel: { fontWeight: '700', marginBottom: '10px', display: 'block', color: '#4b5563' },
         table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
-        th: { textAlign: 'left', padding: '10px', color: '#4b5563', borderBottom: '1px solid #d1d5db', fontWeight: '600' },
+        th: { textAlign: 'left', padding: '10px', color: '#4b5563', borderBottom: '1px solid #d1d5db', fontWeight: '700', whiteSpace: 'nowrap' },
         td: { padding: '10px', color: '#374151', borderBottom: '1px solid #e5e7eb' },
-        submitBtn: { width: '100%', padding: '14px', backgroundColor: '#0A77E2', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s', marginTop: '10px' },
-        cancelBtn: { marginTop: '10px', width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#6b7280', border: 'none', cursor: 'pointer', fontSize: '14px' }
+        submitBtn: {
+            width: '100%',
+            padding: '14px',
+            backgroundColor: '#0A77E2',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: '750',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            marginTop: '14px'
+        },
+        cancelBtn: {
+            marginTop: '10px',
+            width: '100%',
+            padding: '10px',
+            backgroundColor: 'transparent',
+            color: '#6b7280',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '14px'
+        }
     };
 
     return (
-        <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '40px 20px' }}>
+        <div style={styles.page}>
             <div style={styles.container}>
                 <h2 style={styles.title}>📝 Đăng Ký Lắp Đặt Nước Sạch</h2>
                 <p style={styles.description}>{user ? 'Tạo yêu cầu mới cho tài khoản của bạn' : 'Dành cho khách hàng chưa có tài khoản'}</p>
@@ -170,9 +272,11 @@ const ContractRequestForm = () => {
                             <input
                                 id="fullName"
                                 type="text"
-                                style={styles.input}
+                                style={styles.field('fullName')}
                                 value={formData.fullName}
                                 onChange={handleChange}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
                                 required
                             />
                         </div>
@@ -181,25 +285,45 @@ const ContractRequestForm = () => {
                             <input
                                 id="phone"
                                 type="tel"
-                                style={styles.input}
+                                style={styles.field('phone')}
                                 value={formData.phone}
                                 onChange={handleChange}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
                                 required
                                 maxLength="10"
                             />
                         </div>
                     </div>
 
-                    <div style={{ marginBottom: '20px' }}>
+                    <div style={{ marginBottom: '16px' }}>
                         <label htmlFor="address" style={styles.label}>Địa chỉ lắp đặt (*)</label>
-                        <input id="address" type="text" style={styles.input} value={formData.address} onChange={handleChange} required placeholder="Số nhà, đường, xã/phường, quận/huyện..." />
+                        <input
+                            id="address"
+                            type="text"
+                            style={styles.field('address')}
+                            value={formData.address}
+                            onChange={handleChange}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            required
+                            placeholder="Số nhà, đường, xã/phường, quận/huyện..."
+                        />
                     </div>
 
                     <div style={styles.sectionTitle}>2. Thông tin dịch vụ</div>
                     <div style={styles.formRow}>
                         <div style={styles.formGroup}>
                             <label htmlFor="routeId" style={styles.label}>Tuyến đọc (Khu vực) (*)</label>
-                            <select id="routeId" style={styles.select} value={formData.routeId} onChange={handleChange} required>
+                            <select
+                                id="routeId"
+                                style={styles.field('routeId')}
+                                value={formData.routeId}
+                                onChange={handleChange}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                                required
+                            >
                                 <option value="" disabled>-- Chọn khu vực --</option>
                                 {Array.isArray(readingRoutes) && readingRoutes.map(r => (
                                     <option key={r.id} value={r.id}>{r.routeName}</option>
@@ -207,25 +331,27 @@ const ContractRequestForm = () => {
                             </select>
                         </div>
                         <div style={styles.formGroup}>
-                            <label htmlFor="occupants" style={styles.label}>Số người sử dụng</label>
-                            <input id="occupants" type="number" style={styles.input} min="1" value={formData.occupants} onChange={handleChange} />
-                            <div style={styles.small}>Đối với hộ gia đình</div>
+                            <label htmlFor="priceTypeId" style={styles.label}>Loại hình sử dụng (*)</label>
+                            <select
+                                id="priceTypeId"
+                                style={styles.field('priceTypeId')}
+                                value={formData.priceTypeId}
+                                onChange={handleChange}
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                                required
+                            >
+                                <option value="" disabled>-- Chọn loại hình --</option>
+                                {priceTypes.map(t => (
+                                    <option key={t.id} value={t.id}>{t.typeName}</option>
+                                ))}
+                            </select>
                         </div>
-                    </div>
-
-                    <div style={{ marginBottom: '20px' }}>
-                        <label htmlFor="priceTypeId" style={styles.label}>Loại hình sử dụng (*)</label>
-                        <select id="priceTypeId" style={styles.select} value={formData.priceTypeId} onChange={handleChange} required>
-                            <option value="" disabled>-- Chọn loại hình --</option>
-                            {priceTypes.map(t => (
-                                <option key={t.id} value={t.id}>{t.typeName}</option>
-                            ))}
-                        </select>
                     </div>
 
                     {priceDetails.length > 0 && (
                         <div style={styles.tableWrapper}>
-                            <label style={{ fontWeight: 600, marginBottom: '10px', display: 'block', color: '#4b5563' }}>📊 Bảng giá tham khảo</label>
+                            <label style={styles.tableLabel}>📊 Bảng giá tham khảo</label>
                             <table style={styles.table}>
                                 <thead>
                                     <tr>
@@ -251,9 +377,17 @@ const ContractRequestForm = () => {
                         </div>
                     )}
 
-                    <div style={{ marginTop: '20px' }}>
+                    <div style={{ marginTop: '16px' }}>
                         <label htmlFor="notes" style={styles.label}>Ghi chú thêm</label>
-                        <textarea id="notes" style={styles.textarea} value={formData.notes} onChange={handleChange} placeholder="Ví dụ: Cần khảo sát vào cuối tuần..." />
+                        <textarea
+                            id="notes"
+                            style={styles.textarea('notes')}
+                            value={formData.notes}
+                            onChange={handleChange}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            placeholder="Ví dụ: Cần khảo sát vào cuối tuần..."
+                        />
                     </div>
 
                     {/* --- HIỂN THỊ THÔNG BÁO TẠI ĐÂY (TRÊN NÚT SUBMIT) --- */}

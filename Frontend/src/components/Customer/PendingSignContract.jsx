@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, Typography, Spin, Button, Row, Col, Tag, Modal, Input } from 'antd';
 import { ToastContainer, toast } from 'react-toastify';
@@ -297,16 +296,16 @@ const PendingSignContract = () => {
                     >
                         Xác nhận ký
                     </Button>
-                    <Button
-                        danger
-                        icon={<CloseCircleOutlined />}
-                        onClick={() => showRejectModal(record)}
-                        loading={rejectingContractId === record.id}
-                        disabled={signingContractId !== null || rejectingContractId !== null}
-                        style={{ minWidth: 120, height: 36 }}
-                    >
-                        Từ chối ký
-                    </Button>
+                    {/*<Button*/}
+                    {/*    danger*/}
+                    {/*    icon={<CloseCircleOutlined />}*/}
+                    {/*    onClick={() => showRejectModal(record)}*/}
+                    {/*    loading={rejectingContractId === record.id}*/}
+                    {/*    disabled={signingContractId !== null || rejectingContractId !== null}*/}
+                    {/*    style={{ minWidth: 120, height: 36 }}*/}
+                    {/*>*/}
+                    {/*    Từ chối ký*/}
+                    {/*</Button>*/}
                 </div>
             ),
         },
@@ -380,31 +379,31 @@ const PendingSignContract = () => {
                     }
                     isLoading={signingContractId !== null}
                 />
-                {/* Modal từ chối ký */}
-                <Modal
-                    open={isRejectModalVisible}
-                    title="Từ chối ký hợp đồng"
-                    okText="Gửi từ chối"
-                    cancelText="Hủy"
-                    onOk={handleRejectSign}
-                    onCancel={handleRejectCancel}
-                    confirmLoading={rejectingContractId !== null}
-                    destroyOnClose
-                    styles={{ body: { paddingBottom: 15 } }}
-                >
-                    <p>
-                        Vui lòng cho biết lý do từ chối ký hợp đồng{' '}
-                        <b>{selectedContract?.contractNumber}</b>.
-                    </p>
-                    <Input.TextArea
-                        rows={4}
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        placeholder="Ví dụ: Muốn điều chỉnh chi phí, muốn đổi thiết kế, muốn dời lịch..."
-                        maxLength={500}
-                        showCount
-                    />
-                </Modal>
+                {/*/!* Modal từ chối ký *!/*/}
+                {/*<Modal*/}
+                {/*    open={isRejectModalVisible}*/}
+                {/*    title="Từ chối ký hợp đồng"*/}
+                {/*    okText="Gửi từ chối"*/}
+                {/*    cancelText="Hủy"*/}
+                {/*    onOk={handleRejectSign}*/}
+                {/*    onCancel={handleRejectCancel}*/}
+                {/*    confirmLoading={rejectingContractId !== null}*/}
+                {/*    destroyOnClose*/}
+                {/*    styles={{ body: { paddingBottom: 15 } }}*/}
+                {/*>*/}
+                {/*    <p>*/}
+                {/*        Vui lòng cho biết lý do từ chối ký hợp đồng{' '}*/}
+                {/*        <b>{selectedContract?.contractNumber}</b>.*/}
+                {/*    </p>*/}
+                {/*    <Input.TextArea*/}
+                {/*        rows={4}*/}
+                {/*        value={rejectReason}*/}
+                {/*        onChange={(e) => setRejectReason(e.target.value)}*/}
+                {/*        placeholder="Ví dụ: Muốn điều chỉnh chi phí, muốn đổi thiết kế, muốn dời lịch..."*/}
+                {/*        maxLength={500}*/}
+                {/*        showCount*/}
+                {/*    />*/}
+                {/*</Modal>*/}
             </div>
         </div>
     );

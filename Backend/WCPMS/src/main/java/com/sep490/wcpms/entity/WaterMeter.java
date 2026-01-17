@@ -24,6 +24,11 @@ public class WaterMeter {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    // Liên kết trực tiếp đồng hồ với khách hàng để tiện hiển thị/tra cứu
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", foreignKey = @ForeignKey(name = "fk_water_meters_customer_id"))
+    private Customer customer;
+
     @Column(name = "meter_code", length = 50, nullable = false, unique = true)
     private String meterCode;
 

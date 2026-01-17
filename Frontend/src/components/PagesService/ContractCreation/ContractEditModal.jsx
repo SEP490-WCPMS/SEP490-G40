@@ -8,22 +8,28 @@ const ContractEditModal = ({ open, contract, onCancel, onSave, loading }) => {
     const [form] = Form.useForm();
     const [rejectReason, setRejectReason] = useState('');
 
+    // --- State lưu startDate để dùng cho validation ---
+    const [startDate, setStartDate] = useState(null);
+
     useEffect(() => {
         if (contract && open) {
             // 1. Fill dữ liệu vào form
+            const start = contract.startDate ? dayjs(contract.startDate) : null;
+            setStartDate(start); // Lưu state để dùng cho validate
+
             form.setFieldsValue({
                 contractValue: contract.contractValue,
                 estimatedCost: contract.estimatedCost,
                 paymentMethod: contract.paymentMethod,
                 
                 // Dùng dayjs để parse date
-                startDate: contract.startDate ? dayjs(contract.startDate) : null,
+                startDate: start,
                 endDate: contract.endDate ? dayjs(contract.endDate) : null,
                 
                 // --- THÊM MỚI: Load ngày lắp đặt ---
                 installationDate: contract.installationDate ? dayjs(contract.installationDate) : null,
                 
-                notes: contract.notes, // Note cũ không load vào ô nhập (đã xử lý logic bên dưới để chỉ lấy lý do)
+                // Note cũ không load vào ô nhập (đã xử lý logic bên dưới để chỉ lấy lý do)
                 
                 // Ô nhập note mới để trống
                 // notes: '', <--- Nếu bạn muốn ô nhập luôn trống thì uncomment dòng này và xóa dòng notes ở trên. 
@@ -57,6 +63,21 @@ const ContractEditModal = ({ open, contract, onCancel, onSave, loading }) => {
             }
         }
     }, [contract, open, form]);
+
+    // --- HÀM XỬ LÝ KHI CHỌN START DATE ---
+    const onStartDateChange = (date) => {
+        setStartDate(date);
+        if (date) {
+            // Tự động set endDate là 1 năm sau nếu chưa chọn hoặc muốn tiện lợi
+            const oneYearLater = date.add(1, 'year');
+            form.setFieldValue('endDate', oneYearLater);
+            
+            // Trigger validate lại endDate để xóa lỗi cũ (nếu có)
+            form.validateFields(['endDate']);
+            // Trigger validate lại installationDate (nếu cần)
+            form.validateFields(['installationDate']);
+        }
+    };
 
     const handleSubmit = async () => {
         try {
@@ -160,8 +181,8 @@ const ContractEditModal = ({ open, contract, onCancel, onSave, loading }) => {
 
                 {/* --- NHÓM THÔNG TIN HỢP ĐỒNG --- */}
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
-                     <div className="text-xs text-blue-600 uppercase font-bold tracking-wider mb-3">Chi tiết hợp đồng</div>
-                     <Row gutter={16}>
+                      <div className="text-xs text-blue-600 uppercase font-bold tracking-wider mb-3">Chi tiết hợp đồng</div>
+                      <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item 
                                 label="Chi phí lắp đặt" 
@@ -207,18 +228,87 @@ const ContractEditModal = ({ open, contract, onCancel, onSave, loading }) => {
                     {/* --- DÒNG NGÀY THÁNG (Cập nhật thêm Ngày lắp đặt) --- */}
                     <Row gutter={16}>
                         <Col span={8}>
-                            <Form.Item label="Ngày bắt đầu" name="startDate">
-                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                            <Form.Item 
+                                label="Ngày bắt đầu" 
+                                name="startDate"
+                                rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu' }]}
+                            >
+                                <DatePicker 
+                                    style={{ width: '100%' }} 
+                                    format="DD/MM/YYYY" 
+                                    placeholder="Chọn ngày" 
+                                    onChange={onStartDateChange} // Bắt sự kiện change để set endDate
+                                />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
-                            <Form.Item label="Ngày kết thúc" name="endDate">
-                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                            <Form.Item 
+                                label="Ngày kết thúc" 
+                                name="endDate"
+                                dependencies={['startDate']} // Phụ thuộc vào startDate để validate lại khi startDate đổi
+                                rules={[
+                                    { required: true, message: 'Vui lòng chọn ngày kết thúc' },
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            const start = getFieldValue('startDate');
+                                            if (!value || !start) {
+                                                return Promise.resolve();
+                                            }
+                                            // Validate: Phải sau startDate
+                                            if (value.isBefore(start)) {
+                                                return Promise.reject(new Error('Ngày kết thúc phải sau ngày bắt đầu!'));
+                                            }
+                                            // Validate: Cách ít nhất 1 năm (365 ngày)
+                                            // Sử dụng diff của dayjs
+                                            if (value.diff(start, 'day') < 365) {
+                                                 return Promise.reject(new Error('Thời hạn hợp đồng tối thiểu là 1 năm!'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
+                                ]}
+                            >
+                                <DatePicker 
+                                    style={{ width: '100%' }} 
+                                    format="DD/MM/YYYY" 
+                                    placeholder="Chọn ngày" 
+                                    // Disable các ngày trước startDate + 1 năm để UX tốt hơn (tùy chọn)
+                                    disabledDate={(current) => {
+                                        return startDate && current && current < startDate.add(1, 'year').startOf('day');
+                                    }}
+                                />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
-                            <Form.Item label="Ngày lắp đặt dự kiến" name="installationDate">
-                                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Chọn ngày" />
+                            <Form.Item 
+                                label="Ngày lắp đặt dự kiến" 
+                                name="installationDate"
+                                dependencies={['startDate']} // Phụ thuộc vào startDate
+                                rules={[
+                                    ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                            const start = getFieldValue('startDate');
+                                            if (!value || !start) {
+                                                return Promise.resolve();
+                                            }
+                                            // Validate: Ngày lắp đặt phải >= ngày bắt đầu
+                                            if (value.isBefore(start)) {
+                                                return Promise.reject(new Error('Ngày lắp đặt phải sau hoặc bằng ngày bắt đầu!'));
+                                            }
+                                            return Promise.resolve();
+                                        },
+                                    }),
+                                ]}
+                            >
+                                <DatePicker 
+                                    style={{ width: '100%' }} 
+                                    format="DD/MM/YYYY" 
+                                    placeholder="Chọn ngày"
+                                    // Optional: Disable ngày trước startDate
+                                    disabledDate={(current) => {
+                                        return startDate && current && current < startDate.startOf('day');
+                                    }}
+                                />
                             </Form.Item>
                         </Col>
                     </Row>

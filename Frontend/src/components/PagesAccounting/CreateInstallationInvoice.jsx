@@ -58,7 +58,7 @@ function CreateInstallationInvoice() {
         setFormData({
             invoiceNumber: `CN${contractFromState.id}${moment().format('MMYYYY')}`,
             invoiceDate: moment().format('YYYY-MM-DD'),
-            dueDate: moment().add(15, 'days').format('YYYY-MM-DD'),
+            dueDate: moment().add(5, 'days').format('YYYY-MM-DD'),
             subtotalAmount: subtotal,
             vatAmount: vat,
             totalAmount: total,
@@ -183,8 +183,12 @@ function CreateInstallationInvoice() {
                                 {contract.contractNumber || `#${contract.id}`}
                             </p>
                             <p>
-                                <span className="font-medium text-gray-600">ID Khách hàng: </span>
-                                {contract.customerId ?? '-'}
+                                <span className="font-medium text-gray-600">Khách hàng: </span>
+                                {contract.customerName || contract.customerFullName || '-'}
+                            </p>
+                            <p>
+                                <span className="font-medium text-gray-600">Mã khách hàng: </span>
+                                {contract.customerCode || '-'}
                             </p>
                             <p>
                                 <span className="font-medium text-gray-600">Ngày lắp đặt: </span>

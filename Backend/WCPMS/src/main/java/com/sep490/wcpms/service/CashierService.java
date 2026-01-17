@@ -25,8 +25,9 @@ public interface CashierService {
      * Xử lý thanh toán Tiền mặt (CASH) cho một Hóa đơn.
      * Cập nhật Invoice (Bảng 17) sang PAID.
      * Tạo Biên lai (Receipt - Bảng 19).
+     * [UPDATE]: Thêm evidenceImage (Ảnh bằng chứng/chữ ký)
      */
-    ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid);
+    ReceiptDTO processCashPayment(Integer invoiceId, Integer cashierId, BigDecimal amountPaid, String evidenceImage);
 
     // === THÊM 2 HÀM MỚI (Thu tại nhà) ===
 

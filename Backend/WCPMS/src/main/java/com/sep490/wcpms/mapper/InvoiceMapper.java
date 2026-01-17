@@ -1,11 +1,7 @@
 package com.sep490.wcpms.mapper;
 
 import com.sep490.wcpms.dto.InvoiceDTO;
-import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Contract;
-import com.sep490.wcpms.entity.Customer;
-import com.sep490.wcpms.entity.Invoice;
-import com.sep490.wcpms.entity.MeterReading;
+import com.sep490.wcpms.entity.*;
 import org.springframework.stereotype.Component;
 
 /**
@@ -119,6 +115,20 @@ public class InvoiceMapper {
         if (staff != null) {
             dto.setAccountingStaffName(staff.getFullName());
         }
+
+        // ========================================================================
+        // === [THÊM ĐOẠN NÀY VÀO CUỐI HÀM] ===
+        // 6. Thông tin Biên lai & Bằng chứng thanh toán (Từ Bảng 19 Receipts)
+        // ========================================================================
+        if (entity.getReceipts() != null && !entity.getReceipts().isEmpty()) {
+            // Lấy biên lai (Giả sử 1 hóa đơn chỉ có 1 biên lai thanh toán thành công)
+            Receipt receipt = entity.getReceipts().get(0);
+
+            dto.setReceiptNumber(receipt.getReceiptNumber());
+            dto.setPaymentMethod(receipt.getPaymentMethod().toString());
+            dto.setEvidenceImageBase64(receipt.getEvidenceImageBase64()); // <--- Lấy ảnh bằng chứng
+        }
+        // ========================================================================
 
         return dto;
     }

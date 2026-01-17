@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { searchInvoices, processCashPayment } from '../Services/apiCashierStaff';
-import { Search, DollarSign, User, FileText, Droplets, Calendar, Phone, Mail, Gauge, Eye, CreditCard, Loader2 } from 'lucide-react';
+import { Search, DollarSign, User, FileText, Droplets, Calendar, Phone, Mail, Gauge, Eye, CreditCard, Loader2, Camera, X } from 'lucide-react';
 import moment from 'moment';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -15,6 +15,11 @@ function CashPaymentForm() {
     const [loadingSubmit, setLoadingSubmit] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+    // --- STATE MỚI CHO ẢNH BẰNG CHỨNG ---
+    const [evidenceFile, setEvidenceFile] = useState(null); // Base64 string gửi về BE
+    const [evidencePreview, setEvidencePreview] = useState(null); // URL để hiển thị preview
+    // -------------------------------------
+
     // 1. Hàm Tìm kiếm
     const handleSearch = async () => {
         if (!keyword.trim()) {
@@ -24,6 +29,7 @@ function CashPaymentForm() {
         setLoadingSearch(true);
         setSearchResults([]);
         setSelectedInvoice(null);
+        resetEvidence(); // Reset ảnh khi tìm mới
 
         try {
             const response = await searchInvoices(keyword.trim());
@@ -46,6 +52,7 @@ function CashPaymentForm() {
     // 2. Chọn hóa đơn
     const handleSelectInvoice = (invoice) => {
         setSelectedInvoice(invoice);
+        resetEvidence(); // Reset ảnh khi chọn hóa đơn mới
         // Cuộn xuống chi tiết
         setTimeout(() => {
             const element = document.getElementById('invoice-detail-section');
@@ -55,11 +62,47 @@ function CashPaymentForm() {
 
     const handleCancelSelection = () => {
         setSelectedInvoice(null);
+        resetEvidence();
     };
 
-    // 3. Mở Modal
+    // --- HÀM XỬ LÝ ẢNH ---
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Tạo Preview URL
+            const previewUrl = URL.createObjectURL(file);
+            setEvidencePreview(previewUrl);
+
+            // Convert sang Base64
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                // Lấy phần base64 sau dấu phẩy (data:image/jpeg;base64,.....)
+                const base64String = reader.result.split(',')[1];
+                setEvidenceFile(base64String);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const resetEvidence = () => {
+        setEvidenceFile(null);
+        setEvidencePreview(null);
+    };
+    // ---------------------
+
+    // 3. Mở Modal (Kiểm tra ảnh trước)
     const handlePreSubmit = () => {
         if (!selectedInvoice) return;
+
+        // VALIDATE: Bắt buộc phải có ảnh bằng chứng
+        if (!evidenceFile) {
+            toast.warn("Vui lòng chụp ảnh biên lai ký nhận hoặc bằng chứng giao dịch trước khi xác nhận!", {
+                autoClose: 3000
+            });
+            // Focus vào input file nếu cần (hoặc chỉ cần scroll tới đó)
+            return;
+        }
+
         setShowConfirmModal(true);
     };
 
@@ -68,14 +111,25 @@ function CashPaymentForm() {
         setLoadingSubmit(true);
         setShowConfirmModal(false);
         try {
-            const receipt = await processCashPayment(selectedInvoice.id, { amountPaid: selectedInvoice.totalAmount });
+            // Gửi cả amount và evidenceImage
+            const payload = { 
+                amountPaid: selectedInvoice.totalAmount,
+                evidenceImage: evidenceFile // Gửi chuỗi base64
+            };
+
+            const receipt = await processCashPayment(selectedInvoice.id, payload);
+            
             toast.success(`Thanh toán thành công! Mã biên lai: ${receipt.data.receiptNumber}`, {
                 position: "top-center",
                 autoClose: 5000
             });
+            
+            // Reset toàn bộ
             setSelectedInvoice(null);
             setSearchResults([]);
             setKeyword('');
+            resetEvidence();
+
         } catch (err) {
             console.error("Lỗi thanh toán:", err);
             toast.error(err.response?.data?.message || "Thanh toán thất bại.");
@@ -143,13 +197,12 @@ function CashPaymentForm() {
                         <h3 className="font-semibold text-gray-700">Kết quả tìm kiếm ({searchResults.length})</h3>
                     </div>
 
-                    {/* 1. MOBILE VIEW: CARDS */}
+                    {/* 1. MOBILE VIEW */}
                     <div className="block md:hidden space-y-4">
                         {searchResults.map((inv) => {
                              const statusInfo = getStatusBadge(inv.paymentStatus);
                              return (
                                 <div key={inv.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-3">
-                                    {/* Header Card */}
                                     <div className="flex justify-between items-start border-b border-gray-100 pb-2">
                                         <div>
                                             <span className="text-xs text-gray-500 block">Số hóa đơn</span>
@@ -159,30 +212,16 @@ function CashPaymentForm() {
                                             {statusInfo.label}
                                         </span>
                                     </div>
-
-                                    {/* Body Card */}
                                     <div className="space-y-1 text-sm">
                                         <div className="font-bold text-gray-800 text-base">{inv.customerName}</div>
-                                        <div className="text-gray-500 flex items-center gap-1">
-                                            <Phone size={14} /> {inv.customerPhone || '---'}
-                                        </div>
-                                        <div className="text-gray-500 flex items-center gap-1">
-                                             <Calendar size={14} /> Hạn: {moment(inv.dueDate).format('DD/MM/YYYY')}
-                                        </div>
+                                        <div className="text-gray-500 flex items-center gap-1"><Phone size={14} /> {inv.customerPhone || '---'}</div>
                                     </div>
-
-                                    {/* Footer Card: Total Amount + Button */}
                                     <div className="flex justify-between items-center pt-2 mt-1 border-t border-gray-100">
                                         <div>
                                             <span className="text-xs text-gray-500 block">Tổng tiền</span>
-                                            <span className="font-extrabold text-gray-800 text-lg">
-                                                {inv.totalAmount?.toLocaleString('vi-VN')} đ
-                                            </span>
+                                            <span className="font-extrabold text-gray-800 text-lg">{inv.totalAmount?.toLocaleString('vi-VN')} đ</span>
                                         </div>
-                                        <button
-                                            onClick={() => handleSelectInvoice(inv)}
-                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
-                                        >
+                                        <button onClick={() => handleSelectInvoice(inv)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-700 active:scale-95 transition-all">
                                             Thu Tiền
                                         </button>
                                     </div>
@@ -191,7 +230,7 @@ function CashPaymentForm() {
                         })}
                     </div>
 
-                    {/* 2. DESKTOP VIEW: TABLE */}
+                    {/* 2. DESKTOP VIEW */}
                     <div className="hidden md:block overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
@@ -211,17 +250,10 @@ function CashPaymentForm() {
                                             <div className="text-sm font-medium text-gray-900">{inv.customerName}</div>
                                             <div className="text-xs text-gray-500">{inv.customerPhone || '---'}</div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {moment(inv.dueDate).format('DD/MM/YYYY')}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">
-                                            {inv.totalAmount?.toLocaleString('vi-VN')} đ
-                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{moment(inv.dueDate).format('DD/MM/YYYY')}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">{inv.totalAmount?.toLocaleString('vi-VN')} đ</td>
                                         <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => handleSelectInvoice(inv)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out"
-                                            >
+                                            <button onClick={() => handleSelectInvoice(inv)} className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition duration-150 ease-in-out">
                                                 <Eye size={14} className="mr-1.5" /> Xem
                                             </button>
                                         </td>
@@ -294,7 +326,7 @@ function CashPaymentForm() {
                                 </div>
                             </div>
 
-                            {/* Cột 2: Thông tin Nước */}
+                            {/* Cột 2: Thông tin Nước (Nếu có) */}
                             <div className="lg:col-span-1 space-y-4">
                                 <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 h-full">
                                     <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -310,17 +342,6 @@ function CashPaymentForm() {
                                                 <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-300">
                                                     {selectedInvoice.meterCode || 'N/A'}
                                                 </span>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2 text-center">
-                                                <div className="bg-white p-2 rounded border border-gray-200">
-                                                    <p className="text-xs text-gray-500">Chỉ số Cũ</p>
-                                                    <p className="font-mono font-bold text-gray-700">{selectedInvoice.oldIndex}</p>
-                                                </div>
-                                                <div className="bg-white p-2 rounded border border-gray-200">
-                                                    <p className="text-xs text-gray-500">Chỉ số Mới</p>
-                                                    <p className="font-mono font-bold text-gray-700">{selectedInvoice.newIndex}</p>
-                                                </div>
                                             </div>
 
                                             <div className="bg-blue-100 p-3 rounded text-center border border-blue-200">
@@ -339,7 +360,7 @@ function CashPaymentForm() {
                                 </div>
                             </div>
 
-                            {/* Cột 3: Chi tiết Tiền */}
+                            {/* Cột 3: Chi tiết Tiền & UPLOAD ẢNH */}
                             <div className="lg:col-span-1">
                                 <div className="bg-white p-4 rounded-lg border border-gray-200 h-full flex flex-col justify-between shadow-sm">
                                     <div>
@@ -355,10 +376,6 @@ function CashPaymentForm() {
                                                 <span className="text-gray-600">VAT:</span>
                                                 <span className="font-medium">{selectedInvoice.vatAmount?.toLocaleString('vi-VN')} đ</span>
                                             </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Phí BVMT:</span>
-                                                <span className="font-medium">{selectedInvoice.environmentFeeAmount?.toLocaleString('vi-VN')} đ</span>
-                                            </div>
                                             {selectedInvoice.latePaymentFee > 0 && (
                                                 <div className="flex justify-between text-red-600">
                                                     <span className="font-medium">Phí trễ hạn:</span>
@@ -368,13 +385,51 @@ function CashPaymentForm() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-6">
-                                        <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-center mb-4">
+                                    <div className="mt-6 space-y-4">
+                                        <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-center">
                                             <p className="text-xs text-green-700 uppercase font-semibold">TỔNG CỘNG</p>
                                             <p className="text-3xl font-extrabold text-green-700">
                                                 {selectedInvoice.totalAmount?.toLocaleString('vi-VN')} đ
                                             </p>
                                         </div>
+
+                                        {/* --- KHU VỰC UPLOAD ẢNH BẰNG CHỨNG --- */}
+                                        <div className="border-t pt-4">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Ảnh bằng chứng (Biên lai ký/Tiền mặt) <span className="text-red-500">*</span>
+                                            </label>
+                                            
+                                            {!evidencePreview ? (
+                                                <div className="flex items-center justify-center w-full">
+                                                    <label htmlFor="evidence-upload" className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                            <Camera className="w-8 h-8 text-gray-400 mb-1" />
+                                                            <p className="text-xs text-gray-500">Chạm để chụp/tải ảnh</p>
+                                                        </div>
+                                                        <input 
+                                                            id="evidence-upload" 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            capture="environment" // Hỗ trợ mở camera sau trên mobile
+                                                            className="hidden" 
+                                                            onChange={handleFileChange}
+                                                        />
+                                                    </label>
+                                                </div>
+                                            ) : (
+                                                <div className="relative">
+                                                    <img src={evidencePreview} alt="Evidence Preview" className="w-full h-32 object-cover rounded-lg border border-gray-300" />
+                                                    <button 
+                                                        onClick={resetEvidence}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                                        title="Xóa ảnh"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* ----------------------------------- */}
 
                                         <button
                                             onClick={handlePreSubmit}
@@ -400,7 +455,7 @@ function CashPaymentForm() {
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmPayment}
                 title="Xác nhận thu tiền mặt"
-                message={`Bạn xác nhận đã nhận đủ ${selectedInvoice?.totalAmount?.toLocaleString('vi-VN')} VNĐ từ khách hàng ${selectedInvoice?.customerName}?`}
+                message={`Bạn xác nhận đã nhận đủ ${selectedInvoice?.totalAmount?.toLocaleString('vi-VN')} VNĐ và đã tải lên bằng chứng thanh toán?`}
                 isLoading={loadingSubmit}
             />
         </div>

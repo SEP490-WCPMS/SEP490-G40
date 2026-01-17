@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getInvoiceDetail, cancelInvoice } from '../Services/apiAccountingStaff'; // Import thêm cancelInvoice
-import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, XCircle, CheckCircle } from 'lucide-react';
+import { getInvoiceDetail, cancelInvoice, downloadInvoicePdf } from '../Services/apiAccountingStaff'; 
+import { ArrowLeft, DollarSign, Calendar, FileText, AlertCircle, XCircle, CheckCircle, Download, CreditCard, User, Droplets, Gauge } from 'lucide-react';
 import moment from 'moment';
-
-// 1. IMPORT CÁC THÀNH PHẦN MỚI
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ConfirmModal from '../common/ConfirmModal';
 
 /**
- * Trang Chi tiết Hóa đơn Dịch vụ
+ * Trang Chi tiết Hóa đơn Dịch vụ (Dành cho Kế toán)
  */
 function InvoiceDetail() {
     const { invoiceId } = useParams();
@@ -20,10 +18,13 @@ function InvoiceDetail() {
     const [feeDetail, setFeeDetail] = useState(null);
 
     const [loading, setLoading] = useState(true);
-    const [processing, setProcessing] = useState(false); // State xử lý hủy
-
+    const [processing, setProcessing] = useState(false);
+    
     // State Modal
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    
+    // State Zoom Ảnh
+    const [isZoomed, setIsZoomed] = useState(false);
 
     // Hàm fetch data
     const fetchData = () => {
@@ -48,40 +49,24 @@ function InvoiceDetail() {
         fetchData();
     }, [invoiceId]);
 
-    // --- CÁC HÀM XỬ LÝ HỦY HÓA ĐƠN ---
+    // --- CÁC HÀM XỬ LÝ ---
+    const handlePreCancel = () => setShowConfirmModal(true);
 
-    // 1. Mở Modal
-    const handlePreCancel = () => {
-        setShowConfirmModal(true);
-    };
-
-    // 2. Gọi API Hủy
     const handleConfirmCancel = async () => {
         setProcessing(true);
-        // Đóng modal
         setShowConfirmModal(false);
-
         try {
             await cancelInvoice(invoiceId);
-
-            toast.success("Hủy hóa đơn thành công!", {
-                position: "top-center",
-                autoClose: 2000
-            });
-
-            // Load lại dữ liệu để cập nhật trạng thái
+            toast.success("Hủy hóa đơn thành công!", { position: "top-center", autoClose: 2000 });
             fetchData();
         } catch (err) {
             console.error("Lỗi hủy hóa đơn:", err);
-            toast.error(err.response?.data?.message || "Hủy hóa đơn thất bại.", {
-                position: "top-center"
-            });
+            toast.error(err.response?.data?.message || "Hủy hóa đơn thất bại.", { position: "top-center" });
         } finally {
             setProcessing(false);
         }
     };
 
-    // Helper style
     const getStatusClass = (status) => {
         switch (status) {
             case 'PENDING': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
@@ -92,7 +77,6 @@ function InvoiceDetail() {
         }
     };
 
-    // --- HÀM MỚI: Dịch trạng thái sang Tiếng Việt ---
     const getStatusLabel = (status) => {
         switch (status) {
             case 'PENDING': return 'Chờ thanh toán';
@@ -103,9 +87,27 @@ function InvoiceDetail() {
         }
     };
 
+    const handleDownloadPdf = async () => {
+        try {
+            const res = await downloadInvoicePdf(invoiceId);
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const safeInvoiceNumber = invoiceDetail?.invoiceNumber || invoiceId;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `HoaDon_${safeInvoiceNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Không thể tải file PDF hóa đơn.', { position: 'top-center' });
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;
 
-    // Nếu không có dữ liệu sau khi load xong
     if (!invoiceDetail) {
         return (
             <div className="p-8 text-center">
@@ -118,14 +120,8 @@ function InvoiceDetail() {
     }
 
     return (
-        <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen max-w-4xl mx-auto">
-
-            {/* 3. TOAST CONTAINER */}
-            <ToastContainer
-                position="top-center"
-                autoClose={3000}
-                theme="colored"
-            />
+        <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen max-w-5xl mx-auto">
+            <ToastContainer position="top-center" autoClose={3000} theme="colored" />
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -139,184 +135,208 @@ function InvoiceDetail() {
                     </div>
                 </div>
 
-                {/* Nút Hủy (Chỉ hiện khi PENDING) */}
-                {invoiceDetail.paymentStatus === 'PENDING' && (
-                    <button
-                        onClick={handlePreCancel}
-                        disabled={processing}
-                        className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 transition-colors disabled:opacity-50 focus:outline-none"
-                    >
-                        {processing ? (
-                            <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
-                        ) : (
-                            <XCircle size={18} className="mr-2" />
-                        )}
-                        {processing ? 'Đang xử lý...' : 'Hủy Hóa Đơn'}
+                <div className="flex items-center gap-2">
+                    <button onClick={handleDownloadPdf} className="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md shadow-sm hover:bg-gray-50 transition-colors focus:outline-none">
+                        <Download size={18} className="mr-2" /> Tải PDF
                     </button>
-                )}
+                    {invoiceDetail.paymentStatus === 'PENDING' && (
+                        <button onClick={handlePreCancel} disabled={processing} className="flex items-center px-4 py-2 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 transition-colors disabled:opacity-50 focus:outline-none">
+                            {processing ? <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span> : <XCircle size={18} className="mr-2" />}
+                            {processing ? 'Đang xử lý...' : 'Hủy Hóa Đơn'}
+                        </button>
+                    )}
+                </div>
             </div>
 
-            {/* Box Thông tin Gốc */}
-            {feeDetail && (
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
-                    <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2">Thông tin Gốc (Từ Kỹ thuật)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 text-gray-600">
-                        <p><strong className="text-gray-700">Khách hàng:</strong> {feeDetail.customerName} (Mã: {feeDetail.customerCode})</p>
-                        <p><strong className="text-gray-700">Địa chỉ:</strong> {feeDetail.customerAddress}</p>
-                        <p><strong className="text-gray-700">Điện thoại:</strong> {feeDetail.customerPhone}</p>
-                        <p><strong className="text-gray-700">Email:</strong> {feeDetail.customerEmail}</p>
-                        <p><strong className="text-gray-700">Đồng hồ:</strong> <span className="font-mono bg-gray-100 px-1 rounded">{feeDetail.meterCode}</span></p>
-                        <p><strong className="text-gray-700">Phí gốc:</strong> {feeDetail.calibrationCost.toLocaleString('vi-VN')} VNĐ</p>
-                    </div>
-                    <p className="bg-gray-50 p-3 rounded italic text-gray-500">
-                        "Ghi chú: {feeDetail.notes || 'N/A'}"
-                    </p>
-                </div>
-            )}
-
-            {/* Box Hóa đơn Nước (Nếu có) */}
-            {!feeDetail && invoiceDetail.meterReadingId && (
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
-                    <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2">Thông tin Sử Dụng Nước</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 text-gray-600">
-                        <p className="text-gray-600"><strong>Khách hàng:</strong> {invoiceDetail.customerName} (Mã: {invoiceDetail.customerCode})</p>
-                        <p className="text-gray-600"><strong>Địa chỉ:</strong> {invoiceDetail.customerAddress}</p>
-                        <p className="text-gray-600"><strong>Điện thoại:</strong> {invoiceDetail.customerPhone}</p>
-                        <p className="text-gray-600"><strong>Email:</strong> {invoiceDetail.customerEmail}</p>
-                        <p><strong className="ext-gray-600">Đồng hồ:</strong> <span className="font-mono bg-gray-100 px-1 rounded">{invoiceDetail.meterCode}</span></p>
-                        <p className="text-gray-600"><strong>Tổng tiêu thụ:</strong> {invoiceDetail.totalConsumption} m³</p>
-                    </div>
-                </div>
-            )}
-
-            {/* Trường hợp 3: Hóa đơn Lắp Đặt (MỚI THÊM) */}
-            {!feeDetail && !invoiceDetail.meterReadingId && invoiceDetail.contractId && (
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-3 text-sm">
-                    <h3 className="text-base font-bold text-gray-700 mb-2 uppercase tracking-wide border-b pb-2 flex items-center gap-2">
-                        <FileText size={18} className="text-blue-600" /> Thông tin Hợp Đồng Lắp Đặt
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 text-gray-600">
-                        <p><strong className="text-gray-700">Khách hàng:</strong> {invoiceDetail.customerName} (Mã: {invoiceDetail.customerCode || '---'})</p>
-                        <p><strong className="text-gray-700">Mã Hợp Đồng:</strong> <span className="font-bold text-blue-600">{invoiceDetail.contractNumber || `#${invoiceDetail.contractId}`}</span></p>
-
-                        <p><strong className="text-gray-700">Địa chỉ lắp đặt:</strong> {invoiceDetail.customerAddress}</p>
-                        <p><strong className="text-gray-700">Điện thoại:</strong> {invoiceDetail.customerPhone || '---'}</p>
-
-                        <div className="col-span-1 md:col-span-2 mt-2 p-3 bg-blue-50 rounded border border-blue-100">
-                            <p className="text-blue-800 font-medium mb-1">Chi tiết khoản thu:</p>
-                            <ul className="list-disc list-inside pl-2 space-y-1">
-                                <li>Phí khảo sát & thiết kế</li>
-                                <li>Vật tư & Nhân công lắp đặt</li>
-                                <li>Đồng hồ nước (Cấp mới)</li>
-                            </ul>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* CỘT TRÁI (2/3): THÔNG TIN CHÍNH */}
+                <div className="lg:col-span-2 space-y-6">
+                    
+                    {/* 1. Box Thông tin chung */}
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-4 mb-4">
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <FileText size={20} className="text-blue-600" /> Thông tin Hóa đơn
+                            </h3>
+                            <span className={`px-3 py-1 inline-flex text-sm font-bold rounded-full ${getStatusClass(invoiceDetail.paymentStatus)}`}>
+                                {getStatusLabel(invoiceDetail.paymentStatus)}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <p className="text-gray-500 text-xs uppercase font-semibold">Ngày Lập</p>
+                                <p className="font-medium text-gray-900">{moment(invoiceDetail.invoiceDate).format('DD/MM/YYYY')}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-xs uppercase font-semibold">Hạn Thanh Toán</p>
+                                <p className={`font-medium ${moment(invoiceDetail.dueDate).isBefore(moment(), 'day') && invoiceDetail.paymentStatus === 'PENDING' ? 'text-red-600' : 'text-gray-900'}`}>
+                                    {moment(invoiceDetail.dueDate).format('DD/MM/YYYY')}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-gray-500 text-xs uppercase font-semibold">Ngày Thanh Toán</p>
+                                <p className="font-medium text-green-700">{invoiceDetail.paidDate ? moment(invoiceDetail.paidDate).format('DD/MM/YYYY') : '---'}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* Box Chi tiết Hóa đơn */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
-                <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <FileText size={20} className="text-blue-600" />
-                        Thông tin Thanh toán
-                    </h3>
-                    <span className={`px-3 py-1 inline-flex text-sm font-bold rounded-full ${getStatusClass(invoiceDetail.paymentStatus)}`}>
-                        {/* Gọi hàm dịch tiếng Việt */}
-                        {getStatusLabel(invoiceDetail.paymentStatus)}
-                    </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
-                    <div className="bg-gray-50 p-3 rounded border border-gray-100">
-                        <label className="block mb-1 text-xs font-medium text-gray-500 uppercase">Số Hóa Đơn</label>
-                        <p className="text-base font-bold text-gray-800">{invoiceDetail.invoiceNumber}</p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded border border-gray-100">
-                        <label className="block mb-1 text-xs font-medium text-gray-500 uppercase">Ngày Lập</label>
-                        <p className="text-base text-gray-800 flex items-center gap-2">
-                            <Calendar size={16} className="text-gray-400" />
-                            {moment(invoiceDetail.invoiceDate).format('DD/MM/YYYY')}
-                        </p>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded border border-gray-100">
-                        <label className="block mb-1 text-xs font-medium text-gray-500 uppercase">Hạn Thanh Toán</label>
-                        <p className={`text-base font-bold flex items-center gap-2 ${moment(invoiceDetail.dueDate).isBefore(moment(), 'day') && invoiceDetail.paymentStatus === 'PENDING' ? 'text-red-600' : 'text-gray-800'}`}>
-                            <AlertCircle size={16} className={moment(invoiceDetail.dueDate).isBefore(moment(), 'day') ? "text-red-500" : "text-gray-400"} />
-                            {moment(invoiceDetail.dueDate).format('DD/MM/YYYY')}
-                        </p>
-                    </div>
-                </div>
-
-                {invoiceDetail.paidDate && (
-                    <div className="bg-green-50 p-3 rounded border border-green-200 flex items-center gap-2 text-green-800 text-sm font-medium">
-                        <CheckCircle size={18} />
-                        Đã thanh toán ngày: {moment(invoiceDetail.paidDate).format('DD/MM/YYYY')}
-                    </div>
-                )}
-
-                {/* Chi tiết tiền */}
-                <div className="pt-2 space-y-3">
-                    <div className="flex justify-between text-sm text-gray-600">
-                        <span>Thành tiền (chưa VAT):</span>
-                        <span className="font-medium">{invoiceDetail.subtotalAmount.toLocaleString('vi-VN')} VNĐ</span>
-                    </div>
-                    <div className="flex justify-between text-sm text-gray-600">
-                        <span>Thuế VAT:</span>
-                        <span className="font-medium">{invoiceDetail.vatAmount.toLocaleString('vi-VN')} VNĐ</span>
-                    </div>
-                    {invoiceDetail.environmentFeeAmount > 0 && (
-                        <div className="flex justify-between text-sm text-gray-600">
-                            <span>Phí BVMT:</span>
-                            <span className="font-medium">{invoiceDetail.environmentFeeAmount.toLocaleString('vi-VN')} VNĐ</span>
+                    {/* 2. Box Khách hàng */}
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <h3 className="text-base font-bold text-gray-700 mb-3 flex items-center gap-2 border-b pb-2">
+                            <User size={18} className="text-gray-500" /> Thông tin Khách hàng
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                            <div>
+                                <p><strong className="text-gray-700">Họ tên:</strong> {invoiceDetail.customerName}</p>
+                                <p><strong className="text-gray-700">Mã KH:</strong> {invoiceDetail.customerCode}</p>
+                            </div>
+                            <div>
+                                <p><strong className="text-gray-700">SĐT:</strong> {invoiceDetail.customerPhone || '---'}</p>
+                                <p><strong className="text-gray-700">Email:</strong> {invoiceDetail.customerEmail || '---'}</p>
+                            </div>
+                            <div className="md:col-span-2">
+                                <p><strong className="text-gray-700">Địa chỉ:</strong> {invoiceDetail.customerAddress}</p>
+                            </div>
                         </div>
-                    )}
-                    {invoiceDetail.latePaymentFee > 0 && (
-                        <div className="flex justify-between text-sm text-red-600 bg-red-50 p-2 rounded">
-                            <span>Phí nộp chậm:</span>
-                            <span className="font-bold">{invoiceDetail.latePaymentFee.toLocaleString('vi-VN')} VNĐ</span>
+                    </div>
+
+                    {/* 3. Box Thông tin Nước (Nếu có) */}
+                    {!feeDetail && invoiceDetail.meterReadingId && (
+                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                            <h3 className="text-base font-bold text-gray-700 mb-3 flex items-center gap-2 border-b pb-2">
+                                <Droplets size={18} className="text-blue-500" /> Chỉ số Nước
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-center">
+                                <div className="bg-gray-50 p-2 rounded">
+                                    <p className="text-xs text-gray-500">Mã ĐH</p>
+                                    <p className="font-mono font-bold">{invoiceDetail.meterCode}</p>
+                                </div>
+                                <div className="bg-gray-50 p-2 rounded">
+                                    <p className="text-xs text-gray-500">Chỉ số Cũ</p>
+                                    <p className="font-mono font-bold">{invoiceDetail.oldIndex}</p>
+                                </div>
+                                <div className="bg-gray-50 p-2 rounded">
+                                    <p className="text-xs text-gray-500">Chỉ số Mới</p>
+                                    <p className="font-mono font-bold">{invoiceDetail.newIndex}</p>
+                                </div>
+                                <div className="bg-blue-50 p-2 rounded border border-blue-100">
+                                    <p className="text-xs text-blue-600 font-bold">Tiêu thụ</p>
+                                    <p className="font-extrabold text-blue-700 text-lg">{invoiceDetail.totalConsumption} m³</p>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    <div className="border-t border-dashed border-gray-300 my-2"></div>
-
-                    <div className="flex justify-between items-center">
-                        <span className="text-base font-bold text-gray-800">TỔNG CỘNG:</span>
-                        <span className="text-xl font-extrabold text-blue-700">{invoiceDetail.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
-                    </div>
-
-                    {invoiceDetail.deductedAmount > 0 && (
-                        <div className="flex justify-between items-center text-green-600 text-sm">
-                            <span className="flex items-center"><DollarSign size={14} className="mr-1" /> Trừ ví tích lũy:</span>
-                            <span className="font-bold">- {invoiceDetail.deductedAmount.toLocaleString('vi-VN')} VNĐ</span>
+                    {/* 4. Box Thông tin Gốc (Nếu là HĐ Dịch vụ) */}
+                    {feeDetail && (
+                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                            <h3 className="text-base font-bold text-gray-700 mb-3 flex items-center gap-2 border-b pb-2">
+                                <Gauge size={18} className="text-purple-500" /> Thông tin Gốc (Kỹ thuật)
+                            </h3>
+                            <div className="text-sm text-gray-600 space-y-1">
+                                <p><strong>Đồng hồ:</strong> {feeDetail.meterCode}</p>
+                                <p><strong>Phí gốc:</strong> {feeDetail.calibrationCost.toLocaleString('vi-VN')} VNĐ</p>
+                                <p className="italic bg-gray-50 p-2 rounded mt-2">"Ghi chú: {feeDetail.notes || 'N/A'}"</p>
+                            </div>
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center bg-gray-100 p-3 rounded-lg">
-                        <span className="text-sm font-bold text-gray-700">THỰC THU:</span>
-                        <span className="text-2xl font-black text-red-600">
-                            {(invoiceDetail.totalAmount - (invoiceDetail.deductedAmount || 0)).toLocaleString('vi-VN')} VNĐ
-                        </span>
-                    </div>
+                    {/* 5. === ẢNH BẰNG CHỨNG (MỚI THÊM) === */}
+                    {invoiceDetail.paymentStatus === 'PAID' && invoiceDetail.evidenceImageBase64 && (
+                        <div className="bg-white p-6 rounded-lg shadow-sm border border-green-200">
+                            <h3 className="text-base font-bold text-green-700 mb-4 flex items-center gap-2 border-b border-green-100 pb-2">
+                                <CheckCircle size={18} /> Bằng chứng thanh toán (Tiền mặt)
+                            </h3>
+                            <div className="flex flex-col sm:flex-row gap-6">
+                                <div className="w-full sm:w-48 shrink-0 group relative cursor-zoom-in" onClick={() => setIsZoomed(true)}>
+                                    <img 
+                                        src={`data:image/jpeg;base64,${invoiceDetail.evidenceImageBase64}`} 
+                                        alt="Evidence" 
+                                        className="w-full h-32 object-cover rounded border border-gray-300 shadow-sm group-hover:opacity-90 transition"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition rounded text-white text-xs font-bold">Xem lớn</div>
+                                </div>
+                                <div className="flex-1 text-sm space-y-2 text-gray-600">
+                                    <p><strong>Mã biên lai:</strong> <span className="font-mono text-gray-800">{invoiceDetail.receiptNumber || '---'}</span></p>
+                                    <p><strong>Hình thức:</strong> Tiền mặt (Cash)</p>
+                                    <p><strong>Người thu:</strong> {invoiceDetail.cashierName || 'Thu ngân'}</p>
+                                    <p className="text-xs text-gray-500 italic mt-2">* Ảnh chụp biên lai có chữ ký khách hàng hoặc tiền mặt tại hiện trường.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                {invoiceDetail.notes && (
-                    <div className="text-sm text-gray-500 border-t pt-4">
-                        <span className="font-medium text-gray-700">Ghi chú:</span> {invoiceDetail.notes}
+                {/* CỘT PHẢI (1/3): TỔNG TIỀN */}
+                <div className="lg:col-span-1">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 sticky top-4">
+                        <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 border-b pb-2">
+                            <CreditCard size={18} /> Chi tiết Thanh toán
+                        </h3>
+                        <div className="space-y-3 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Thành tiền:</span>
+                                <span className="font-medium">{invoiceDetail.subtotalAmount.toLocaleString('vi-VN')} đ</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">VAT:</span>
+                                <span className="font-medium">{invoiceDetail.vatAmount.toLocaleString('vi-VN')} đ</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Phí BVMT:</span>
+                                <span className="font-medium">{invoiceDetail.environmentFeeAmount.toLocaleString('vi-VN')} đ</span>
+                            </div>
+                            {invoiceDetail.latePaymentFee > 0 && (
+                                <div className="flex justify-between text-red-600 bg-red-50 p-1 rounded">
+                                    <span className="font-medium">Phí trễ hạn:</span>
+                                    <span className="font-bold">{invoiceDetail.latePaymentFee.toLocaleString('vi-VN')} đ</span>
+                                </div>
+                            )}
+                            
+                            <div className="border-t border-dashed border-gray-300 my-2 pt-2"></div>
+                            
+                            <div className="flex justify-between items-center">
+                                <span className="text-base font-bold text-gray-800">TỔNG CỘNG:</span>
+                                <span className="text-xl font-extrabold text-blue-700">{invoiceDetail.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                            </div>
+
+                            {invoiceDetail.deductedAmount > 0 && (
+                                <div className="flex justify-between items-center text-green-600 text-sm">
+                                    <span>Trừ ví tích lũy:</span>
+                                    <span className="font-bold">- {invoiceDetail.deductedAmount.toLocaleString('vi-VN')} VNĐ</span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-center bg-gray-100 p-3 rounded-lg mt-2">
+                                <span className="text-sm font-bold text-gray-700">THỰC THU:</span>
+                                <span className="text-2xl font-black text-red-600">
+                                    {(invoiceDetail.totalAmount - (invoiceDetail.deductedAmount || 0)).toLocaleString('vi-VN')} VNĐ
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* 4. RENDER MODAL XÁC NHẬN */}
+            {/* MODAL ZOOM ẢNH */}
+            {isZoomed && (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setIsZoomed(false)}>
+                    <img src={`data:image/jpeg;base64,${invoiceDetail.evidenceImageBase64}`} alt="Zoomed Evidence" className="max-w-full max-h-full rounded shadow-2xl" />
+                    <button className="absolute top-4 right-4 text-white p-2 hover:bg-white/20 rounded-full">
+                        <XCircle size={32} />
+                    </button>
+                </div>
+            )}
+
+            {/* MODAL XÁC NHẬN HỦY */}
             <ConfirmModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmCancel}
                 title="Xác nhận hủy hóa đơn"
-                message={`Bạn có chắc chắn muốn hủy hóa đơn ${invoiceDetail.invoiceNumber} không? Hành động này không thể hoàn tác.`}
+                message={`Bạn có chắc chắn muốn hủy hóa đơn ${invoiceDetail.invoiceNumber} không?`}
                 isLoading={processing}
             />
-
         </div>
     );
 }

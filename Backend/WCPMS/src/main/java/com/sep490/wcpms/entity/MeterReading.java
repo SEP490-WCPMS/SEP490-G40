@@ -25,8 +25,11 @@ public class MeterReading {
     @JoinColumn(name = "meter_installation_id", foreignKey = @ForeignKey(name = "fk_meter_readings_installations"))
     private MeterInstallation meterInstallation;
 
+    @Column(name = "old_reading_date")
+    private LocalDate oldReadingDate; // Ngày đọc cũ (kỳ trước)
+
     @Column(name = "reading_date")
-    private LocalDate readingDate;
+    private LocalDate readingDate;  // Ngày đọc hiện tại (kỳ này)
 
     @Column(name = "previous_reading", precision = 15, scale = 2)
     private BigDecimal previousReading;

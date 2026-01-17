@@ -635,6 +635,17 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         }
         // --- HẾT PHẦN KIỂM TRA ---
 
+        // === [THÊM LOGIC CHẶN SPAM TẠI ĐÂY] ===
+        // Kiểm tra xem đồng hồ này có phiếu kiểm định nào chưa thanh toán (invoice_id IS NULL) không?
+        boolean hasPendingInvoice = meterCalibrationRepository.existsByMeterAndInvoiceIsNull(meter);
+
+        if (hasPendingInvoice) {
+            throw new IllegalStateException(
+                    "Đồng hồ này đang có một phiếu kiểm định chưa được lập hóa đơn. Vui lòng chờ Kế toán xử lý trước khi kiểm định tiếp."
+            );
+        }
+        // ======================================
+
         // 2. TẠO BẢN GHI KIỂM ĐỊNH MỚI (Bảng 14)
         MeterCalibration calibration = new MeterCalibration();
         calibration.setMeter(meter);
@@ -659,12 +670,12 @@ public class TechnicalStaffServiceImpl implements TechnicalStaffService {
         meter.setNextMaintenanceDate(dto.getNextCalibrationDate()); // Cập nhật ngày kiểm định tiếp theo
 
         // Nếu kiểm định hỏng (FAILED), đánh dấu đồng hồ là BROKEN
-        if (dto.getCalibrationStatus() == MeterCalibration.CalibrationStatus.FAILED) {
-            meter.setMeterStatus(WaterMeter.MeterStatus.BROKEN);
-            // (Lúc này, hệ thống có thể tạo 1 ticket mới yêu cầu "Thay thế" đồng hồ này)
-        } else {
-            meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED); // Vẫn đang hoạt động tốt
-        }
+//        if (dto.getCalibrationStatus() == MeterCalibration.CalibrationStatus.FAILED) {
+//            meter.setMeterStatus(WaterMeter.MeterStatus.BROKEN);
+//            // (Lúc này, hệ thống có thể tạo 1 ticket mới yêu cầu "Thay thế" đồng hồ này)
+//        } else {
+//            meter.setMeterStatus(WaterMeter.MeterStatus.INSTALLED); // Vẫn đang hoạt động tốt
+//        }
 
         waterMeterRepository.save(meter);
 
