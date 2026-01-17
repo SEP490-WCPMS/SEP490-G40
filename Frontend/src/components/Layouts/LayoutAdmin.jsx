@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/use-auth'; // Import hook useAuth
 import { Home, LogOut } from 'lucide-react'; // Import icons cho dropdown
 import { AdminSidebar } from './AdminSidebar'; // <-- SỬA: Import Sidebar Admin
+import NotificationBell from '../common/NotificationBell';
 import './LayoutAdmin.css'; // <-- SỬA: Import file CSS Admin
 
 const LayoutAdmin = () => { // <-- SỬA: Tên component
@@ -41,7 +42,8 @@ const LayoutAdmin = () => { // <-- SỬA: Tên component
           
           {/* --- User Menu bên phải (Giữ nguyên logic) --- */}
           <div className="ml-auto flex items-center gap-4 relative">
-            
+            {/* Chuông thông báo */}
+            <NotificationBell />
             {/* Giữ nguyên logic lấy tên user */}
             <span className="text-gray-700">
               Xin chào, {user ? user.fullName : 'Guest'}

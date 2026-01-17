@@ -41,6 +41,10 @@ public class ServiceStaffContractDTO {
     // Thêm: Ảnh chụp đồng hồ sau lắp đặt (base64) lấy từ bảng meter_installations
     private String installationImageBase64;
 
+    // Reading route (tuyến đọc)
+    private Integer readingRouteId;
+    private String readingRouteName;
+
     // Provide explicit aliases to be safe for any old calls to setIsGuest()/getIsGuest()
     public boolean getIsGuest() {
         return this.guest;

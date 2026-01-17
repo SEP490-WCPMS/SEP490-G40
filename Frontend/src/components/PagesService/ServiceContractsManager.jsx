@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, Input, Select, Row, Col, Typography, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 // Icons cho Tablist
@@ -38,15 +38,38 @@ const tabs = [
 
 const ServiceContractsManager = ({ initialTab }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const initial = initialTab || (location.state && location.state.initialTab) || searchParams.get('tab') || 'all';
   const [active, setActive] = useState(initial);
+  
+  // State highlight nội bộ - chỉ dùng cho tab được chỉ định trong URL
+  const [highlightId, setHighlightId] = useState(null);
+  const [highlightTab, setHighlightTab] = useState(null); // Tab nào được highlight
 
+  // Effect: Sync highlightId từ URL mỗi khi location.search thay đổi
+  // Điều này đảm bảo khi click thông báo (dù đang ở cùng trang), highlight vẫn được cập nhật
   useEffect(() => {
-    // Khi `initialTab` hoặc query/location.state thay đổi thì cập nhật tab active tương ứng
-    const newInit = initialTab || (location.state && location.state.initialTab) || new URLSearchParams(location.search).get('tab') || 'all';
-    setActive(newInit);
-  }, [initialTab, location.search, location.state]);
+    const params = new URLSearchParams(location.search);
+    const urlHighlight = params.get('highlight');
+    const urlTab = params.get('tab');
+    
+    if (urlHighlight) {
+      setHighlightId(urlHighlight);
+      setHighlightTab(urlTab || 'all'); // Ghi nhớ tab nào cần highlight
+      // Chỉ set active tab khi có highlight (navigate từ thông báo)
+      if (urlTab) {
+        setActive(urlTab);
+      }
+    }
+  }, [location.search]);
+
+  // Effect: Chỉ sync active tab từ initialTab prop (không từ URL để tránh conflict)
+  useEffect(() => {
+    if (initialTab) {
+      setActive(initialTab);
+    }
+  }, [initialTab]);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('all');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -54,6 +77,19 @@ const ServiceContractsManager = ({ initialTab }) => {
   const handleTabClick = (key) => {
     // Khi click tab - cập nhật active và ánh xạ sang `status` cho trang con
     setActive(key);
+    
+    // Xóa highlight khi click tab bất kỳ
+    if (highlightId) {
+      setHighlightId(null);
+      setHighlightTab(null);
+      // Xóa query params khỏi URL
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('highlight');
+      newParams.delete('tab');
+      const newSearch = newParams.toString();
+      navigate(`${location.pathname}${newSearch ? '?' + newSearch : ''}`, { replace: true });
+    }
+    
     // Logic map tab -> status
     if (key === 'requests') setStatus('DRAFT');
     else if (key === 'survey') setStatus('PENDING_SURVEY_REVIEW');
@@ -85,7 +121,9 @@ const ServiceContractsManager = ({ initialTab }) => {
 
   const renderContent = () => {
     // Chọn component phù hợp cho tab hiện thời và truyền props chung
-    const props = { keyword, status, refreshKey };
+    // CHỈ truyền highlightId cho tab được chỉ định (highlightTab), các tab khác không nhận highlight
+    const currentHighlightId = (active === highlightTab) ? highlightId : null;
+    const props = { keyword, status, refreshKey, highlightId: currentHighlightId };
     switch (active) {
       case 'all': return <AllContractsTab {...props} />;
       case 'requests': return <ContractRequestsPage {...props} />;
