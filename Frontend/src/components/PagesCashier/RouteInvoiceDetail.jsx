@@ -349,7 +349,7 @@ function RouteInvoiceDetail() {
                                                 className="w-full py-3 bg-green-600 text-white font-bold rounded-md shadow hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                             >
                                                 {submitting ? 'Đang xử lý...' : (
-                                                    <> <DollarSign size={20} /> Xác Nhận Đã Thu Tiền </>
+                                                    <> Xác Nhận Đã Thu Tiền </>
                                                 )}
                                             </button>
                                         </div>

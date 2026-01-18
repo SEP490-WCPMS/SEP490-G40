@@ -202,9 +202,9 @@ function InvoiceDetail() {
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Thời hạn thanh toán</p>
+                                        <p className="text-gray-500 text-xs uppercase font-semibold mb-1">Kỳ sử dụng nước</p>
                                         <p className="font-medium text-gray-900">
-                                            {moment(invoice.toDate).format('DD/MM')} - {moment(invoice.dueDate).format('DD/MM/YYYY')}
+                                            {moment(invoice.fromDate).format('DD/MM')} - {moment(invoice.toDate).format('DD/MM/YYYY')}
                                         </p>
                                     </div>
                                 </div>

@@ -108,4 +108,23 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Inte
             "AND mr.consumption > 0 " +
             "AND NOT EXISTS (SELECT 1 FROM Invoice i WHERE i.meterReading = mr)")
     long countPendingWaterBillsByStaff(@Param("staffId") Integer staffId);
+
+    // Trong MeterReadingRepository.java
+
+    @Query("SELECT mr FROM MeterReading mr " +
+            "WHERE mr.meterInstallation.id = :installationId " +
+            "AND mr.readingDate < :currentDate " +
+            "ORDER BY mr.readingDate DESC")
+    List<MeterReading> findPreviousReadings(
+            @Param("installationId") Integer installationId,
+            @Param("currentDate") LocalDate currentDate
+    );
+
+    /**
+     * Tìm bản ghi đọc số mới nhất của 1 đồng hồ, NHƯNG loại trừ trạng thái cụ thể (ví dụ: DISPUTED).
+     */
+    Optional<MeterReading> findTopByMeterInstallationAndReadingStatusNotOrderByReadingDateDesc(
+            MeterInstallation installation,
+            MeterReading.ReadingStatus status
+    );
 }

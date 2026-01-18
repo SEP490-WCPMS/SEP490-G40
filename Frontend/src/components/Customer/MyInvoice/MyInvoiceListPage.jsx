@@ -200,7 +200,7 @@ function MyInvoiceListPage({ title }) {
                     >
                         <option value="ALL">Tất cả</option>
                         <option value="PENDING">Chờ thanh toán / Quá hạn</option>
-                        <option value="PAID">Lịch sử (Đã trả)</option>
+                        <option value="PAID">Đã trả</option>
                     </select>
                 </div>
             </div>

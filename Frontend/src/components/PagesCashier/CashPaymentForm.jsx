@@ -437,7 +437,7 @@ function CashPaymentForm() {
                                             className="w-full py-3 bg-green-600 text-white font-bold rounded-md shadow hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 text-lg"
                                         >
                                             {loadingSubmit ? 'Đang xử lý...' : (
-                                                <> <DollarSign size={20} /> XÁC NHẬN THU </>
+                                                <> XÁC NHẬN THU </>
                                             )}
                                         </button>
                                     </div>
