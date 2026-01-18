@@ -58,10 +58,16 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         if (latestReadingOpt.isPresent()) {
             MeterReading latestReading = latestReadingOpt.get();
 
-            // Nếu trạng thái là COMPLETED -> Nghĩa là chưa được lập hóa đơn (chưa chuyển sang VERIFIED)
-            if (latestReading.getReadingStatus() == MeterReading.ReadingStatus.COMPLETED) {
+            // Điều kiện chặn:
+            // 1. Trạng thái là COMPLETED (Chờ hóa đơn)
+            // 2. VÀ Lượng tiêu thụ > 0 (Vì nếu = 0 thì Kế toán không thấy để tạo hóa đơn, nên ko cần chặn)
+            boolean isPendingStatus = latestReading.getReadingStatus() == MeterReading.ReadingStatus.COMPLETED;
+            boolean hasConsumption = latestReading.getConsumption() != null
+                    && latestReading.getConsumption().compareTo(BigDecimal.ZERO) > 0;
+
+            if (isPendingStatus && hasConsumption) {
                 throw new IllegalStateException(
-                        "Đồng hồ này đã được ghi chỉ số và đang chờ Kế toán lập hóa đơn. " +
+                        "Đồng hồ này đã được ghi chỉ số (có phát sinh tiêu thụ) và đang chờ Kế toán lập hóa đơn. " +
                                 "Vui lòng đợi hóa đơn được tạo trước khi ghi chỉ số kỳ tiếp theo."
                 );
             }
@@ -92,16 +98,26 @@ public class MeterReadingServiceImpl implements MeterReadingService {
         }
         // =========================================
 
-        // 5. Tìm chỉ số CŨ (Giữ nguyên logic)
-        BigDecimal previousReading;
-        Optional<MeterReading> lastReading = meterReadingRepository
-                .findTopByMeterInstallationOrderByReadingDateDesc(installation);
+        // === [SỬA ĐOẠN NÀY] ===
+        // 5. Tìm chỉ số CŨ
+        // Logic cũ: Lấy cái mới nhất -> Sai vì lấy phải cái DISPUTED (150)
+        // Logic mới: Lấy cái mới nhất MA KHÔNG PHẢI DISPUTED -> Sẽ lấy cái trước đó (100)
 
-        if (lastReading.isPresent()) {
-            previousReading = lastReading.get().getCurrentReading();
+        BigDecimal previousReading;
+        Optional<MeterReading> validLastReading = meterReadingRepository
+                .findTopByMeterInstallationAndReadingStatusNotOrderByReadingDateDesc(
+                        installation,
+                        MeterReading.ReadingStatus.DISPUTED
+                );
+
+        if (validLastReading.isPresent()) {
+            // Lấy chỉ số mới của kỳ hợp lệ trước đó (VD: 100)
+            previousReading = validLastReading.get().getCurrentReading();
         } else {
+            // Nếu chưa có kỳ nào hợp lệ, lấy chỉ số lắp đặt ban đầu
             previousReading = installation.getInitialReading();
         }
+        // ======================
 
         // 6. Tạo DTO trả về
         ReadingConfirmationDTO dto = new ReadingConfirmationDTO();
