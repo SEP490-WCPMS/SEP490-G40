@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.entity.Address;
 import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.MeterReading;
@@ -351,6 +352,29 @@ public class InvoicePdfExportService {
         return s;
     }
 
+    private String resolveServiceAddress(Invoice invoice) {
+        if (invoice != null && invoice.getContract() != null && invoice.getContract().getAddress() != null) {
+            Address a = invoice.getContract().getAddress();
+            if (a.getAddress() != null && !a.getAddress().isBlank()) return a.getAddress();
+
+            String street = a.getStreet() != null ? a.getStreet().trim() : "";
+            String ward = (a.getWard() != null && a.getWard().getWardName() != null) ? a.getWard().getWardName().trim() : "";
+            String district = (a.getWard() != null && a.getWard().getDistrict() != null) ? a.getWard().getDistrict().trim() : "";
+            String province = (a.getWard() != null && a.getWard().getProvince() != null) ? a.getWard().getProvince().trim() : "";
+
+            StringBuilder sb = new StringBuilder();
+            if (!street.isEmpty()) sb.append(street);
+            if (!ward.isEmpty()) sb.append(sb.length() > 0 ? ", " : "").append(ward);
+            if (!district.isEmpty()) sb.append(sb.length() > 0 ? ", " : "").append(district);
+            if (!province.isEmpty()) sb.append(sb.length() > 0 ? ", " : "").append(province);
+
+            String built = sb.toString().trim();
+            if (!built.isEmpty()) return built;
+        }
+        Customer c = invoice != null ? invoice.getCustomer() : null;
+        return c != null && c.getAddress() != null ? c.getAddress() : "";
+    }
+
     /** Tiền nước */
     public String exportWaterBillPdf(Invoice invoice, MeterReading reading,
                                      String companyAddress, String companyPhone, String companyEmail,
@@ -376,7 +400,7 @@ public class InvoicePdfExportService {
         model.put("noticeDate", fmtDate(today));
 
         model.put("customerCode", c.getCustomerCode());
-        model.put("customerAddress", c.getAddress());
+        model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
 
         String period = fmtDate(invoice.getFromDate()) + " - " + fmtDate(invoice.getToDate());
@@ -439,7 +463,7 @@ public class InvoicePdfExportService {
 
         model.put("noticeDate", fmtDate(today));
         model.put("customerCode", c.getCustomerCode());
-        model.put("customerAddress", c.getAddress());
+        model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
 
         model.put("contractCode", contractCode);
@@ -499,7 +523,7 @@ public class InvoicePdfExportService {
 
         model.put("noticeDate", fmtDate(today));
         model.put("customerCode", c.getCustomerCode());
-        model.put("customerAddress", c.getAddress());
+        model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
 
         model.put("serviceDescription", serviceDescription);

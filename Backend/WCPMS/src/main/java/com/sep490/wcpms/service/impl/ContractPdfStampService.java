@@ -57,13 +57,12 @@ public class ContractPdfStampService {
     // Page 4 (index 3) - bảng loại sử dụng
     private static final int PAGE_3 = 3;
     private static final float P3_X_METER_CODE = 125f;  // cột "Đồng hồ"
-    private static final float P3_X_SERIAL = 200f;      // cột "Sê ry"
-    private static final float P3_X_PRICE = 435f;       // cột "Giá bán"
-    private static final float P3_X_PERCENT = 505f;     // cột "Tỷ lệ %" (template đã có dấu %)
+    private static final float P3_X_SERIAL = 215f;      // cột "Sê ry"
+    private static final float P3_X_PRICE = 485f;       // cột "Giá bán"
 
-    private static final float P3_YTOP_ROW_RESIDENTIAL = 277.8086f;     // dòng "Sinh hoạt..."
-    private static final float P3_YTOP_ROW_ADMINISTRATIVE = 301.32666f; // dòng "Cơ quan..."
-    private static final float P3_YTOP_ROW_COMMERCIAL = 357.2720f;      // dòng "Kinh doanh..."
+    private static final float P3_YTOP_ROW_RESIDENTIAL = 114.1284f;     // dòng "Sinh hoạt..."
+    private static final float P3_YTOP_ROW_ADMINISTRATIVE = 132.6528f; // dòng "Cơ quan..."
+    private static final float P3_YTOP_ROW_COMMERCIAL = 174.7993f;      // dòng "Kinh doanh..."
 
     private static final float FONT_SIZE_12 = 12f;
     private static final float FONT_SIZE_13 = 13f;
@@ -83,6 +82,20 @@ public class ContractPdfStampService {
         }
         if (ownerAccountId == null || !ownerAccountId.equals(customerAccountId)) {
             throw new AccessDeniedException("Bạn không có quyền tải hợp đồng này.");
+        }
+
+        Contract.ContractStatus st = contract.getContractStatus();
+        boolean downloadable =
+                st == Contract.ContractStatus.PENDING_CUSTOMER_SIGN
+                        || st == Contract.ContractStatus.PENDING_SIGN
+                        || st == Contract.ContractStatus.SIGNED
+                        || st == Contract.ContractStatus.ACTIVE
+                        || st == Contract.ContractStatus.EXPIRED
+                        || st == Contract.ContractStatus.SUSPENDED
+                        || st == Contract.ContractStatus.TERMINATED;
+
+        if (!downloadable) {
+            throw new IllegalStateException("Chỉ được tải hợp đồng từ trạng thái PENDING_CUSTOMER_SIGN trở đi.");
         }
 
         try (
@@ -191,6 +204,18 @@ public class ContractPdfStampService {
 
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found: " + contractId));
+
+        Contract.ContractStatus st = contract.getContractStatus();
+        boolean downloadableByStatus =
+                st == Contract.ContractStatus.PENDING_CUSTOMER_SIGN
+                        || st == Contract.ContractStatus.PENDING_SIGN
+                        || st == Contract.ContractStatus.SIGNED
+                        || st == Contract.ContractStatus.ACTIVE;
+
+        boolean hasWaterServiceContract = contract.getPrimaryWaterContract() != null;
+        if (!hasWaterServiceContract && !downloadableByStatus) {
+            throw new IllegalStateException("Chỉ được tải PDF hợp đồng sau khi tạo hợp đồng cấp nước.");
+        }
 
         try (
                 PDDocument doc = loadTemplateAsPlainDocument(TEMPLATE_CLASSPATH);
@@ -425,9 +450,6 @@ public class ContractPdfStampService {
                 String price = priceByType.getOrDefault(row.typeCode, "");
                 if (!isBlank(price)) drawTextTopLeft(cs, page, font, FONT_SIZE_12, P3_X_PRICE, yTop, price);
 
-                // percent: template đã có dấu "%" trong ô -> chỉ điền số
-                String pText = percent.stripTrailingZeros().toPlainString();
-                drawTextTopLeft(cs, page, font, FONT_SIZE_12, P3_X_PERCENT, yTop, pText);
             }
         }
     }

@@ -45,8 +45,16 @@ const ContractDetail = () => {
     };
 
     const contractStatusUpper = String(contract?.contractStatus || '').toUpperCase();
-    const canDownloadContractPdf =
-        contractStatusUpper === 'ACTIVE' || contractStatusUpper === 'PENDING_CUSTOMER_SIGN' || contractStatusUpper === 'PENDING_SIGN';
+
+    const DOWNLOADABLE_CONTRACT_STATUSES = new Set([
+        'PENDING_CUSTOMER_SIGN',
+        'PENDING_SIGN',
+        'SIGNED',
+        'ACTIVE',
+    ]);
+
+    const canDownloadContractPdf = DOWNLOADABLE_CONTRACT_STATUSES.has(contractStatusUpper);
+
     const isActiveContract = contractStatusUpper === 'ACTIVE';
 
     const renderPaymentMethod = (method) => {
@@ -201,7 +209,7 @@ const ContractDetail = () => {
         if (!contractId) return;
 
         if (!canDownloadContractPdf) {
-            message.warning('Chỉ hợp đồng ở trạng thái Đang hoạt động hoặc Đang chờ khách ký mới có thể tải hợp đồng PDF.');
+            message.warning('Không có hợp đồng PDF.');
             return;
         }
 
@@ -257,7 +265,7 @@ const ContractDetail = () => {
                         <Title level={3} className="!mb-0">Chi tiết Hợp đồng</Title>
                     </Col>
                     <Col>
-                        <Tooltip title={canDownloadContractPdf ? '' : 'Chỉ hợp đồng ở trạng thái Đang hoạt động hoặc Đang chờ khách ký mới có thể tải hợp đồng'}>
+                        <Tooltip title={canDownloadContractPdf ? '' : 'Không có hợp đồng PDF.'}>
                             <Button
                                 type="primary"
                                 icon={<DownloadOutlined />}
@@ -313,7 +321,7 @@ const ContractDetail = () => {
                                     {formatDate(contract.surveyDate)}
                                 </Descriptions.Item>
 
-                                <Descriptions.Item label="Chi phí Lắp đặt Ước tính">
+                                <Descriptions.Item label="Chi phí Lắp đặt Ước tính (Chưa bao gồm VAT)">
                                     {formatCurrency(contract.estimatedCost)}
                                 </Descriptions.Item>
 
@@ -329,7 +337,7 @@ const ContractDetail = () => {
                                     {formatDate(contract.endDate)}
                                 </Descriptions.Item>
 
-                                <Descriptions.Item label="Chi phí Lắp đặt Thực tế">
+                                <Descriptions.Item label="Chi phí Lắp đặt Thực tế (Chưa bao gồm VAT)">
                                     {formatCurrency(contract.contractValue)}
                                 </Descriptions.Item>
 
