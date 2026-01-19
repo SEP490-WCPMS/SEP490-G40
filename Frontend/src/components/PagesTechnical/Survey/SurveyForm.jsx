@@ -64,7 +64,7 @@ function SurveyForm() {
         // --- VALIDATE DỮ LIỆU ---
 
         // 1. Check điền đầy đủ
-        if (!formData.technicalDesign || !formData.estimatedCost || !formData.surveyDate) {
+        if (!formData.estimatedCost || !formData.surveyDate) {
             toast.warn("Vui lòng điền đầy đủ thông tin bắt buộc (*).");
             return;
         }
@@ -303,9 +303,9 @@ function SurveyForm() {
                         />
                     </div>
 
-                    {/* Chi Phí Dự Kiến */}
+                    {/* Chi Phí */}
                     <div>
-                        <label htmlFor="estimatedCost" className="block mb-1.5 text-sm font-medium text-gray-700">Chi Phí Dự Kiến (VNĐ) <span className="text-red-500">*</span></label>
+                        <label htmlFor="estimatedCost" className="block mb-1.5 text-sm font-medium text-gray-700">Chi Phí (VNĐ) <span className="text-red-500">*</span></label>
                         <input
                             type="text"                  // <-- ĐỔI TỪ NUMBER SANG TEXT
                             id="estimatedCost"
@@ -320,17 +320,17 @@ function SurveyForm() {
                     </div>
                 </div>
 
-                {/* Thiết Kế Kỹ Thuật */}
+                {/* Ghi chú (Đổi từ Thiết kế kỹ thuật - Không bắt buộc) */}
                 <div>
-                    <label htmlFor="technicalDesign" className="block mb-1.5 text-sm font-medium text-gray-700">Thiết Kế Kỹ Thuật Chi Tiết <span className="text-red-500">*</span></label>
+                    <label htmlFor="technicalDesign" className="block mb-1.5 text-sm font-medium text-gray-700">Ghi chú (Nếu có)</label>
                     <textarea
                         id="technicalDesign"
                         name="technicalDesign"
                         rows="6"
                         value={formData.technicalDesign}
                         onChange={handleChange}
-                        placeholder="Mô tả chi tiết kỹ thuật lắp đặt, vật tư cần thiết, vị trí đề xuất, hiện trạng cơ sở hạ tầng..."
-                        required
+                        placeholder="Mô tả thêm về vị trí, hiện trạng hạ tầng (không bắt buộc)..."
+                        // Bỏ required
                         className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                 </div>
