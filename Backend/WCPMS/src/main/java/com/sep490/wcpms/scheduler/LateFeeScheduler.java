@@ -246,8 +246,8 @@ public class LateFeeScheduler {
         Contract contract = invoice.getContract();
         String contractCode = contract != null ? contract.getContractNumber() : null;
         LocalDate contractSignDate =
-                (contract != null && contract.getCreatedAt() != null)
-                        ? contract.getCreatedAt().toLocalDate()
+                (contract != null && contract.getStartDate() != null)
+                        ? contract.getStartDate()
                         : LocalDate.now();
 
         return invoicePdfExportService.exportInstallationInvoicePdf(

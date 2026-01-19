@@ -71,7 +71,21 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const [downloading, setDownloading] = useState(false);
 
     const contractId = initialData?.id ?? initialData?.contractId ?? initialData?.contractID;
-    const isActiveContract = String(initialData?.contractStatus || '').toUpperCase() === 'ACTIVE';
+
+    const contractStatus = String(initialData?.contractStatus || '').toUpperCase();
+    const isActiveContract = contractStatus === 'ACTIVE';
+
+    // Chỉ dùng cho tải PDF HỢP ĐỒNG ở màn Dịch vụ:
+    // - APPROVED có thể là "duyệt khảo sát" hoặc "đã tạo HĐ cấp nước", nên FE phải dựa thêm dấu hiệu backend trả về
+    const waterServiceContractCreated = Boolean(initialData?.waterServiceContractCreated);
+
+    // Các trạng thái được phép tải hợp đồng PDF
+    const contractPdfAllowedStatuses = ['PENDING_CUSTOMER_SIGN', 'PENDING_SIGN', 'SIGNED', 'ACTIVE'];
+
+    // Điều kiện cuối: đã tạo HĐ cấp nước OR đã sang trạng thái ký trở đi
+    const canDownloadContractPdf =
+        Boolean(contractId) && (waterServiceContractCreated || contractPdfAllowedStatuses.includes(contractStatus));
+
 
     const triggerDownload = (blobData, filename) => {
         const blob = new Blob([blobData], { type: 'application/pdf' });
@@ -87,8 +101,8 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
 
     const handleDownloadContractPdf = async () => {
         if (!contractId) return;
-        if (!isActiveContract) {
-            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng PDF.');
+        if (!canDownloadContractPdf) {
+            message.warning('Chỉ được tải PDF hợp đồng sau khi tạo hợp đồng cấp nước trở đi.');
             return;
         }
         try {
@@ -156,12 +170,12 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                         {/* Actions: tải PDF */}
                         <div className="mt-3 pt-3 border-t border-blue-200 flex justify-end gap-2 flex-wrap">
-                            <Tooltip title={isActiveContract ? '' : 'Chỉ hợp đồng đang hoạt động mới có thể tải hợp đồng'}>
+                            <Tooltip title={canDownloadContractPdf ? '' : 'Chỉ tải sau khi tạo hợp đồng cấp nước trở đi'}>
                                 <Button
                                     type="primary"
                                     icon={<DownloadOutlined />}
                                     onClick={handleDownloadContractPdf}
-                                    disabled={!contractId || !isActiveContract}
+                                    disabled={!canDownloadContractPdf}
                                 >
                                     Tải hợp đồng (PDF)
                                 </Button>

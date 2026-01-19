@@ -158,9 +158,9 @@ public class InstallationAcceptancePdfService {
         String contractNumber = safe(contract.getContractNumber());
         String soPhieu = isBlank(contractNumber) ? "" : (contractNumber + "/KH-CN");
 
-        LocalDate acceptanceDate = (mi != null && mi.getInstallationDate() != null)
-                ? mi.getInstallationDate()
-                : (contract.getInstallationDate() != null ? contract.getInstallationDate() : LocalDate.now());
+        LocalDate acceptanceDate = (contract.getInstallationDate() != null)
+                ? contract.getInstallationDate()
+                : (mi != null && mi.getInstallationDate() != null ? mi.getInstallationDate() : LocalDate.now());
 
         // Chỉ điền TÊN KỸ THUẬT, bỏ tên dịch vụ
         String companyRep1 = "";
@@ -381,9 +381,9 @@ public class InstallationAcceptancePdfService {
         String contractNumber = safe(contract.getContractNumber());
         String soPhieu = isBlank(contractNumber) ? "" : (contractNumber + "/KH-CN");
 
-        LocalDate acceptanceDate = (mi != null && mi.getInstallationDate() != null)
-                ? mi.getInstallationDate()
-                : (contract.getInstallationDate() != null ? contract.getInstallationDate() : LocalDate.now());
+        LocalDate acceptanceDate = (contract.getInstallationDate() != null)
+                ? contract.getInstallationDate()
+                : (mi != null && mi.getInstallationDate() != null ? mi.getInstallationDate() : LocalDate.now());
 
         // Chỉ điền TÊN KỸ THUẬT, bỏ tên dịch vụ
         String companyRep1 = "";

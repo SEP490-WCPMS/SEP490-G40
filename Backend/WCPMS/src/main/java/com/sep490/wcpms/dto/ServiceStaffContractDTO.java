@@ -45,6 +45,8 @@ public class ServiceStaffContractDTO {
     private Integer readingRouteId;
     private String readingRouteName;
 
+    private boolean waterServiceContractCreated;
+
     // Provide explicit aliases to be safe for any old calls to setIsGuest()/getIsGuest()
     public boolean getIsGuest() {
         return this.guest;
