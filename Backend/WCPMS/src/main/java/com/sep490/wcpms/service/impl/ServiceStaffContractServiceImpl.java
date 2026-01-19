@@ -591,6 +591,8 @@ public class ServiceStaffContractServiceImpl implements ServiceStaffContractServ
         dto.setPaymentMethod(c.getPaymentMethod() != null ? c.getPaymentMethod().name() : null);
         dto.setNotes(c.getNotes());
 
+        dto.setWaterServiceContractCreated(c.getPrimaryWaterContract() != null);
+
         // --- XỬ LÝ QUAN TRỌNG: GUEST vs CUSTOMER ---
         if (c.getCustomer() != null) {
             // >>> TRƯỜNG HỢP A: Đã là Customer (Có tài khoản)
