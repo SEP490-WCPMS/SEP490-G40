@@ -144,7 +144,7 @@ function ReplyTicketModal({ open, ticket, onClose, onSuccess }) {
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirmReply}
                 title="Xác nhận gửi phản hồi"
-                message="Bạn có chắc chắn muốn gửi nội dung trả lời này cho khách hàng không? Hành động này sẽ đóng ticket."
+                message="Bạn có chắc chắn muốn gửi nội dung trả lời này cho khách hàng không? Hành động này sẽ đóng phản hồi của khách hàng."
                 isLoading={loading}
             />
         </div>

@@ -363,6 +363,24 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             // Khoản phí này bây giờ sẽ xuất hiện lại trong trang "Duyệt Phí"
         }
 
+        // === [THÊM MỚI] CASE 5.2: Nếu là Hóa đơn Tiền Nước ===
+        if (cancelledInvoice.getMeterReading() != null) {
+            MeterReading reading = cancelledInvoice.getMeterReading();
+
+            // Chuyển trạng thái sang DISPUTED (Có tranh chấp/Sai sót)
+            // Để Thu ngân hoặc Kỹ thuật biết mà đi kiểm tra lại
+            reading.setReadingStatus(MeterReading.ReadingStatus.DISPUTED);
+
+            // Ghi chú thêm lý do vào bản ghi đọc số để người sau biết
+            String note = (reading.getNotes() != null ? reading.getNotes() : "")
+                    + "\n[Hệ thống]: Hóa đơn bị hủy ngày " + LocalDate.now()
+                    + ". Lý do: Sai sót dữ liệu.";
+            reading.setNotes(note);
+
+            meterReadingRepository.save(reading);
+        }
+        // =====================================================
+
         return invoiceMapper.toDto(cancelledInvoice);
     }
 
@@ -681,6 +699,36 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
             throw new ResourceNotFoundException("Bản ghi lắp đặt này không liên kết với Hợp đồng Dịch vụ nào.");
         }
 
+        // === [LOGIC MỚI: TÍNH KỲ SỬ DỤNG] ===
+        LocalDate toDate = reading.getReadingDate(); // Ngày cuối kỳ = Ngày ghi số hiện tại
+        LocalDate fromDate;
+
+        // 1. Tìm bản ghi đọc số liền kề trước đó của lần lắp đặt này
+        List<MeterReading> previousReadings = meterReadingRepository.findPreviousReadings(
+                installation.getId(),
+                toDate
+        );
+
+        if (!previousReadings.isEmpty()) {
+            // CASE: Đã có chỉ số cũ (Các tháng sau)
+            // Kỳ bắt đầu = Ngày đọc số của tháng trước
+            fromDate = previousReadings.get(0).getReadingDate();
+        } else {
+            // CASE: Tháng đầu tiên (Chưa có chỉ số cũ)
+            // Kỳ bắt đầu = Ngày lắp đặt (hoặc ngày bắt đầu HĐ Dịch vụ)
+            if (serviceContract.getServiceStartDate() != null) {
+                fromDate = serviceContract.getServiceStartDate();
+            } else {
+                fromDate = installation.getInstallationDate(); // Fallback
+            }
+        }
+
+        // Validate (đề phòng dữ liệu rác làm ngày bắt đầu > ngày kết thúc)
+        if (fromDate.isAfter(toDate)) {
+            fromDate = toDate; // Xử lý tạm để không lỗi, nhưng thực tế nên throw exception hoặc log warning
+        }
+        // ====================================
+
         //Lấy thông tin từ Hợp đồng (Đảm bảo là thông tin mới nhất)
         Customer customer = serviceContract.getCustomer(); // Khách hàng mới
         WaterPriceType priceType = serviceContract.getPriceType();
@@ -722,8 +770,13 @@ public class AccountingStaffServiceImpl implements AccountingStaffService {
         invoice.setContract(serviceContract.getSourceContract()); // Lấy HĐ Lắp đặt gốc
         invoice.setMeterReading(reading); // QUAN TRỌNG: Liên kết với bản ghi đọc số
 
-        invoice.setFromDate(reading.getReadingDate().withDayOfMonth(1)); // (Cần logic xác định kỳ HĐ)
-        invoice.setToDate(reading.getReadingDate()); // (Cần logic xác định kỳ HĐ)
+//        invoice.setFromDate(reading.getReadingDate().withDayOfMonth(1)); // (Cần logic xác định kỳ HĐ)
+//        invoice.setToDate(reading.getReadingDate()); // (Cần logic xác định kỳ HĐ)
+
+        // --- CẬP NHẬT 2 DÒNG NÀY ---
+        invoice.setFromDate(fromDate); // Đã tính đúng logic
+        invoice.setToDate(toDate);     // Đã tính đúng logic
+        // ---------------------------
 
         invoice.setTotalConsumption(consumption.setScale(2, RoundingMode.HALF_UP));
         invoice.setSubtotalAmount(subtotal);

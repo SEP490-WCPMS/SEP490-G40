@@ -123,7 +123,7 @@ function ReadingConfirmation() {
             {!confirmationData && !loading ? (
                 <div className="bg-white p-8 text-center rounded-lg shadow">
                     <AlertCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-                    <h3>Không tìm thấy dữ liệu hợp đồng</h3>
+                    <h3></h3>
                     <button onClick={() => navigate('/cashier/scan')} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Quay lại</button>
                 </div>
             ) : (
