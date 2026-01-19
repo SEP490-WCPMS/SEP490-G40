@@ -214,8 +214,7 @@ public class InvoiceNotificationServiceImpl implements InvoiceNotificationServic
                 pdfPath = invoicePdfExportService.exportInstallationInvoicePdf(
                         invoice,
                         contract.getContractNumber(),
-                        contract.getCreatedAt() != null ?
-                                contract.getCreatedAt().toLocalDate() : LocalDate.now(),
+                        contract.getStartDate(),
                         COMPANY_ADDR,
                         COMPANY_PHONE,
                         COMPANY_EMAIL,
