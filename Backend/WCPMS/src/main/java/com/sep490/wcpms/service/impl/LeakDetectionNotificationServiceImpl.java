@@ -14,7 +14,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -65,23 +68,50 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
                 return;
             }
 
+            // ===== NEW FORMULA START =====
             int prevCount = Math.min(3, recent.size() - 1); // số kỳ trước đang có (1..3)
 
-            BigDecimal sumPrev = BigDecimal.ZERO;
+            BigDecimal sumPrevConsumption = BigDecimal.ZERO;
+            long sumPrevDays = 0L;
+
             for (int i = 1; i <= prevCount; i++) {
-                sumPrev = sumPrev.add(safe(recent.get(i).getTotalConsumption()));
+                Invoice prev = recent.get(i);
+                sumPrevConsumption = sumPrevConsumption.add(safe(prev.getTotalConsumption()));
+                sumPrevDays += safeBillingDays(prev);
             }
 
-            BigDecimal avgPrev = sumPrev.divide(BigDecimal.valueOf(prevCount), 2, RoundingMode.HALF_UP);
-
-            if (avgPrev.compareTo(BigDecimal.ZERO) <= 0) {
+            if (sumPrevDays <= 0) {
                 return;
             }
 
-            BigDecimal ratio = currentConsumption.divide(avgPrev, 2, RoundingMode.HALF_UP);
+            // avg/day của các kỳ trước
+            BigDecimal avgDailyPrev = sumPrevConsumption
+                    .divide(BigDecimal.valueOf(sumPrevDays), 6, RoundingMode.HALF_UP);
+
+            if (avgDailyPrev.compareTo(BigDecimal.ZERO) <= 0) {
+                return;
+            }
+
+            // n ngày kỳ hiện tại (vd: 01->16 => 16 ngày)
+            long currentDays = safeBillingDays(currentWaterInvoice);
+            if (currentDays <= 0) {
+                return;
+            }
+
+            // expected = avgDailyPrev * n
+            BigDecimal expected = avgDailyPrev
+                    .multiply(BigDecimal.valueOf(currentDays))
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            if (expected.compareTo(BigDecimal.ZERO) <= 0) {
+                return;
+            }
+
+            BigDecimal ratio = currentConsumption.divide(expected, 2, RoundingMode.HALF_UP);
             if (ratio.compareTo(THRESHOLD_RATIO) < 0) {
                 return;
             }
+            // ===== NEW FORMULA END =====
 
             CustomerNotification n = new CustomerNotification();
             n.setCustomer(customer);
@@ -93,17 +123,20 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
 
             n.setMessageSubject("Cảnh báo rò rỉ nước");
 
+            // Bạn yêu cầu: chỉ cần expected (không hiển thị avgPrev)
             String body = String.format(
                     "Kính gửi Quý khách %s,%n%n" +
-                            "Hệ thống ghi nhận sản lượng sử dụng nước kỳ này cao hơn bình thường.%n" +
-                            "Sản lượng kỳ này: %s m³; trung bình 3 kỳ gần nhất: %s m³.%n%n" +
+                            "Hệ thống ghi nhận sản lượng sử dụng nước kỳ này cao hơn mức dự kiến.%n" +
+                            "Sản lượng kỳ này: %s m³.%n" +
+                            "Mức dự kiến (theo trung bình/ngày 3 kỳ gần nhất × %d ngày): %s m³.%n%n" +
                             "Đây có thể là dấu hiệu rò rỉ hoặc thiết bị đang sử dụng liên tục. " +
                             "Quý khách vui lòng kiểm tra các vị trí có khả năng rò rỉ trong nhà (ống ngầm, bể chứa, nhà vệ sinh...).%n" +
                             "Nếu cần hỗ trợ, vui lòng liên hệ Tổng đài chăm sóc khách hàng.%n%n" +
                             "Trân trọng.",
                     customer.getCustomerName(),
                     currentConsumption.toPlainString(),
-                    avgPrev.toPlainString()
+                    currentDays,
+                    expected.toPlainString()
             );
 
             n.setMessageContent(body);
@@ -121,8 +154,32 @@ public class LeakDetectionNotificationServiceImpl implements LeakDetectionNotifi
         }
     }
 
+    /**
+     * Ưu tiên tính theo fromDate/toDate (inclusive).
+     * Nếu thiếu from/to thì fallback theo số ngày của tháng (tự xử lý năm nhuận).
+     */
+    private long safeBillingDays(Invoice inv) {
+        if (inv == null) return 0L;
+
+        LocalDate from = inv.getFromDate();
+        LocalDate to = inv.getToDate();
+        if (from != null && to != null) {
+            long days = ChronoUnit.DAYS.between(from, to) + 1; // inclusive
+            return Math.max(0L, days);
+        }
+
+        LocalDate anchor = inv.getInvoiceDate();
+        if (anchor == null && inv.getMeterReading() != null) {
+            anchor = inv.getMeterReading().getReadingDate();
+        }
+        if (anchor != null) {
+            return YearMonth.from(anchor).lengthOfMonth(); // tự tính 28/29/30/31
+        }
+
+        return 0L;
+    }
+
     private BigDecimal safe(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
     }
 }
-
