@@ -1,5 +1,6 @@
 package com.sep490.wcpms.dto;
 
+import com.sep490.wcpms.entity.Address;
 import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.MeterInstallation;
 import com.sep490.wcpms.entity.MeterReading;
@@ -66,7 +67,30 @@ public class PendingReadingDTO {
                 this.customerId = resolved.getId();
                 this.customerCode = resolved.getCustomerCode();
                 this.customerName = resolved.getCustomerName();
-                this.customerAddress = resolved.getAddress();
+
+                // Lấy địa chỉ từ bảng addresses
+                // Ưu tiên 1: Địa chỉ từ WaterServiceContract
+                // Ưu tiên 2: Địa chỉ từ Contract (Hợp đồng lắp đặt)
+                // Fallback: Địa chỉ từ Customer (cách cũ)
+                String displayAddress = resolved.getAddress();
+
+                if (inst.getWaterServiceContract() != null && inst.getWaterServiceContract().getAddress() != null) {
+                    Address wscAddress = inst.getWaterServiceContract().getAddress();
+                    if (wscAddress.getAddress() != null && !wscAddress.getAddress().isEmpty()) {
+                        displayAddress = wscAddress.getAddress();
+                    } else {
+                        displayAddress = formatAddressFromEntity(wscAddress);
+                    }
+                } else if (inst.getContract() != null && inst.getContract().getAddress() != null) {
+                    Address contractAddress = inst.getContract().getAddress();
+                    if (contractAddress.getAddress() != null && !contractAddress.getAddress().isEmpty()) {
+                        displayAddress = contractAddress.getAddress();
+                    } else {
+                        displayAddress = formatAddressFromEntity(contractAddress);
+                    }
+                }
+
+                this.customerAddress = displayAddress;
             }
         }
 
@@ -76,5 +100,30 @@ public class PendingReadingDTO {
             this.accountingStaffName = mr.getAccountingStaff().getFullName();
         }
         // ==============================
+    }
+
+    /**
+     * Helper method để format địa chỉ từ entity Address
+     * Format: "Số nhà, Phường, Quận"
+     */
+    private String formatAddressFromEntity(Address address) {
+        if (address == null) {
+            return null;
+        }
+
+        String street = (address.getStreet() != null) ? address.getStreet() : "";
+        String ward = "";
+        String district = "";
+
+        if (address.getWard() != null) {
+            ward = (address.getWard().getWardName() != null) ? address.getWard().getWardName() : "";
+            district = (address.getWard().getDistrict() != null) ? address.getWard().getDistrict() : "";
+        }
+
+        return String.format("%s, %s, %s", street, ward, district)
+                .replace("null", "")
+                .replaceAll("^, |, $|, ,|^,|,$", "")
+                .replaceAll(",\\s*,", ",")
+                .trim();
     }
 }

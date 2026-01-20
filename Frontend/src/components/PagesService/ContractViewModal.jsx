@@ -6,6 +6,13 @@ import moment from 'moment';
 import { downloadServiceAcceptancePdf, downloadServiceContractPdf } from '../Services/apiService';
 
 // Các trạng thái hợp lệ và tên hiển thị
+// Helper: lấy label "Mã đơn" hoặc "Mã hợp đồng" tùy trạng thái
+const getContractNumberLabel = (status) => {
+    const s = (status || '').toUpperCase();
+    const preContractStatuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW'];
+    return preContractStatuses.includes(s) ? 'Mã đơn' : 'Mã hợp đồng';
+};
+
 const CONTRACT_STATUS_MAP = {
     DRAFT: { text: 'Yêu cầu tạo đơn', color: 'blue' },
     PENDING: { text: 'Đang chờ xử lý', color: 'gold' },
@@ -156,11 +163,11 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         >
             <Spin spinning={loading || downloading}>
                 <div className="space-y-4 pt-2">
-                    {/* 1. Header: Mã HĐ và Trạng thái */}
+                    {/* 1. Header: Mã đơn/HĐ và Trạng thái */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã hợp đồng</div>
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">{getContractNumberLabel(initialData?.contractStatus)}</div>
                                 <div className="text-2xl font-bold text-blue-700">{initialData?.contractNumber || '—'}</div>
                             </div>
                             <div className="text-right">
