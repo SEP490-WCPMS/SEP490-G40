@@ -195,7 +195,7 @@ public class InstallationAcceptancePdfService {
         if (wm != null) {
             meterType = firstNonBlank(wm.getMeterName(), wm.getMeterType());
             meterPhi = safe(wm.getSize());
-            serial = safe(wm.getSerialNumber());
+            serial = safe(wm.getMeterCode());
         }
 
         String initialReading = "";

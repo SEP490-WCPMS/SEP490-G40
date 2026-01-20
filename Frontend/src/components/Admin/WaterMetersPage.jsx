@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-    getAdminWaterMeters, // Cần chắc chắn hàm này trong apiAdminWaterMeters.js đã hỗ trợ tham số search
     createAdminWaterMeter,
     updateAdminWaterMeter,
     changeAdminWaterMeterStatus,
@@ -87,16 +86,54 @@ export default function WaterMetersPage() {
         try {
             // Gọi API với tham số search (Dùng hàm tạm hoặc import từ service nếu đã sửa)
             const resp = await getMetersApi(includeMaintenance, currentPage, pageSize, searchTerm);
-            const data = resp.data || resp;
-            const hasContentArray = data && Array.isArray(data.content);
-            const resolvedMeters = hasContentArray ? data.content : (Array.isArray(data) ? data : []);
+            // Hỗ trợ nhiều format response:
+            // - Page: { content, totalElements, totalPages, number }
+            // - Wrapper: { data: Page }
+            // - HATEOAS: { _embedded: { waterMeters: [...] }, page: { totalElements, totalPages, number, size } }
+            // - Array trực tiếp
+            const raw = resp?.data ?? resp;
+            const data = raw?.data ?? raw;
+
+            const embedded = data?._embedded;
+            const embeddedArray = embedded
+                ? (embedded.waterMeters || embedded.meters || embedded.items || Object.values(embedded).find(Array.isArray))
+                : null;
+
+            const hasContentArray = !!data && Array.isArray(data.content);
+            const resolvedMeters = hasContentArray
+                ? data.content
+                : (Array.isArray(embeddedArray)
+                    ? embeddedArray
+                    : (Array.isArray(data) ? data : []));
 
             setMeters(resolvedMeters);
-            const inferredTotalElements = data?.totalElements ?? data?.totalCount ?? (hasContentArray ? data.content.length : resolvedMeters.length);
-            const inferredTotalPages = data?.totalPages ?? (inferredTotalElements ? Math.ceil(inferredTotalElements / pageSize) : (resolvedMeters.length ? 1 : 0));
 
-            setTotalElements(inferredTotalElements);
-            setTotalPages(inferredTotalPages);
+            const inferredTotalPages =
+                data?.totalPages ??
+                data?.page?.totalPages ??
+                data?.pagination?.totalPages ??
+                data?.meta?.totalPages;
+
+            const inferredTotalElements =
+                data?.totalElements ??
+                data?.page?.totalElements ??
+                data?.pagination?.totalElements ??
+                data?.meta?.totalElements ??
+                data?.totalCount ??
+                data?.page?.totalCount ??
+                data?.total ??
+                data?.page?.total ??
+                (Number.isFinite(Number(inferredTotalPages))
+                    ? ((currentPage === Number(inferredTotalPages) - 1)
+                        ? ((Number(inferredTotalPages) - 1) * pageSize + resolvedMeters.length)
+                        : (Number(inferredTotalPages) * pageSize))
+                    : resolvedMeters.length);
+
+            const safeTotalElements = Number(inferredTotalElements) || 0;
+            const safeTotalPages = Number(inferredTotalPages) || (safeTotalElements ? Math.ceil(safeTotalElements / pageSize) : (resolvedMeters.length ? 1 : 0));
+
+            setTotalElements(safeTotalElements);
+            setTotalPages(safeTotalPages);
         } catch (err) {
             setNotification({ type: 'error', message: getErrorMessage(err) });
             setMeters([]);
@@ -154,7 +191,12 @@ export default function WaterMetersPage() {
     };
 
     const handleCancelEdit = () => { setEditingId(null); setForm(emptyForm); setNotification({ type: '', message: '' }); };
-    const handlePageChange = (page) => { const maxPage = Math.max(totalPages - 1, 0); const clamped = Math.min(Math.max(page, 0), maxPage); setCurrentPage(clamped); };
+    const handlePageChange = (page) => {
+        const derivedTotalPages = totalPages || (totalElements ? Math.ceil(totalElements / pageSize) : 0);
+        const maxPage = Math.max(derivedTotalPages - 1, 0);
+        const clamped = Math.min(Math.max(page, 0), maxPage);
+        setCurrentPage(clamped);
+    };
 
     return (
         <div className="watermeters-page">

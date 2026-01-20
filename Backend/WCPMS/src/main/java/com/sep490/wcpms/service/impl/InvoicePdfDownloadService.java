@@ -107,23 +107,37 @@ public class InvoicePdfDownloadService {
             return Optional.empty();
         }
 
-        File dir = new File("invoices-pdf");
-        if (!dir.exists() || !dir.isDirectory()) {
-            return Optional.empty();
+        // Dò theo nhiều thư mục, không cần setup khi deploy
+        File[] candidateDirs = new File[] {
+                new File(System.getProperty("user.dir", "."), "invoices-pdf"),
+                new File(System.getProperty("user.home", "."), "wcpms-data/invoices-pdf"),
+                new File(System.getProperty("java.io.tmpdir", "."), "wcpms-data/invoices-pdf"),
+                new File("invoices-pdf") // fallback legacy
+        };
+
+        File best = null;
+
+        for (File dir : candidateDirs) {
+            if (!dir.exists() || !dir.isDirectory()) continue;
+
+            File[] matches = dir.listFiles((d, name) ->
+                    name != null
+                            && name.toLowerCase().endsWith(".pdf")
+                            && name.contains(invoiceNumber)
+            );
+
+            if (matches == null || matches.length == 0) continue;
+
+            File newest = java.util.Arrays.stream(matches)
+                    .max(Comparator.comparingLong(File::lastModified))
+                    .orElse(null);
+
+            if (newest != null && (best == null || newest.lastModified() > best.lastModified())) {
+                best = newest;
+            }
         }
 
-        File[] matches = dir.listFiles((d, name) ->
-                name != null
-                        && name.toLowerCase().endsWith(".pdf")
-                        && name.contains(invoiceNumber)
-        );
-
-        if (matches == null || matches.length == 0) {
-            return Optional.empty();
-        }
-
-        return java.util.Arrays.stream(matches)
-                .max(Comparator.comparingLong(File::lastModified))
-                .map(f -> "invoices-pdf/" + f.getName());
+        if (best == null) return Optional.empty();
+        return Optional.of(best.getAbsolutePath());
     }
 }

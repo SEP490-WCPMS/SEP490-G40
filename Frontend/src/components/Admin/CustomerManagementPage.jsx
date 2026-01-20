@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getPendingGuestRequests, approveGuestRequest, getAllCustomers, getCustomerContracts } from '../Services/apiAdmin';
 import { Button } from '../ui/button';
-import { AlertCircle, FileText, CheckCircle, X } from 'lucide-react'; // Import thêm icon
+import { AlertCircle, FileText, CheckCircle, X } from 'lucide-react';
 import ConfirmModal from '../common/ConfirmModal';
 import CustomerContractsModal from '../Admin/CustomerContractsModal';
 
@@ -76,58 +75,19 @@ const FIELD_PATHS = {
     address: ['address', 'customerAddress', 'location.address', 'user.address']
 };
 
-const METER_CODE_PATHS = ['meter_code', 'meterCode', 'code', 'meter.meterCode', 'meter.meter_code', 'waterMeter.meterCode', 'waterMeter.meter_code', 'customerMeter.meterCode', 'customerMeter.meter_code', 'installedMeter.meterCode', 'meters[0].meterCode', 'meters[0].meter_code', 'waterMeters[0].meterCode', 'waterMeters[0].meter_code', 'meterAssignments[0].meterCode', 'meterAssignments[0].meter_code'];
-const METER_STATUS_PATHS = ['meter_status', 'meterStatus', 'status', 'state', 'meter.status', 'waterMeter.status'];
-const METER_DIRECT_PATHS = ['meter', 'waterMeter', 'primaryMeter', 'mainMeter', 'assignedMeter', 'meterInfo', 'meterDetails', 'currentMeter'];
-const METER_COLLECTION_PATHS = ['meters', 'waterMeters', 'customerMeters', 'assignedMeters', 'meterAssignments', 'activeMeters', 'meterList'];
-const CONTRACT_METER_CODE_PATHS = ['meterCode', 'meter_code', 'waterMeterCode', 'water_meter_code', 'meter.meterCode', 'meter.meter_code', 'waterMeter.meterCode', 'waterMeter.meter_code'];
-const CONTRACT_METER_STATUS_PATHS = ['meterStatus', 'meter_status', 'meter.status', 'waterMeter.status'];
-
-const getMeterDetails = (customer) => {
-    if (!customer) return { code: null, status: null };
-    const buildFromCandidate = (candidate) => {
-        if (!candidate || typeof candidate !== 'object') return null;
-        const code = getFirstAvailableValue(candidate, METER_CODE_PATHS);
-        const status = getFirstAvailableValue(candidate, METER_STATUS_PATHS);
-        if (code || status) return { code, status };
-        return null;
-    };
-    for (const path of METER_DIRECT_PATHS) {
-        const candidate = resolvePath(customer, path);
-        const result = buildFromCandidate(candidate);
-        if (result) return result;
-    }
-    for (const collectionPath of METER_COLLECTION_PATHS) {
-        const collection = resolvePath(customer, collectionPath);
-        if (Array.isArray(collection)) {
-            for (const meterEntry of collection) {
-                const result = buildFromCandidate(meterEntry);
-                if (result) return result;
-            }
-        }
-    }
-    const fallbackCode = getFirstAvailableValue(customer, METER_CODE_PATHS);
-    const fallbackStatus = getFirstAvailableValue(customer, METER_STATUS_PATHS);
-    if (fallbackCode || fallbackStatus) return { code: fallbackCode, status: fallbackStatus };
-    return { code: null, status: null };
-};
+// ... (Các hằng số METER_PATHS không cần dùng ở đây nữa nhưng cứ giữ nếu muốn, hoặc xóa đi cho gọn)
 
 const CustomerManagementPage = () => {
     const [activeTab, setActiveTab] = useState('guests');
     const [guests, setGuests] = useState([]);
     const [customers, setCustomers] = useState([]);
-    const [customerMeters, setCustomerMeters] = useState({});
+    // const [customerMeters, setCustomerMeters] = useState({}); // Không cần state này nữa
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
     const [confirmLoading, setConfirmLoading] = useState(false);
-    const [guestCount, setGuestCount] = useState(0);
-    const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const rowRefs = useRef({}); // Lưu ref của các dòng
-    const lastProcessedUrl = useRef(''); // Lưu URL đã xử lý để tránh xử lý lại khi activeTab thay đổi
 
-    // --- [MỚI] State thông báo ---
+    // --- State thông báo ---
     const [notification, setNotification] = useState({ type: '', message: '' });
 
     const [contractModal, setContractModal] = useState({
@@ -148,13 +108,10 @@ const CustomerManagementPage = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
-        // Không reset notification ở đây để giữ thông báo thành công
         try {
-            const guestsRes = await getPendingGuestRequests();
-            const guestsData = guestsRes.data || [];
-            setGuestCount(guestsData.length);
             if (activeTab === 'guests') {
-                setGuests(guestsData);
+                const res = await getPendingGuestRequests();
+                setGuests(res.data || []);
             } else if (activeTab === 'customers') {
                 const res = await getAllCustomers();
                 const raw = res?.data ?? res;
@@ -173,72 +130,19 @@ const CustomerManagementPage = () => {
                 });
 
                 setCustomers(sortedCustomers);
-
-                const meterResults = await Promise.allSettled(
-                    sortedCustomers.map(async (customer) => {
-                        const customerId = customer.customer_id || customer.id || customer.customerId;
-                        if (!customerId) return null;
-                        const contractsRes = await getCustomerContracts(customerId);
-                        const contractsRaw = contractsRes?.data ?? contractsRes;
-                        const contractsPayload = contractsRaw?.data ?? contractsRaw;
-                        const contracts = Array.isArray(contractsPayload) ? contractsPayload : (contractsPayload?.content || contractsPayload?.contracts || []);
-                        if (!Array.isArray(contracts) || contracts.length === 0) return [customerId, { code: null, status: null }];
-                        const contractWithMeter = contracts.find((ct) => getFirstAvailableValue(ct, CONTRACT_METER_CODE_PATHS));
-                        const meterCode = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_CODE_PATHS) : null;
-                        const meterStatus = contractWithMeter ? getFirstAvailableValue(contractWithMeter, CONTRACT_METER_STATUS_PATHS) : null;
-                        return [customerId, { code: meterCode ?? null, status: meterStatus ?? null }];
-                    })
-                );
-
-                const nextCustomerMeters = {};
-                for (const r of meterResults) {
-                    if (r.status !== 'fulfilled' || !r.value) continue;
-                    const [customerId, meterInfo] = r.value;
-                    if (!customerId) continue;
-                    nextCustomerMeters[customerId] = meterInfo;
-                }
-                setCustomerMeters(nextCustomerMeters);
+                // Bỏ đoạn code lấy Meter ở đây vì đã chuyển vào modal
             }
         } catch (err) {
             console.error("Lỗi tải dữ liệu:", err);
-            // Sửa lại: Dùng notification thay vì error state nếu muốn nhất quán (hoặc giữ cả 2)
             setError("Không thể tải dữ liệu. Vui lòng thử lại.");
         } finally {
             setLoading(false);
         }
     }, [activeTab, parseCreatedAt]);
 
-    // --- EFFECT XỬ LÝ URL PARAMS (chỉ chạy khi URL thực sự thay đổi từ bên ngoài) ---
-    useEffect(() => {
-        // Tạo key từ URL hiện tại để so sánh
-        const currentUrlKey = searchParams.toString();
-        
-        // Chỉ xử lý nếu URL thay đổi (ví dụ: navigate từ notification)
-        if (currentUrlKey !== lastProcessedUrl.current) {
-            const tabParam = searchParams.get('tab');
-            if (tabParam && (tabParam === 'guests' || tabParam === 'customers')) {
-                setActiveTab(tabParam);
-            }
-            lastProcessedUrl.current = currentUrlKey;
-        }
-    }, [searchParams]);
-
-    // --- EFFECT LOAD DATA khi activeTab thay đổi ---
     useEffect(() => {
         loadData();
     }, [loadData]);
-    // 3. Effect cuộn tới dòng highlight SAU KHI data đã load xong
-    useEffect(() => {
-        const highlightId = searchParams.get('highlight');
-        if (highlightId && !loading && guests.length > 0) {
-            const el = rowRefs.current[highlightId];
-            if (el) {
-                setTimeout(() => {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 500); // Delay một chút để chắc chắn render xong
-            }
-        }
-    }, [loading, guests, searchParams]);
 
     const handleApprove = (contractId) => {
         setConfirmModal({ isOpen: true, contractId });
@@ -247,22 +151,14 @@ const CustomerManagementPage = () => {
     const handleConfirmApprove = async () => {
         if (!confirmModal.contractId) return;
         setConfirmLoading(true);
-        // Reset notification cũ
         setNotification({ type: '', message: '' });
 
         try {
             await approveGuestRequest(confirmModal.contractId);
-
-            // --- THAY ALERT BẰNG NOTIFICATION ---
             setNotification({ type: 'success', message: "Thành công! Đã tạo tài khoản và gửi SMS cho khách hàng." });
-            // ------------------------------------
-
             setConfirmModal({ isOpen: false, contractId: null });
             loadData();
-            // Gửi tín hiệu badgae khi thay đổi
-            window.dispatchEvent(new Event('guestRequestUpdated'));
         } catch (err) {
-            // Hiển thị lỗi bằng notification (hoặc alert nếu muốn giữ lỗi critical dạng popup)
             const msg = err.response?.data || "Có lỗi xảy ra khi duyệt.";
             setNotification({ type: 'error', message: msg });
         } finally {
@@ -317,51 +213,17 @@ const CustomerManagementPage = () => {
 
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
                 <Button
-                    onClick={() => { 
-                        setActiveTab('guests'); 
-                        setNotification({ type: '', message: '' });
-                        // Xóa query params khi user click tab thủ công để tránh conflict
-                        if (searchParams.has('tab') || searchParams.has('highlight')) {
-                            setSearchParams({}, { replace: true });
-                        }
-                    }}
+                    onClick={() => { setActiveTab('guests'); setNotification({ type: '', message: '' }); }}
                     style={{
                         backgroundColor: activeTab === 'guests' ? '#0A77E2' : 'white',
                         color: activeTab === 'guests' ? 'white' : '#64748b',
-                        border: '1px solid #e2e8f0',
-                        position: 'relative', // Để căn chỉnh badge(hoặc flex)
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px' // Khoảng cách giữa chữ và số
+                        border: '1px solid #e2e8f0'
                     }}
                 >
                     Guest (Chờ duyệt)
-                    {/* --- Hiển thị badge số lượng --- */}
-                    {guestCount > 0 && (
-                        <span style={{
-                            backgroundColor: '#ef4444', // Màu đỏ
-                            color: 'white',
-                            fontSize: '0.75rem', // Nhỏ hơn chữ chính
-                            fontWeight: 'bold',
-                            padding: '2px 8px',
-                            borderRadius: '999px', // Hình tròn/oval
-                            lineHeight: '1',
-                            minWidth: '20px', // Độ rộng tối thiểu cho số
-                            textAlign: 'center'
-                        }}>
-                            {guestCount}
-                        </span>
-                    )}
                 </Button>
                 <Button
-                    onClick={() => { 
-                        setActiveTab('customers'); 
-                        setNotification({ type: '', message: '' });
-                        // Xóa query params khi user click tab thủ công để tránh conflict
-                        if (searchParams.has('tab') || searchParams.has('highlight')) {
-                            setSearchParams({}, { replace: true });
-                        }
-                    }}
+                    onClick={() => { setActiveTab('customers'); setNotification({ type: '', message: '' }); }}
                     style={{
                         backgroundColor: activeTab === 'customers' ? '#0A77E2' : 'white',
                         color: activeTab === 'customers' ? 'white' : '#64748b',
@@ -373,7 +235,6 @@ const CustomerManagementPage = () => {
             </div>
 
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                {/* --- HIỂN THỊ THÔNG BÁO Ở ĐÂY --- */}
                 <NotificationBanner
                     type={notification.type}
                     message={notification.message}
@@ -398,28 +259,23 @@ const CustomerManagementPage = () => {
                                     <th>Tên Khách</th>
                                     <th>SĐT</th>
                                     <th>Địa chỉ</th>
-                                    {/* <th style={{ width: '120px' }}>Trạng thái</th> */}
+                                    <th style={{ width: '120px' }}>Trạng thái</th>
                                     <th style={{ width: '140px' }}>Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {guests.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
+                                {guests.length === 0 && <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
                                 {guests.map(g => (
-                                    <tr 
-                                        key={g.contractId}
-                                        // --- GÁN REF VÀ STYLE HIGHLIGHT ---
-                                        ref={el => rowRefs.current[String(g.contractId)] = el}
-                                        style={String(g.contractId) === searchParams.get('highlight') ? { backgroundColor: '#fef9c3', transition: 'background-color 0.5s' } : {}}
-                                    >
+                                    <tr key={g.contractId}>
                                         <td data-label="Mã HĐ">{g.contractNumber}</td>
                                         <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
                                         <td data-label="SĐT">{g.guestPhone}</td>
                                         <td data-label="Địa chỉ">{g.guestAddress}</td>
-                                        {/* <td data-label="Trạng thái">
+                                        <td data-label="Trạng thái">
                                             <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
                                                 {g.status}
                                             </span>
-                                        </td> */}
+                                        </td>
                                         <td data-label="Hành động">
                                             <Button size="sm" onClick={() => handleApprove(g.contractId)} style={{ backgroundColor: '#10b981', color: 'white', width: '100%' }}>
                                                 Duyệt & Tạo TK
@@ -442,25 +298,20 @@ const CustomerManagementPage = () => {
                                     <th style={{ width: '200px' }}>Họ Tên</th>
                                     <th style={{ width: '120px' }}>SĐT</th>
                                     <th style={{ width: '200px' }}>Email</th>
-                                    <th>Địa chỉ</th>
-                                    <th style={{ width: '120px' }}>Đồng hồ</th>
+                                    {/* ĐÃ BỎ CỘT ĐỊA CHỈ & ĐỒNG HỒ */}
                                     <th style={{ width: '80px', textAlign: 'center' }}>HĐ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {customers.length === 0 && <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Chưa có khách hàng nào.</td></tr>}
+                                {customers.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center' }}>Chưa có khách hàng nào.</td></tr>}
                                 {customers.map((c, index) => {
                                     const id = c.customer_id || c.id || c.customerId || index;
                                     const code = getFirstAvailableValue(c, FIELD_PATHS.code) || '---';
                                     const name = getFirstAvailableValue(c, FIELD_PATHS.name) || '---';
                                     const phone = getFirstAvailableValue(c, FIELD_PATHS.phone) || '---';
                                     const email = getFirstAvailableValue(c, FIELD_PATHS.email) || '---';
-                                    const address = getFirstAvailableValue(c, FIELD_PATHS.address) || '---';
-                                    const meterDetails = getMeterDetails(c);
-                                    const resolvedCustomerId = c.customer_id || c.id || c.customerId;
-                                    const apiMeter = resolvedCustomerId ? customerMeters[resolvedCustomerId] : null;
-                                    const meterCode = apiMeter?.code || meterDetails.code || '---';
-                                    const meterStatus = apiMeter?.status || meterDetails.status;
+                                    // const address = ... (Bỏ)
+                                    // const meter... (Bỏ)
 
                                     return (
                                         <tr key={id}>
@@ -468,13 +319,7 @@ const CustomerManagementPage = () => {
                                             <td data-label="Họ Tên" style={{ fontWeight: '500' }}>{name}</td>
                                             <td data-label="SĐT">{phone}</td>
                                             <td data-label="Email">{email}</td>
-                                            <td data-label="Địa chỉ">{address}</td>
-                                            <td data-label="Đồng hồ">
-                                                <div className="meter-info">
-                                                    <span className="meter-code">{meterCode}</span>
-                                                    {meterStatus ? <span className="badge-meter">{meterStatus}</span> : null}
-                                                </div>
-                                            </td>
+                                            {/* ĐÃ BỎ CỘT ĐỊA CHỈ & ĐỒNG HỒ */}
                                             <td data-label="HĐ" style={{ textAlign: 'center' }}>
                                                 <Button size="sm" variant="outline" onClick={() => handleViewContracts(c)} title="Xem danh sách hợp đồng" style={{ padding: '6px' }}>
                                                     <FileText size={16} />

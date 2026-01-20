@@ -6,6 +6,15 @@ import { PhoneOutlined, EnvironmentOutlined, UserOutlined, EditOutlined, Warning
 import { toast } from 'react-toastify';
 import { useEffect, useRef } from 'react';
 
+// Helper: lấy label "Mã đơn" hoặc "Mã hợp đồng" tùy trạng thái
+// Trước khi tạo HĐ (DRAFT, PENDING, PENDING_SURVEY_REVIEW) → "Mã đơn"
+// Sau khi tạo HĐ (APPROVED trở đi) → "Mã hợp đồng"
+const getContractNumberLabel = (status) => {
+  const s = (status || '').toUpperCase();
+  const preContractStatuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW'];
+  return preContractStatuses.includes(s) ? 'Mã đơn' : 'Mã hợp đồng';
+};
+
 // Helper: render trạng thái
 // Trả về một badge nhỏ (styled span) mô tả trạng thái hợp đồng
 const renderStatus = (record) => {
@@ -248,11 +257,11 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
   // --- CARD VIEW CHO MOBILE ---
   const MobileCard = ({ record }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-3 flex flex-col gap-2">
-      {/* Hàng 1: Mã HĐ + Status */}
+      {/* Hàng 1: Mã đơn/Mã HĐ + Status */}
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2 text-blue-700 font-semibold">
           <FileText size={16} />
-          <span>{record.contractNumber}</span>
+          <span title={getContractNumberLabel(record.contractStatus)}>{record.contractNumber}</span>
         </div>
         {renderStatus(record)}
       </div>
@@ -319,7 +328,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã Hợp đồng</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn/HĐ</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
@@ -336,7 +345,7 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                         className={`hover:bg-gray-50 transition-colors duration-1000 ${String(record.id) === String(highlightId) ? 'bg-yellow-100' : ''
                           }`}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.contractNumber}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" title={getContractNumberLabel(record.contractStatus)}>{record.contractNumber}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           <div className="flex items-center gap-2">
                             <UserOutlined className="text-gray-400" />

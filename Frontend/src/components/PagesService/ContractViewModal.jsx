@@ -6,6 +6,13 @@ import moment from 'moment';
 import { downloadServiceAcceptancePdf, downloadServiceContractPdf } from '../Services/apiService';
 
 // Các trạng thái hợp lệ và tên hiển thị
+// Helper: lấy label "Mã đơn" hoặc "Mã hợp đồng" tùy trạng thái
+const getContractNumberLabel = (status) => {
+    const s = (status || '').toUpperCase();
+    const preContractStatuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW'];
+    return preContractStatuses.includes(s) ? 'Mã đơn' : 'Mã hợp đồng';
+};
+
 const CONTRACT_STATUS_MAP = {
     DRAFT: { text: 'Yêu cầu tạo đơn', color: 'blue' },
     PENDING: { text: 'Đang chờ xử lý', color: 'gold' },
@@ -102,7 +109,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const handleDownloadContractPdf = async () => {
         if (!contractId) return;
         if (!canDownloadContractPdf) {
-            message.warning('Chỉ được tải PDF hợp đồng sau khi tạo hợp đồng cấp nước trở đi.');
+            message.warning('Chưa có PDF Hợp đồng.');
             return;
         }
         try {
@@ -120,7 +127,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const handleDownloadAcceptancePdf = async () => {
         if (!contractId) return;
         if (!isActiveContract) {
-            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải phiếu nghiệm thu.');
+            message.warning('Chưa có phiếu nghiệm thu.');
             return;
         }
         try {
@@ -156,11 +163,11 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
         >
             <Spin spinning={loading || downloading}>
                 <div className="space-y-4 pt-2">
-                    {/* 1. Header: Mã HĐ và Trạng thái */}
+                    {/* 1. Header: Mã đơn/HĐ và Trạng thái */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Mã hợp đồng</div>
+                                <div className="text-xs text-gray-500 uppercase font-semibold mb-1">{getContractNumberLabel(initialData?.contractStatus)}</div>
                                 <div className="text-2xl font-bold text-blue-700">{initialData?.contractNumber || '—'}</div>
                             </div>
                             <div className="text-right">
@@ -170,7 +177,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                         {/* Actions: tải PDF */}
                         <div className="mt-3 pt-3 border-t border-blue-200 flex justify-end gap-2 flex-wrap">
-                            <Tooltip title={canDownloadContractPdf ? '' : 'Chỉ tải sau khi tạo hợp đồng cấp nước trở đi'}>
+                            <Tooltip title={canDownloadContractPdf ? '' : 'Chưa có PDF Hợp đồng.'}>
                                 <Button
                                     type="primary"
                                     icon={<DownloadOutlined />}
@@ -180,13 +187,15 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     Tải hợp đồng (PDF)
                                 </Button>
                             </Tooltip>
-                            <Button
-                                icon={<DownloadOutlined />}
-                                onClick={handleDownloadAcceptancePdf}
-                                disabled={!contractId || !isActiveContract}
-                            >
-                                Tải Phiếu nghiệm thu
-                            </Button>
+                            <Tooltip title={isActiveContract ? '' : 'Chưa có PDF Phiếu nghiệm thu.'}>
+                                <Button
+                                    icon={<DownloadOutlined />}
+                                    onClick={handleDownloadAcceptancePdf}
+                                    disabled={!contractId || !isActiveContract}
+                                >
+                                    Tải Phiếu nghiệm thu
+                                </Button>
+                            </Tooltip>
                         </div>
                     </div>
 

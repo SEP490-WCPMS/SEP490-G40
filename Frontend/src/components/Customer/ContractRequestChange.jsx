@@ -283,6 +283,14 @@ const ContractRequestChange = () => {
     const handleFileChange = ({ fileList: newFileList }) => {
         setFileList(newFileList);
 
+        // Xoá lỗi nếu có
+        try {
+            form.setFields([{ name: "attachedEvidence", errors: [] }]);
+        } catch (e) {
+            console.log(e);
+            // ignore
+        }
+
         // reset preview cũ
         if (evidenceObjectUrlRef.current) {
             URL.revokeObjectURL(evidenceObjectUrlRef.current);
@@ -331,6 +339,13 @@ const ContractRequestChange = () => {
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const requestedBy = user?.id;
+
+            // Validate có file đính kèm
+            if (!fileList || fileList.length === 0) {
+                form.setFields([{ name: "attachedEvidence", errors: ["Vui lòng tải lên file minh chứng!"] }]);
+                toast.error("Vui lòng tải lên file minh chứng!");
+                return;
+            }
 
             // Chuẩn bị attachedEvidence: convert file -> dataUrl
             let attachedEvidence = null;
@@ -498,6 +513,15 @@ const ContractRequestChange = () => {
                                 <Form.Item
                                     label="Đính kèm minh chứng"
                                     name="attachedEvidence"
+                                    required
+                                    rules={[
+                                        {
+                                            validator: () =>
+                                                (fileList && fileList.length > 0
+                                                    ? Promise.resolve()
+                                                    : Promise.reject(new Error("Vui lòng tải lên file minh chứng!"))),
+                                        },
+                                    ]}
                                 >
                                     <Upload
                                         fileList={fileList}

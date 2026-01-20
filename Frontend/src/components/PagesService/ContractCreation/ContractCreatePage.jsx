@@ -61,6 +61,7 @@ const ContractCreate = () => {
                         technicalStaffId: contractData.technicalStaffId,
                         technicalDesign: contractData.technicalDesign,
                         estimatedCost: contractData.estimatedCost,
+                        contractValue: contractData.contractValue ?? contractData.estimatedCost,
                     });
                 }
             }
@@ -114,7 +115,7 @@ const ContractCreate = () => {
                 installationDate: values.installationDate ? values.installationDate.format('YYYY-MM-DD') : null,
                 startDate: values.startDate.format('YYYY-MM-DD'),
                 endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
-                contractValue: values.contractValue,
+                contractValue: values.estimatedCost ?? values.contractValue,
                 paymentMethod: values.paymentMethod,
                 serviceStaffId: currentUserId,
                 technicalStaffId: values.technicalStaffId,
@@ -130,7 +131,7 @@ const ContractCreate = () => {
                 endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : null,
                 notes: values.notes,
                 estimatedCost: values.estimatedCost,
-                contractValue: values.contractValue,
+                contractValue: values.estimatedCost ?? values.contractValue,
                 paymentMethod: values.paymentMethod,
                 serviceStaffId: currentUserId,
             });
@@ -317,7 +318,7 @@ const ContractCreate = () => {
 
                             <Col xs={24} md={12}>
                                 <Form.Item
-                                    label="Chi phí Ước tính (VNĐ)"
+                                    label="Chi phí Lắp đặt (VNĐ)"
                                     name="estimatedCost"
                                 >
                                     <InputNumber
@@ -325,7 +326,7 @@ const ContractCreate = () => {
                                         min={0}
                                         formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                         parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                                        placeholder="Chi phí ước tính"
+                                        placeholder="Chi phí Lắp đặt"
                                         disabled
                                     />
                                 </Form.Item>
@@ -401,8 +402,21 @@ const ContractCreate = () => {
 
                             <Col xs={24} md={12}>
                                 <Form.Item
+                                    label="Phương thức Thanh toán"
+                                    name="paymentMethod"
+                                >
+                                    <Select placeholder="Chọn phương thức thanh toán">
+                                        <Option value="CASH">Tiền mặt</Option>
+                                        <Option value="BANK_TRANSFER">Chuyển khoản</Option>
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+
+                            <Col xs={24} md={12}>
+                                <Form.Item
                                     label="Chi phí Lắp đặt (VNĐ)"
                                     name="contractValue"
+                                    hidden
                                 >
                                     <InputNumber
                                         style={{ width: '100%' }}
@@ -411,18 +425,6 @@ const ContractCreate = () => {
                                         parser={value => value.replace(/\$\s?|(,*)/g, '')}
                                         placeholder="Nhập chi phí lắp đặt"
                                     />
-                                </Form.Item>
-                            </Col>
-
-                            <Col xs={24} md={12}>
-                                <Form.Item
-                                    label="Phương thức Thanh toán"
-                                    name="paymentMethod"
-                                >
-                                    <Select placeholder="Chọn phương thức thanh toán">
-                                        <Option value="CASH">Tiền mặt</Option>
-                                        <Option value="BANK_TRANSFER">Chuyển khoản</Option>
-                                    </Select>
                                 </Form.Item>
                             </Col>
 
