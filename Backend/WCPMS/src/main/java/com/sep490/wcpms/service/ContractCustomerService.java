@@ -2,10 +2,7 @@ package com.sep490.wcpms.service;
 
 import com.sep490.wcpms.dto.ContractCreateDTO;
 import com.sep490.wcpms.dto.ContractDTO;
-import com.sep490.wcpms.entity.Account;
-import com.sep490.wcpms.entity.Contract;
-import com.sep490.wcpms.entity.Customer;
-import com.sep490.wcpms.entity.ActivityLog;
+import com.sep490.wcpms.entity.*;
 import com.sep490.wcpms.exception.DuplicateResourceException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
 import com.sep490.wcpms.repository.AccountRepository;
@@ -31,6 +28,7 @@ public class ContractCustomerService {
     private final AccountRepository accountRepository;
     private final com.sep490.wcpms.service.ActivityLogService activityLogService; // injected service to persist activity logs
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<ContractDTO> getAllContracts() {
         return contractRepository.findAll().stream()
                 .map(this::convertToDTO)
@@ -44,6 +42,7 @@ public class ContractCustomerService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contract not found with id: " + id));
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<ContractDTO> getContractsByCustomerId(Integer accountId) {
         // Kiểm tra customer có tồn tại không
         if (!accountRepository.existsById(accountId)) {
@@ -66,6 +65,7 @@ public class ContractCustomerService {
                 .collect(Collectors.toList());
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<ContractDTO> getContractByCustomerIdAndStatus(Integer accountId, Contract.ContractStatus status) {
         // Kiểm tra customer có tồn tại không
         if (!accountRepository.existsById(accountId)) {
@@ -310,6 +310,47 @@ public class ContractCustomerService {
         dto.setAccountingStaffId(
                 contract.getAccountingStaff() != null ? contract.getAccountingStaff().getId() : null
         );
+
+        // ===== Display fields for FE =====
+        if (contract.getCustomer() != null) {
+            dto.setCustomerName(contract.getCustomer().getCustomerName());
+            dto.setCustomerCode(contract.getCustomer().getCustomerCode());
+
+            if (contract.getCustomer().getAccount() != null) {
+                dto.setCustomerPhone(contract.getCustomer().getAccount().getPhone());
+            }
+        } else {
+            // Guest contract (không có customer)
+            dto.setCustomerPhone(contract.getContactPhone());
+        }
+
+        // Address phải lấy theo hợp đồng (contracts.address_id -> addresses)
+        dto.setCustomerAddress(formatContractAddress(contract.getAddress()));
         return dto;
+    }
+
+    private String formatContractAddress(Address address) {
+        if (address == null) return null;
+
+        // Nếu bảng addresses có cột address (full text)
+        String full = address.getAddress();
+        if (full != null && !full.trim().isEmpty()) return full.trim();
+
+        // Fallback ghép từ các phần
+        String street = address.getStreet();
+
+        Ward w = address.getWard();
+        String wardName = (w != null) ? w.getWardName() : null;
+        String district = (w != null) ? w.getDistrict() : null;
+        String province = (w != null) ? w.getProvince() : null;
+
+        StringBuilder sb = new StringBuilder();
+        if (street != null && !street.trim().isEmpty()) sb.append(street.trim());
+        if (wardName != null && !wardName.trim().isEmpty()) { if (sb.length() > 0) sb.append(", "); sb.append(wardName.trim()); }
+        if (district != null && !district.trim().isEmpty()) { if (sb.length() > 0) sb.append(", "); sb.append(district.trim()); }
+        if (province != null && !province.trim().isEmpty()) { if (sb.length() > 0) sb.append(", "); sb.append(province.trim()); }
+
+        String res = sb.toString().trim();
+        return res.isEmpty() ? null : res;
     }
 }
