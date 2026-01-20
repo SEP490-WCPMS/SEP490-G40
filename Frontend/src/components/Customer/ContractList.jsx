@@ -149,14 +149,6 @@ const ContractList = () => {
             render: (_, record) => record?.startDate || record?.start_date || 'Chưa có',
         },
         {
-            title: 'Ngày hết hiệu lực',
-            key: 'endDate',
-            ellipsis: true,
-            width: '20%',
-            render: (_, record) => record?.endDate || record?.end_date || 'Chưa có',
-        },
-
-        {
             title: 'Trạng thái',
             dataIndex: 'contractStatus',
             key: 'contractStatus',

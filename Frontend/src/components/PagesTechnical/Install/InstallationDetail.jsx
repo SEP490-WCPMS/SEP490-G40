@@ -358,7 +358,7 @@ function InstallationDetail() {
 
                     {/* Ghi Chú */}
                     <div>
-                        <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">Ghi Chú Lắp Đặt</label>
+                        <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">Tình Trạng Lắp Đặt</label>
                         <textarea
                             id="notes"
                             name="notes"

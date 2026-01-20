@@ -11,8 +11,10 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -34,56 +36,50 @@ public class PdfExportService {
         try {
             html = templateEngine.process(templateName, ctx);
         } catch (Exception ex) {
-            // LOG chi tiết nguyên nhân Thymeleaf
-            ex.printStackTrace(); // xem trong console IntelliJ
+            ex.printStackTrace();
             throw new RuntimeException("Thymeleaf error with template: " + templateName + " - " + ex.getMessage(), ex);
         }
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-
             PdfRendererBuilder builder = getPdfRendererBuilder(html);
 
             builder.toStream(baos);
             builder.run();
             return baos.toByteArray();
         } catch (Exception e) {
+            e.printStackTrace();
             throw new RuntimeException("Error generating PDF from template " + templateName, e);
         }
     }
 
-    private static PdfRendererBuilder getPdfRendererBuilder(String html) throws IOException {
+    private static PdfRendererBuilder getPdfRendererBuilder(String html) throws Exception {
         PdfRendererBuilder builder = new PdfRendererBuilder();
         builder.useFastMode();
 
-        // --- ĐĂNG KÝ FONT TIMES NEW ROMAN ---
-        ClassPathResource times      = new ClassPathResource("fonts/times.ttf");
-        ClassPathResource timesBold  = new ClassPathResource("fonts/timesbd.ttf");
-        ClassPathResource timesIt    = new ClassPathResource("fonts/timesi.ttf");
-        ClassPathResource timesBi    = new ClassPathResource("fonts/timesbi.ttf");
-
+        // --- FIX: FONT LOAD AN TOAN KHI RUN TRONG FILE JAR (Windows Server / Linux) ---
         builder.useFont(
-                times.getFile(),
+                loadFontFromResource("fonts/times.ttf"),
                 "Times New Roman",
                 400,
                 BaseRendererBuilder.FontStyle.NORMAL,
                 true
         );
         builder.useFont(
-                timesBold.getFile(),
+                loadFontFromResource("fonts/timesbd.ttf"),
                 "Times New Roman",
                 700,
                 BaseRendererBuilder.FontStyle.NORMAL,
                 true
         );
         builder.useFont(
-                timesIt.getFile(),
+                loadFontFromResource("fonts/timesi.ttf"),
                 "Times New Roman",
                 400,
                 BaseRendererBuilder.FontStyle.ITALIC,
                 true
         );
         builder.useFont(
-                timesBi.getFile(),
+                loadFontFromResource("fonts/timesbi.ttf"),
                 "Times New Roman",
                 700,
                 BaseRendererBuilder.FontStyle.ITALIC,
@@ -94,6 +90,23 @@ public class PdfExportService {
         URL baseUrl = new ClassPathResource("pdf-assets/").getURL();
         builder.withHtmlContent(html, baseUrl.toString());
         return builder;
+    }
+
+    // --- ĐỌC FILE FONT TỪ JAR RA FILE TẠM ---
+    private static File loadFontFromResource(String path) throws Exception {
+        ClassPathResource resource = new ClassPathResource(path);
+        if (!resource.exists()) {
+            throw new IllegalStateException("Font not found in resources: " + path);
+        }
+
+        String safeName = path.replaceAll("/", "_");
+        File tempFile = File.createTempFile("font_" + safeName + "_", ".ttf");
+        tempFile.deleteOnExit();
+
+        try (InputStream inputStream = resource.getInputStream()) {
+            Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+        return tempFile;
     }
 
     public String renderPdfToFile(String templateName,
@@ -116,6 +129,8 @@ public class PdfExportService {
         } catch (Exception e) {
             throw new RuntimeException("Error writing PDF file: " + outFile.getName(), e);
         }
-        return baseDir + "/" + outFile.getName();
+
+        // Khuyến nghị: trả về absolute path để đọc lại ổn định trên Windows Server
+        return outFile.getAbsolutePath();
     }
 }

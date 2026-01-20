@@ -197,8 +197,8 @@ function CreateInstallationInvoice() {
                                     : '-'}
                             </p>
                             <p className="flex items-center">
-                                <span className="font-medium text-gray-600 mr-1">Giá trị HĐ: </span>
-                                {(contract.contractValue || 0).toLocaleString('vi-VN')} đ
+                                <span className="font-medium text-gray-600 mr-1">Tổng sau VAT: </span>
+                                {(formData.totalAmount || 0).toLocaleString('vi-VN')} đ
                             </p>
                         </div>
                     </div>
@@ -255,10 +255,11 @@ function CreateInstallationInvoice() {
                                 </label>
                                 <div className="relative">
                                     <input
-                                        type="date"
+                                        type="text"
+                                        lang="vi"
                                         id="invoiceDate"
                                         name="invoiceDate"
-                                        value={formData.invoiceDate}
+                                        value={formData.invoiceDate ? moment(formData.invoiceDate, 'YYYY-MM-DD').format('DD/MM/YYYY') : ''}
                                         readOnly
                                         className="appearance-none block w-full border border-gray-200 bg-gray-50 rounded-md py-2 px-3 text-sm pr-8 text-gray-700 cursor-not-allowed"
                                     />
@@ -273,13 +274,13 @@ function CreateInstallationInvoice() {
                                 </label>
                                 <div className="relative">
                                     <input
-                                        type="date"
+                                        type="text"
+                                        lang="vi"
                                         id="dueDate"
                                         name="dueDate"
-                                        value={formData.dueDate}
-                                        onChange={handleChange}
-                                        required
-                                        className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm pr-8"
+                                        value={formData.dueDate ? moment(formData.dueDate, 'YYYY-MM-DD').format('DD/MM/YYYY') : ''}
+                                        readOnly
+                                        className="appearance-none block w-full border border-gray-300 rounded-md py-2 px-3 text-sm pr-8 text-gray-700 cursor-not-allowed"
                                     />
                                     <Calendar size={16} className="absolute right-2 top-2.5 text-gray-400 pointer-events-none" />
                                 </div>
