@@ -102,7 +102,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const handleDownloadContractPdf = async () => {
         if (!contractId) return;
         if (!canDownloadContractPdf) {
-            message.warning('Chỉ được tải PDF hợp đồng sau khi tạo hợp đồng cấp nước trở đi.');
+            message.warning('Chưa có PDF Hợp đồng.');
             return;
         }
         try {
@@ -120,7 +120,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const handleDownloadAcceptancePdf = async () => {
         if (!contractId) return;
         if (!isActiveContract) {
-            message.warning('Chỉ hợp đồng đang hoạt động mới có thể tải phiếu nghiệm thu.');
+            message.warning('Chưa có phiếu nghiệm thu.');
             return;
         }
         try {
@@ -170,7 +170,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                         </div>
                         {/* Actions: tải PDF */}
                         <div className="mt-3 pt-3 border-t border-blue-200 flex justify-end gap-2 flex-wrap">
-                            <Tooltip title={canDownloadContractPdf ? '' : 'Chỉ tải sau khi tạo hợp đồng cấp nước trở đi'}>
+                            <Tooltip title={canDownloadContractPdf ? '' : 'Chưa có PDF Hợp đồng.'}>
                                 <Button
                                     type="primary"
                                     icon={<DownloadOutlined />}
@@ -180,13 +180,15 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     Tải hợp đồng (PDF)
                                 </Button>
                             </Tooltip>
-                            <Button
-                                icon={<DownloadOutlined />}
-                                onClick={handleDownloadAcceptancePdf}
-                                disabled={!contractId || !isActiveContract}
-                            >
-                                Tải Phiếu nghiệm thu
-                            </Button>
+                            <Tooltip title={isActiveContract ? '' : 'Chưa có PDF Phiếu nghiệm thu.'}>
+                                <Button
+                                    icon={<DownloadOutlined />}
+                                    onClick={handleDownloadAcceptancePdf}
+                                    disabled={!contractId || !isActiveContract}
+                                >
+                                    Tải Phiếu nghiệm thu
+                                </Button>
+                            </Tooltip>
                         </div>
                     </div>
 

@@ -9,7 +9,7 @@ const { Title } = Typography;
 const ContractDetail = () => {
     const [contract, setContract] = useState(null);
     const [customerName, setCustomerName] = useState('Đang tải...');
-    const [customerAddress, setCustomerAddress] = useState('Đang tải...');
+    const [customerAddress, setCustomerAddress] = useState('');
     const [waterMeterData, setWaterMeterData] = useState(null);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -37,11 +37,22 @@ const ContractDetail = () => {
         return new Date(dateString).toLocaleDateString('vi-VN');
     };
 
-    const formatAddressFromCustomerDto = (c) => {
-        if (!c) return '';
-        if (c.address && String(c.address).trim()) return String(c.address).trim();
-        const parts = [c.street, c.district, c.province].map(v => (v ?? '').toString().trim()).filter(Boolean);
-        return parts.join(', ');
+    const calcInstallationTotalWithVat = (c) => {
+        const base = Number(c?.contractValue ?? c?.estimatedCost ?? 0);
+        if (!base || Number.isNaN(base)) return 0;
+        return Math.round(base * 1.1); // VAT 10%
+    };
+
+    const sectionSpacer = 12;
+
+    const fieldLabelStyle = { color: '#666', fontSize: 13, marginBottom: 6 };
+    const fieldValueStyle = { fontSize: 15, fontWeight: 600, minWidth: 0, lineHeight: 1.45 };
+
+    const noWrapEllipsis = {
+        display: 'block',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
     };
 
     const contractStatusUpper = String(contract?.contractStatus || '').toUpperCase();
@@ -127,7 +138,7 @@ const ContractDetail = () => {
         // guest
         if (!customerId) {
             setCustomerName(prev => (prev && prev !== 'Đang tải...' ? prev : 'N/A'));
-            setCustomerAddress(prev => (prev && prev !== 'Đang tải...' ? prev : 'N/A'));
+            // KHÔNG setCustomerAddress ở đây nữa
             return;
         }
         try {
@@ -135,15 +146,14 @@ const ContractDetail = () => {
             const dto = res?.data?.data ?? res?.data ?? res;
 
             const name = dto?.customerName ?? null;
-            const addr = formatAddressFromCustomerDto(dto);
-
+            // chỉ fallback tên
             if (name && String(name).trim()) setCustomerName(String(name).trim());
-            if (addr && String(addr).trim()) setCustomerAddress(String(addr).trim());
+
+            // KHÔNG lấy addr từ customer nữa
         } catch (e) {
             console.error('Lỗi customer:', e);
-            // Chỉ set N/A nếu vẫn đang ở trạng thái loading text
             setCustomerName(prev => (prev === 'Đang tải...' ? 'N/A' : prev));
-            setCustomerAddress(prev => (prev === 'Đang tải...' ? 'N/A' : prev));
+            // KHÔNG setCustomerAddress ở đây nữa
         }
     };
 
@@ -175,7 +185,7 @@ const ContractDetail = () => {
 
                 // Ưu tiên dùng field từ ContractDTO nếu có
                 if (contractData.customerName) setCustomerName(contractData.customerName);
-                if (contractData.customerAddress) setCustomerAddress(contractData.customerAddress);
+                setCustomerAddress(contractData.customerAddress || 'N/A');
 
                 // fallback bằng getCustomerById
                 await fetchCustomerInfo(contractData.customerId);
@@ -265,7 +275,7 @@ const ContractDetail = () => {
                         <Title level={3} className="!mb-0">Chi tiết Hợp đồng</Title>
                     </Col>
                     <Col>
-                        <Tooltip title={canDownloadContractPdf ? '' : 'Không có hợp đồng PDF.'}>
+                        <Tooltip title={canDownloadContractPdf ? '' : 'Không có PDF Hợp đồng.'}>
                             <Button
                                 type="primary"
                                 icon={<DownloadOutlined />}
@@ -275,107 +285,156 @@ const ContractDetail = () => {
                                 Tải hợp đồng (PDF)
                             </Button>
                         </Tooltip>
-                        {isActiveContract && (
+                        <Tooltip title={isActiveContract ? '' : 'Không có PDF Phiếu nghiệm thu.'}>
                             <Button
                                 icon={<DownloadOutlined />}
                                 onClick={handleDownloadAcceptancePdf}
+                                disabled={!contractId || !isActiveContract}
                                 style={{ marginLeft: 8 }}
                             >
                                 Tải Phiếu nghiệm thu
                             </Button>
-                        )}
+                        </Tooltip>
                     </Col>
                 </Row>
 
                 <Spin spinning={loading}>
                     {contract && (
                         <Card>
-                            <Descriptions bordered column={{ xs: 1, sm: 1, md: 2 }}>
-                                {/* Row 1: số hợp đồng + trạng thái */}
-                                <Descriptions.Item label="Số Hợp đồng">
-                                    <strong style={{ wordBreak: 'break-all' }}>
-                                        {contract.contractNumber}
-                                    </strong>
-                                </Descriptions.Item>
+                            {/* ROW 1: Số hợp đồng - Trạng thái - Khách hàng */}
+                            <Row gutter={[24, 18]} align="middle">
+                                <Col xs={24} md={8}>
+                                    <div style={fieldLabelStyle}>Số Hợp đồng</div>
+                                    <div style={fieldValueStyle}>
+                                        <span style={noWrapEllipsis} title={contract.contractNumber}>
+                                          {contract.contractNumber}
+                                        </span>
+                                    </div>
+                                </Col>
 
-                                <Descriptions.Item label="Trạng thái">
-                                    {renderStatus(contract.contractStatus)}
-                                </Descriptions.Item>
+                                <Col xs={24} md={8}>
+                                    <div style={fieldLabelStyle}>Trạng thái</div>
+                                    <div style={fieldValueStyle}>{renderStatus(contract.contractStatus)}</div>
+                                </Col>
 
-                                {/* Row 2: khách hàng full-width */}
-                                <Descriptions.Item label="Khách hàng" span={2}>
-                                    {customerName}
-                                </Descriptions.Item>
+                                <Col xs={24} md={8}>
+                                    <div style={fieldLabelStyle}>Khách hàng</div>
+                                    <div style={fieldValueStyle}>
+                                        <span style={noWrapEllipsis} title={customerName}>
+                                          {customerName}
+                                        </span>
+                                    </div>
+                                </Col>
+                            </Row>
 
-                                {/* Row 3: địa chỉ full-width */}
-                                <Descriptions.Item label="Địa chỉ" span={2}>
-                                    {customerAddress || 'N/A'}
-                                </Descriptions.Item>
+                            <div style={{ height: sectionSpacer }} />
+                            <div style={{ borderTop: '1px solid #f0f0f0', margin: '0 -24px' }} />
+                            <div style={{ height: sectionSpacer }} />
 
-                                {/* Các field còn lại giữ nguyên */}
-                                <Descriptions.Item label="Ngày đăng ký">
-                                    {formatDate(contract.applicationDate)}
-                                </Descriptions.Item>
+                            {/* ROW 2: Địa chỉ */}
+                            <Row gutter={[24, 18]}>
+                                <Col span={24}>
+                                    <div style={fieldLabelStyle}>Địa chỉ</div>
+                                    <div style={{ ...fieldValueStyle, fontWeight: 500, whiteSpace: 'normal' }}>
+                                        {customerAddress || 'N/A'}
+                                    </div>
+                                </Col>
+                            </Row>
 
-                                <Descriptions.Item label="Ngày khảo sát">
-                                    {formatDate(contract.surveyDate)}
-                                </Descriptions.Item>
+                            <div style={{ height: sectionSpacer }} />
+                            <div style={{ borderTop: '1px solid #f0f0f0', margin: '0 -24px' }} />
+                            <div style={{ height: sectionSpacer }} />
 
-                                <Descriptions.Item label="Chi phí Lắp đặt Ước tính (Chưa bao gồm VAT)">
-                                    {formatCurrency(contract.estimatedCost)}
-                                </Descriptions.Item>
+                            {/* ROW 3: Ngày đăng ký - Ngày khảo sát - Ngày lắp đặt (+ Ngày bắt đầu nếu muốn) */}
+                            <Row gutter={[24, 18]}>
+                                <Col xs={24} md={6}>
+                                    <div style={fieldLabelStyle}>Ngày đăng ký</div>
+                                    <div style={fieldValueStyle}>{formatDate(contract.applicationDate)}</div>
+                                </Col>
 
-                                <Descriptions.Item label="Ngày lắp đặt">
-                                    {formatDate(contract.installationDate)}
-                                </Descriptions.Item>
+                                <Col xs={24} md={6}>
+                                    <div style={fieldLabelStyle}>Ngày khảo sát</div>
+                                    <div style={fieldValueStyle}>{formatDate(contract.surveyDate)}</div>
+                                </Col>
 
-                                <Descriptions.Item label="Ngày bắt đầu">
-                                    {formatDate(contract.startDate)}
-                                </Descriptions.Item>
+                                <Col xs={24} md={6}>
+                                    <div style={fieldLabelStyle}>Ngày lắp đặt</div>
+                                    <div style={fieldValueStyle}>{formatDate(contract.installationDate)}</div>
+                                </Col>
 
-                                <Descriptions.Item label="Ngày kết thúc">
-                                    {formatDate(contract.endDate)}
-                                </Descriptions.Item>
+                                {/* Nếu thấy chật thì bỏ Col này xuống Row 4 */}
+                                <Col xs={24} md={6}>
+                                    <div style={fieldLabelStyle}>Ngày bắt đầu</div>
+                                    <div style={fieldValueStyle}>{formatDate(contract.startDate)}</div>
+                                </Col>
+                            </Row>
 
-                                <Descriptions.Item label="Chi phí Lắp đặt Thực tế (Chưa bao gồm VAT)">
-                                    {formatCurrency(contract.contractValue)}
-                                </Descriptions.Item>
+                            <div style={{ height: sectionSpacer }} />
+                            <div style={{ borderTop: '1px solid #f0f0f0', margin: '0 -24px' }} />
+                            <div style={{ height: sectionSpacer }} />
 
-                                <Descriptions.Item label="Phương thức Thanh toán">
-                                    {renderPaymentMethod(contract.paymentMethod)}
-                                </Descriptions.Item>
+                            {/* ROW 4: Chi phí - Phương thức thanh toán */}
+                            <Row gutter={[24, 18]}>
+                                <Col xs={24} md={8}>
+                                    <div style={fieldLabelStyle}>Chi phí lắp đặt (Đã bao gồm VAT)</div>
+                                    <div style={fieldValueStyle}>
+                                        {formatCurrency(calcInstallationTotalWithVat(contract))}
+                                    </div>
+                                </Col>
 
-                                <Descriptions.Item label="Mã đồng hồ">
-                                    {waterMeterData?.installedMeterCode || 'Chưa lắp đặt'}
-                                </Descriptions.Item>
+                                <Col xs={24} md={16}>
+                                    <div style={fieldLabelStyle}>Phương thức Thanh toán Tiền nước</div>
+                                    <div style={{ ...fieldValueStyle, fontWeight: 500 }}>
+                                        {renderPaymentMethod(contract.paymentMethod)}
+                                    </div>
+                                </Col>
+                            </Row>
 
-                                <Descriptions.Item label="Ảnh đồng hồ" span={2}>
-                                    {waterMeterData?.installationImageBase64 ? (
-                                        <Image
-                                            src={`data:image/jpeg;base64,${waterMeterData.installationImageBase64}`}
-                                            alt="Ảnh lắp đặt đồng hồ"
-                                            style={{ maxWidth: '100%', maxHeight: 300, height: 'auto' }}
-                                            placeholder={
-                                                <div
-                                                    style={{
-                                                        width: '100%',
-                                                        maxWidth: '400px',
-                                                        height: '200px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        background: '#f5f5f5',
-                                                    }}
-                                                >
-                                                    Đang tải...
-                                                </div>
-                                            }
-                                        />
-                                    ) : (
-                                        <span style={{ color: '#999' }}>Chưa có ảnh lắp đặt</span>
-                                    )}
-                                </Descriptions.Item>
-                            </Descriptions>
+                            <div style={{ height: sectionSpacer }} />
+                            <div style={{ borderTop: '1px solid #f0f0f0', margin: '0 -24px' }} />
+                            <div style={{ height: sectionSpacer }} />
+
+                            {/* ROW 5: Mã đồng hồ + Ảnh đồng hồ */}
+                            <Row gutter={[16, 12]}>
+                                <Col xs={24} md={8}>
+                                    <div style={fieldLabelStyle}>Mã đồng hồ</div>
+                                    <div style={fieldValueStyle}>
+                                        <span style={noWrapEllipsis} title={waterMeterData?.installedMeterCode || ''}>
+                                          {waterMeterData?.installedMeterCode || 'Chưa lắp đặt'}
+                                        </span>
+                                    </div>
+                                </Col>
+
+                                <Col xs={24} md={16}>
+                                    <div style={fieldLabelStyle}>Ảnh đồng hồ</div>
+                                    <div>
+                                        {waterMeterData?.installationImageBase64 ? (
+                                            <Image
+                                                src={`data:image/jpeg;base64,${waterMeterData.installationImageBase64}`}
+                                                alt="Ảnh lắp đặt đồng hồ"
+                                                style={{ maxWidth: '100%', maxHeight: 300, height: 'auto' }}
+                                                placeholder={
+                                                    <div
+                                                        style={{
+                                                            width: '100%',
+                                                            maxWidth: 500,
+                                                            height: 200,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            background: '#f5f5f5',
+                                                        }}
+                                                    >
+                                                        Đang tải...
+                                                    </div>
+                                                }
+                                            />
+                                        ) : (
+                                            <span style={{ color: '#999' }}>Chưa có ảnh lắp đặt</span>
+                                        )}
+                                    </div>
+                                </Col>
+                            </Row>
                         </Card>
                     )}
                 </Spin>
