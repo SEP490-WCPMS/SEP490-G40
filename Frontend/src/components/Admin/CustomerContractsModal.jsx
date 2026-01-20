@@ -1,22 +1,20 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import { Button } from '../ui/button'; // Hoặc đường dẫn tới component Button của bạn
+import { Button } from '../ui/button';
 
 const CustomerContractsModal = ({ isOpen, onClose, contracts, customerName, loading }) => {
     if (!isOpen) return null;
 
-    // Helper format tiền
     const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
-    // Helper format ngày
     const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('vi-VN') : '---';
 
-    // Helper style trạng thái
     const getStatusStyle = (status) => {
         const styles = {
             ACTIVE: { bg: '#dcfce7', text: '#166534', label: 'Đang hoạt động' },
             TERMINATED: { bg: '#fee2e2', text: '#991b1b', label: 'Đã hủy' },
             PENDING: { bg: '#fef9c3', text: '#854d0e', label: 'Chờ xử lý' },
-            // Thêm các trạng thái khác nếu cần
+            APPROVED: { bg: '#dbeafe', text: '#1e40af', label: 'Đã duyệt' },
+            PENDING_SIGN: { bg: '#ffedd5', text: '#9a3412', label: 'Chờ ký' },
         };
         return styles[status] || { bg: '#f3f4f6', text: '#374151', label: status };
     };
@@ -78,7 +76,15 @@ const CustomerContractsModal = ({ isOpen, onClose, contracts, customerName, load
                                                 <div>
                                                     <strong style={{ color: '#475569' }}>NV Kỹ thuật:</strong> {c.technicalStaffName || '---'}
                                                 </div>
-                                                {/* Thêm các trường khác nếu cần */}
+
+                                                {/* --- HIỂN THỊ ĐỒNG HỒ Ở ĐÂY --- */}
+                                                <div style={{ gridColumn: '1 / -1', marginTop: '5px', padding: '8px', backgroundColor: '#e0f2fe', borderRadius: '4px', border: '1px solid #bae6fd' }}>
+                                                    <strong style={{ color: '#0369a1' }}>Đồng hồ nước:</strong>
+                                                    <span style={{ marginLeft: '8px', fontWeight: 'bold', fontFamily: 'monospace', fontSize: '1rem' }}>
+                                                        {c.meterCode || 'Chưa lắp'}
+                                                    </span>
+                                                </div>
+                                                {/* ------------------------------- */}
                                             </div>
                                         </div>
                                     );

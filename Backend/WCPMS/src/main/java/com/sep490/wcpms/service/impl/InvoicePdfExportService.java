@@ -12,10 +12,14 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -26,7 +30,35 @@ public class InvoicePdfExportService {
     private final PaymentService paymentService;
 
     // Thư mục lưu file PDF trên server
-    private static final String BASE_DIR = "invoices-pdf";
+    private static final String BASE_DIR = resolveWritableInvoiceDir();
+
+    private static String resolveWritableInvoiceDir() {
+        List<Path> candidates = List.of(
+                // 1) ưu tiên thư mục chạy app
+                Paths.get(System.getProperty("user.dir", "."), "invoices-pdf"),
+
+                // 2) user home (ổn định hơn tmp)
+                Paths.get(System.getProperty("user.home", "."), "wcpms-data", "invoices-pdf"),
+
+                // 3) tmp dir (gần như luôn ghi được)
+                Paths.get(System.getProperty("java.io.tmpdir", "."), "wcpms-data", "invoices-pdf")
+        );
+
+        for (Path p : candidates) {
+            try {
+                Files.createDirectories(p);
+                // test quyền ghi nhẹ: tạo file rỗng tạm rồi xóa
+                Path test = p.resolve(".write_test");
+                Files.writeString(test, "ok");
+                Files.deleteIfExists(test);
+                return p.toAbsolutePath().toString();
+            } catch (Exception ignored) {
+            }
+        }
+
+        // fallback cuối cùng (giữ nguyên behavior cũ)
+        return "invoices-pdf";
+    }
 
     private static final DateTimeFormatter DATE_FMT =
             DateTimeFormatter.ofPattern("dd/MM/yyyy");

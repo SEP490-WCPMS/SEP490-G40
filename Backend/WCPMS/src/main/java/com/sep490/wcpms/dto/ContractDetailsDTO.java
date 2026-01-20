@@ -30,6 +30,7 @@ public class ContractDetailsDTO {
     private String routeName;
     private Integer technicalStaffId;
     private String technicalStaffName;
+    private String meterCode;
 
     public ContractDetailsDTO(Contract contract) {
         this.id = contract.getId();
