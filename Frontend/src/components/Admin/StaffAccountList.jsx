@@ -54,15 +54,38 @@ const StaffAccountList = () => {
             const raw = accountsResponse?.data ?? accountsResponse;
             const payload = raw?.data ?? raw;
 
+            // HATEOAS (Spring) thường trả về: { _embedded: { accounts: [...] }, page: { totalElements, totalPages, number, size } }
+            const embedded = payload?._embedded;
+            const embeddedArray = embedded
+                ? (embedded.accounts || embedded.accountList || embedded.items || Object.values(embedded).find(Array.isArray))
+                : null;
+
             const resolvedContent = Array.isArray(payload?.content)
                 ? payload.content
-                : (Array.isArray(payload) ? payload : (Array.isArray(payload?.accounts) ? payload.accounts : []));
+                : (Array.isArray(embeddedArray)
+                    ? embeddedArray
+                    : (Array.isArray(payload) ? payload : (Array.isArray(payload?.accounts) ? payload.accounts : [])));
+
+            const inferredTotalPages =
+                payload?.totalPages ??
+                payload?.page?.totalPages ??
+                payload?.pagination?.totalPages ??
+                payload?.meta?.totalPages;
 
             const inferredTotalElements =
                 payload?.totalElements ??
+                payload?.page?.totalElements ??
+                payload?.pagination?.totalElements ??
+                payload?.meta?.totalElements ??
                 payload?.totalCount ??
+                payload?.page?.totalCount ??
                 payload?.total ??
-                resolvedContent.length;
+                payload?.page?.total ??
+                (Number.isFinite(Number(inferredTotalPages))
+                    ? ((currentPage === Number(inferredTotalPages) - 1)
+                        ? ((Number(inferredTotalPages) - 1) * pageSize + resolvedContent.length)
+                        : (Number(inferredTotalPages) * pageSize))
+                    : resolvedContent.length);
 
             setStaffAccounts(resolvedContent);
             setTotalElements(Number(inferredTotalElements) || 0);

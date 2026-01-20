@@ -123,7 +123,8 @@ const ContractRequestDetailModal = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: 'rgba(17, 24, 39, 0.55)',
+            backdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -131,25 +132,27 @@ const ContractRequestDetailModal = ({
         },
         content: {
             backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            maxWidth: '700px',
+            borderRadius: '18px',
+            boxShadow: '0 25px 80px rgba(0, 0, 0, 0.35)',
+            border: '1px solid rgba(229, 231, 235, 0.9)',
+            maxWidth: '760px',
             width: '90%',
             maxHeight: '80vh',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
+            animation: 'crdPop 180ms ease-out',
         },
         header: {
-            padding: '20px 30px',
-            backgroundColor: '#f9fafb',
+            padding: '18px 24px',
+            backgroundColor: '#ffffff',
             borderBottom: '1px solid #e5e7eb',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
         },
         headerTitle: {
-            fontSize: '20px',
+            fontSize: '18px',
             fontWeight: 700,
             color: '#1f2937',
             margin: 0,
@@ -157,13 +160,18 @@ const ContractRequestDetailModal = ({
         closeButton: {
             background: 'none',
             border: 'none',
-            fontSize: '28px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '10px',
+            fontSize: '26px',
+            lineHeight: '1',
             color: '#6b7280',
             cursor: 'pointer',
-            transition: 'color 0.2s',
+            transition: 'background-color 0.15s ease, color 0.15s ease, transform 0.15s ease',
         },
         body: {
-            padding: '30px',
+            padding: '24px',
+            backgroundColor: '#f9fafb',
             overflowY: 'auto',
             flex: 1,
         },
@@ -200,9 +208,10 @@ const ContractRequestDetailModal = ({
             backgroundColor: '#ffffff',
             border: '1px solid #e5e7eb',
             borderRadius: '12px',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.06)',
         },
         sectionTitle: {
-            fontSize: '16px',
+            fontSize: '15px',
             fontWeight: 600,
             color: '#1f2937',
             marginBottom: '12px',
@@ -234,6 +243,7 @@ const ContractRequestDetailModal = ({
             fontSize: '15px',
             color: '#1f2937',
             fontWeight: 500,
+            lineHeight: 1.4,
         },
         statusBadge: (className) => {
             const statusColors = {
@@ -255,8 +265,8 @@ const ContractRequestDetailModal = ({
             };
         },
         footer: {
-            padding: '16px 30px',
-            backgroundColor: '#f9fafb',
+            padding: '14px 24px',
+            backgroundColor: '#ffffff',
             borderTop: '1px solid #e5e7eb',
             textAlign: 'center',
         },
@@ -269,7 +279,7 @@ const ContractRequestDetailModal = ({
             fontSize: '14px',
             fontWeight: 600,
             cursor: 'pointer',
-            transition: 'all 0.3s ease',
+            transition: 'background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease',
         },
     };
 
@@ -423,12 +433,6 @@ const ContractRequestDetailModal = ({
                 <div style={styles.sectionCard}>
                     <div style={styles.grid}>
                         <div style={styles.row}>
-                            <span style={styles.label}>Số người sử dụng:</span>
-                            <span style={styles.value}>
-                                {detail.occupants ? `${detail.occupants} người` : 'N/A'}
-                            </span>
-                        </div>
-                        <div style={styles.row}>
                             <span style={styles.label}>Phần trăm sử dụng:</span>
                             <span style={styles.value}>
                                 {detail.usagePercentage ? `${detail.usagePercentage}%` : 'N/A'}
@@ -543,8 +547,41 @@ const ContractRequestDetailModal = ({
     return (
         <div style={styles.overlay} onClick={onClose}>
             <style>{`
-        .crd-modal button:hover { transform: translateY(-2px); }
-        .crd-modal button:active { transform: translateY(0); }
+                @keyframes crdPop {
+                    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+                    to   { opacity: 1; transform: translateY(0) scale(1); }
+                }
+
+                .crd-modal button:focus-visible {
+                    outline: 3px solid rgba(10, 119, 226, 0.35);
+                    outline-offset: 2px;
+                }
+
+                .crd-close:hover {
+                    background: rgba(17, 24, 39, 0.06);
+                    color: #111827;
+                    transform: translateY(-1px);
+                }
+
+                .crd-primary:hover {
+                    background-color: #085fb5;
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 20px rgba(10, 119, 226, 0.18);
+                }
+
+                .crd-primary:active {
+                    transform: translateY(0);
+                    box-shadow: none;
+                }
+
+                .crd-danger:hover {
+                    filter: brightness(0.95);
+                    transform: translateY(-1px);
+                }
+
+                .crd-danger:active {
+                    transform: translateY(0);
+                }
       `}</style>
             <div
                 className="crd-modal"
@@ -556,10 +593,10 @@ const ContractRequestDetailModal = ({
                 <div style={styles.header}>
                     <h2 style={styles.headerTitle}>📄 Chi tiết Yêu cầu Hợp đồng</h2>
                     <button
+                        className="crd-close"
                         style={styles.closeButton}
                         onClick={onClose}
-                        onMouseOver={(e) => e.target.style.color = '#000'}
-                        onMouseOut={(e) => e.target.style.color = '#6b7280'}
+                        aria-label="Đóng"
                     >
                         ×
                     </button>
@@ -575,7 +612,7 @@ const ContractRequestDetailModal = ({
                     {error && (
                         <div style={styles.errorState}>
                             <p style={styles.errorMessage}>❌ {error}</p>
-                            <button style={styles.retryButton} onClick={fetchDetailData}>
+                            <button className="crd-danger" style={styles.retryButton} onClick={fetchDetailData}>
                                 🔄 Thử lại
                             </button>
                         </div>
@@ -590,10 +627,9 @@ const ContractRequestDetailModal = ({
 
                 <div style={styles.footer}>
                     <button
+                        className="crd-primary"
                         style={styles.footerButton}
                         onClick={onClose}
-                        onMouseOver={(e) => { e.target.style.backgroundColor = '#085fb5'; e.target.style.transform = 'translateY(-2px)'; }}
-                        onMouseOut={(e) => { e.target.style.backgroundColor = '#0A77E2'; e.target.style.transform = 'translateY(0)'; }}
                     >
                         ✓ Đóng
                     </button>
