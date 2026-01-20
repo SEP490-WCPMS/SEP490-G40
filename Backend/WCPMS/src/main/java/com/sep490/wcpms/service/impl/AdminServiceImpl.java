@@ -85,13 +85,22 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<ContractDetailsDTO> getContractsByCustomerId(Integer customerId) {
-        // Tìm tất cả hợp đồng của khách hàng này (sắp xếp mới nhất trước)
         List<Contract> contracts = contractRepository.findByCustomer_IdOrderByIdDesc(customerId);
 
-        // Convert sang ContractDetailsDTO
-        return contracts.stream()
-                .map(ContractDetailsDTO::new) // Sử dụng constructor có sẵn trong DTO
-                .collect(Collectors.toList());
+        return contracts.stream().map(c -> {
+            ContractDetailsDTO dto = new ContractDetailsDTO(c);
+
+            // --- THÊM LOGIC LẤY ĐỒNG HỒ ---
+            var installation = meterInstallationRepository.findTopByContractOrderByCreatedAtDesc(c);
+            if (installation.isPresent() && installation.get().getWaterMeter() != null) {
+                dto.setMeterCode(installation.get().getWaterMeter().getMeterCode());
+            } else {
+                dto.setMeterCode("Chưa lắp");
+            }
+            // ------------------------------
+
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Override
