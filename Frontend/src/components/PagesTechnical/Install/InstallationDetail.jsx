@@ -105,7 +105,7 @@ function InstallationDetail() {
         // --- VALIDATE DỮ LIỆU ---
 
         // 1. Check rỗng
-        if (!installData.meterCode || installData.initialReading === '') {
+        if (!installData.meterCode || installData.initialReading === '' || !installData.notes.trim()) {
             toast.warn("Vui lòng điền đầy đủ Mã Đồng Hồ và Chỉ Số Ban Đầu.");
             return;
         }
@@ -356,16 +356,19 @@ function InstallationDetail() {
                         )}
                     </div>
 
-                    {/* Ghi Chú */}
+                    {/* Ghi Chú (Tình Trạng Lắp Đặt) */}
                     <div>
-                        <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">Tình Trạng Lắp Đặt</label>
+                        <label htmlFor="notes" className="block mb-1.5 text-sm font-medium text-gray-700">
+                            Tình Trạng Lắp Đặt <span className="text-red-500">*</span>
+                        </label>
                         <textarea
                             id="notes"
                             name="notes"
                             rows="3"
                             value={installData.notes}
                             onChange={handleChange}
-                            placeholder="Ghi chú thêm nếu cần..."
+                            required // Thêm thuộc tính required
+                            placeholder="Mô tả chi tiết tình trạng (vd: Đã lắp xong, niêm phong kẹp chì...)"
                             className="appearance-none block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                     </div>
