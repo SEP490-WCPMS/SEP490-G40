@@ -867,7 +867,7 @@ public class InstallationAcceptancePdfService {
     }
 
     // ========================= Address helpers =========================
-
+    // Địa chỉ từ Address (có Ward) ưu tiên hơn Customer (không có Ward)
     private static String buildAddress(Address addr) {
         if (addr == null) return "";
         if (!isBlank(addr.getAddress())) return addr.getAddress();
@@ -888,6 +888,7 @@ public class InstallationAcceptancePdfService {
         return sb.toString();
     }
 
+    // Địa chỉ từ Customer (không có Ward)
     private static String buildCustomerAddress(Customer customer) {
         if (customer == null) return "";
 
@@ -904,6 +905,7 @@ public class InstallationAcceptancePdfService {
         return sb.toString();
     }
 
+    // ========================= PDF loading helper =========================
     private PDDocument loadTemplateAsPlainDocument(String classpath) throws Exception {
         // Rewrite template using PDFBox so output is compatible with more viewers and
         // avoid "COSStream has been closed" (happens when importing pages from a closed source doc).
