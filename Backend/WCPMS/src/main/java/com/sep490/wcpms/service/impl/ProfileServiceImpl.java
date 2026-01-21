@@ -85,27 +85,27 @@ public class ProfileServiceImpl implements ProfileService {
         Customer customer = customerRepository.findByAccount_Id(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin khách hàng cho tài khoản ID: " + id));
 
-        // 2. Cập nhật các trường cho bảng Account
+        // Cập nhật Account
         account.setFullName(dto.getFullName());
         account.setEmail(dto.getEmail());
         account.setPhone(dto.getPhone());
 
-        // 3. Cập nhật các trường cho bảng Customer
-        customer.setAddress(dto.getAddress());
-        customer.setStreet(dto.getStreet());
-        customer.setDistrict(dto.getDistrict());
-        customer.setProvince(dto.getProvince());
+        // --- THÊM: Cập nhật CCCD ---
+        if (dto.getIdentityNumber() != null && !dto.getIdentityNumber().isEmpty()) {
+            customer.setIdentityNumber(dto.getIdentityNumber());
+        }
+        // ---------------------------
 
-        // 4. Lưu lại (JPA sẽ tự động cập nhật vì các entity đang được quản lý trong transaction)
         Account updatedAccount = accountRepository.save(account);
         Customer updatedCustomer = customerRepository.save(customer);
 
-        // 5. Trả về DTO với thông tin đã được cập nhật
         return mapToProfileResponseDTO(updatedAccount, updatedCustomer);
     }
 
-    // Hàm tiện ích để chuyển đổi từ Entity sang DTO
+    // Cập nhật hàm map để trả về CCCD mới cập nhật (nếu DTO response có trường này)
     private ProfileResponseDTO mapToProfileResponseDTO(Account account, Customer customer) {
+        // Giả sử ProfileResponseDTO của bạn đã có trường identityNumber,
+        // nếu chưa bạn cũng cần thêm vào ProfileResponseDTO
         return new ProfileResponseDTO(
                 account.getId(),
                 account.getFullName(),
@@ -114,7 +114,9 @@ public class ProfileServiceImpl implements ProfileService {
                 customer.getAddress(),
                 customer.getStreet(),
                 customer.getDistrict(),
-                customer.getProvince()
+                customer.getProvince(),
+                customer.getIdentityNumber() // Thêm vào nếu DTO hỗ trợ
         );
     }
+
 }

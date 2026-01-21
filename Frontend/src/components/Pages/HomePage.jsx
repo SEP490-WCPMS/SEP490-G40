@@ -1,12 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Zap, Building2, CreditCard, Users, Briefcase, Smartphone } from 'lucide-react';
+import { LogIn, Zap, Building2, CreditCard, Users, Briefcase, Smartphone, AlertTriangle } from 'lucide-react';
 import './HomePage.css';
 
 const HomePage = ({ isAuthenticated, user }) => {
   const navigate = useNavigate();
   const [waterPrices, setWaterPrices] = useState([]);
   const [loading, setLoading] = useState(false);
+  // --- THÊM: State quản lý modal bắt buộc cập nhật ---
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+
+  // --- THÊM: Effect kiểm tra CCCD khi user thay đổi ---
+  useEffect(() => {
+    // Chỉ kiểm tra nếu đã đăng nhập và là khách hàng
+    if (isAuthenticated && user && user.roleName === 'CUSTOMER') {
+      // Kiểm tra xem identityNumber có tồn tại hay không
+      // Lưu ý: Đảm bảo object 'user' trong localStorage hoặc props có trường identityNumber
+      if (!user.identityNumber || user.identityNumber.trim() === '') {
+        setShowIdentityModal(true);
+      }
+    }
+  }, [isAuthenticated, user]);
+
+  // --- THÊM: Xử lý khi bấm "Đồng ý" ---
+  const handleAgreeUpdate = () => {
+    navigate('/profile'); // Chuyển sang trang update profile
+  };
+
+  // --- THÊM: Xử lý khi bấm "Không đồng ý" (Đăng xuất) ---
+  const handleDisagree = () => {
+    // Xóa thông tin đăng nhập
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    // Reload lại trang để về trạng thái chưa đăng nhập
+    window.location.reload();
+  };
 
   useEffect(() => {
     const fetchWaterPrices = async () => {
@@ -50,38 +78,38 @@ const HomePage = ({ isAuthenticated, user }) => {
 
   // Banks - with real bank logos
   const banks = [
-    { 
-      name: 'VietinBank', 
+    {
+      name: 'VietinBank',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/0e3349ab85ae5ebf604df3cb380f9c8f-150x150.jpg',
       isImage: true
     },
-    { 
-      name: 'BIDV', 
+    {
+      name: 'BIDV',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/logo-bidv-20220426071253-150x150.jpg',
       isImage: true
     },
-    { 
-      name: 'Agribank', 
+    {
+      name: 'Agribank',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2021/04/AGRIBANK-150x150.png',
       isImage: true
     },
-    { 
-      name: 'Vietcombank', 
+    {
+      name: 'Vietcombank',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/logo_VCB_828891-150x150.jpg',
       isImage: true
     },
-    { 
-      name: 'MB Bank', 
+    {
+      name: 'MB Bank',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/tai-xuong-150x150.png',
       isImage: true
     },
-    { 
-      name: 'IenVietBank', 
+    {
+      name: 'IenVietBank',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/lvp20210802084406.1116220-150x150.png',
       isImage: true
     },
-    { 
-      name: 'Payoo', 
+    {
+      name: 'Payoo',
       logo: 'https://capnuocphutho.vn/wp-content/uploads/2024/05/logo-sacombank-150x150.jpg',
       isImage: true
     }
@@ -89,9 +117,57 @@ const HomePage = ({ isAuthenticated, user }) => {
 
   return (
     <div className="homepage">
+      {/* --- THÊM: MODAL BẮT BUỘC CẬP NHẬT CCCD --- */}
+      {showIdentityModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999,
+          display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }}>
+          <div style={{
+            backgroundColor: 'white', padding: '30px', borderRadius: '12px',
+            maxWidth: '500px', width: '90%', textAlign: 'center',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ backgroundColor: '#fff7ed', padding: '12px', borderRadius: '50%' }}>
+                <AlertTriangle size={48} color="#c2410c" />
+              </div>
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '10px', color: '#1f2937' }}>
+              Yêu cầu cập nhật thông tin
+            </h2>
+            <p style={{ color: '#4b5563', marginBottom: '25px', lineHeight: '1.6' }}>
+              Tài khoản của bạn chưa cập nhật <strong>Căn cước công dân/Mã số thuế</strong>.
+              <br />
+              Theo quy định, bạn bắt buộc phải cập nhật thông tin này để tiếp tục sử dụng các dịch vụ của hệ thống.
+            </p>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button
+                onClick={handleDisagree}
+                style={{
+                  padding: '10px 20px', borderRadius: '8px', border: '1px solid #d1d5db',
+                  backgroundColor: 'white', color: '#374151', cursor: 'pointer', fontWeight: '600'
+                }}
+              >
+                Không đồng ý
+              </button>
+              <button
+                onClick={handleAgreeUpdate}
+                style={{
+                  padding: '10px 20px', borderRadius: '8px', border: 'none',
+                  backgroundColor: '#0A77E2', color: 'white', cursor: 'pointer', fontWeight: '600'
+                }}
+              >
+                Đồng ý cập nhật ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Company Banner Section */}
       <section className="company-banner-section">
-        <img 
+        <img
           src="https://capnuocphutho.vn/wp-content/uploads/2024/05/cropped-cong_ty_co_phan_cap_nuoc_phu_tho_-_55_nam_xay_dung_hoi_nhap_va_phat_trien-1.jpg"
           alt="Công ty Cổ phần Cấp nước Phú Thọ"
           className="company-banner-image"
@@ -185,8 +261,8 @@ const HomePage = ({ isAuthenticated, user }) => {
           {banks.map((bank, index) => (
             <div key={index} className="bank-item">
               {bank.isImage ? (
-                <img 
-                  src={bank.logo} 
+                <img
+                  src={bank.logo}
                   alt={bank.name}
                   className="bank-logo-image"
                   onError={(e) => {
