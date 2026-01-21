@@ -122,8 +122,7 @@ public class InstallationAcceptancePdfService {
     private static final float TOP_TECH_LINE2_RECT_XMAX = 514.900000f;
 
     // Tick: dùng 3 cột cố định cho CẢ 2 hàng để cân nhau
-    private static final float TOP_TICK_INSTALL_BASELINE = 454.229360f;
-    private static final float TOP_TICK_PURPOSE_BASELINE = 494.549360f;
+    private static final float TOP_TICK_PURPOSE_BASELINE = 454.229360f;
 
     // ĐỔI 3 giá trị này (tâm ô vuông)
     private static final float TICK_COL_1_X = 126.52f;
@@ -215,12 +214,6 @@ public class InstallationAcceptancePdfService {
         }
 
         // ====== tick logic ======
-        String notesLower = technicalCondition.toLowerCase(Locale.ROOT);
-        boolean tickLapMoi = containsAny(notesLower, "lắp mới", "lap moi");
-        boolean tickThay = containsAny(notesLower, "thay", "thay thế", "thay the");
-        boolean tickLapThem = containsAny(notesLower, "lắp thêm", "lap them", "bổ sung", "bo sung");
-        if (!tickLapMoi && !tickThay && !tickLapThem) tickLapMoi = true;
-
         PurposeTick purposeTick = inferPurpose(contract, customer);
 
         // ====== Render PDF ======
@@ -353,10 +346,6 @@ public class InstallationAcceptancePdfService {
                         Align.LEFT, 0f, NUDGE_BASELINE_UP);
 
                 // ====== 8) Tick: canh giữa "X" trong ô ======
-                if (tickLapMoi)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE);
-                if (tickThay)    drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE);
-                if (tickLapThem) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE);
-
                 if (purposeTick.sinhHoat)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE);
                 if (purposeTick.sanXuat)   drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE);
                 if (purposeTick.kinhDoanh) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE);
@@ -438,12 +427,6 @@ public class InstallationAcceptancePdfService {
         }
 
         // ====== tick logic ======
-        String notesLower = technicalCondition.toLowerCase(Locale.ROOT);
-        boolean tickLapMoi = containsAny(notesLower, "lắp mới", "lap moi");
-        boolean tickThay = containsAny(notesLower, "thay", "thay thế", "thay the");
-        boolean tickLapThem = containsAny(notesLower, "lắp thêm", "lap them", "bổ sung", "bo sung");
-        if (!tickLapMoi && !tickThay && !tickLapThem) tickLapMoi = true;
-
         PurposeTick purposeTick = inferPurpose(contract, customer);
 
         // ====== Render PDF (dùng đúng helper đang có trong file) ======
@@ -577,10 +560,6 @@ public class InstallationAcceptancePdfService {
                         Align.LEFT, 0f, NUDGE_BASELINE_UP);
 
                 // ====== 10) Tick: canh giữa "X" trong ô ======
-                if (tickLapMoi)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE);
-                if (tickThay)    drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE);
-                if (tickLapThem) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE);
-
                 if (purposeTick.sinhHoat)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE);
                 if (purposeTick.sanXuat)   drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE);
                 if (purposeTick.kinhDoanh) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE);

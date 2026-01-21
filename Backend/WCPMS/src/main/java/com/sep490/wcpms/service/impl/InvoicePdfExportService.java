@@ -445,7 +445,8 @@ public class InvoicePdfExportService {
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
         model.put("environmentFeeAmount", fmtMoney(invoice.getEnvironmentFeeAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-        model.put("vatRate", "5%"); // nếu sau này bạn lấy từ price thì sửa ở đây
+        model.put("vatRate", "5%");
+        model.put("environmentFeeRate", "10%");
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
