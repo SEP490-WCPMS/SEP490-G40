@@ -434,6 +434,7 @@ public class InvoicePdfExportService {
         model.put("customerCode", c.getCustomerCode());
         model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
+        model.put("customerIdentityNumber", c.getIdentityNumber() != null ? c.getIdentityNumber() : "");
 
         String period = fmtDate(invoice.getFromDate()) + " - " + fmtDate(invoice.getToDate());
         model.put("period", period);
@@ -497,6 +498,7 @@ public class InvoicePdfExportService {
         model.put("customerCode", c.getCustomerCode());
         model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
+        model.put("customerIdentityNumber", c.getIdentityNumber() != null ? c.getIdentityNumber() : "");
 
         model.put("contractCode", contractCode);
         model.put("contractSignDate", fmtDate(contractSignDate));
@@ -557,6 +559,7 @@ public class InvoicePdfExportService {
         model.put("customerCode", c.getCustomerCode());
         model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
+        model.put("customerIdentityNumber", c.getIdentityNumber() != null ? c.getIdentityNumber() : "");
 
         model.put("serviceDescription", serviceDescription);
         model.put("subtotalAmount", fmtMoney(invoice.getSubtotalAmount()));
