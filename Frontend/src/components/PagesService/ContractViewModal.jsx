@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Spin, Button, Tooltip, message } from 'antd';
-import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined, DownloadOutlined } from '@ant-design/icons';
+import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined, DownloadOutlined, PhoneOutlined } from '@ant-design/icons';
 import moment from 'moment';
 
 import { downloadServiceAcceptancePdf, downloadServiceContractPdf } from '../Services/apiService';
@@ -213,6 +213,15 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 <div>
                                     <div className="text-xs text-gray-500 mb-1">Mã khách hàng</div>
                                     <div className="font-medium text-gray-800">{initialData.customerCode}</div>
+                                </div>
+                            )}
+                            {initialData?.contactPhone && (
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Số điện thoại</div>
+                                    <div className="font-medium text-gray-800 flex items-center gap-1">
+                                        <PhoneOutlined className="text-blue-500" />
+                                        {initialData.contactPhone}
+                                    </div>
                                 </div>
                             )}
                             {initialData?.applicationDate && (

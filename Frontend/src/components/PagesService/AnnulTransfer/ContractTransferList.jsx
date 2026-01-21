@@ -150,7 +150,9 @@ const ContractTransferList = ({ refreshKey, keyword }) => {
           status: core.approvalStatus || record.status,
           reason: core.reason || record.reason,
           fromCustomerName: core.fromCustomerName || record.currentCustomer,
+          fromCustomerPhone: core.fromCustomerPhone, // Số điện thoại KH cũ từ Backend
           toCustomerName: core.toCustomerName || record.newCustomer,
+          toCustomerPhone: core.toCustomerPhone, // Số điện thoại KH mới từ Backend
           attachedEvidence: core.attachedEvidence,
           approvalNote: core.approvalNote,
         });

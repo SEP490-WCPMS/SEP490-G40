@@ -234,7 +234,9 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
                         status: core.approvalStatus || record._approvalStatus,
                         reason: core.reason || record._reason,
                         fromCustomerName: core.fromCustomerName || record.customerName,
+                        fromCustomerPhone: core.fromCustomerPhone || record.contactPhone, // Số điện thoại KH hiện tại
                         toCustomerName: core.toCustomerName || record._toCustomerName,
+                        toCustomerPhone: core.toCustomerPhone || record._toCustomerPhone, // Số điện thoại KH nhận chuyển nhượng
                         attachedEvidence: core.attachedEvidence,
                         approvalNote: core.approvalNote,
                     });
