@@ -51,7 +51,10 @@ public class ContractPdfStampService {
     private static final float P0_YTOP_CUST_CODE = 628.95685f;   // "Mã khách hàng: ...."
     private static final float P0_X_CUST_CODE = 155f;
 
-    private static final float P0_YTOP_PHONE = 649.6551f;        // "Điện thoại: ...."
+    private static final float P0_YTOP_IDENTITY = 649.6551f;     // "CCCD/MST: ...."
+    private static final float P0_X_IDENTITY = 125f;
+
+    private static final float P0_YTOP_PHONE = 670.35333f;       // "Điện thoại: ...."
     private static final float P0_X_PHONE = 125f;
 
     // Page 4 (index 3) - bảng loại sử dụng
@@ -63,6 +66,8 @@ public class ContractPdfStampService {
     private static final float P3_YTOP_ROW_RESIDENTIAL = 114.1284f;     // dòng "Sinh hoạt..."
     private static final float P3_YTOP_ROW_ADMINISTRATIVE = 132.6528f; // dòng "Cơ quan..."
     private static final float P3_YTOP_ROW_COMMERCIAL = 174.7993f;      // dòng "Kinh doanh..."
+    // Nâng chữ trong ô bảng lên cho đẹp (baseline không sát đường kẻ)
+    private static final float P3_TABLE_BASELINE_NUDGE_UP = 4.0f;
 
     private static final float FONT_SIZE_12 = 12f;
     private static final float FONT_SIZE_13 = 13f;
@@ -126,6 +131,7 @@ public class ContractPdfStampService {
             String customerName = "";
             String phone = "";
             String customerCode = "";
+            String identityNumber = "";
 
             if (customer != null) {
                 customerName = firstNonBlank(
@@ -144,6 +150,8 @@ public class ContractPdfStampService {
                         customer.getCustomerCode(),
                         customer.getAccount() != null ? customer.getAccount().getCustomerCode() : null
                 );
+
+                identityNumber = safe(customer.getIdentityNumber());
             } else {
                 // trường hợp guest
                 phone = safe(contract.getContactPhone());
@@ -181,7 +189,7 @@ public class ContractPdfStampService {
             // ========= Fill PDF =========
             // Page 1
             fillPage0(doc, font, contractNumber, day, month, year,
-                    customerName, address, customerCode, phone);
+                    customerName, address, customerCode, identityNumber, phone);
 
             // Page 4 - bảng
             fillPage3Table(doc, font, meterCode, serial, percentByType, priceByType);
@@ -242,6 +250,7 @@ public class ContractPdfStampService {
             String customerName = "";
             String phone = "";
             String customerCode = "";
+            String identityNumber = "";
 
             if (customer != null) {
                 customerName = firstNonBlank(
@@ -260,6 +269,8 @@ public class ContractPdfStampService {
                         customer.getCustomerCode(),
                         customer.getAccount() != null ? customer.getAccount().getCustomerCode() : null
                 );
+
+                identityNumber = safe(customer.getIdentityNumber());
             } else {
                 phone = safe(contract.getContactPhone());
             }
@@ -286,7 +297,7 @@ public class ContractPdfStampService {
             }
 
             fillPage0(doc, font, contractNumber, day, month, year,
-                    customerName, address, customerCode, phone);
+                    customerName, address, customerCode, identityNumber, phone);
 
             fillPage3Table(doc, font, meterCode, serial, percentByType, priceByType);
 
@@ -305,6 +316,7 @@ public class ContractPdfStampService {
                            String customerName,
                            String address,
                            String customerCode,
+                           String identityNumber,
                            String phone) throws Exception {
 
         if (doc.getNumberOfPages() <= PAGE_0) return;
@@ -406,6 +418,19 @@ public class ContractPdfStampService {
                 );
             }
 
+            // CCCD/MST (NEW) - nằm trên dòng "Điện thoại"
+            if (!isBlank(identityNumber)) {
+                fillWhiteTopLeft(cs, page,
+                        120f, P0_YTOP_IDENTITY - 2f,
+                        240f, 18f
+                );
+                setTextBlack(cs);
+                drawTextTopLeft(cs, page, font, FONT_SIZE_12,
+                        P0_X_IDENTITY, P0_YTOP_IDENTITY,
+                        trimTo(identityNumber, 25)
+                );
+            }
+
             // Điện thoại
             if (!isBlank(phone)) {
                 fillWhiteTopLeft(cs, page,
@@ -441,14 +466,15 @@ public class ContractPdfStampService {
                 }
 
                 float yTop = row.yTop;
+                float y = yTop - P3_TABLE_BASELINE_NUDGE_UP;
 
                 // meter code + serial (điền giống nhau cho các dòng được dùng)
-                if (!isBlank(meterCode)) drawTextTopLeft(cs, page, font, FONT_SIZE_12, P3_X_METER_CODE, yTop, meterCode);
-                if (!isBlank(serial)) drawTextTopLeft(cs, page, font, FONT_SIZE_12, P3_X_SERIAL, yTop, serial);
+                if (!isBlank(meterCode)) drawTextTopLeftBaseline(cs, page, font, FONT_SIZE_12, P3_X_METER_CODE, y, meterCode);
+                if (!isBlank(serial)) drawTextTopLeftBaseline(cs, page, font, FONT_SIZE_12, P3_X_SERIAL, y, serial);
 
                 // price
                 String price = priceByType.getOrDefault(row.typeCode, "");
-                if (!isBlank(price)) drawTextTopLeft(cs, page, font, FONT_SIZE_12, P3_X_PRICE, yTop, price);
+                if (!isBlank(price)) drawTextTopLeftBaseline(cs, page, font, FONT_SIZE_12, P3_X_PRICE, y, price);
 
             }
         }
@@ -507,6 +533,25 @@ public class ContractPdfStampService {
             float yLineTop = yTop + i * (fontSize + lineGap);
             drawTextTopLeft(cs, page, font, fontSize, x, yLineTop, lines.get(i));
         }
+    }
+
+    // Dùng cho các tọa độ là BASELINE (vd: bảng trang 4)
+// Không trừ fontSize nữa để tránh bị tụt xuống 1 hàng
+    private void drawTextTopLeftBaseline(PDPageContentStream cs, PDPage page,
+                                         PDType0Font font, float fontSize,
+                                         float x, float yTopBaseline, String text) throws Exception {
+        if (text == null) return;
+        PDRectangle mediaBox = page.getMediaBox();
+        float pageHeight = mediaBox.getHeight();
+
+        // Convert TOP-LEFT baseline => PDFBox y (BOTTOM-LEFT)
+        float y = pageHeight - yTopBaseline;
+
+        cs.beginText();
+        cs.setFont(font, fontSize);
+        cs.newLineAtOffset(x, y);
+        cs.showText(text);
+        cs.endText();
     }
 
     private List<String> wrapByWidthPreferDash(PDType0Font font, String text, float fontSize,

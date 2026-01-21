@@ -83,17 +83,17 @@ public class InstallationAcceptancePdfService {
     private static final float TOP_ADDRESS_RECT_XMAX = 513.096800f;
 
     // Meter type + phi
-    private static final float TOP_METER_TYPE_X = 117.590880f;
+    private static final float TOP_METER_TYPE_X = 163.074560f;
     private static final float TOP_METER_TYPE_BASELINE = 360.129360f;
     private static final float TOP_METER_TYPE_RECT_YMIN = 347.782640f;
     private static final float TOP_METER_TYPE_RECT_YMAX = 362.129360f;
-    private static final float TOP_METER_TYPE_RECT_XMAX = 351.550000f;
+    private static final float TOP_METER_TYPE_RECT_XMAX = 397.117360f;
 
-    private static final float TOP_METER_PHI_X = 380.583760f;
+    private static final float TOP_METER_PHI_X = 426.196240f;
     private static final float TOP_METER_PHI_BASELINE = 360.129360f;
     private static final float TOP_METER_PHI_RECT_YMIN = 347.782640f;
     private static final float TOP_METER_PHI_RECT_YMAX = 362.129360f;
-    private static final float TOP_METER_PHI_RECT_XMAX = 513.803680f;
+    private static final float TOP_METER_PHI_RECT_XMAX = 513.907360f;
 
     // Serial + initial reading
     private static final float TOP_SERIAL_X = 148.293120f;
@@ -124,9 +124,14 @@ public class InstallationAcceptancePdfService {
     // Tick: dùng 3 cột cố định cho CẢ 2 hàng để cân nhau
     private static final float TOP_TICK_INSTALL_BASELINE = 454.229360f;
     private static final float TOP_TICK_PURPOSE_BASELINE = 494.549360f;
-    private static final float TICK_COL_1_X = 120.000000f;
-    private static final float TICK_COL_2_X = 250.000000f;
-    private static final float TICK_COL_3_X = 430.000000f;
+
+    // ĐỔI 3 giá trị này (tâm ô vuông)
+    private static final float TICK_COL_1_X = 126.52f;
+    private static final float TICK_COL_2_X = 267.79f;
+    private static final float TICK_COL_3_X = 440.90f;
+
+    // Nudge Y riêng cho tick (đơn vị top-left). Dương => xuống, âm => lên
+    private static final float TICK_NUDGE_Y_TOP = 2.0f;   // thử 2.0f, nếu vẫn chạm thì 2.5f / 3.0f
 
     // ====== “clear dots” đẹp hơn: chỉ xóa 1 dải mỏng thay vì phủ cả block cao ======
     // Trim bớt trên/dưới vùng bbox để tránh cảm giác “mảng trắng”
@@ -193,7 +198,7 @@ public class InstallationAcceptancePdfService {
         String meterPhi = "";
         String serial = "";
         if (wm != null) {
-            meterType = firstNonBlank(wm.getMeterName(), wm.getMeterType());
+            meterType = safe(wm.getMeterType());
             meterPhi = safe(wm.getSize());
             serial = safe(wm.getMeterCode());
         }
@@ -347,14 +352,14 @@ public class InstallationAcceptancePdfService {
                         tl.line2(),
                         Align.LEFT, 0f, NUDGE_BASELINE_UP);
 
-                // ====== 8) Tick: dùng 3 cột chung để 2 hàng cân nhau ======
-                if (tickLapMoi) drawTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE, "X");
-                if (tickThay) drawTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE, "X");
-                if (tickLapThem) drawTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE, "X");
+                // ====== 8) Tick: canh giữa "X" trong ô ======
+                if (tickLapMoi)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE);
+                if (tickThay)    drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE);
+                if (tickLapThem) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE);
 
-                if (purposeTick.sinhHoat) drawTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE, "X");
-                if (purposeTick.sanXuat) drawTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE, "X");
-                if (purposeTick.kinhDoanh) drawTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE, "X");
+                if (purposeTick.sinhHoat)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE);
+                if (purposeTick.sanXuat)   drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE);
+                if (purposeTick.kinhDoanh) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE);
             }
 
             doc.save(baos);
@@ -416,9 +421,9 @@ public class InstallationAcceptancePdfService {
         String meterPhi = "";
         String serial = "";
         if (wm != null) {
-            meterType = firstNonBlank(wm.getMeterName(), wm.getMeterType());
+            meterType = safe(wm.getMeterType());
             meterPhi = safe(wm.getSize());
-            serial = safe(wm.getSerialNumber());
+            serial = safe(wm.getMeterCode());
         }
 
         String initialReading = "";
@@ -571,14 +576,14 @@ public class InstallationAcceptancePdfService {
                         tl.line2(),
                         Align.LEFT, 0f, NUDGE_BASELINE_UP);
 
-                // ====== 10) Tick: dùng 3 cột chung để 2 hàng cân nhau ======
-                if (tickLapMoi) drawTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE, "X");
-                if (tickThay) drawTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE, "X");
-                if (tickLapThem) drawTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE, "X");
+                // ====== 10) Tick: canh giữa "X" trong ô ======
+                if (tickLapMoi)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_INSTALL_BASELINE);
+                if (tickThay)    drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_INSTALL_BASELINE);
+                if (tickLapThem) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_INSTALL_BASELINE);
 
-                if (purposeTick.sinhHoat) drawTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE, "X");
-                if (purposeTick.sanXuat) drawTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE, "X");
-                if (purposeTick.kinhDoanh) drawTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE, "X");
+                if (purposeTick.sinhHoat)  drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_1_X, TOP_TICK_PURPOSE_BASELINE);
+                if (purposeTick.sanXuat)   drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_2_X, TOP_TICK_PURPOSE_BASELINE);
+                if (purposeTick.kinhDoanh) drawTickCenteredTop(cs, font, FONT_12, pageH, TICK_COL_3_X, TOP_TICK_PURPOSE_BASELINE);
             }
 
             doc.save(baos);
@@ -666,12 +671,23 @@ public class InstallationAcceptancePdfService {
         }
     }
 
+    // ====== Global Y offset (top-left) ======
+    // Template PDF bạn mới sửa layout làm toàn bộ baseline/top bbox lệch theo trục Y.
+    // Âm => kéo text lên; Dương => kéo text xuống.
+    // Nếu bạn thấy lệch đúng 1 dòng, thử -17.16f trước.
+    private static final float TEMPLATE_Y_OFFSET_TOP = -17.16f;
+
+    private static float adjTopY(float yTop) {
+        return yTop + TEMPLATE_Y_OFFSET_TOP;
+    }
+
+
     // ========================= PDF helpers =========================
 
     private static void drawTop(PDPageContentStream cs, PDType0Font font, float fontSize,
                                 float pageHeight, float xTop, float yTopBaseline, String text) throws Exception {
         if (text == null) text = "";
-        float yPdf = pageHeight - yTopBaseline;
+        float yPdf = pageHeight - adjTopY(yTopBaseline);
         cs.beginText();
         cs.setFont(font, fontSize);
         cs.newLineAtOffset(xTop, yPdf);
@@ -692,6 +708,16 @@ public class InstallationAcceptancePdfService {
     private static float textWidth(PDType0Font font, float fontSize, String s) throws Exception {
         if (s == null) return 0f;
         return (font.getStringWidth(s) / 1000f) * fontSize;
+    }
+
+    private static void drawTickCenteredTop(PDPageContentStream cs, PDType0Font font, float fontSize,
+                                            float pageH,
+                                            float centerXTop,
+                                            float baselineTop) throws Exception {
+        final String t = "X";
+        float w = textWidth(font, fontSize, t);
+        float x = centerXTop - (w / 2f);
+        drawTop(cs, font, fontSize, pageH, x, baselineTop + TICK_NUDGE_Y_TOP, t);
     }
 
     private record TwoLines(String line1, String line2) {}
@@ -727,8 +753,11 @@ public class InstallationAcceptancePdfService {
 
     private static void fillWhiteRectTop(PDPageContentStream cs, float pageH,
                                          float x1, float yMinTop, float x2, float yMaxTop) throws Exception {
-        float yPdf = pageH - yMaxTop;
-        float h = yMaxTop - yMinTop;
+        float yMin = adjTopY(yMinTop);
+        float yMax = adjTopY(yMaxTop);
+
+        float yPdf = pageH - yMax;
+        float h = yMax - yMin;
         cs.saveGraphicsState();
         cs.setNonStrokingColor(Color.WHITE);
         cs.addRect(x1, yPdf, (x2 - x1), h);
