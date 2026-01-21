@@ -488,4 +488,18 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
      * (Dùng cho màn chi tiết/tải PDF của Accounting Staff)
      */
     Optional<Invoice> findByIdAndAccountingStaff_Id(Integer invoiceId, Integer staffId);
+
+    /**
+     * Tìm các hóa đơn TIỀN NƯỚC đã QUÁ HẠN (OVERDUE) và đã vượt quá ngày dueDate + 10 ngày.
+     * Dùng cho việc áp dụng phạt chậm thanh toán tự động.
+     */
+    @Query("SELECT i FROM Invoice i " +
+            "WHERE i.meterReading IS NOT NULL " +                 // hóa đơn TIỀN NƯỚC
+            "AND i.paymentStatus = 'OVERDUE' " +                  // đã qua bước 1 (due+5)
+            "AND i.dueDate <= :cutoffDate " +                     // due + 10 ngày
+            "AND i.contract IS NOT NULL " +
+            "AND i.contract.contractStatus NOT IN ('TERMINATED','EXPIRED')")
+    List<Invoice> findOverdueWaterInvoicesPastDueDate(
+            @Param("cutoffDate") LocalDate cutoffDate
+    );
 }

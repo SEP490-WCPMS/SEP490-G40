@@ -12,6 +12,8 @@ import com.sep490.wcpms.service.CashierService;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -217,4 +219,22 @@ public class CashierController {
         return ResponseEntity.ok(report);
     }
     // --- HẾT PHẦN THÊM ---
+
+    /**
+     * API Tải biên nhận thanh toán tiền nước (HTML).
+     * Path: GET /api/cashier/invoices/{invoiceId}/receipt-html
+     */
+    @GetMapping(value = "/invoices/{invoiceId}/receipt-html", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<byte[]> downloadWaterPaymentReceiptHtml(@PathVariable Integer invoiceId) {
+        Integer cashierId = getAuthenticatedStaffId();
+        byte[] htmlBytes = cashierService.exportWaterPaymentReceiptHtml(cashierId, invoiceId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_HTML);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"bien-nhan-" + invoiceId + ".html\"");
+
+        return ResponseEntity.ok().headers(headers).body(htmlBytes);
+    }
+
 }
