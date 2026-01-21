@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Spin, Button, Tooltip, message } from 'antd';
-import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined, DownloadOutlined, PhoneOutlined } from '@ant-design/icons';
+import { FileTextOutlined, UserOutlined, CalendarOutlined, ToolOutlined, CheckCircleOutlined, InfoCircleOutlined, DownloadOutlined, PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import moment from 'moment';
 
 import { downloadServiceAcceptancePdf, downloadServiceContractPdf } from '../Services/apiService';
@@ -239,6 +239,15 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     <div className="font-medium text-gray-800">{initialData.priceTypeName}</div>
                                 </div>
                             )}
+                            {initialData?.address && (
+                                <div className="col-span-2">
+                                    <div className="text-xs text-gray-500 mb-1">Địa chỉ</div>
+                                    <div className="font-medium text-gray-800 flex items-start gap-1">
+                                        <EnvironmentOutlined className="text-red-500 mt-0.5" />
+                                        <span>{initialData.address}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -269,8 +278,8 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 )}
                                 {initialData?.estimatedCost != null && (
                                     <div className="col-span-2">
-                                        <div className="text-xs text-gray-500 mb-1">Chi phí ước tính</div>
-                                        <div className="font-bold text-lg text-orange-600">
+                                        <div className="text-xs text-gray-500 mb-1">Chi phí</div>
+                                        <div className="font-bold text-lg text-blue-600">
                                             {fmtMoney(initialData.estimatedCost)}
                                         </div>
                                     </div>
@@ -278,7 +287,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                             </div>
                             {initialData?.technicalDesign && (
                                 <div className="mt-4 pt-4 border-t border-gray-200">
-                                    <div className="text-xs text-gray-500 mb-1">Thiết kế kỹ thuật</div>
+                                    <div className="text-xs text-gray-500 mb-1">Ghi chú khảo sát</div>
                                     <div className="bg-white p-3 rounded border border-gray-200 text-sm text-gray-800 whitespace-pre-wrap">
                                         {initialData.technicalDesign}
                                     </div>
@@ -321,16 +330,16 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                         </div>
                                     </div>
                                 )}
-                                {initialData?.contractValue != null && (
+                                {/* {initialData?.contractValue != null && (
                                     <div>
                                         <div className="text-xs text-gray-500 mb-1">Chi phí lắp đặt</div>
                                         <div className="font-bold text-lg text-green-600">
                                             {fmtMoney(initialData.contractValue)}
                                         </div>
                                     </div>
-                                )}
+                                )} */}
                                 {initialData?.paymentMethod && (
-                                    <div className="col-span-2">
+                                    <div>
                                         <div className="text-xs text-gray-500 mb-1">Phương thức thanh toán</div>
                                         <div className="font-medium text-gray-800">
                                             {formatPaymentMethod(initialData.paymentMethod)}
@@ -338,7 +347,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     </div>
                                 )}
                                 {initialData?.serviceStaffName && (
-                                    <div className="col-span-2">
+                                    <div>
                                         <div className="text-xs text-gray-500 mb-1">Nhân viên dịch vụ phụ trách</div>
                                         <div className="font-medium text-gray-800 flex items-center gap-1">
                                             <UserOutlined className="text-blue-500" />
@@ -347,7 +356,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                     </div>
                                 )}
                                 {initialData?.readingRouteName && (
-                                    <div className="col-span-2">
+                                    <div>
                                         <div className="text-xs text-gray-500 mb-1">Tuyến đọc</div>
                                         <div className="font-medium text-gray-800 flex items-center gap-1">
                                             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-100 text-teal-600 text-xs mr-1">
