@@ -12,6 +12,7 @@ public class ProfileResponseDTO {
     private String fullName;
     private String email;
     private String phone;
+    private String identityNumber;
     private String address;
     private String street;
     private String district;

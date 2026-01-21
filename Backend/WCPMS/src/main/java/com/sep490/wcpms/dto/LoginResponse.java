@@ -19,4 +19,5 @@ public class LoginResponse {
     private String phone;
     private String email;
     private String customerCode;
+    private String identityNumber;
 }

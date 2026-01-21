@@ -71,7 +71,6 @@ const FIELD_PATHS = {
     code: ['customer_code', 'customerCode', 'code', 'customerCodeValue', 'user.customerCode'],
     name: ['customer_name', 'customerName', 'fullName', 'name', 'user.fullName', 'user.name'],
     phone: ['phone', 'phoneNumber', 'mobile', 'user.phoneNumber', 'contactPhone'],
-    email: ['email', 'user.email', 'emailAddress', 'contactEmail'],
     address: ['address', 'customerAddress', 'location.address', 'user.address']
 };
 
@@ -189,11 +188,23 @@ const CustomerManagementPage = () => {
     };
 
     return (
-        <div style={{ padding: '20px', backgroundColor: '#f8fafc', minHeight: '85vh' }}>
+        <div style={{ padding: '24px 16px', backgroundColor: '#f8fafc', minHeight: '85vh' }}>
             <style>{`
+                .page-shell { max-width: 1200px; margin: 0 auto; }
+                .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+                .page-title { color: #0A77E2; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.2px; margin: 0; }
+                .page-subtitle { color: #64748b; font-size: 0.95rem; margin: 6px 0 0 0; }
+
+                .tab-bar { display: flex; gap: 10px; margin: 12px 0 18px 0; }
+                .tab-btn { border-radius: 999px; border: 1px solid #e2e8f0; background: #ffffff; color: #334155; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+                .tab-btn-active { background: #0A77E2 !important; border-color: #0A77E2 !important; color: white !important; box-shadow: 0 6px 16px rgba(10, 119, 226, 0.2); }
+
                 .table-responsive { overflow-x: auto; }
                 .responsive-table { width: 100%; border-collapse: collapse; }
                 .responsive-table th, .responsive-table td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+                .responsive-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 1; }
+                .responsive-table tbody tr:hover { background: #f8fafc; }
+                .responsive-table tbody tr:nth-child(even) { background: #fcfdff; }
                 .badge-meter { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e0f2fe; color: #0284c7; }
                 .meter-info { display: flex; flex-direction: column; gap: 4px; }
                 .meter-code { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #0f172a; }
@@ -206,149 +217,142 @@ const CustomerManagementPage = () => {
                     .responsive-table tbody td[data-label]::before { content: attr(data-label) ": "; font-weight: 600; color: #475569; }
                 }
             `}</style>
-
-            <h2 style={{ color: '#0A77E2', marginBottom: '20px', fontWeight: 'bold', fontSize: '1.5rem' }}>
-                Quản lý Khách hàng
-            </h2>
-
-            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-                <Button
-                    onClick={() => { setActiveTab('guests'); setNotification({ type: '', message: '' }); }}
-                    style={{
-                        backgroundColor: activeTab === 'guests' ? '#0A77E2' : 'white',
-                        color: activeTab === 'guests' ? 'white' : '#64748b',
-                        border: '1px solid #e2e8f0'
-                    }}
-                >
-                    Guest (Chờ duyệt)
-                </Button>
-                <Button
-                    onClick={() => { setActiveTab('customers'); setNotification({ type: '', message: '' }); }}
-                    style={{
-                        backgroundColor: activeTab === 'customers' ? '#0A77E2' : 'white',
-                        color: activeTab === 'customers' ? 'white' : '#64748b',
-                        border: '1px solid #e2e8f0'
-                    }}
-                >
-                    Danh sách Khách hàng
-                </Button>
-            </div>
-
-            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <NotificationBanner
-                    type={notification.type}
-                    message={notification.message}
-                    onClose={() => setNotification({ type: '', message: '' })}
-                />
-
-                {loading && <div style={{ textAlign: 'center', padding: '20px' }}>⏳ Đang tải...</div>}
-
-                {!loading && error && (
-                    <div style={{ color: '#dc2626', textAlign: 'center', padding: '20px' }}>
-                        <AlertCircle style={{ display: 'inline', marginRight: 5 }} size={16} /> {error}
+            <div className="page-shell">
+                <div className="page-header">
+                    <div>
+                        <h2 className="page-title">Quản lý Khách hàng</h2>
+                        <p className="page-subtitle">Duyệt guest và xem danh sách khách hàng</p>
                     </div>
-                )}
+                </div>
 
-                {/* TAB GUESTS */}
-                {!loading && !error && activeTab === 'guests' && (
-                    <div className="table-responsive">
-                        <table className="responsive-table" style={{ width: '100%' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                                    <th style={{ width: '200px' }}>Mã HĐ</th>
-                                    <th>Tên Khách</th>
-                                    <th>SĐT</th>
-                                    <th>Địa chỉ</th>
-                                    <th style={{ width: '120px' }}>Trạng thái</th>
-                                    <th style={{ width: '140px' }}>Hành động</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {guests.length === 0 && <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
-                                {guests.map(g => (
-                                    <tr key={g.contractId}>
-                                        <td data-label="Mã HĐ">{g.contractNumber}</td>
-                                        <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
-                                        <td data-label="SĐT">{g.guestPhone}</td>
-                                        <td data-label="Địa chỉ">{g.guestAddress}</td>
-                                        <td data-label="Trạng thái">
-                                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
-                                                {g.status}
-                                            </span>
-                                        </td>
-                                        <td data-label="Hành động">
-                                            <Button size="sm" onClick={() => handleApprove(g.contractId)} style={{ backgroundColor: '#10b981', color: 'white', width: '100%' }}>
-                                                Duyệt & Tạo TK
-                                            </Button>
-                                        </td>
+                <div className="tab-bar">
+                    <Button
+                        onClick={() => { setActiveTab('guests'); setNotification({ type: '', message: '' }); }}
+                        className={`tab-btn ${activeTab === 'guests' ? 'tab-btn-active' : ''}`}
+                    >
+                        Guest (Chờ duyệt)
+                    </Button>
+                    <Button
+                        onClick={() => { setActiveTab('customers'); setNotification({ type: '', message: '' }); }}
+                        className={`tab-btn ${activeTab === 'customers' ? 'tab-btn-active' : ''}`}
+                    >
+                        Danh sách Khách hàng
+                    </Button>
+                </div>
+
+                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 6px 18px rgba(15, 23, 42, 0.06)' }}>
+                    <NotificationBanner
+                        type={notification.type}
+                        message={notification.message}
+                        onClose={() => setNotification({ type: '', message: '' })}
+                    />
+
+                    {loading && <div style={{ textAlign: 'center', padding: '20px' }}>⏳ Đang tải...</div>}
+
+                    {!loading && error && (
+                        <div style={{ color: '#dc2626', textAlign: 'center', padding: '20px' }}>
+                            <AlertCircle style={{ display: 'inline', marginRight: 5 }} size={16} /> {error}
+                        </div>
+                    )}
+
+                    {/* TAB GUESTS */}
+                    {!loading && !error && activeTab === 'guests' && (
+                        <div className="table-responsive">
+                            <table className="responsive-table" style={{ width: '100%' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
+                                        <th style={{ width: '200px' }}>Mã HĐ</th>
+                                        <th>Tên Khách</th>
+                                        <th>SĐT</th>
+                                        <th>Địa chỉ</th>
+                                        <th style={{ width: '120px' }}>Trạng thái</th>
+                                        <th style={{ width: '140px' }}>Hành động</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {/* TAB CUSTOMERS */}
-                {!loading && !error && activeTab === 'customers' && (
-                    <div className="table-responsive">
-                        <table className="responsive-table" style={{ width: '100%' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                                    <th style={{ width: '120px' }}>Mã KH</th>
-                                    <th style={{ width: '200px' }}>Họ Tên</th>
-                                    <th style={{ width: '120px' }}>SĐT</th>
-                                    <th style={{ width: '200px' }}>Email</th>
-                                    {/* ĐÃ BỎ CỘT ĐỊA CHỈ & ĐỒNG HỒ */}
-                                    <th style={{ width: '80px', textAlign: 'center' }}>HĐ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {customers.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center' }}>Chưa có khách hàng nào.</td></tr>}
-                                {customers.map((c, index) => {
-                                    const id = c.customer_id || c.id || c.customerId || index;
-                                    const code = getFirstAvailableValue(c, FIELD_PATHS.code) || '---';
-                                    const name = getFirstAvailableValue(c, FIELD_PATHS.name) || '---';
-                                    const phone = getFirstAvailableValue(c, FIELD_PATHS.phone) || '---';
-                                    const email = getFirstAvailableValue(c, FIELD_PATHS.email) || '---';
-                                    // const address = ... (Bỏ)
-                                    // const meter... (Bỏ)
-
-                                    return (
-                                        <tr key={id}>
-                                            <td data-label="Mã KH" style={{ fontWeight: 'bold' }}>{code}</td>
-                                            <td data-label="Họ Tên" style={{ fontWeight: '500' }}>{name}</td>
-                                            <td data-label="SĐT">{phone}</td>
-                                            <td data-label="Email">{email}</td>
-                                            {/* ĐÃ BỎ CỘT ĐỊA CHỈ & ĐỒNG HỒ */}
-                                            <td data-label="HĐ" style={{ textAlign: 'center' }}>
-                                                <Button size="sm" variant="outline" onClick={() => handleViewContracts(c)} title="Xem danh sách hợp đồng" style={{ padding: '6px' }}>
-                                                    <FileText size={16} />
+                                </thead>
+                                <tbody>
+                                    {guests.length === 0 && <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
+                                    {guests.map(g => (
+                                        <tr key={g.contractId}>
+                                            <td data-label="Mã HĐ">{g.contractNumber}</td>
+                                            <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
+                                            <td data-label="SĐT">{g.guestPhone}</td>
+                                            <td data-label="Địa chỉ">{g.guestAddress}</td>
+                                            <td data-label="Trạng thái">
+                                                <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                                                    {g.status}
+                                                </span>
+                                            </td>
+                                            <td data-label="Hành động">
+                                                <Button size="sm" onClick={() => handleApprove(g.contractId)} style={{ backgroundColor: '#10b981', color: 'white', width: '100%' }}>
+                                                    Duyệt & Tạo TK
                                                 </Button>
                                             </td>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-                <ConfirmModal
-                    isOpen={confirmModal.isOpen}
-                    onClose={() => setConfirmModal({ isOpen: false, contractId: null })}
-                    onConfirm={handleConfirmApprove}
-                    title="Xác nhận duyệt"
-                    message="Xác nhận tạo tài khoản và gửi SMS cho khách hàng này?"
-                    isLoading={confirmLoading}
-                />
+                    {/* TAB CUSTOMERS */}
+                    {!loading && !error && activeTab === 'customers' && (
+                        <div className="table-responsive">
+                            <table className="responsive-table" style={{ width: '100%' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
+                                        <th style={{ width: '120px' }}>Mã KH</th>
+                                        <th style={{ width: '200px' }}>Họ Tên</th>
+                                        <th style={{ width: '120px' }}>SĐT</th>
+                                        {/* ĐÃ BỎ CỘT ĐỊA CHỈ & ĐỒNG HỒ */}
+                                        <th style={{ width: '80px', textAlign: 'center' }}>HĐ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {customers.length === 0 && <tr><td colSpan="4" style={{ padding: '20px', textAlign: 'center' }}>Chưa có khách hàng nào.</td></tr>}
+                                    {customers.map((c, index) => {
+                                        const id = c.customer_id || c.id || c.customerId || index;
+                                        const code = getFirstAvailableValue(c, FIELD_PATHS.code) || '---';
+                                        const name = getFirstAvailableValue(c, FIELD_PATHS.name) || '---';
+                                        const phone = getFirstAvailableValue(c, FIELD_PATHS.phone) || '---';
+                                        // const address = ... (Bỏ)
+                                        // const meter... (Bỏ)
 
-                <CustomerContractsModal
-                    isOpen={contractModal.isOpen}
-                    onClose={() => setContractModal(prev => ({ ...prev, isOpen: false }))}
-                    customerName={contractModal.customerName}
-                    contracts={contractModal.contracts}
-                    loading={contractModal.loading}
-                />
+                                        return (
+                                            <tr key={id}>
+                                                <td data-label="Mã KH" style={{ fontWeight: 'bold' }}>{code}</td>
+                                                <td data-label="Họ Tên" style={{ fontWeight: '500' }}>{name}</td>
+                                                <td data-label="SĐT">{phone}</td>
+                                                {/* ĐÃ BỎ CỘT ĐỊA CHỈ & ĐỒNG HỒ */}
+                                                <td data-label="HĐ" style={{ textAlign: 'center' }}>
+                                                    <Button size="sm" variant="outline" onClick={() => handleViewContracts(c)} title="Xem danh sách hợp đồng" style={{ padding: '6px' }}>
+                                                        <FileText size={16} />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    <ConfirmModal
+                        isOpen={confirmModal.isOpen}
+                        onClose={() => setConfirmModal({ isOpen: false, contractId: null })}
+                        onConfirm={handleConfirmApprove}
+                        title="Xác nhận duyệt"
+                        message="Xác nhận tạo tài khoản và gửi SMS cho khách hàng này?"
+                        isLoading={confirmLoading}
+                    />
+
+                    <CustomerContractsModal
+                        isOpen={contractModal.isOpen}
+                        onClose={() => setContractModal(prev => ({ ...prev, isOpen: false }))}
+                        customerName={contractModal.customerName}
+                        contracts={contractModal.contracts}
+                        loading={contractModal.loading}
+                    />
+                </div>
             </div>
         </div>
     );
