@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Tag, Typography, Button, Space, Input } from 'antd';
-import { FileTextOutlined, CalendarOutlined, UserOutlined } from '@ant-design/icons';
+import { FileTextOutlined, CalendarOutlined, UserOutlined, PhoneOutlined } from '@ant-design/icons';
 import { approveTransferRequest, rejectTransferRequest, approveAnnulRequest, rejectAnnulRequest } from '../../Services/apiService';
 import ConfirmModal from '../../common/ConfirmModal';
 
@@ -210,12 +210,22 @@ const RequestDetailModal = ({ visible, onCancel, loading, data, onSuccess }) => 
               <div>
                 <div className="text-xs text-gray-500 mb-1">Khách hàng hiện tại</div>
                 <div className="font-semibold text-gray-800">{asString(data.fromCustomerName)}</div>
+                {data.fromCustomerPhone && (
+                  <div className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                    <PhoneOutlined className="text-blue-500" /> {asString(data.fromCustomerPhone)}
+                  </div>
+                )}
               </div>
             )}
             {data.toCustomerName && (
               <div>
                 <div className="text-xs text-gray-500 mb-1">Khách hàng nhận chuyển nhượng</div>
                 <div className="font-semibold text-green-700">{asString(data.toCustomerName)}</div>
+                {data.toCustomerPhone && (
+                  <div className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                    <PhoneOutlined className="text-green-500" /> {asString(data.toCustomerPhone)}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,8 +1,8 @@
 import React from 'react';
 import Pagination from '../common/Pagination';
 import { Loader2, FileText, User, Phone, MapPin } from 'lucide-react';
-import { Tag, Tooltip, Space } from 'antd';
-import { PhoneOutlined, EnvironmentOutlined, UserOutlined, EditOutlined, WarningOutlined } from '@ant-design/icons';
+import { Tag, Tooltip, Space, Dropdown } from 'antd';
+import { PhoneOutlined, EnvironmentOutlined, UserOutlined, EditOutlined, WarningOutlined, FilterOutlined, CheckOutlined } from '@ant-design/icons';
 import { toast } from 'react-toastify';
 import { useEffect, useRef } from 'react';
 
@@ -228,7 +228,11 @@ const renderActions = (record, onViewDetails) => {
 // Component ContractTable
 // - Hiển thị hàng hợp đồng, trạng thái, thông tin liên hệ và các hành động.
 // - `onPageChange` nhận object pagination (AntD-style) hoặc số trang.
-const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, highlightId, showStatusFilter = false }) => {
+// - `statusFilter` hiển thị trạng thái đang lọc (optional)
+// - `statusFilterLabel` hiển thị text cho filter (optional)
+// - `onStatusFilterChange` callback khi thay đổi filter (optional)
+// - `statusFilterOptions` danh sách options cho dropdown filter (optional)
+const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails, highlightId, statusFilter, statusFilterLabel, onStatusFilterChange, statusFilterOptions }) => {
   const rowRefs = useRef({}); // Lưu ref của các dòng
   // Auto scroll khi có highlightId
   useEffect(() => {
@@ -331,7 +335,37 @@ const ContractTable = ({ data, loading, pagination, onPageChange, onViewDetails,
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn/HĐ</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="flex items-center gap-1">
+                        Trạng thái
+                        {statusFilterOptions && onStatusFilterChange ? (
+                          <Dropdown
+                            menu={{
+                              items: statusFilterOptions.map(opt => ({
+                                key: opt.value,
+                                label: (
+                                  <div className="flex justify-between items-center min-w-[140px]">
+                                    <span>{opt.label}</span>
+                                    {statusFilter === opt.value && <CheckOutlined className="text-blue-600 ml-2" />}
+                                  </div>
+                                )
+                              })),
+                              onClick: ({ key }) => onStatusFilterChange(key)
+                            }}
+                            trigger={['click']}
+                            placement="bottomLeft"
+                          >
+                            <FilterOutlined 
+                              className={`cursor-pointer transition-colors ${statusFilter && statusFilter !== 'all' ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`} 
+                            />
+                          </Dropdown>
+                        ) : statusFilter && statusFilter !== 'all' ? (
+                          <Tooltip title={`Đang lọc: ${statusFilterLabel || statusFilter}`}>
+                            <FilterOutlined className="text-blue-500" />
+                          </Tooltip>
+                        ) : null}
+                      </div>
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                   </tr>
                 </thead>
