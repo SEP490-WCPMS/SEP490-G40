@@ -295,7 +295,7 @@ function InstallationDetail() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Mã Đồng Hồ */}
                         <div>
-                            <label htmlFor="meterCode" className="block mb-1.5 text-sm font-medium text-gray-700">Mã Đồng Hồ (meter_code) <span className="text-red-500">*</span></label>
+                            <label htmlFor="meterCode" className="block mb-1.5 text-sm font-medium text-gray-700">Mã Đồng Hồ <span className="text-red-500">*</span></label>
                             <input
                                 type="text"
                                 id="meterCode"

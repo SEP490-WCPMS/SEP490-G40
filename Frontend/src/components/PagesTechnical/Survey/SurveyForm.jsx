@@ -305,7 +305,7 @@ function SurveyForm() {
 
                     {/* Chi Phí */}
                     <div>
-                        <label htmlFor="estimatedCost" className="block mb-1.5 text-sm font-medium text-gray-700">Chi Phí (VNĐ) <span className="text-red-500">*</span></label>
+                        <label htmlFor="estimatedCost" className="block mb-1.5 text-sm font-medium text-gray-700">Chi Phí Chưa VAT (VNĐ) <span className="text-red-500">*</span></label>
                         <input
                             type="text"                  // <-- ĐỔI TỪ NUMBER SANG TEXT
                             id="estimatedCost"

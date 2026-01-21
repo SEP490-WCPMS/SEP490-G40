@@ -258,12 +258,12 @@ const PendingSignContract = () => {
             width: '30%',
         },
         {
-            title: 'Thiết kế Kỹ thuật',
+            title: 'Ghi chú',
             dataIndex: 'technicalDesign',
             key: 'technicalDesign',
             ellipsis: true,
             width: '40%',
-            render: (text) => text || 'Chưa có',
+            render: (text) => text || 'Không có',
         },
         {
             title: 'Trạng thái',
