@@ -81,4 +81,10 @@ public interface CashierService {
      */
     List<DailyReadingCountDTO> getReadingChartData(Integer cashierId, LocalDate startDate, LocalDate endDate);
     // --- HẾT PHẦN THÊM ---
+
+    /**
+     * Tải biên nhận thanh toán tiền nước (HTML) cho hóa đơn đã PAID.
+     */
+    byte[] exportWaterPaymentReceiptHtml(Integer cashierId, Integer invoiceId);
+
 }
