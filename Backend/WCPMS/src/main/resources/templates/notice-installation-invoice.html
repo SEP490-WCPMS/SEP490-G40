@@ -182,19 +182,24 @@
     </div>
 
     <div class="info-row">
-        <span class="info-label">Địa chỉ dùng nước:</span>
-        <span th:text="${customerAddress}">...</span>
-    </div>
-
-    <div class="info-row">
         <span class="info-label">Quý khách hàng:</span>
         <span th:text="${customerName}">...</span>
     </div>
 
     <div class="info-row">
+        <span class="info-label">CCCD/MST:</span>
+        <span th:text="${customerIdentityNumber}">...</span>
+    </div>
+
+    <div class="info-row">
+        <span class="info-label">Địa chỉ:</span>
+        <span th:text="${customerAddress}">...</span>
+    </div>
+
+    <div class="info-row">
         <span class="info-label">Số hợp đồng:</span>
         <span th:text="${contractCode}">...</span>
-        <span style="margin-left: 5mm;" class="info-label">Ngày ký hợp đồng:</span>
+        <span style="margin-left: 5mm;" class="info-label">Ngày lắp đặt:</span>
         <span th:text="${contractSignDate}">...</span>
     </div>
 
