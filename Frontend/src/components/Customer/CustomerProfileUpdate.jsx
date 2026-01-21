@@ -2,6 +2,40 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const looksLikeIdentityNumber = (value) => {
+  if (value == null) return false;
+  const s = String(value).trim();
+  // VN CMND: 9 digits, CCCD: 12 digits
+  return /^\d{9}$|^\d{12}$/.test(s);
+};
+
+const normalizeProfileIdentityNumber = (profile, localUser) => {
+  const data = { ...(profile || {}) };
+
+  // Prefer explicit identityNumber from API if it looks valid.
+  let identityNumber = looksLikeIdentityNumber(data.identityNumber) ? String(data.identityNumber).trim() : "";
+
+  // Fallback to other possible BE field names if any.
+  if (!identityNumber) {
+    const candidates = [data.cccd, data.citizenId, data.nationalId, data.identity_card, data.identity_no];
+    const found = candidates.find(looksLikeIdentityNumber);
+    if (found) identityNumber = String(found).trim();
+  }
+
+  // Fallback to localStorage user.identityNumber ONLY if it looks valid.
+  if (!identityNumber && localUser && looksLikeIdentityNumber(localUser.identityNumber)) {
+    identityNumber = String(localUser.identityNumber).trim();
+  }
+
+  // Defensive: if BE accidentally swaps address <-> identityNumber, avoid showing address-like text in CCCD.
+  // If address looks like a valid CCCD/CMND and identityNumber does not, use address as identityNumber.
+  if (!looksLikeIdentityNumber(data.identityNumber) && looksLikeIdentityNumber(data.address) && !identityNumber) {
+    identityNumber = String(data.address).trim();
+  }
+
+  return { ...data, identityNumber };
+};
+
 const CustomerProfileUpdate = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +58,9 @@ const CustomerProfileUpdate = () => {
             'Authorization': `Bearer ${token}`
           }
         });
-        setUser(response.data);
+
+        const normalized = normalizeProfileIdentityNumber(response.data, currentUser);
+        setUser(normalized);
       } catch (error) {
         console.error("Lỗi: Không thể tải hồ sơ khách hàng:", error);
         setMessage("❌ Không thể tải hồ sơ.");
@@ -47,9 +83,17 @@ const CustomerProfileUpdate = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const trimmedIdentityNumber = (user.identityNumber ?? "").toString().trim();
+
     // --- SỬA: Chỉ validate các trường còn hiển thị ---
-    if (!user.fullName || !user.email || !user.phone) {
-      setMessage("❌ Vui lòng điền đầy đủ thông tin (Họ tên, Email, SĐT).");
+    if (!user.fullName || !user.phone || !trimmedIdentityNumber) {
+      setMessage("❌ Vui lòng điền đầy đủ thông tin (Họ tên, SĐT, CCCD).");
+      return;
+    }
+
+    // Validate định dạng CCCD/CMND để tránh trường hợp bị fill nhầm từ địa chỉ
+    if (!looksLikeIdentityNumber(trimmedIdentityNumber)) {
+      setMessage("❌ CCCD/CMND không hợp lệ (chỉ 9 hoặc 12 chữ số).");
       return;
     }
 
@@ -61,7 +105,15 @@ const CustomerProfileUpdate = () => {
 
     try {
       // Vẫn gửi toàn bộ object user (bao gồm cả địa chỉ cũ) để tránh mất dữ liệu phía BE
-      const updatedData = { ...user };
+      // Xử lý địa chỉ null nếu backend yêu cầu @NotBlank
+      const updatedData = {
+        ...user,
+        identityNumber: trimmedIdentityNumber,
+        address: user.address || "Chưa cập nhật",
+        street: user.street || "Chưa cập nhật",
+        district: user.district || "Chưa cập nhật",
+        province: user.province || "Chưa cập nhật"
+      };
 
       const res = await axios.put(`http://localhost:8080/api/profile/update/${user.id}`, updatedData, {
         headers: {
@@ -69,19 +121,34 @@ const CustomerProfileUpdate = () => {
         }
       });
 
-      setMessage("✅ Cập nhật thông tin thành công!");
+      setMessage("✅ Cập nhật thông tin thành công! Đang quay lại trang chủ...");
 
-      // Cập nhật lại localStorage
+      // Cập nhật lại localStorage với thông tin MỚI NHẤT (bao gồm CCCD)
       const currentUserData = JSON.parse(localStorage.getItem("user"));
       const updatedUser = {
         ...currentUserData,
-        ...res.data.user
+        ...res.data.user,
+        identityNumber: trimmedIdentityNumber // ĐẢM BẢO GHI ĐÈ CCCD MỚI VÀO
       };
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
+      // --- SỬA: QUAY VỀ HOMEPAGE VÀ RELOAD TRANG ---
+      setTimeout(() => {
+        // Dùng window.location.href để Reload lại App -> HomePage sẽ đọc được user mới từ localStorage
+        window.location.href = "/";
+      }, 1500);
+      // ---------------------------------------------
+
     } catch (err) {
-      setMessage("❌ Cập nhật thất bại. Vui lòng thử lại.");
       console.error(err);
+      const msg = err.response?.data?.message || err.response?.data || "Lỗi hệ thống";
+      // Xử lý hiển thị lỗi validation từ backend (nếu có map)
+      if (typeof msg === 'object') {
+        const firstError = Object.values(msg)[0];
+        setMessage(`❌ Cập nhật thất bại: ${firstError}`);
+      } else {
+        setMessage(`❌ Cập nhật thất bại: ${msg}`);
+      }
     }
   };
 
@@ -186,7 +253,7 @@ const CustomerProfileUpdate = () => {
     },
     formGrid: {
       display: 'grid',
-      gridTemplateColumns: '1fr', // Chuyển về 1 cột cho đẹp vì ít field
+      gridTemplateColumns: 'repeat(2, 1fr)',
       gap: '24px',
     },
     formGroup: {
@@ -271,7 +338,10 @@ const CustomerProfileUpdate = () => {
         input::placeholder { color: #6b7280; opacity: 0.6; }
         input:hover:not(:focus) { border-color: #d1d5db; background-color: #fafbfc; }
         button:hover:not(:disabled) { transform: translateY(-2px); }
-        @media (max-width: 768px) { section { padding: 20px 16px !important; } }
+        @media (max-width: 768px) {
+          section { padding: 20px 16px !important; }
+          .profile-form-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
       <div style={styles.container}>
         {/* Header */}
@@ -299,7 +369,7 @@ const CustomerProfileUpdate = () => {
               <span style={styles.sectionIcon}>📝</span>
               <h3 style={styles.sectionH3}>Thông tin liên hệ</h3>
             </div>
-            <div style={styles.formGrid}>
+            <div className="profile-form-grid" style={styles.formGrid}>
               <div style={styles.formGroup}>
                 <label htmlFor="fullName" style={styles.label}>Họ và tên</label>
                 <input
@@ -310,21 +380,6 @@ const CustomerProfileUpdate = () => {
                   value={user.fullName}
                   onChange={handleChange}
                   placeholder="Nhập họ và tên đầy đủ"
-                  required
-                  onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
-                  onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label htmlFor="email" style={styles.label}>Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  style={styles.input}
-                  name="email"
-                  value={user.email}
-                  onChange={handleChange}
-                  placeholder="Nhập địa chỉ email"
                   required
                   onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
                   onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
@@ -345,6 +400,25 @@ const CustomerProfileUpdate = () => {
                   onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
                 />
               </div>
+
+              {/* Ô nhập CCCD */}
+              <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
+                <label htmlFor="identityNumber" style={styles.label}>CCCD/Mã số thuế (*)</label>
+                <input
+                  type="text"
+                  id="identityNumber"
+                  style={{ ...styles.input, borderColor: !user.identityNumber ? '#ef4444' : '#e5e7eb' }}
+                  name="identityNumber"
+                  value={user.identityNumber || ''}
+                  onChange={handleChange}
+                  placeholder="Nhập số CCCD/Mã số thuế"
+                  required
+                  onFocus={(e) => Object.assign(e.target.style, styles.inputFocus)}
+                  onBlur={(e) => Object.assign(e.target.style, { outline: 'none', borderColor: '#e5e7eb', backgroundColor: '#f9fafb', boxShadow: 'none', transform: 'translateY(0)' })}
+                />
+                {!user.identityNumber && <span style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>Bắt buộc nhập</span>}
+              </div>
+
             </div>
           </div>
 

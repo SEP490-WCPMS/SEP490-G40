@@ -41,7 +41,11 @@ export const AuthProvider = ({ children }) => {
         fullName: data.fullName,
         phone: data.phone,
         roleName: data.roleName,
-        department: data.department
+        department: data.department,
+        customerCode: data.customerCode, // Thêm mã khách hàng
+
+        // QUAN TRỌNG NHẤT: Phải lưu trường này
+        identityNumber: data.identityNumber
       };
 
       localStorage.setItem('token', data.token);
@@ -53,7 +57,7 @@ export const AuthProvider = ({ children }) => {
         user: userInfo,
         loading: false
       });
-      return true;
+      return { user: userInfo, token: data.token };
 
     } catch (error) {
       setAuthState(prev => ({ ...prev, loading: false }));
