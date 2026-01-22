@@ -2,6 +2,7 @@ package com.sep490.wcpms.repository;
 
 import com.sep490.wcpms.dto.dashboard.DailyRevenueDTO;
 import com.sep490.wcpms.entity.Account;
+import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.Receipt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -23,11 +24,13 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Integer> {
     @Query("SELECT SUM(r.paymentAmount) FROM Receipt r " +
             "WHERE r.cashier = :cashier " +
             "AND r.paymentDate = :date " +
-            "AND r.paymentMethod = :method")
+            "AND r.paymentMethod = :method " +
+            "AND r.invoice.paymentStatus = :paidStatus")
     BigDecimal sumAmountByCashierAndDateAndMethod(
             @Param("cashier") Account cashier,
             @Param("date") LocalDate date,
-            @Param("method") Receipt.PaymentMethod method
+            @Param("method") Receipt.PaymentMethod method,
+            @Param("paidStatus") Invoice.PaymentStatus paidStatus
     );
     // --- HẾT PHẦN THÊM ---
 

@@ -1,32 +1,22 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.Customer;
-import com.sep490.wcpms.entity.CustomerNotification;
 import com.sep490.wcpms.entity.Invoice;
+import com.sep490.wcpms.entity.MeterReading;
 import com.sep490.wcpms.exception.AccessDeniedException;
 import com.sep490.wcpms.exception.ResourceNotFoundException;
-import com.sep490.wcpms.repository.CustomerNotificationRepository;
 import com.sep490.wcpms.repository.CustomerRepository;
 import com.sep490.wcpms.repository.InvoiceRepository;
+import com.sep490.wcpms.repository.MeterCalibrationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Comparator;
-import java.util.Optional;
 
-/**
- * Tải file PDF hóa đơn đã được export sẵn sau khi kế toán phát hành.
- *
- * - Customer: chỉ tải được hóa đơn thuộc customer đang đăng nhập.
- * - Accounting staff: chỉ tải được hóa đơn được phân công cho staff đó.
- *
- * Lưu ý: Service này KHÔNG tạo lại PDF. Chỉ đọc file đã có.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -34,10 +24,18 @@ public class InvoicePdfDownloadService {
 
     private final InvoiceRepository invoiceRepository;
     private final CustomerRepository customerRepository;
-    private final CustomerNotificationRepository customerNotificationRepository;
+    private final MeterCalibrationRepository calibrationRepository;
+
+    private final InvoicePdfExportService invoicePdfExportService;
+
+    // Thông tin công ty (giống InvoiceNotificationServiceImpl)
+    private static final String COMPANY_ADDR = "Số 8, Trần Phú, Phường Tân Dân, TP Việt Trì, Phú Thọ";
+    private static final String COMPANY_PHONE = "0210 6251998 / 0210 3992369";
+    private static final String COMPANY_EMAIL = "cskh@capnuocphutho.vn";
 
     public record PdfResult(String invoiceNumber, byte[] bytes) {}
 
+    @Transactional(readOnly = true)
     public PdfResult downloadForCustomer(Integer customerAccountId, Integer invoiceId) {
         Customer customer = customerRepository.findByAccount_Id(customerAccountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng của account: " + customerAccountId));
@@ -45,99 +43,89 @@ public class InvoicePdfDownloadService {
         Invoice invoice = invoiceRepository.findByIdAndCustomer(invoiceId, customer)
                 .orElseThrow(() -> new AccessDeniedException("Bạn không có quyền truy cập hóa đơn: " + invoiceId));
 
-        return new PdfResult(invoice.getInvoiceNumber(), loadPdfBytes(invoice));
+        return new PdfResult(invoice.getInvoiceNumber(), generateFreshPdfBytes(invoice));
     }
 
+    @Transactional(readOnly = true)
     public PdfResult downloadForAccounting(Integer accountingStaffId, Integer invoiceId) {
         Invoice invoice = invoiceRepository.findByIdAndAccountingStaff_Id(invoiceId, accountingStaffId)
                 .orElseThrow(() -> new AccessDeniedException("Hóa đơn không thuộc nhân viên kế toán này hoặc không tồn tại: " + invoiceId));
 
-        return new PdfResult(invoice.getInvoiceNumber(), loadPdfBytes(invoice));
+        return new PdfResult(invoice.getInvoiceNumber(), generateFreshPdfBytes(invoice));
     }
 
-    private byte[] loadPdfBytes(Invoice invoice) {
-        if (invoice == null) {
-            throw new ResourceNotFoundException("Invoice null");
-        }
+    private boolean isWaterInvoice(Invoice invoice) {
+        return invoice.getMeterReading() != null;
+    }
 
-        // 1) Ưu tiên lấy đường dẫn PDF đã lưu trong CustomerNotification.attachmentUrl
-        String pdfPath = null;
-        try {
-            CustomerNotification lastWithPdf = customerNotificationRepository
-                    .findTop1ByInvoiceAndAttachmentUrlIsNotNullOrderByCreatedAtDesc(invoice);
-            if (lastWithPdf != null) {
-                pdfPath = lastWithPdf.getAttachmentUrl();
-            }
-        } catch (Exception ex) {
-            // không fail ở đây, fallback xuống dưới
-            log.warn("[InvoicePdfDownload] Cannot load attachmentUrl from notification for invoiceId={}: {}",
-                    invoice.getId(), ex.getMessage());
-        }
+    private boolean isServiceInvoice(Invoice invoice) {
+        return invoice.getMeterReading() == null
+                && calibrationRepository.findByInvoice(invoice).isPresent();
+    }
 
-        // 2) Fallback: tìm file trong invoices-pdf theo invoiceNumber
-        if (pdfPath == null || pdfPath.isBlank()) {
-            pdfPath = findLatestPdfByInvoiceNumber(invoice.getInvoiceNumber()).orElse(null);
-        }
+    private boolean isInstallationInvoice(Invoice invoice) {
+        return invoice.getMeterReading() == null
+                && calibrationRepository.findByInvoice(invoice).isEmpty();
+    }
 
-        if (pdfPath == null || pdfPath.isBlank()) {
-            throw new ResourceNotFoundException("Không tìm thấy file PDF cho hóa đơn: " + invoice.getId());
-        }
+    private byte[] generateFreshPdfBytes(Invoice invoice) {
+        if (invoice == null) throw new ResourceNotFoundException("Invoice null");
+
+        String pdfPath;
 
         try {
-            Path path = Paths.get(pdfPath);
-            if (!path.isAbsolute()) {
-                // resolve theo working dir hiện tại của server
-                path = Paths.get("").toAbsolutePath().resolve(path).normalize();
+            if (isWaterInvoice(invoice)) {
+                MeterReading reading = invoice.getMeterReading();
+                pdfPath = invoicePdfExportService.exportWaterBillPdf(
+                        invoice,
+                        reading,
+                        COMPANY_ADDR, COMPANY_PHONE, COMPANY_EMAIL,
+                        null, null
+                );
+
+            } else if (isServiceInvoice(invoice)) {
+                // theo yêu cầu: diễn giải cố định + VAT 5% (service)
+                pdfPath = invoicePdfExportService.exportServiceInvoicePdf(
+                        invoice,
+                        "Phí dịch vụ phát sinh",
+                        "5%",
+                        COMPANY_ADDR, COMPANY_PHONE, COMPANY_EMAIL,
+                        null, null
+                );
+
+            } else if (isInstallationInvoice(invoice)) {
+                Contract ct = invoice.getContract();
+                String contractNumber = (ct != null) ? ct.getContractNumber() : "";
+                // contractSignDate bạn đang dùng contract.startDate trong Notification
+                pdfPath = invoicePdfExportService.exportInstallationInvoicePdf(
+                        invoice,
+                        contractNumber,
+                        (ct != null ? ct.getStartDate() : null),
+                        COMPANY_ADDR, COMPANY_PHONE, COMPANY_EMAIL,
+                        null, null
+                );
+
+            } else {
+                throw new ResourceNotFoundException("Không xác định được loại hóa đơn: " + invoice.getId());
             }
 
-            if (!Files.exists(path)) {
-                throw new ResourceNotFoundException("File PDF không tồn tại: " + path);
+            if (pdfPath == null || pdfPath.isBlank()) {
+                throw new ResourceNotFoundException("Export PDF thất bại cho hóa đơn: " + invoice.getId());
             }
 
-            return Files.readAllBytes(path);
+            Path p = Path.of(pdfPath);
+            byte[] bytes = Files.readAllBytes(p);
+
+            // xóa file tạm để không rác (vì download luôn generate lại)
+            try { Files.deleteIfExists(p); } catch (Exception ignore) {}
+
+            return bytes;
+
         } catch (ResourceNotFoundException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new RuntimeException("Lỗi đọc file PDF hóa đơn: " + ex.getMessage(), ex);
+            log.error("[InvoicePdfDownload] Generate fresh PDF failed invoiceId={}: {}", invoice.getId(), ex.getMessage(), ex);
+            throw new RuntimeException("Lỗi tạo file PDF hóa đơn: " + ex.getMessage(), ex);
         }
-    }
-
-    private Optional<String> findLatestPdfByInvoiceNumber(String invoiceNumber) {
-        if (invoiceNumber == null || invoiceNumber.isBlank()) {
-            return Optional.empty();
-        }
-
-        // Dò theo nhiều thư mục, không cần setup khi deploy
-        File[] candidateDirs = new File[] {
-                new File(System.getProperty("user.dir", "."), "invoices-pdf"),
-                new File(System.getProperty("user.home", "."), "wcpms-data/invoices-pdf"),
-                new File(System.getProperty("java.io.tmpdir", "."), "wcpms-data/invoices-pdf"),
-                new File("invoices-pdf") // fallback legacy
-        };
-
-        File best = null;
-
-        for (File dir : candidateDirs) {
-            if (!dir.exists() || !dir.isDirectory()) continue;
-
-            File[] matches = dir.listFiles((d, name) ->
-                    name != null
-                            && name.toLowerCase().endsWith(".pdf")
-                            && name.contains(invoiceNumber)
-            );
-
-            if (matches == null || matches.length == 0) continue;
-
-            File newest = java.util.Arrays.stream(matches)
-                    .max(Comparator.comparingLong(File::lastModified))
-                    .orElse(null);
-
-            if (newest != null && (best == null || newest.lastModified() > best.lastModified())) {
-                best = newest;
-            }
-        }
-
-        if (best == null) return Optional.empty();
-        return Optional.of(best.getAbsolutePath());
     }
 }

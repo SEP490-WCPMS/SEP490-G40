@@ -1,10 +1,13 @@
 package com.sep490.wcpms.service.impl;
 
 import com.sep490.wcpms.entity.Address;
+import com.sep490.wcpms.entity.Contract;
 import com.sep490.wcpms.entity.Customer;
 import com.sep490.wcpms.entity.Invoice;
 import com.sep490.wcpms.entity.MeterReading;
+import com.sep490.wcpms.entity.ReadingRoute;
 import com.sep490.wcpms.dto.PaymentLinkDTO;
+import com.sep490.wcpms.repository.WaterPriceRepository;
 import com.sep490.wcpms.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,9 +22,7 @@ import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +30,7 @@ public class InvoicePdfExportService {
 
     private final PdfExportService pdfExportService;
     private final PaymentService paymentService;
+    private final WaterPriceRepository waterPriceRepository;
 
     // Thư mục lưu file PDF trên server
     private static final String BASE_DIR = resolveWritableInvoiceDir();
@@ -137,8 +139,7 @@ public class InvoicePdfExportService {
             info.description = add.get("08");
         }
 
-        // Merchant Account Info / VietQR (tag 38) → trong đó:
-        // - sub-tag 01: chuỗi TLV chứa bin + accountNumber
+        // Merchant Account Info / VietQR (tag 38)
         String v38 = top.get("38");
         if (v38 != null) {
             Map<String, String> m38 = parseEmvTlv(v38);
@@ -158,7 +159,6 @@ public class InvoicePdfExportService {
         try {
             EmvQrInfo emv = decodeEmvFromPayOs(link.getQrCode());
 
-            // Ưu tiên lấy từ EMV; nếu thiếu thì fallback sang các field trong DTO
             String bin =
                     (emv != null && emv.bin != null && !emv.bin.isBlank())
                             ? emv.bin
@@ -179,10 +179,8 @@ public class InvoicePdfExportService {
                             ? emv.description
                             : link.getDescription();
 
-            // Tên chủ TK: ưu tiên lấy từ PayOS
             String accountName = link.getAccountName();
 
-            // Validate tối thiểu – nếu thiếu bin / accountNumber thì coi như PayOS trả thiếu
             if (bin == null || bin.isBlank() || accountNumber == null || accountNumber.isBlank()) {
                 throw new IllegalStateException("Missing bin/accountNumber from PayOS");
             }
@@ -191,7 +189,6 @@ public class InvoicePdfExportService {
             if (content == null) content = "";
             if (accountName == null) accountName = "";
 
-            // VietQR template: dùng đúng như frontend đang dùng: "compact"
             String template = "compact";
 
             String encodedContent = URLEncoder.encode(content, StandardCharsets.UTF_8);
@@ -238,7 +235,6 @@ public class InvoicePdfExportService {
         } catch (Exception ex) {
             System.err.println("Loi tao QR PayOS cho invoice " + invoice.getId() + ": " + ex.getMessage());
             ex.printStackTrace();
-            // Không fallback demo nữa, đúng yêu cầu "hoàn toàn dựa vào PaymentService"
             return null;
         }
     }
@@ -252,7 +248,6 @@ public class InvoicePdfExportService {
                 return null;
             }
 
-            // Ưu tiên description trong EMV (tag 62.08), nếu không có thì dùng link.getDescription()
             EmvQrInfo emv = decodeEmvFromPayOs(link.getQrCode());
             if (emv != null && emv.description != null && !emv.description.isBlank()) {
                 System.out.println("[TransferNote] Using EMV description for invoice " + invoice.getId()
@@ -262,7 +257,7 @@ public class InvoicePdfExportService {
 
             System.out.println("[TransferNote] Using PayOS link.description for invoice " + invoice.getId()
                     + ": " + link.getDescription());
-            return link.getDescription(); // có thể null – chấp nhận
+            return link.getDescription();
 
         } catch (Exception ex) {
             System.err.println("[TransferNote] Lỗi gọi PayOS cho invoice "
@@ -274,6 +269,11 @@ public class InvoicePdfExportService {
 
     private String fmtDate(LocalDate d) {
         return d == null ? "" : d.format(DATE_FMT);
+    }
+
+    private String fmtSignedDate(Invoice invoice) {
+        if (invoice == null || invoice.getCreatedAt() == null) return "";
+        return invoice.getCreatedAt().toLocalDate().format(DATE_FMT);
     }
 
     private String fmtMoney(BigDecimal amount) {
@@ -303,8 +303,88 @@ public class InvoicePdfExportService {
 
     private BigDecimal normalizeVnd(BigDecimal amount) {
         if (amount == null) return BigDecimal.ZERO;
-        // Đồng VN không dùng phần thập phân => chuẩn hoá để số và chữ khớp nhau
         return amount.setScale(0, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal safeDivideVnd(BigDecimal a, BigDecimal b) {
+        if (a == null || b == null) return null;
+        if (b.compareTo(BigDecimal.ZERO) == 0) return null;
+        // đơn giá VND làm tròn 0 chữ số
+        return a.divide(b, 0, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Đơn giá nước nằm ở:
+     * contract_usage_details.price_type_id -> water_price_types -> water_prices.unit_price
+     * Lấy giá ACTIVE mới nhất có effective_date <= invoice.toDate (hoặc now)
+     */
+    private BigDecimal resolveWaterUnitPrice(Invoice invoice) {
+        try {
+            if (invoice == null || invoice.getContract() == null) return null;
+
+            var ct = invoice.getContract();
+            var details = ct.getContractUsageDetails();
+            if (details == null || details.isEmpty()) return null;
+
+            var best = details.stream()
+                    .filter(d -> d.getPriceType() != null)
+                    .max(Comparator.comparing(d ->
+                            d.getUsagePercentage() == null ? BigDecimal.ZERO : d.getUsagePercentage()))
+                    .orElse(null);
+
+            if (best == null || best.getPriceType() == null) return null;
+
+            LocalDate asOf = invoice.getToDate() != null ? invoice.getToDate() : LocalDate.now();
+
+            return waterPriceRepository
+                    .findTopByPriceTypeAndStatusAndEffectiveDateLessThanEqualOrderByEffectiveDateDesc(
+                            best.getPriceType(),
+                            com.sep490.wcpms.entity.WaterPrice.Status.ACTIVE,
+                            asOf
+                    )
+                    .map(com.sep490.wcpms.entity.WaterPrice::getUnitPrice)
+                    .orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ====== NEW: Tuyến (route_code) theo contract.readingRoute ======
+    private String resolveRouteCode(Invoice invoice) {
+        try {
+            if (invoice == null) return "";
+            Contract ct = invoice.getContract();
+            if (ct == null) return "";
+            ReadingRoute rr = ct.getReadingRoute(); // route_id -> reading_routes
+            if (rr == null) return "";
+            return rr.getRouteCode() != null ? rr.getRouteCode() : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String fmtPlain(BigDecimal v) {
+        if (v == null) return "";
+        return v.stripTrailingZeros().toPlainString();
+    }
+
+    private static class LineItem {
+        private final String description;
+        private final String quantity;
+        private final String unitPrice;
+        private final String amount;
+
+        public LineItem(String description, String quantity, String unitPrice, String amount) {
+            this.description = description;
+            this.quantity = quantity;
+            this.unitPrice = unitPrice;
+            this.amount = amount;
+        }
+
+        public String getDescription() { return description; }
+        public String getQuantity() { return quantity; }
+        public String getUnitPrice() { return unitPrice; }
+        public String getAmount() { return amount; }
     }
 
     private String readThreeDigits(int number) {
@@ -381,7 +461,6 @@ public class InvoicePdfExportService {
             unitIndex++;
         }
 
-        // Viết hoa chữ cái đầu, thêm "đồng"
         String s = result.toString().trim();
         if (s.isEmpty()) {
             s = "không";
@@ -422,38 +501,71 @@ public class InvoicePdfExportService {
         Customer c = invoice.getCustomer();
         Map<String, Object> model = new HashMap<>();
 
-        // --- THÊM XỬ LÝ PHÍ NỘP MUỘN ---
         BigDecimal lateFee = invoice.getLatePaymentFee();
         boolean hasLateFee = lateFee != null && lateFee.compareTo(BigDecimal.ZERO) > 0;
-        model.put("hasLatePaymentFee", hasLateFee);
-        if (hasLateFee) {
-            model.put("latePaymentFee", fmtMoney(lateFee));
-        }
-        // --------------------------------
+
+        LocalDate printDate = (invoice.getInvoiceDate() != null) ? invoice.getInvoiceDate() : LocalDate.now();
 
         model.put("companyAddress", companyAddress);
         model.put("companyPhone", companyPhone);
         model.put("companyEmail", companyEmail);
-
-        LocalDate today = LocalDate.now();
-        model.put("noticeDate", fmtDate(today));
 
         model.put("customerCode", c.getCustomerCode());
         model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
         model.put("customerIdentityNumber", c.getIdentityNumber() != null ? c.getIdentityNumber() : "");
 
-        String period = fmtDate(invoice.getFromDate()) + " - " + fmtDate(invoice.getToDate());
-        model.put("period", period);
-        model.put("totalConsumption", invoice.getTotalConsumption() != null
-                ? invoice.getTotalConsumption().toPlainString() : "0");
+        // Tuyến = reading_routes.route_code (qua contract)
+        model.put("routeCode", resolveRouteCode(invoice));
 
-        model.put("subtotalAmount", fmtMoney(invoice.getSubtotalAmount()));
+        model.put("fromDate", fmtDate(invoice.getFromDate()));
+        model.put("toDate", fmtDate(invoice.getToDate()));
+        model.put("oldIndex", reading != null ? fmtPlain(reading.getPreviousReading()) : "");
+        model.put("newIndex", reading != null ? fmtPlain(reading.getCurrentReading()) : "");
+
+        // line items
+        List<LineItem> items = new ArrayList<>();
+
+        BigDecimal consumption = invoice.getTotalConsumption() != null ? invoice.getTotalConsumption() : BigDecimal.ZERO;
+
+        BigDecimal unitPrice = resolveWaterUnitPrice(invoice);
+        // fallback nếu DB không ra: lấy bình quân subtotal/consumption
+        if (unitPrice == null && consumption.compareTo(BigDecimal.ZERO) > 0) {
+            unitPrice = safeDivideVnd(invoice.getSubtotalAmount(), consumption);
+        }
+
+        items.add(new LineItem(
+                "Tiền nước",
+                consumption.compareTo(BigDecimal.ZERO) > 0 ? fmtPlain(consumption) : "",
+                unitPrice != null ? fmtMoney(unitPrice) : "",
+                fmtMoney(invoice.getSubtotalAmount())
+        ));
+
+        if (hasLateFee) {
+            items.add(new LineItem(
+                    "Phí nộp phạt",
+                    "",
+                    "",
+                    fmtMoney(lateFee)
+            ));
+        }
+
+        model.put("lineItems", items);
+        // Form bên phải có số dòng cố định (ví dụ 5). Có thêm lineItem (phí phạt) thì giảm dòng trống để không đẩy sang trang 2.
+        int maxRows = 5; // bạn có thể chỉnh 4 hoặc 5 tùy muốn form trống nhiều hay ít
+        int blankRows = Math.max(0, maxRows - items.size());
+        model.put("blankRows", blankRows);
+
+        // Cộng = subtotal + lateFee (để khớp bảng)
+        BigDecimal sub = invoice.getSubtotalAmount() != null ? invoice.getSubtotalAmount() : BigDecimal.ZERO;
+        BigDecimal subDisplay = hasLateFee ? sub.add(lateFee) : sub;
+        model.put("subTotalDisplay", fmtMoney(subDisplay));
+
+        model.put("vatRate", "5%");
+        model.put("environmentFeeRate", "10%");
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
         model.put("environmentFeeAmount", fmtMoney(invoice.getEnvironmentFeeAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-        model.put("vatRate", "5%");
-        model.put("environmentFeeRate", "10%");
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
@@ -463,15 +575,16 @@ public class InvoicePdfExportService {
         model.put("qrImage", resolveQrImage(invoice));
 
         model.put("dueDate", fmtDate(invoice.getDueDate()));
+        model.put("signedDate", fmtSignedDate(invoice));
 
-        model.put("printDay", today.getDayOfMonth());
-        model.put("printMonth", today.getMonthValue());
-        model.put("printYear", today.getYear());
+        model.put("printDay", printDate.getDayOfMonth());
+        model.put("printMonth", printDate.getMonthValue());
+        model.put("printYear", printDate.getYear());
 
-        String filePrefix = buildInvoicePdfFilePrefix("WS", invoice, null, today);
+        String filePrefix = buildInvoicePdfFilePrefix("WS", invoice, null, printDate);
 
         return pdfExportService.renderPdfToFile(
-                "notice-water-bill",
+                "vat-invoice",
                 model,
                 BASE_DIR,
                 filePrefix
@@ -487,34 +600,49 @@ public class InvoicePdfExportService {
         Customer c = invoice.getCustomer();
         Map<String, Object> model = new HashMap<>();
 
-        // --- THÊM XỬ LÝ PHÍ NỘP MUỘN ---
         BigDecimal lateFee = invoice.getLatePaymentFee();
         boolean hasLateFee = lateFee != null && lateFee.compareTo(BigDecimal.ZERO) > 0;
-        model.put("hasLatePaymentFee", hasLateFee);
-        if (hasLateFee) {
-            model.put("latePaymentFee", fmtMoney(lateFee));
-        }
-        // --------------------------------
 
-        LocalDate today = LocalDate.now();
+        LocalDate printDate = (invoice.getInvoiceDate() != null) ? invoice.getInvoiceDate() : LocalDate.now();
 
         model.put("companyAddress", companyAddress);
         model.put("companyPhone", companyPhone);
         model.put("companyEmail", companyEmail);
 
-        model.put("noticeDate", fmtDate(today));
         model.put("customerCode", c.getCustomerCode());
         model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
         model.put("customerIdentityNumber", c.getIdentityNumber() != null ? c.getIdentityNumber() : "");
 
-        model.put("contractCode", contractCode);
-        model.put("contractSignDate", fmtDate(contractSignDate));
+        // Không có tuyến/chỉ số -> để trống, KHÔNG ẨN
+        model.put("routeCode", "");
+        model.put("fromDate", "");
+        model.put("toDate", "");
+        model.put("oldIndex", "");
+        model.put("newIndex", "");
 
-        model.put("subtotalAmount", fmtMoney(invoice.getSubtotalAmount()));
+        List<LineItem> items = new ArrayList<>();
+        items.add(new LineItem("Phí lắp đặt", "", "", fmtMoney(invoice.getSubtotalAmount())));
+
+        if (hasLateFee) {
+            items.add(new LineItem("Phí nộp phạt", "", "", fmtMoney(lateFee)));
+        }
+        model.put("lineItems", items);
+        // Form bên phải có số dòng cố định (ví dụ 5). Có thêm lineItem (phí phạt) thì giảm dòng trống để không đẩy sang trang 2.
+        int maxRows = 5; // bạn có thể chỉnh 4 hoặc 5 tùy muốn form trống nhiều hay ít
+        int blankRows = Math.max(0, maxRows - items.size());
+        model.put("blankRows", blankRows);
+
+        BigDecimal sub = invoice.getSubtotalAmount() != null ? invoice.getSubtotalAmount() : BigDecimal.ZERO;
+        BigDecimal subDisplay = hasLateFee ? sub.add(lateFee) : sub;
+        model.put("subTotalDisplay", fmtMoney(subDisplay));
+
+        // VAT lắp đặt 8%
+        model.put("vatRate", "8%");
+        model.put("environmentFeeRate", "10%");
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
+        model.put("environmentFeeAmount", fmtMoney(invoice.getEnvironmentFeeAmount())); // có thể 0
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-        model.put("vatRate", "10%"); // hoặc tham số riêng
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
@@ -524,15 +652,16 @@ public class InvoicePdfExportService {
         model.put("qrImage", resolveQrImage(invoice));
 
         model.put("dueDate", fmtDate(invoice.getDueDate()));
+        model.put("signedDate", fmtSignedDate(invoice));
 
-        model.put("printDay", today.getDayOfMonth());
-        model.put("printMonth", today.getMonthValue());
-        model.put("printYear", today.getYear());
+        model.put("printDay", printDate.getDayOfMonth());
+        model.put("printMonth", printDate.getMonthValue());
+        model.put("printYear", printDate.getYear());
 
-        String filePrefix = buildInvoicePdfFilePrefix("CN", invoice, contractCode, today);
+        String filePrefix = buildInvoicePdfFilePrefix("CN", invoice, contractCode, printDate);
 
         return pdfExportService.renderPdfToFile(
-                "notice-installation-invoice",
+                "vat-invoice",
                 model,
                 BASE_DIR,
                 filePrefix
@@ -548,32 +677,50 @@ public class InvoicePdfExportService {
         Customer c = invoice.getCustomer();
         Map<String, Object> model = new HashMap<>();
 
-        // --- THÊM XỬ LÝ PHÍ NỘP MUỘN ---
         BigDecimal lateFee = invoice.getLatePaymentFee();
         boolean hasLateFee = lateFee != null && lateFee.compareTo(BigDecimal.ZERO) > 0;
-        model.put("hasLatePaymentFee", hasLateFee);
-        if (hasLateFee) {
-            model.put("latePaymentFee", fmtMoney(lateFee));
-        }
-        // --------------------------------
 
-        LocalDate today = LocalDate.now();
+        LocalDate printDate = (invoice.getInvoiceDate() != null) ? invoice.getInvoiceDate() : LocalDate.now();
 
         model.put("companyAddress", companyAddress);
         model.put("companyPhone", companyPhone);
         model.put("companyEmail", companyEmail);
 
-        model.put("noticeDate", fmtDate(today));
         model.put("customerCode", c.getCustomerCode());
         model.put("customerAddress", resolveServiceAddress(invoice));
         model.put("customerName", c.getCustomerName());
         model.put("customerIdentityNumber", c.getIdentityNumber() != null ? c.getIdentityNumber() : "");
 
-        model.put("serviceDescription", serviceDescription);
-        model.put("subtotalAmount", fmtMoney(invoice.getSubtotalAmount()));
+        // Không có tuyến/chỉ số -> để trống, KHÔNG ẨN
+        model.put("routeCode", "");
+        model.put("fromDate", "");
+        model.put("toDate", "");
+        model.put("oldIndex", "");
+        model.put("newIndex", "");
+
+        List<LineItem> items = new ArrayList<>();
+        // Description theo context mới
+        items.add(new LineItem("Phí dịch vụ phát sinh", "", "", fmtMoney(invoice.getSubtotalAmount())));
+
+        if (hasLateFee) {
+            items.add(new LineItem("Phí nộp phạt", "", "", fmtMoney(lateFee)));
+        }
+        model.put("lineItems", items);
+        // Form bên phải có số dòng cố định (ví dụ 5). Có thêm lineItem (phí phạt) thì giảm dòng trống để không đẩy sang trang 2.
+        int maxRows = 5; // bạn có thể chỉnh 4 hoặc 5 tùy muốn form trống nhiều hay ít
+        int blankRows = Math.max(0, maxRows - items.size());
+        model.put("blankRows", blankRows);
+
+        BigDecimal sub = invoice.getSubtotalAmount() != null ? invoice.getSubtotalAmount() : BigDecimal.ZERO;
+        BigDecimal subDisplay = hasLateFee ? sub.add(lateFee) : sub;
+        model.put("subTotalDisplay", fmtMoney(subDisplay));
+
+        // Dịch vụ phát sinh VAT 5% (ignore param vatRate cũ để đúng rule)
+        model.put("vatRate", "5%");
+        model.put("environmentFeeRate", "10%");
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
+        model.put("environmentFeeAmount", fmtMoney(invoice.getEnvironmentFeeAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-        model.put("vatRate", vatRate);
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
@@ -583,15 +730,16 @@ public class InvoicePdfExportService {
         model.put("qrImage", resolveQrImage(invoice));
 
         model.put("dueDate", fmtDate(invoice.getDueDate()));
+        model.put("signedDate", fmtSignedDate(invoice));
 
-        model.put("printDay", today.getDayOfMonth());
-        model.put("printMonth", today.getMonthValue());
-        model.put("printYear", today.getYear());
+        model.put("printDay", printDate.getDayOfMonth());
+        model.put("printMonth", printDate.getMonthValue());
+        model.put("printYear", printDate.getYear());
 
-        String filePrefix = buildInvoicePdfFilePrefix("SV", invoice, null, today);
+        String filePrefix = buildInvoicePdfFilePrefix("SV", invoice, null, printDate);
 
         return pdfExportService.renderPdfToFile(
-                "notice-service-invoice",
+                "vat-invoice",
                 model,
                 BASE_DIR,
                 filePrefix
