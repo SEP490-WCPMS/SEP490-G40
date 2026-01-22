@@ -148,10 +148,16 @@ function RouteInvoiceDetail() {
         }
     };
 
-    const handleDownloadReceipt = () => {
-        if (!invoice) return;
-        handleDownloadReceiptFromBackend(invoice.id);
-    };
+    // const handleDownloadReceipt = () => {
+    //     if (!invoice) return;
+    //
+    //     if (invoice.paymentStatus !== 'PAID') {
+    //         toast.info('Chỉ có thể tải biên nhận sau khi hóa đơn đã thanh toán.');
+    //         return;
+    //     }
+    //
+    //     handleDownloadReceiptFromBackend(invoice.id);
+    // };
 
     if (loading) {
         return (
@@ -296,14 +302,19 @@ function RouteInvoiceDetail() {
                                 </div>
 
                                 {/* NÚT LUÔN NẰM TRONG CARD */}
-                                <button
-                                    onClick={handleDownloadReceipt}
-                                    className="w-full py-2.5 mt-4 rounded-md font-bold shadow-sm flex items-center justify-center gap-2 border transition-colors bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                                    title="Tải biên nhận (.html)"
-                                >
-                                    <Printer size={18} />
-                                    Tải biên nhận
-                                </button>
+                                {/*<button*/}
+                                {/*    onClick={handleDownloadReceipt}*/}
+                                {/*    disabled={!isPaid}*/}
+                                {/*    className={`w-full py-2.5 mt-4 rounded-md font-bold shadow-sm flex items-center justify-center gap-2 border transition-colors ${*/}
+                                {/*        isPaid*/}
+                                {/*            ? 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'*/}
+                                {/*            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'*/}
+                                {/*    }`}*/}
+                                {/*    title={isPaid ? 'Tải biên nhận (.html)' : 'Chỉ tải sau khi đã thanh toán'}*/}
+                                {/*>*/}
+                                {/*    <Printer size={18} />*/}
+                                {/*    Tải biên nhận*/}
+                                {/*</button>*/}
                             </div>
                         </div>
 
