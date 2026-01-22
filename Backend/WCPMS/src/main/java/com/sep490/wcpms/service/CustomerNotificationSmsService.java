@@ -106,6 +106,7 @@ public class CustomerNotificationSmsService {
             case LATE_PAYMENT_NOTICE -> buildLatePaymentNoticeSms(notification, customer, hasEmail, invoice);
             case INVOICE_PAYMENT_SUCCESS -> buildInvoicePaymentSuccessSms(notification, customer, hasEmail, invoice);
             case CONTRACT_EXPIRY_REMINDER -> buildContractExpiryReminderSms(notification, customer, hasEmail, contract);
+            case CONTRACT_TERMINATED -> buildContractTerminatedSms(notification, customer, hasEmail, invoice, contractNumber);
             case LEAK_WARNING -> buildLeakWarningSms(notification, customer, hasEmail);
             default -> buildGeneralSms(notification, customer, hasEmail);
         };
@@ -381,6 +382,28 @@ public class CustomerNotificationSmsService {
         } else {
             return base + "Vui long lien he nhan vien dich vu/tong dai de duoc huong dan gia han hop dong.";
         }
+    }
+
+    private String buildContractTerminatedSms(CustomerNotification n,
+                                              Customer customer,
+                                              boolean hasEmail,
+                                              Invoice invoice,
+                                              String contractNumber) {
+
+        String invNo = (invoice != null) ? safe(invoice.getInvoiceNumber()) : "";
+        String due = (invoice != null && invoice.getDueDate() != null) ? invoice.getDueDate().format(DATE_FMT) : "";
+
+        String base = String.format(
+                "Cap nuoc Phu Tho: Hop dong %s da bi cham dut do hoa don tien nuoc %s qua han (han %s) sau 10 ngay chua thanh toan.",
+                safe(contractNumber),
+                invNo,
+                safe(due)
+        );
+
+        if (hasEmail) {
+            return base + " Vui long kiem tra email de xem chi tiet va huong dan ho tro.";
+        }
+        return base + " Lien he tong dai 0210 6251998 de duoc ho tro.";
     }
 
     private String buildLeakWarningSms(CustomerNotification n,

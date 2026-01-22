@@ -125,3 +125,12 @@ export const getReadingChartData = (startDate, endDate) => {
     return apiClient.get('/cashier/dashboard/reading-chart', { params });
 };
 // --- HẾT PHẦN THÊM ---
+
+/**
+ * Tải về Biên lai Thanh toán Hóa đơn dưới dạng HTML
+ */
+export const downloadWaterPaymentReceiptHtml = (invoiceId) => {
+    return apiClient.get(`/cashier/invoices/${invoiceId}/receipt-html`, {
+        responseType: 'blob'
+    });
+};

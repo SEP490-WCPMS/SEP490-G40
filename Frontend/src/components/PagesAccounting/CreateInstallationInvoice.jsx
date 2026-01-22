@@ -51,7 +51,7 @@ function CreateInstallationInvoice() {
         setContract(contractFromState);
 
         const subtotal = contractFromState.contractValue || 0;
-        const vatRate = 0.1;
+        const vatRate = 0.08;
         const vat = Math.round(subtotal * vatRate);
         const total = subtotal + vat;
 

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Biên nhận thanh toán tiền nước</title>
+    <style>
+        body { margin: 0; padding: 16px; background: #fff; display: flex; justify-content: center; }
+        .paper { width: 320px; }
+        pre { margin: 0; white-space: pre-wrap; font-family: "Courier New", monospace; font-size: 14px; line-height: 1.25; }
+        @media print { body { padding: 0; } .paper { width: 58mm; } }
+    </style>
+</head>
+<body>
+<div class="paper">
+    <pre th:text="${receiptText}">BIEN NHAN</pre>
+</div>
+</body>
+</html>

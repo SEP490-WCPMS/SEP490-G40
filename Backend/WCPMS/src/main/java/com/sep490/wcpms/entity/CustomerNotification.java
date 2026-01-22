@@ -81,6 +81,7 @@ public class CustomerNotification {
         SERVICE_INVOICE_ISSUED,
         PAYMENT_REMINDER,
         CONTRACT_EXPIRY_REMINDER,
+        CONTRACT_TERMINATED,
         LEAK_WARNING,
         INVOICE_PAYMENT_SUCCESS,
         LATE_PAYMENT_NOTICE,

@@ -124,7 +124,7 @@ function OnSiteCalibrationForm() {
         try {
             await submitOnSiteCalibration(calibrationData);
 
-            toast.success("Ghi nhận kết quả kiểm định tại chỗ thành công!", {
+            toast.success("Ghi nhận kết quả kiểm định thành công!", {
                 position: "top-center",
                 autoClose: 3000
             });
@@ -168,7 +168,7 @@ function OnSiteCalibrationForm() {
                     <ArrowLeft size={20} className="text-gray-600" />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Kiểm Định Tại Chỗ</h1>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Kiểm Định Đồng hồ</h1>
                     <p className="text-sm text-gray-600">Ghi nhận kết quả kiểm định đồng hồ.</p>
                 </div>
             </div>

@@ -42,8 +42,17 @@ public class ContractPdfStampService {
 
     private static final float P0_YTOP_LINE_HEADER = 91.44698f;  // dòng "Số:" + "Phú Thọ, ngày..."
 
-    private static final float P0_YTOP_CUST_NAME = 587.56036f;   // "Đại diện Ông (Bà): ..."
-    private static final float P0_X_CUST_NAME = 170f;
+    // Dòng "II. Bên tiêu thụ nước: ...."
+    private static final float P0_YTOP_CONSUMER_NAME = 571.7f;
+
+    // BẮT ĐẦU PHỦ TRẮNG từ SAU dấu ":" để không che chữ "nước:"
+    private static final float P0_X_CONSUMER_FILL = 180f;
+
+    // X bắt đầu vẽ tên cũng sau dấu ":" một chút
+    private static final float P0_X_CONSUMER_TEXT = 185f;
+
+    // độ rộng phủ (tùy template, đủ để che hết dấu chấm)
+    private static final float P0_W_CONSUMER_FILL = 330f;
 
     private static final float P0_YTOP_CUST_ADDRESS = 608.2586f; // "Địa chỉ: ...."
     private static final float P0_X_CUST_ADDRESS = 115f;
@@ -382,12 +391,12 @@ public class ContractPdfStampService {
             // Đại diện Ông(Bà)
             if (!isBlank(customerName)) {
                 fillWhiteTopLeft(cs, page,
-                        160f, P0_YTOP_CUST_NAME - 2f,
-                        410f, 18f
+                        P0_X_CONSUMER_FILL, P0_YTOP_CONSUMER_NAME - 2f,
+                        P0_W_CONSUMER_FILL, 18f
                 );
                 setTextBlack(cs);
                 drawTextTopLeft(cs, page, font, FONT_SIZE_12,
-                        P0_X_CUST_NAME, P0_YTOP_CUST_NAME,
+                        P0_X_CONSUMER_TEXT, P0_YTOP_CONSUMER_NAME,
                         trimTo(customerName, 60)
                 );
             }

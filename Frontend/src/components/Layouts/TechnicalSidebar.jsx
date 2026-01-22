@@ -43,7 +43,7 @@ const technicalMenuItems = [
     icon: Replace, // Icon thay thế
   },
   {
-    title: 'Kiểm định tại chỗ',
+    title: 'Kiểm định Đồng hồ',
     url: '/technical/calibrate-on-site',
     icon: ClipboardCheck,
   },
