@@ -82,6 +82,10 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
     const contractStatus = String(initialData?.contractStatus || '').toUpperCase();
     const isActiveContract = contractStatus === 'ACTIVE';
 
+    // Các trạng thái TRƯỚC khi approved (chưa tạo hợp đồng chính thức)
+    const preApprovedStatuses = ['DRAFT', 'PENDING', 'PENDING_SURVEY_REVIEW'];
+    const isPreApproved = preApprovedStatuses.includes(contractStatus);
+
     // Chỉ dùng cho tải PDF HỢP ĐỒNG ở màn Dịch vụ:
     // - APPROVED có thể là "duyệt khảo sát" hoặc "đã tạo HĐ cấp nước", nên FE phải dựa thêm dấu hiệu backend trả về
     const waterServiceContractCreated = Boolean(initialData?.waterServiceContractCreated);
@@ -303,7 +307,8 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                 <CheckCircleOutlined className="mr-1" /> Thông tin chi tiết
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                {initialData?.startDate && (
+                                {/* Chỉ hiện startDate và endDate khi đã approved trở đi */}
+                                {!isPreApproved && initialData?.startDate && (
                                     <div>
                                         <div className="text-xs text-gray-500 mb-1">Ngày bắt đầu</div>
                                         <div className="font-medium text-gray-800 flex items-center gap-1">
@@ -312,7 +317,7 @@ const ContractViewModal = ({ visible, open, onCancel, initialData, loading }) =>
                                         </div>
                                     </div>
                                 )}
-                                {initialData?.endDate && (
+                                {!isPreApproved && initialData?.endDate && (
                                     <div>
                                         <div className="text-xs text-gray-500 mb-1">Ngày kết thúc</div>
                                         <div className="font-medium text-gray-800 flex items-center gap-1">
