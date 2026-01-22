@@ -28,11 +28,12 @@ import {
 
 const { TextArea } = Input;
 
-const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, refreshKey, highlightId }) => {
+const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, refreshKey, highlightId, onHighlightNotFound }) => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const [form] = Form.useForm();
+    const [highlightChecked, setHighlightChecked] = useState(false); // Đánh dấu đã kiểm tra highlight chưa
 
     // State quản lý Pagination
     const [pagination, setPagination] = useState({
@@ -188,6 +189,23 @@ const AllContractsTab = ({ keyword: externalKeyword, status: externalStatus, ref
             fetchContracts(pagination.page, pagination.size, externalKeyword, externalStatus);
         }
     }, [refreshKey]);
+
+    // --- EFFECT: Kiểm tra highlight có tồn tại trong data không ---
+    useEffect(() => {
+        // Chỉ kiểm tra khi: có highlightId, data đã load xong (!loading), và chưa kiểm tra lần nào
+        if (highlightId && !loading && data.length > 0 && !highlightChecked) {
+            const found = data.some(item => String(item.id) === String(highlightId));
+            if (!found && onHighlightNotFound) {
+                onHighlightNotFound(highlightId);
+            }
+            setHighlightChecked(true);
+        }
+    }, [highlightId, data, loading, highlightChecked, onHighlightNotFound]);
+
+    // Reset highlightChecked khi highlightId thay đổi
+    useEffect(() => {
+        setHighlightChecked(false);
+    }, [highlightId]);
 
     // --- HÀM CHUYỂN TRANG ---
     // Xử lý khi người dùng chuyển trang từ component Pagination

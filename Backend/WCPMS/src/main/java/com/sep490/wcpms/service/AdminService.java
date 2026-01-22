@@ -19,4 +19,7 @@ public interface AdminService {
 
     // Đếm số lượng Guest đang chờ tạo tài khoản (Dùng cho Badge Menu)
     long countPendingGuestRequests();
+
+    // Lấy Customer ID theo Contract ID (dùng cho highlight notification)
+    Integer getCustomerIdByContractId(Integer contractId);
 }

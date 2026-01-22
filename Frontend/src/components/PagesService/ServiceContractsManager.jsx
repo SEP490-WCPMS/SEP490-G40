@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Card, Input, Select, Row, Col, Typography, Button } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Card, Input, Select, Row, Col, Typography, Button, message } from 'antd';
+import { ReloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
 // Icons cho Tablist
 import { 
   AppstoreOutlined, 
@@ -46,6 +46,14 @@ const ServiceContractsManager = ({ initialTab }) => {
   // State highlight nội bộ - chỉ dùng cho tab được chỉ định trong URL
   const [highlightId, setHighlightId] = useState(null);
   const [highlightTab, setHighlightTab] = useState(null); // Tab nào được highlight
+  const [notFoundMessage, setNotFoundMessage] = useState(null); // Thông báo khi không tìm thấy hợp đồng
+
+  // Callback khi không tìm thấy hợp đồng trong danh sách
+  const handleHighlightNotFound = (contractId) => {
+    setNotFoundMessage(`Hợp đồng #${contractId} đã được xử lý và chuyển sang trạng thái khác.`);
+    // Tự động ẩn sau 6 giây
+    setTimeout(() => setNotFoundMessage(null), 6000);
+  };
 
   // Effect: Sync highlightId từ URL mỗi khi location.search thay đổi
   // Điều này đảm bảo khi click thông báo (dù đang ở cùng trang), highlight vẫn được cập nhật
@@ -122,7 +130,7 @@ const ServiceContractsManager = ({ initialTab }) => {
     // Chọn component phù hợp cho tab hiện thời và truyền props chung
     // CHỈ truyền highlightId cho tab được chỉ định (highlightTab), các tab khác không nhận highlight
     const currentHighlightId = (active === highlightTab) ? highlightId : null;
-    const props = { keyword, status, refreshKey, highlightId: currentHighlightId };
+    const props = { keyword, status, refreshKey, highlightId: currentHighlightId, onHighlightNotFound: handleHighlightNotFound };
     switch (active) {
       case 'all': return <AllContractsTab {...props} />;
       case 'requests': return <ContractRequestsPage {...props} />;
@@ -151,6 +159,29 @@ const ServiceContractsManager = ({ initialTab }) => {
       `}</style>
 
       <Card bordered={false} className="shadow-sm" bodyStyle={{ padding: '16px' }} style={{ borderRadius: 8 }}>
+        {/* Thông báo khi không tìm thấy hợp đồng highlight */}
+        {notFoundMessage && (
+          <div style={{ 
+            backgroundColor: '#fff7e6', 
+            border: '1px solid #ffd591', 
+            borderRadius: 6, 
+            padding: '10px 16px', 
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <InfoCircleOutlined style={{ color: '#fa8c16', fontSize: 16 }} />
+            <span style={{ color: '#ad6800' }}>{notFoundMessage}</span>
+            <button 
+              onClick={() => setNotFoundMessage(null)} 
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#ad6800', fontWeight: 'bold' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        
         {/* Filter Bar */}
         <Row gutter={12} align="middle" style={{ marginBottom: 16 }}>
           <Col xs={24} md={14} lg={16} style={{ marginBottom: 8 }}>

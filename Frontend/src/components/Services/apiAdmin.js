@@ -30,10 +30,16 @@ export const getCustomerContracts = async (customerId) => {
     });
 };
 
+// Lấy Customer ID theo Contract ID (dùng cho highlight notification)
+export const getCustomerIdByContractId = (contractId) => {
+    return apiClient.get(`/admin/contracts/${contractId}/customer-id`);
+};
+
 // Export default object (nếu cần dùng kiểu import default)
 export default {
     getPendingGuestRequests,
     approveGuestRequest,
     getAllCustomers,
-    getGuestRequestsCount
+    getGuestRequestsCount,
+    getCustomerIdByContractId
 };

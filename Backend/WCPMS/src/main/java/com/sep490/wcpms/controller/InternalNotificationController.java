@@ -67,4 +67,25 @@ public class InternalNotificationController {
         });
         return ResponseEntity.ok().build();
     }
+
+    // Đánh dấu tất cả đã đọc cho user hiện tại
+    @PutMapping("/read-all")
+    @Transactional
+    public ResponseEntity<?> markAllAsRead(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+
+        String roleName = userDetails.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .filter(a -> a != null && !a.isBlank())
+                .sorted((a, b) -> {
+                    boolean aRole = a.startsWith("ROLE_");
+                    boolean bRole = b.startsWith("ROLE_");
+                    return Boolean.compare(aRole, bRole);
+                })
+                .findFirst()
+                .orElse(null);
+
+        int updatedCount = repo.markAllAsReadForUser(userDetails.getId(), roleName);
+        return ResponseEntity.ok().body(java.util.Map.of("updated", updatedCount));
+    }
 }

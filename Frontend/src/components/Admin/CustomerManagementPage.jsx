@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getPendingGuestRequests, approveGuestRequest, getAllCustomers, getCustomerContracts } from '../Services/apiAdmin';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getPendingGuestRequests, approveGuestRequest, getAllCustomers, getCustomerContracts, getCustomerIdByContractId } from '../Services/apiAdmin';
 import { Button } from '../ui/button';
 import { AlertCircle, FileText, CheckCircle, X } from 'lucide-react';
 import ConfirmModal from '../common/ConfirmModal';
@@ -77,7 +78,18 @@ const FIELD_PATHS = {
 // ... (Các hằng số METER_PATHS không cần dùng ở đây nữa nhưng cứ giữ nếu muốn, hoặc xóa đi cho gọn)
 
 const CustomerManagementPage = () => {
-    const [activeTab, setActiveTab] = useState('guests');
+    const location = useLocation();
+    const navigate = useNavigate();
+    
+    // Lấy tab và highlight từ URL query params
+    const searchParams = new URLSearchParams(location.search);
+    const urlTab = searchParams.get('tab');
+    const urlHighlight = searchParams.get('highlight');
+    
+    const [activeTab, setActiveTab] = useState(urlTab === 'guests' ? 'guests' : 'guests');
+    const [highlightId, setHighlightId] = useState(urlHighlight || null);
+    const [highlightCustomerId, setHighlightCustomerId] = useState(null); // Highlight customer trong tab Customers
+    
     const [guests, setGuests] = useState([]);
     const [customers, setCustomers] = useState([]);
     // const [customerMeters, setCustomerMeters] = useState({}); // Không cần state này nữa
@@ -95,6 +107,84 @@ const CustomerManagementPage = () => {
         contracts: [],
         loading: false
     });
+
+    // Effect: Sync highlight từ URL khi location.search thay đổi
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const newHighlight = params.get('highlight');
+        const newTab = params.get('tab');
+        
+        if (newHighlight) {
+            setHighlightId(newHighlight);
+            if (newTab === 'guests') {
+                setActiveTab('guests');
+            }
+        }
+    }, [location.search]);
+
+    // Effect: Kiểm tra nếu không tìm thấy guest trong danh sách -> lấy customerId và chuyển sang tab customers
+    useEffect(() => {
+        const checkAndRedirect = async () => {
+            if (highlightId && activeTab === 'guests' && guests.length > 0 && !loading) {
+                const found = guests.some(g => 
+                    String(g.contractId) === String(highlightId) || 
+                    String(g.id) === String(highlightId)
+                );
+                
+                if (!found) {
+                    try {
+                        // Gọi API lấy customerId từ contractId
+                        const res = await getCustomerIdByContractId(highlightId);
+                        const customerId = res.data;
+                        
+                        if (customerId) {
+                            // Có customer -> chuyển sang tab customers và highlight
+                            setActiveTab('customers');
+                            setHighlightCustomerId(customerId);
+                        }
+                    } catch (err) {
+                        console.error("Lỗi lấy customerId:", err);
+                    }
+                    
+                    // Xóa highlight contract
+                    setHighlightId(null);
+                    const newParams = new URLSearchParams(location.search);
+                    newParams.delete('highlight');
+                    newParams.delete('tab');
+                    const newSearch = newParams.toString();
+                    navigate(`${location.pathname}${newSearch ? '?' + newSearch : ''}`, { replace: true });
+                }
+            }
+        };
+        
+        checkAndRedirect();
+    }, [highlightId, activeTab, guests, loading, location.pathname, location.search, navigate]);
+
+    // Effect: Xóa highlight sau 5 giây
+    useEffect(() => {
+        if (highlightId) {
+            const timer = setTimeout(() => {
+                setHighlightId(null);
+                // Xóa query params khỏi URL
+                const newParams = new URLSearchParams(location.search);
+                newParams.delete('highlight');
+                newParams.delete('tab');
+                const newSearch = newParams.toString();
+                navigate(`${location.pathname}${newSearch ? '?' + newSearch : ''}`, { replace: true });
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightId, location.pathname, location.search, navigate]);
+
+    // Effect: Xóa highlight customer sau 5 giây
+    useEffect(() => {
+        if (highlightCustomerId) {
+            const timer = setTimeout(() => {
+                setHighlightCustomerId(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightCustomerId]);
 
     const parseCreatedAt = useCallback((value) => {
         if (!value) return null;
@@ -208,6 +298,18 @@ const CustomerManagementPage = () => {
                 .badge-meter { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e0f2fe; color: #0284c7; }
                 .meter-info { display: flex; flex-direction: column; gap: 4px; }
                 .meter-code { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #0f172a; }
+                
+                /* Highlight row animation */
+                .highlight-row { 
+                    animation: highlightPulse 2s ease-in-out infinite;
+                    background-color: #fef3c7 !important;
+                    border-left: 4px solid #f59e0b !important;
+                }
+                @keyframes highlightPulse {
+                    0%, 100% { background-color: #fef3c7; }
+                    50% { background-color: #fde68a; }
+                }
+                
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 
                 @media (max-width: 720px) {
@@ -271,8 +373,14 @@ const CustomerManagementPage = () => {
                                 </thead>
                                 <tbody>
                                     {guests.length === 0 && <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
-                                    {guests.map(g => (
-                                        <tr key={g.contractId}>
+                                    {guests.map(g => {
+                                        // Kiểm tra highlight - so sánh với contractId
+                                        const isHighlighted = highlightId && (
+                                            String(g.contractId) === String(highlightId) || 
+                                            String(g.id) === String(highlightId)
+                                        );
+                                        return (
+                                        <tr key={g.contractId} className={isHighlighted ? 'highlight-row' : ''}>
                                             <td data-label="Mã HĐ">{g.contractNumber}</td>
                                             <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
                                             <td data-label="SĐT">{g.guestPhone}</td>
@@ -288,7 +396,8 @@ const CustomerManagementPage = () => {
                                                 </Button>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -314,11 +423,11 @@ const CustomerManagementPage = () => {
                                         const code = getFirstAvailableValue(c, FIELD_PATHS.code) || '---';
                                         const name = getFirstAvailableValue(c, FIELD_PATHS.name) || '---';
                                         const phone = getFirstAvailableValue(c, FIELD_PATHS.phone) || '---';
-                                        // const address = ... (Bỏ)
-                                        // const meter... (Bỏ)
+                                        // Kiểm tra highlight customer
+                                        const isCustomerHighlighted = highlightCustomerId && String(id) === String(highlightCustomerId);
 
                                         return (
-                                            <tr key={id}>
+                                            <tr key={id} className={isCustomerHighlighted ? 'highlight-row' : ''}>
                                                 <td data-label="Mã KH" style={{ fontWeight: 'bold' }}>{code}</td>
                                                 <td data-label="Họ Tên" style={{ fontWeight: '500' }}>{name}</td>
                                                 <td data-label="SĐT">{phone}</td>

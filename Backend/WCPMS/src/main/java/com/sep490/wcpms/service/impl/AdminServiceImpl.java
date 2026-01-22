@@ -289,4 +289,17 @@ public class AdminServiceImpl implements AdminService {
     private String removeAccent(String s) {
         return s;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getCustomerIdByContractId(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng với ID: " + contractId));
+
+        if (contract.getCustomer() == null) {
+            return null; // Guest chưa được tạo tài khoản
+        }
+
+        return contract.getCustomer().getId();
+    }
 }

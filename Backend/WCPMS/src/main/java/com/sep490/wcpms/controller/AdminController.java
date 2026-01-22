@@ -46,4 +46,11 @@ public class AdminController {
         long count = adminService.countPendingGuestRequests();
         return ResponseEntity.ok(count);
     }
+
+    // API lấy Customer ID theo Contract ID (dùng cho highlight notification)
+    @GetMapping("/contracts/{contractId}/customer-id")
+    public ResponseEntity<Integer> getCustomerIdByContractId(@PathVariable Integer contractId) {
+        Integer customerId = adminService.getCustomerIdByContractId(contractId);
+        return ResponseEntity.ok(customerId); // Trả về null nếu chưa có customer
+    }
 }
