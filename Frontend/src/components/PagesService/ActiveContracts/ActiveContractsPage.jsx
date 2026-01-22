@@ -269,7 +269,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                                 )}
                                 {c?.estimatedCost != null && (
                                     <div className="col-span-2">
-                                        <div className="text-xs text-gray-500 mb-1">Chi phí ước tính</div>
+                                        <div className="text-xs text-gray-500 mb-1">Chi phí</div>
                                         <div className="font-bold text-lg text-orange-600">
                                             {fmtMoney(c.estimatedCost)}
                                         </div>
@@ -278,7 +278,7 @@ const ActiveContractsPage = ({ keyword: externalKeyword, status: externalStatus,
                             </div>
                             {c?.technicalDesign && (
                                 <div className="mt-4 pt-4 border-t border-gray-200">
-                                    <div className="text-xs text-gray-500 mb-1">Thiết kế kỹ thuật</div>
+                                    <div className="text-xs text-gray-500 mb-1">Ghi chú khảo sát</div>
                                     <div className="bg-white p-3 rounded border border-gray-200 text-sm text-gray-800 whitespace-pre-wrap">
                                         {c.technicalDesign}
                                     </div>

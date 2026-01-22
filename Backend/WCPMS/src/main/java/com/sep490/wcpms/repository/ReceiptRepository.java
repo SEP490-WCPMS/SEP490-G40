@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ReceiptRepository extends JpaRepository<Receipt, Integer> {
@@ -29,4 +30,15 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Integer> {
             @Param("method") Receipt.PaymentMethod method
     );
     // --- HẾT PHẦN THÊM ---
+
+    /**
+     * Lấy biên lai mới nhất của 1 hóa đơn (phục vụ tải biên nhận).
+     */
+    Optional<Receipt> findTopByInvoice_IdOrderByIdDesc(Integer invoiceId);
+
+    /**
+     * Kiểm tra trùng số biên nhận.
+     */
+    boolean existsByReceiptNumber(String receiptNumber);
+
 }

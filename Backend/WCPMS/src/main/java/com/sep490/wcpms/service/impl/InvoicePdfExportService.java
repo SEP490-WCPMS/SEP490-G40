@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -278,7 +279,7 @@ public class InvoicePdfExportService {
     private String fmtMoney(BigDecimal amount) {
         if (amount == null) return "0";
         DecimalFormat df = new DecimalFormat("#,###");
-        return df.format(amount);
+        return df.format(normalizeVnd(amount));
     }
 
     private String buildInvoicePdfFilePrefix(String typePrefix, Invoice invoice, String contractCode, LocalDate today) {
@@ -298,6 +299,12 @@ public class InvoicePdfExportService {
         String dateStr = today.format(FILE_DATE_FMT);
 
         return String.format("%s-INVOICE_%s_%s_%s", typePrefix, contractNumber, invoiceNumber, dateStr);
+    }
+
+    private BigDecimal normalizeVnd(BigDecimal amount) {
+        if (amount == null) return BigDecimal.ZERO;
+        // Đồng VN không dùng phần thập phân => chuẩn hoá để số và chữ khớp nhau
+        return amount.setScale(0, RoundingMode.HALF_UP);
     }
 
     private String readThreeDigits(int number) {
@@ -349,7 +356,7 @@ public class InvoicePdfExportService {
 
     private String amountToWords(BigDecimal amount) {
         if (amount == null) return "";
-        long value = amount.longValue();
+        long value = normalizeVnd(amount).longValue();
 
         if (value == 0) {
             return "Không đồng";
@@ -445,7 +452,8 @@ public class InvoicePdfExportService {
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
         model.put("environmentFeeAmount", fmtMoney(invoice.getEnvironmentFeeAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-        model.put("vatRate", "5%"); // nếu sau này bạn lấy từ price thì sửa ở đây
+        model.put("vatRate", "5%");
+        model.put("environmentFeeRate", "10%");
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 

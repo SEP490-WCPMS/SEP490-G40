@@ -268,7 +268,7 @@ const ContractRequestForm = () => {
                     <div style={styles.sectionTitle}>1. Thông tin liên hệ</div>
                     <div style={styles.formRow}>
                         <div style={styles.formGroup}>
-                            <label htmlFor="fullName" style={styles.label}>Họ và tên (*)</label>
+                            <label htmlFor="fullName" style={styles.label}>Tên khách hàng (*)</label>
                             <input
                                 id="fullName"
                                 type="text"

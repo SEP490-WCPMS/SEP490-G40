@@ -153,6 +153,7 @@ const ContractAnnulList = ({ refreshKey, keyword }) => {
           status: core.approvalStatus || record.status,
           reason: core.reason || record.reason,
           fromCustomerName: core.fromCustomerName || record.customerName,
+          fromCustomerPhone: core.fromCustomerPhone, // Số điện thoại từ Backend
           attachedEvidence: core.attachedEvidence,
           approvalNote: core.approvalNote,
         });

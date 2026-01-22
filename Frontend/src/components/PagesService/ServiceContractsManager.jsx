@@ -17,7 +17,7 @@ import {
 import SurveyReviewPage from './ContractCreation/SurveyReviewPage';
 import ApprovedContractsPage from './ContractCreation/ApprovedContractsPage';
 import SignedContractsPage from './ContractCreation/SignedContractsPage';
-import ActiveContractsPage from './ActiveContracts/ActiveContractsPage';
+import ActiveContractsTab from './ActiveContracts/ActiveContractsTab';
 import ContractTransferList from './AnnulTransfer/ContractTransferList';
 import ContractAnnulList from './AnnulTransfer/ContractAnnulList';
 import ContractRequestsPage from './ContractCreation/ContractRequestsPage';
@@ -112,9 +112,8 @@ const ServiceContractsManager = ({ initialTab }) => {
     PENDING_SIGN: 'signed',
     SIGNED: 'signed',
     ACTIVE: 'active',
-    // SUSPENDED: 'active', // Đã bỏ SUSPENDED khỏi map logic
-    TERMINATED: 'active', 
-    EXPIRED: 'active', 
+    EXPIRED: 'active',
+    TERMINATED: 'active',
     TRANSFER: 'transfers',
     ANNUL: 'annuls',
   };
@@ -130,7 +129,7 @@ const ServiceContractsManager = ({ initialTab }) => {
       case 'survey': return <SurveyReviewPage {...props} />;
       case 'approved': return <ApprovedContractsPage {...props} />;
       case 'signed': return <SignedContractsPage {...props} />;
-      case 'active': return <ActiveContractsPage {...props} />;
+      case 'active': return <ActiveContractsTab {...props} onStatusChange={(newStatus) => setStatus(newStatus)} />;
       case 'transfers': return <ContractTransferList {...props} />;
       case 'annuls': return <ContractAnnulList {...props} />;
       default: return null;
@@ -173,7 +172,7 @@ const ServiceContractsManager = ({ initialTab }) => {
                     const target = statusToTab[val] || 'all';
                     setActive(target);
                   }}
-                  style={{ width: 160 }}
+                  style={{ width: 180 }}
                 >
                   <Option value="all">Tất cả</Option>
                   <Option value="DRAFT">Đơn từ khách hàng</Option>
@@ -181,8 +180,8 @@ const ServiceContractsManager = ({ initialTab }) => {
                   <Option value="APPROVED">Đã duyệt</Option>
                   <Option value="SIGNED">Khách đã ký</Option>
                   <Option value="ACTIVE">Đang hoạt động</Option>
-                  <Option value="TERMINATED">Đã chấm dứt</Option>
                   <Option value="EXPIRED">Hết hạn</Option>
+                  <Option value="TERMINATED">Đã chấm dứt</Option>
                   <Option value="TRANSFER">Yêu cầu chuyển nhượng</Option>
                   <Option value="ANNUL">Yêu cầu hủy</Option>
                 </Select>

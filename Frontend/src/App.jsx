@@ -26,7 +26,6 @@ import ContractRequestsPage from './components/PagesService/ContractCreation/Con
 import SurveyReviewPage from './components/PagesService/ContractCreation/SurveyReviewPage';
 import ApprovedContractsPage from './components/PagesService/ContractCreation/ApprovedContractsPage';
 import SignedContractsPage from './components/PagesService/ContractCreation/SignedContractsPage';
-import ActiveContractsPage from './components/PagesService/ActiveContracts/ActiveContractsPage';
 import ContractTransferList from './components/PagesService/AnnulTransfer/ContractTransferList';
 import ContractAnnulList from './components/PagesService/AnnulTransfer/ContractAnnulList';
 import ContractCreatePage from './components/PagesService/ContractCreation/ContractCreatePage';

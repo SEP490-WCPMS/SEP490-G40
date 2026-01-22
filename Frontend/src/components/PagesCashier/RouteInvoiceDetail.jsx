@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCashierInvoiceDetail, processCashPayment } from '../Services/apiCashierStaff';
-import { ArrowLeft, User, Phone, Mail, DollarSign, CheckCircle, FileText, Droplets, Calendar, CreditCard, AlertCircle, Camera, X, Gauge } from 'lucide-react';
+import { getCashierInvoiceDetail, processCashPayment, downloadWaterPaymentReceiptHtml } from '../Services/apiCashierStaff';
+import { ArrowLeft, User, Phone, Mail, DollarSign, CheckCircle, FileText, Droplets, Calendar, CreditCard, AlertCircle, Camera, X, Gauge, Printer } from 'lucide-react';
 import moment from 'moment';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -97,11 +97,19 @@ function RouteInvoiceDetail() {
                 autoClose: 3000
             });
 
-            setInvoice(prev => ({ 
-                ...prev, 
-                paymentStatus: 'PAID', 
-                paidDate: new Date() 
-            }));
+            // 1) tạo object updated để dùng cho cả setInvoice + download
+            const updated = {
+                ...invoice,
+                paymentStatus: "PAID",
+                paidDate: new Date(),
+                receiptNumber: receipt.data?.receiptNumber, // nếu bạn muốn lưu để hiển thị
+                cashierName: receipt.data?.cashierName      // nếu backend trả về
+            };
+
+            // 2) set lại state
+            setInvoice(updated);
+
+            await handleDownloadReceiptFromBackend(updated.id);
 
             // Tự động quay lại sau 2s
             setTimeout(() => {
@@ -115,7 +123,42 @@ function RouteInvoiceDetail() {
             setSubmitting(false);
         }
     };
-    
+
+    const handleDownloadReceiptFromBackend = async (id) => {
+        try {
+            const res = await downloadWaterPaymentReceiptHtml(id);
+
+            const blob = new Blob([res.data], { type: 'text/html;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+
+            const cd = res.headers?.['content-disposition'] || '';
+            const match = cd.match(/filename="?([^";]+)"?/i);
+            const filename = match?.[1] || `bien-nhan-${id}.html`;
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Lỗi tải biên nhận:', err);
+            toast.error(err.response?.data?.message || 'Không tải được biên nhận.');
+        }
+    };
+
+    // const handleDownloadReceipt = () => {
+    //     if (!invoice) return;
+    //
+    //     if (invoice.paymentStatus !== 'PAID') {
+    //         toast.info('Chỉ có thể tải biên nhận sau khi hóa đơn đã thanh toán.');
+    //         return;
+    //     }
+    //
+    //     handleDownloadReceiptFromBackend(invoice.id);
+    // };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -214,46 +257,64 @@ function RouteInvoiceDetail() {
 
                         {/* Cột 2: Thông tin Nước (Nếu có) */}
                         <div className="lg:col-span-1 space-y-4">
-                            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 h-full">
+                            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 h-full flex flex-col">
                                 <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2 border-b pb-2">
                                     <Droplets size={18} className="text-blue-500" /> Chi tiết Sử dụng
                                 </h3>
 
-                                {invoice.meterReadingId ? (
-                                    <div className="space-y-4">
-                                        <div className="bg-white p-2 rounded shadow-sm border border-blue-100 flex justify-between items-center">
-                                            <span className="text-gray-600 text-sm flex items-center gap-1">
-                                                <Gauge size={14} /> Mã ĐH:
-                                            </span>
-                                            <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-300">
-                                                {invoice.meterCode || 'N/A'}
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-2 text-center">
-                                            <div className="bg-white p-2 rounded border border-gray-200">
-                                                <p className="text-xs text-gray-500">Chỉ số Cũ</p>
-                                                <p className="font-mono font-bold text-gray-700">{invoice.oldIndex}</p>
+                                {/* PHẦN NỘI DUNG */}
+                                <div className="flex-1">
+                                    {invoice.meterReadingId ? (
+                                        <div className="space-y-4">
+                                            <div className="bg-white p-2 rounded shadow-sm border border-blue-100 flex justify-between items-center">
+                                                <span className="text-gray-600 text-sm flex items-center gap-1">
+                                                  <Gauge size={14} /> Mã ĐH:
+                                                </span>
+                                                <span className="font-mono font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded text-xs border border-gray-300">
+                                                  {invoice.meterCode || 'N/A'}
+                                                </span>
                                             </div>
-                                            <div className="bg-white p-2 rounded border border-gray-200">
-                                                <p className="text-xs text-gray-500">Chỉ số Mới</p>
-                                                <p className="font-mono font-bold text-gray-700">{invoice.newIndex}</p>
+
+                                            <div className="grid grid-cols-2 gap-2 text-center">
+                                                <div className="bg-white p-2 rounded border border-gray-200">
+                                                    <p className="text-xs text-gray-500">Chỉ số Cũ</p>
+                                                    <p className="font-mono font-bold text-gray-700">{invoice.oldIndex}</p>
+                                                </div>
+                                                <div className="bg-white p-2 rounded border border-gray-200">
+                                                    <p className="text-xs text-gray-500">Chỉ số Mới</p>
+                                                    <p className="font-mono font-bold text-gray-700">{invoice.newIndex}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-blue-100 p-3 rounded text-center border border-blue-200">
+                                                <p className="text-xs text-blue-600 uppercase font-semibold">Lượng tiêu thụ</p>
+                                                <p className="text-2xl font-extrabold text-blue-800">
+                                                    {invoice.totalConsumption} <span className="text-sm font-medium">m³</span>
+                                                </p>
                                             </div>
                                         </div>
-
-                                        <div className="bg-blue-100 p-3 rounded text-center border border-blue-200">
-                                            <p className="text-xs text-blue-600 uppercase font-semibold">Lượng tiêu thụ</p>
-                                            <p className="text-2xl font-extrabold text-blue-800">
-                                                {invoice.totalConsumption} <span className="text-sm font-medium">m³</span>
-                                            </p>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-40 text-center text-gray-500 text-sm italic bg-white rounded border border-dashed border-gray-300">
+                                            <FileText size={24} className="mb-2 opacity-50" />
+                                            Đây là hóa đơn <br /> phí dịch vụ / lắp đặt.
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-40 text-center text-gray-500 text-sm italic bg-white rounded border border-dashed border-gray-300">
-                                        <FileText size={24} className="mb-2 opacity-50"/>
-                                        Đây là hóa đơn <br/> phí dịch vụ / lắp đặt.
-                                    </div>
-                                )}
+                                    )}
+                                </div>
+
+                                {/* NÚT LUÔN NẰM TRONG CARD */}
+                                {/*<button*/}
+                                {/*    onClick={handleDownloadReceipt}*/}
+                                {/*    disabled={!isPaid}*/}
+                                {/*    className={`w-full py-2.5 mt-4 rounded-md font-bold shadow-sm flex items-center justify-center gap-2 border transition-colors ${*/}
+                                {/*        isPaid*/}
+                                {/*            ? 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'*/}
+                                {/*            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'*/}
+                                {/*    }`}*/}
+                                {/*    title={isPaid ? 'Tải biên nhận (.html)' : 'Chỉ tải sau khi đã thanh toán'}*/}
+                                {/*>*/}
+                                {/*    <Printer size={18} />*/}
+                                {/*    Tải biên nhận*/}
+                                {/*</button>*/}
                             </div>
                         </div>
 
