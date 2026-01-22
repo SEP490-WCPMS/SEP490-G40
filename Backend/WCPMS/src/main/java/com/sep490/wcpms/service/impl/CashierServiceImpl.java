@@ -33,6 +33,7 @@ import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -545,8 +546,13 @@ public class CashierServiceImpl implements CashierService {
         return d.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
 
+    private BigDecimal normalizeVnd(BigDecimal v) {
+        if (v == null) return BigDecimal.ZERO;
+        return v.setScale(0, RoundingMode.HALF_UP);
+    }
+
     private String fmtMoneyVN(BigDecimal v) {
-        if (v == null) v = BigDecimal.ZERO;
+        v = normalizeVnd(v);
         NumberFormat nf = NumberFormat.getInstance(new Locale("vi", "VN"));
         nf.setMaximumFractionDigits(0);
         nf.setMinimumFractionDigits(0);
@@ -631,7 +637,7 @@ public class CashierServiceImpl implements CashierService {
 
     private String amountToWords(BigDecimal amount) {
         if (amount == null) return "";
-        long value = amount.longValue();
+        long value = normalizeVnd(amount).longValue();
         if (value == 0) return "Không đồng";
 
         String[] units = {"", " nghìn", " triệu", " tỷ"};
