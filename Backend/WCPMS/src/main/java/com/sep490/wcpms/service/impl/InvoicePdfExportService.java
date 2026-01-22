@@ -514,7 +514,7 @@ public class InvoicePdfExportService {
         model.put("subtotalAmount", fmtMoney(invoice.getSubtotalAmount()));
         model.put("vatAmount", fmtMoney(invoice.getVatAmount()));
         model.put("totalAmount", fmtMoney(invoice.getTotalAmount()));
-        model.put("vatRate", "10%"); // hoặc tham số riêng
+        model.put("vatRate", "8%"); // hoặc tham số riêng
 
         model.put("amountInWords", amountToWords(invoice.getTotalAmount()));
 
