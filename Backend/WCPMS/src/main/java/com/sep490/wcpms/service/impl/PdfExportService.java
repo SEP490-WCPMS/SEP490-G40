@@ -14,6 +14,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -87,9 +89,44 @@ public class PdfExportService {
         );
 
         // baseURL trỏ tới thư mục pdf-assets để img src="logo.png"/"signature.png" hoạt động
-        URL baseUrl = new ClassPathResource("pdf-assets/").getURL();
-        builder.withHtmlContent(html, baseUrl.toString());
+        String baseUrl = ensurePdfAssetsOnDiskAndGetBaseUrl();
+        builder.withHtmlContent(html, baseUrl);
         return builder;
+    }
+
+    private static volatile String PDF_ASSETS_BASE_URL;
+
+    /**
+     * Khi chạy từ JAR (Windows Server), URL kiểu jar:file:... có thể làm OpenHTMLtoPDF không load được ảnh.
+     * Giải pháp: copy pdf-assets ra temp folder và dùng baseUrl kiểu file:///
+     */
+    private static String ensurePdfAssetsOnDiskAndGetBaseUrl() throws Exception {
+        if (PDF_ASSETS_BASE_URL != null) return PDF_ASSETS_BASE_URL;
+
+        synchronized (PdfExportService.class) {
+            if (PDF_ASSETS_BASE_URL != null) return PDF_ASSETS_BASE_URL;
+
+            Path dir = Paths.get(System.getProperty("java.io.tmpdir", "."), "wcpms-pdf-assets");
+            Files.createDirectories(dir);
+
+            copyIfMissing("pdf-assets/logo.png", dir.resolve("logo.png"));
+            copyIfMissing("pdf-assets/signature.png", dir.resolve("signature.png"));
+
+            PDF_ASSETS_BASE_URL = dir.toUri().toString(); // file:///C:/.../wcpms-pdf-assets/
+            return PDF_ASSETS_BASE_URL;
+        }
+    }
+
+    private static void copyIfMissing(String classpath, Path target) throws Exception {
+        if (Files.exists(target)) return;
+
+        ClassPathResource resource = new ClassPathResource(classpath);
+        if (!resource.exists()) {
+            throw new IllegalStateException("Resource not found: " + classpath);
+        }
+        try (InputStream is = resource.getInputStream()) {
+            Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     // --- ĐỌC FILE FONT TỪ JAR RA FILE TẠM ---
