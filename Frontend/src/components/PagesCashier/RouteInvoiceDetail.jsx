@@ -24,6 +24,8 @@ function RouteInvoiceDetail() {
     const [evidencePreview, setEvidencePreview] = useState(null); // URL Preview
     // -------------------------------------
 
+    const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+
     useEffect(() => {
         if (!invoiceId) {
             toast.error("Không tìm thấy ID Hóa đơn.");
@@ -109,7 +111,7 @@ function RouteInvoiceDetail() {
             // 2) set lại state
             setInvoice(updated);
 
-            await handleDownloadReceiptFromBackend(updated.id);
+            // await handleDownloadReceiptFromBackend(updated.id);
 
             // Tự động quay lại sau 2s
             setTimeout(() => {
@@ -148,16 +150,20 @@ function RouteInvoiceDetail() {
         }
     };
 
-    // const handleDownloadReceipt = () => {
-    //     if (!invoice) return;
-    //
-    //     if (invoice.paymentStatus !== 'PAID') {
-    //         toast.info('Chỉ có thể tải biên nhận sau khi hóa đơn đã thanh toán.');
-    //         return;
-    //     }
-    //
-    //     handleDownloadReceiptFromBackend(invoice.id);
-    // };
+    const handleDownloadReceipt = async () => {
+        if (!invoice) return;
+
+        if (invoice.paymentStatus !== 'PAID') {
+            toast.info('In biên nhận tạm để khách ký trước khi thu tiền.', { autoClose: 2000 });
+        }
+
+        try {
+            setDownloadingReceipt(true);
+            await handleDownloadReceiptFromBackend(invoice.id);
+        } finally {
+            setDownloadingReceipt(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -302,19 +308,19 @@ function RouteInvoiceDetail() {
                                 </div>
 
                                 {/* NÚT LUÔN NẰM TRONG CARD */}
-                                {/*<button*/}
-                                {/*    onClick={handleDownloadReceipt}*/}
-                                {/*    disabled={!isPaid}*/}
-                                {/*    className={`w-full py-2.5 mt-4 rounded-md font-bold shadow-sm flex items-center justify-center gap-2 border transition-colors ${*/}
-                                {/*        isPaid*/}
-                                {/*            ? 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'*/}
-                                {/*            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'*/}
-                                {/*    }`}*/}
-                                {/*    title={isPaid ? 'Tải biên nhận (.html)' : 'Chỉ tải sau khi đã thanh toán'}*/}
-                                {/*>*/}
-                                {/*    <Printer size={18} />*/}
-                                {/*    Tải biên nhận*/}
-                                {/*</button>*/}
+                                <button
+                                    onClick={handleDownloadReceipt}
+                                    disabled={downloadingReceipt}
+                                    className={`w-full py-2.5 mt-4 rounded-md font-bold shadow-sm flex items-center justify-center gap-2 border transition-colors ${
+                                        downloadingReceipt
+                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                            : 'bg-white text-gray-800 border-gray-200 hover:bg-gray-50'
+                                    }`}
+                                    title="Tải biên nhận"
+                                >
+                                    <Printer size={18} />
+                                    {downloadingReceipt ? 'Đang tải...' : 'Tải biên nhận'}
+                                </button>
                             </div>
                         </div>
 

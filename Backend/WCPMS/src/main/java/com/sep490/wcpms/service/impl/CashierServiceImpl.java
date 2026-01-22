@@ -121,15 +121,22 @@ public class CashierServiceImpl implements CashierService {
         invoice.setPaidDate(LocalDate.now());
         invoiceRepository.save(invoice);
 
-        // 6. TẠO BIÊN LAI (Bảng 19)
-        Receipt receipt = new Receipt();
-        receipt.setReceiptNumber("BL-" + invoice.getInvoiceNumber()); // Tạo mã biên lai
-        receipt.setInvoice(invoice);
+        // 6. TẠO / CẬP NHẬT BIÊN LAI (Bảng 19)
+        // Nếu đã "in biên nhận trước" thì receipt đã tồn tại -> update vào đó để tránh trùng receipt_number (unique)
+        Receipt receipt = receiptRepository.findTopByInvoice_IdOrderByIdDesc(invoiceId).orElse(null);
+        if (receipt == null) {
+            receipt = new Receipt();
+            receipt.setReceiptNumber(generateReceiptNumber(invoice)); // BL-<invoiceNumber> (+ suffix nếu trùng)
+            receipt.setInvoice(invoice);
+        }
+
+        // set thông tin thanh toán (confirm)
         receipt.setPaymentAmount(amountPaid);
         receipt.setPaymentDate(LocalDate.now());
-        receipt.setPaymentMethod(Receipt.PaymentMethod.CASH); // <-- Thanh toán TIỀN MẶT
+        receipt.setPaymentMethod(Receipt.PaymentMethod.CASH);
         receipt.setCashier(cashier);
         receipt.setNotes("Thu tiền mặt tại quầy.");
+
         // === LƯU ẢNH BẰNG CHỨNG ===
         if (evidenceImage == null || evidenceImage.isBlank()) {
             throw new IllegalArgumentException("Bắt buộc phải upload ảnh bằng chứng (chữ ký khách hàng) khi thu tiền mặt.");
@@ -235,7 +242,7 @@ public class CashierServiceImpl implements CashierService {
     // === HẾT PHẦN THÊM ===
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public byte[] exportWaterPaymentReceiptHtml(Integer cashierId, Integer invoiceId) {
         List<Integer> myRouteIds = getMyRouteIds(cashierId);
 
@@ -244,12 +251,21 @@ public class CashierServiceImpl implements CashierService {
                         "Không tìm thấy hoặc không có quyền xem Hóa đơn này (không thuộc tuyến của bạn)."
                 ));
 
-        if (invoice.getPaymentStatus() != Invoice.PaymentStatus.PAID) {
-            throw new IllegalStateException("Chỉ có thể tải biên nhận khi hóa đơn đã thanh toán (PAID).");
-        }
+        // Nếu chưa có receipt (trường hợp in trước khi thanh toán) -> tạo receipt "nháp" để có receiptNumber
+        Receipt receipt = receiptRepository.findTopByInvoice_IdOrderByIdDesc(invoiceId).orElse(null);
+        if (receipt == null) {
+            Account cashier = getCashierAccount(cashierId);
 
-        Receipt receipt = receiptRepository.findTopByInvoice_IdOrderByIdDesc(invoiceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biên lai cho hóa đơn này."));
+            Receipt draft = new Receipt();
+            draft.setReceiptNumber(generateReceiptNumber(invoice));
+            draft.setInvoice(invoice);
+            draft.setPaymentAmount(invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO);
+            draft.setPaymentDate(LocalDate.now());
+            draft.setPaymentMethod(Receipt.PaymentMethod.CASH);
+            draft.setCashier(cashier);
+            draft.setNotes("In biên nhận trước khi xác nhận thanh toán.");
+            receipt = receiptRepository.save(draft);
+        }
 
         String receiptText = buildReceiptText(invoice, receipt);
 
@@ -379,7 +395,7 @@ public class CashierServiceImpl implements CashierService {
 
         // 2. Tiền mặt đã thu HÔM NAY
         BigDecimal cashToday = receiptRepository.sumAmountByCashierAndDateAndMethod(
-                cashier, today, Receipt.PaymentMethod.CASH
+                cashier, today, Receipt.PaymentMethod.CASH, Invoice.PaymentStatus.PAID
         );
         stats.setCashCollectedToday(cashToday != null ? cashToday : BigDecimal.ZERO);
 
@@ -470,6 +486,7 @@ public class CashierServiceImpl implements CashierService {
         sb.append('\n');
         appendCentered(sb, "Biên nhận thanh toán");
         appendCentered(sb, "tiền nước");
+        appendWrapped(sb, "Số BL:", safe(receipt.getReceiptNumber()));
         sb.append("Từ ").append(fmtDate(invoice.getFromDate())).append(" đến ").append(fmtDate(invoice.getToDate())).append('\n');
 
         sb.append(kv("Mã KH:", customerCode));
@@ -498,6 +515,29 @@ public class CashierServiceImpl implements CashierService {
         sb.append("https://phuthowaco.vnpt\n");
         sb.append("-invoice.com.vn\n");
         return sb.toString();
+    }
+
+    private String generateReceiptNumber(Invoice invoice) {
+        String invNo = "";
+        try {
+            if (invoice != null && invoice.getInvoiceNumber() != null) {
+                invNo = invoice.getInvoiceNumber().trim();
+            }
+        } catch (Exception ignored) {}
+
+        if (invNo.isBlank()) {
+            invNo = (invoice != null && invoice.getId() != null) ? String.valueOf(invoice.getId()) : String.valueOf(System.currentTimeMillis());
+        }
+
+        String base = "BL-" + invNo;
+        if (!receiptRepository.existsByReceiptNumber(base)) return base;
+
+        // fallback nếu (hiếm) bị trùng
+        for (int i = 1; i <= 50; i++) {
+            String candidate = base + "-" + i;
+            if (!receiptRepository.existsByReceiptNumber(candidate)) return candidate;
+        }
+        return base + "-" + System.currentTimeMillis();
     }
 
     private BigDecimal resolveUnitPrice(Invoice invoice, BigDecimal consumption, BigDecimal subtotal) {
