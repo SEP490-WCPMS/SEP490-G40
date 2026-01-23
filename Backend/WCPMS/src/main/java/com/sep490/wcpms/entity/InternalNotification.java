@@ -40,6 +40,9 @@ public class InternalNotification {
         GUEST_CONTRACT_CREATED,
 
         // 3. Service Staff: Admin đã tạo acc xong -> Báo gửi ký
-        GUEST_ACCOUNT_CREATED
+        GUEST_ACCOUNT_CREATED,
+
+        // 4. Service Staff: Khách hàng đã xác nhận ký hợp đồng
+        CUSTOMER_SIGNED_CONTRACT
     }
 }

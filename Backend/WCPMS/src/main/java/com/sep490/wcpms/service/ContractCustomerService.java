@@ -27,6 +27,7 @@ public class ContractCustomerService {
     private final CustomerRepository customerRepository;
     private final AccountRepository accountRepository;
     private final com.sep490.wcpms.service.ActivityLogService activityLogService; // injected service to persist activity logs
+    private final InternalNotificationService internalNotificationService;
 
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<ContractDTO> getAllContracts() {
@@ -118,6 +119,21 @@ public class ContractCustomerService {
         } catch (Exception e) {
             // swallow errors to not break business flow; optionally log
             // e.printStackTrace();
+        }
+
+        // === THÔNG BÁO CHO SERVICE STAFF: KHÁCH ĐÃ XÁC NHẬN KÝ ===
+        if (updated.getServiceStaff() != null) {
+            Customer cust = updated.getCustomer();
+            String customerName = cust != null ? cust.getCustomerName() : "Khách hàng";
+            String contractNumber = updated.getContractNumber() != null ? updated.getContractNumber() : String.valueOf(updated.getId());
+            internalNotificationService.createNotification(
+                    updated.getServiceStaff().getId(),
+                    null,
+                    "Khách hàng đã xác nhận ký hợp đồng",
+                    "Khách hàng " + customerName + " đã xác nhận ký hợp đồng " + contractNumber + ". Vui lòng kiểm tra và xử lý. ",
+                    updated.getId(),
+                    InternalNotification.NotificationType.CUSTOMER_SIGNED_CONTRACT
+            );
         }
 
         return convertToDTO(updated);

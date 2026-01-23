@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
-import { getMyNotifications, getUnreadNotificationCount, markNotificationAsRead } from '../Services/apiNotification';
+import { Bell, CheckCheck } from 'lucide-react';
+import { getMyNotifications, getUnreadNotificationCount, markNotificationAsRead, markAllNotificationsAsRead } from '../Services/apiNotification';
 import { useNavigate } from 'react-router-dom';
 import './NotificationBell.css';
 
@@ -68,8 +68,24 @@ const NotificationBell = () => {
                 navigate(`/service/contracts?tab=all&highlight=${noti.referenceId}`);
                 break;
 
+            // Service Staff: Khách hàng đã xác nhận ký hợp đồng -> Nhảy về trang Contracts (Tab Tất cả) và highlight
+            case 'CUSTOMER_SIGNED_CONTRACT':
+                navigate(`/service/contracts?tab=all&highlight=${noti.referenceId}`);
+                break;
+
             default:
                 console.warn("Unknown type:", noti.referenceType);
+        }
+    };
+
+    // Đánh dấu tất cả đã đọc
+    const handleMarkAllAsRead = async () => {
+        try {
+            await markAllNotificationsAsRead();
+            setUnreadCount(0);
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        } catch (err) {
+            console.error("Lỗi đánh dấu tất cả đã đọc:", err);
         }
     };
 
@@ -95,7 +111,19 @@ const NotificationBell = () => {
 
             {isOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg border border-gray-100 z-50 overflow-hidden">
-                    <div className="px-4 py-2 border-b text-sm font-semibold text-white" style={{ backgroundColor: '#0A77E2' }}>Thông báo</div>
+                    <div className="px-4 py-2 border-b text-sm font-semibold text-white flex items-center justify-between" style={{ backgroundColor: '#0A77E2' }}>
+                        <span>Thông báo</span>
+                        {notifications.some(n => !n.isRead) && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); handleMarkAllAsRead(); }}
+                                className="flex items-center gap-1 text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors"
+                                title="Đánh dấu tất cả đã đọc"
+                            >
+                                <CheckCheck size={14} />
+                                <span>Đọc hết</span>
+                            </button>
+                        )}
+                    </div>
                     <div className="max-h-96 overflow-y-auto">
                         {notifications.length === 0 ? (
                             <div className="p-4 text-center text-sm text-gray-500">Không có thông báo mới</div>
