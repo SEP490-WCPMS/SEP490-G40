@@ -1,5 +1,6 @@
 package com.sep490.wcpms.controller;
 
+import com.sep490.wcpms.dto.BulkCreateGuestAccoutResponseDTO;
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.CustomerResponseDTO;
 import com.sep490.wcpms.dto.GuestRequestResponseDTO;
@@ -29,6 +30,14 @@ public class AdminController {
         adminService.approveGuestAndCreateAccount(contractId);
         return ResponseEntity.ok("Đã tạo tài khoản và gửi SMS cho khách hàng thành công!");
     }
+    // Duyệt hàng loạt Guest -> Tạo Account hàng loạt
+    // POST /api/admin/guest-requests/bulk-approve
+    // Body: [1, 2, 3] (Danh sách contractId)
+    @PostMapping("/guest-requests/bulk-approve")
+    public ResponseEntity<BulkCreateGuestAccoutResponseDTO> bulkApproveGuests(@RequestBody List<Integer> contractIds) {
+        return ResponseEntity.ok(adminService.bulkApproveGuestAndCreateAccounts(contractIds));
+    }
+
 
     @GetMapping("/customers")
     public ResponseEntity<List<CustomerResponseDTO>> getAllCustomers() {

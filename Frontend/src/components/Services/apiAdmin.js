@@ -10,6 +10,11 @@ export const approveGuestRequest = (contractId) => {
     return apiClient.post(`/admin/guest-requests/${contractId}/approve`);
 };
 
+// Duyệt hàng loạt Guest -> Tạo Account hàng loạt
+export const bulkApproveGuestRequests = (contractIds) => {
+    return apiClient.post('/admin/guest-requests/bulk-approve', contractIds);
+};
+
 // Lấy số lượng Guest Requests (để hiện Badge trên Menu)
 export const getGuestRequestsCount = () => {
     return apiClient.get('/admin/guest-requests/count');
@@ -39,6 +44,7 @@ export const getCustomerIdByContractId = (contractId) => {
 export default {
     getPendingGuestRequests,
     approveGuestRequest,
+    bulkApproveGuestRequests,
     getAllCustomers,
     getGuestRequestsCount,
     getCustomerIdByContractId

@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service;
 
+import com.sep490.wcpms.dto.BulkCreateGuestAccoutResponseDTO;
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.CustomerResponseDTO;
 import com.sep490.wcpms.dto.GuestRequestResponseDTO;
@@ -11,6 +12,9 @@ public interface AdminService {
 
     // Duyệt Guest -> Tạo Account -> Gửi SMS
     void approveGuestAndCreateAccount(Integer contractId);
+
+    // Duyệt hàng loạt Guest -> Tạo Account hàng loạt -> Gửi SMS
+    BulkCreateGuestAccoutResponseDTO bulkApproveGuestAndCreateAccounts(List<Integer> contractIds);
 
     List<CustomerResponseDTO> getAllCustomers();
 
