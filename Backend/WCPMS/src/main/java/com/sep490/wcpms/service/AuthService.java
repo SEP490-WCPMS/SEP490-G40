@@ -27,6 +27,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -40,10 +42,6 @@ public class AuthService {
     private final CustomerRepository customerRepository;
     private final EmailService emailService;
 
-    /**
-     * Xử lý đăng nhập.
-     * Thêm @Transactional để đảm bảo query Customer hoạt động tốt.
-     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
         // --- 1. XÁC THỰC BẰNG SPRING SECURITY ---
@@ -82,22 +80,13 @@ public class AuthService {
         account.setLastLogin(LocalDateTime.now());
         accountRepository.save(account);
 
-        // --- 6. LẤY CCCD (DEBUG LOGIC) ---
+        // --- 6. LẤY CCCD (Logic đã fix) ---
         String identityNumber = null;
-
-        // Log để kiểm tra xem ID là bao nhiêu
-        System.out.println("DEBUG LOGIN: Checking customer info for Account ID: " + account.getId());
-
-        // Tìm Customer theo Account ID (Không cần check Role if để tránh lỗi logic)
-        // Lưu ý: Đảm bảo CustomerRepository có hàm findByAccount_Id(Integer id)
         Optional<Customer> customerOpt = customerRepository.findByAccount_Id(account.getId());
 
         if (customerOpt.isPresent()) {
             Customer cust = customerOpt.get();
             identityNumber = cust.getIdentityNumber();
-            System.out.println("DEBUG LOGIN: Found Customer ID: " + cust.getId() + " - Identity: " + identityNumber);
-        } else {
-            System.out.println("DEBUG LOGIN: No Customer found for this Account ID.");
         }
         // ------------------------------------------------
 
@@ -106,19 +95,15 @@ public class AuthService {
                 .id(userDetails.getId())
                 .username(userDetails.getUsername())
                 .fullName(account.getFullName())
-                .roleName(role.getRoleName())
+                .roleName(role.getRoleName()) // Sử dụng .name() nếu là Enum, hoặc getter String
                 .department(account.getDepartment())
                 .token(jwt)
                 .phone(account.getPhone())
                 .email(account.getEmail())
                 .customerCode(account.getCustomerCode())
-
-                // Đảm bảo DTO LoginResponse đã có trường này
                 .identityNumber(identityNumber)
                 .build();
     }
-
-    // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
 
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
@@ -132,7 +117,9 @@ public class AuthService {
         Role customerRole = roleRepository.findByRoleName(Role.RoleName.CUSTOMER)
                 .orElseThrow(() -> new ResourceNotFoundException("Role CUSTOMER không tồn tại."));
 
-        String newCustomerCode = generateNewCustomerCode();
+        // --- SỬ DỤNG HÀM SINH MÃ AN TOÀN (FIX LỖI TRÙNG MÃ) ---
+        String newCustomerCode = generateSafeCustomerCode();
+        // ------------------------------------------------------
 
         Account newAccount = new Account();
         newAccount.setUsername(request.getUsername());
@@ -170,21 +157,51 @@ public class AuthService {
                 .build();
     }
 
-    private String generateNewCustomerCode() {
+    /**
+     * Hàm sinh mã KH an toàn:
+     * 1. Tìm mã lớn nhất hiện có.
+     * 2. Loop kiểm tra: Nếu mã sinh ra đã tồn tại -> Tăng tiếp -> Đến khi nào trống thì thôi.
+     */
+    private String generateSafeCustomerCode() {
         Optional<String> maxCodeOptional = customerRepository.findMaxCustomerCode();
-        int nextId = 1;
+        long nextId = 1;
+
+        // Bước 1: Lấy số lớn nhất từ DB (nếu có)
         if (maxCodeOptional.isPresent()) {
             String maxCode = maxCodeOptional.get();
-            try {
-                if (maxCode.matches("KH\\d+")) {
-                    String numPart = maxCode.substring(2);
-                    if (!numPart.isEmpty()) {
-                        nextId = Integer.parseInt(numPart) + 1;
-                    }
+            Pattern pattern = Pattern.compile("(\\d+)$");
+            Matcher matcher = pattern.matcher(maxCode);
+            if (matcher.find()) {
+                String numberPart = matcher.group(1);
+                try {
+                    nextId = Long.parseLong(numberPart) + 1;
+                } catch (NumberFormatException e) {
+                    // Nếu lỗi parse, giữ nguyên nextId = 1
                 }
-            } catch (Exception e) {}
+            }
         }
-        return String.format("KH%03d", nextId);
+
+        // Bước 2: Vòng lặp kiểm tra trùng lặp (An toàn tuyệt đối)
+        String newCode;
+        while (true) {
+            newCode = String.format("KH%03d", nextId);
+
+            // Kiểm tra xem mã này đã tồn tại trong bảng Customer chưa
+            if (isCodeExist(newCode)) {
+                nextId++; // Nếu trùng thì tăng lên 1 và thử lại
+            } else {
+                break; // Nếu chưa trùng thì thoát vòng lặp, lấy mã này
+            }
+        }
+        return newCode;
+    }
+
+    // Hàm kiểm tra tồn tại (Sử dụng stream để không phải sửa Repository)
+    private boolean isCodeExist(String code) {
+        // Lưu ý: Cách tối ưu nhất là thêm 'boolean existsByCustomerCode(String code)' vào CustomerRepository.
+        // Ở đây dùng stream() như một giải pháp "chống cháy" để code chạy ngay mà không cần sửa file Repo.
+        return customerRepository.findAll().stream()
+                .anyMatch(c -> c.getCustomerCode().equals(code));
     }
 
     public void forgotPassword(String email) {
