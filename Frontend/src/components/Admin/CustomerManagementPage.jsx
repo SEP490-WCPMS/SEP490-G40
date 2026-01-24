@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getPendingGuestRequests, approveGuestRequest, getAllCustomers, getCustomerContracts } from '../Services/apiAdmin';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getPendingGuestRequests, approveGuestRequest, bulkApproveGuestRequests, getAllCustomers, getCustomerContracts, getCustomerIdByContractId } from '../Services/apiAdmin';
 import { Button } from '../ui/button';
-import { AlertCircle, FileText, CheckCircle, X } from 'lucide-react';
+import { AlertCircle, FileText, CheckCircle, X, CheckSquare } from 'lucide-react';
 import ConfirmModal from '../common/ConfirmModal';
 import CustomerContractsModal from '../Admin/CustomerContractsModal';
 
@@ -77,7 +78,18 @@ const FIELD_PATHS = {
 // ... (Các hằng số METER_PATHS không cần dùng ở đây nữa nhưng cứ giữ nếu muốn, hoặc xóa đi cho gọn)
 
 const CustomerManagementPage = () => {
-    const [activeTab, setActiveTab] = useState('guests');
+    const location = useLocation();
+    const navigate = useNavigate();
+    
+    // Lấy tab và highlight từ URL query params
+    const searchParams = new URLSearchParams(location.search);
+    const urlTab = searchParams.get('tab');
+    const urlHighlight = searchParams.get('highlight');
+    
+    const [activeTab, setActiveTab] = useState(urlTab === 'guests' ? 'guests' : 'guests');
+    const [highlightId, setHighlightId] = useState(urlHighlight || null);
+    const [highlightCustomerId, setHighlightCustomerId] = useState(null); // Highlight customer trong tab Customers
+    
     const [guests, setGuests] = useState([]);
     const [customers, setCustomers] = useState([]);
     // const [customerMeters, setCustomerMeters] = useState({}); // Không cần state này nữa
@@ -85,6 +97,11 @@ const CustomerManagementPage = () => {
     const [error, setError] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, contractId: null });
     const [confirmLoading, setConfirmLoading] = useState(false);
+
+    // --- State cho Bulk Action ---
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+    const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
     // --- State thông báo ---
     const [notification, setNotification] = useState({ type: '', message: '' });
@@ -95,6 +112,89 @@ const CustomerManagementPage = () => {
         contracts: [],
         loading: false
     });
+
+    // Effect: Sync highlight từ URL khi location.search thay đổi
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const newHighlight = params.get('highlight');
+        const newTab = params.get('tab');
+        
+        if (newHighlight) {
+            setHighlightId(newHighlight);
+            if (newTab === 'guests') {
+                setActiveTab('guests');
+            }
+        }
+    }, [location.search]);
+
+    // Effect: Kiểm tra nếu không tìm thấy guest trong danh sách -> lấy customerId và chuyển sang tab customers
+    useEffect(() => {
+        const checkAndRedirect = async () => {
+            // Chỉ chạy khi: có highlightId, đang ở tab guests, guests đã load xong, không đang loading
+            if (highlightId && activeTab === 'guests' && !loading && guests.length >= 0) {
+                // Đợi 1 tick để đảm bảo guests đã được populate
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const found = guests.some(g => 
+                    String(g.contractId) === String(highlightId) || 
+                    String(g.id) === String(highlightId)
+                );
+                
+                if (!found && guests.length >= 0) {
+                    try {
+                        // Gọi API lấy customerId từ contractId
+                        const res = await getCustomerIdByContractId(highlightId);
+                        const customerId = res.data;
+                        
+                        if (customerId) {
+                            // Có customer -> chuyển sang tab customers và highlight
+                            setHighlightCustomerId(customerId);
+                            setActiveTab('customers');
+                        }
+                    } catch (err) {
+                        console.error("Lỗi lấy customerId:", err);
+                    }
+                    
+                    // Xóa highlight contract
+                    setHighlightId(null);
+                    const newParams = new URLSearchParams(location.search);
+                    newParams.delete('highlight');
+                    newParams.delete('tab');
+                    const newSearch = newParams.toString();
+                    navigate(`${location.pathname}${newSearch ? '?' + newSearch : ''}`, { replace: true });
+                }
+            }
+        };
+        
+        checkAndRedirect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [highlightId, activeTab, guests, loading]);
+
+    // Effect: Xóa highlight sau 5 giây
+    useEffect(() => {
+        if (highlightId) {
+            const timer = setTimeout(() => {
+                setHighlightId(null);
+                // Xóa query params khỏi URL
+                const newParams = new URLSearchParams(location.search);
+                newParams.delete('highlight');
+                newParams.delete('tab');
+                const newSearch = newParams.toString();
+                navigate(`${location.pathname}${newSearch ? '?' + newSearch : ''}`, { replace: true });
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightId, location.pathname, location.search, navigate]);
+
+    // Effect: Xóa highlight customer sau 5 giây
+    useEffect(() => {
+        if (highlightCustomerId) {
+            const timer = setTimeout(() => {
+                setHighlightCustomerId(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [highlightCustomerId]);
 
     const parseCreatedAt = useCallback((value) => {
         if (!value) return null;
@@ -165,6 +265,62 @@ const CustomerManagementPage = () => {
         }
     };
 
+    // --- HÀM XỬ LÝ CHECKBOX ---
+    const toggleSelectAll = () => {
+        if (selectedIds.length === guests.length && guests.length > 0) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(guests.map(g => g.contractId));
+        }
+    };
+
+    const toggleSelectOne = (contractId) => {
+        if (selectedIds.includes(contractId)) {
+            setSelectedIds(prev => prev.filter(id => id !== contractId));
+        } else {
+            setSelectedIds(prev => [...prev, contractId]);
+        }
+    };
+
+    // --- HÀM GỌI API BULK ---
+    const handleBulkApprove = async () => {
+        if (selectedIds.length === 0) return;
+
+        setBulkSubmitting(true);
+        setShowBulkConfirm(false);
+        setNotification({ type: '', message: '' });
+
+        try {
+            const res = await bulkApproveGuestRequests(selectedIds);
+            const { successCount, failureCount, message } = res.data;
+
+            if (failureCount > 0) {
+                setNotification({ 
+                    type: 'error', 
+                    message: `Hoàn tất: ${successCount} thành công, ${failureCount} thất bại.` 
+                });
+            } else {
+                setNotification({ 
+                    type: 'success', 
+                    message: `Thành công! Đã tạo ${successCount} tài khoản và gửi SMS.` 
+                });
+            }
+
+            setSelectedIds([]);
+            loadData();
+        } catch (err) {
+            console.error("Lỗi bulk approve:", err);
+            setNotification({ type: 'error', message: "Lỗi khi tạo tài khoản hàng loạt." });
+        } finally {
+            setBulkSubmitting(false);
+        }
+    };
+
+    // Reset selection khi chuyển tab (không reset khi guests thay đổi để tránh conflict với highlight logic)
+    useEffect(() => {
+        setSelectedIds([]);
+    }, [activeTab]);
+
     const handleViewContracts = async (customer) => {
         const customerId = customer.customer_id || customer.id || customer.customerId;
         const name = customer.customer_name || customer.customerName || customer.fullName || 'Khách hàng';
@@ -208,6 +364,18 @@ const CustomerManagementPage = () => {
                 .badge-meter { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e0f2fe; color: #0284c7; }
                 .meter-info { display: flex; flex-direction: column; gap: 4px; }
                 .meter-code { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #0f172a; }
+                
+                /* Highlight row animation */
+                .highlight-row { 
+                    animation: highlightPulse 2s ease-in-out infinite;
+                    background-color: #fef3c7 !important;
+                    border-left: 4px solid #f59e0b !important;
+                }
+                @keyframes highlightPulse {
+                    0%, 100% { background-color: #fef3c7; }
+                    50% { background-color: #fde68a; }
+                }
+                
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 
                 @media (max-width: 720px) {
@@ -257,40 +425,95 @@ const CustomerManagementPage = () => {
 
                     {/* TAB GUESTS */}
                     {!loading && !error && activeTab === 'guests' && (
-                        <div className="table-responsive">
-                            <table className="responsive-table" style={{ width: '100%' }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
-                                        <th style={{ width: '200px' }}>Mã HĐ</th>
-                                        <th>Tên Khách</th>
-                                        <th>SĐT</th>
-                                        <th>Địa chỉ</th>
-                                        <th style={{ width: '120px' }}>Trạng thái</th>
-                                        <th style={{ width: '140px' }}>Hành động</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {guests.length === 0 && <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
-                                    {guests.map(g => (
-                                        <tr key={g.contractId}>
-                                            <td data-label="Mã HĐ">{g.contractNumber}</td>
-                                            <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
-                                            <td data-label="SĐT">{g.guestPhone}</td>
-                                            <td data-label="Địa chỉ">{g.guestAddress}</td>
-                                            <td data-label="Trạng thái">
-                                                <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
-                                                    {g.status}
-                                                </span>
-                                            </td>
-                                            <td data-label="Hành động">
-                                                <Button size="sm" onClick={() => handleApprove(g.contractId)} style={{ backgroundColor: '#10b981', color: 'white', width: '100%' }}>
-                                                    Duyệt & Tạo TK
-                                                </Button>
-                                            </td>
+                        <div>
+                            {/* Nút Bulk Action */}
+                            {selectedIds.length > 0 && (
+                                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Button
+                                        onClick={() => setShowBulkConfirm(true)}
+                                        disabled={bulkSubmitting}
+                                        style={{ 
+                                            backgroundColor: '#10b981', 
+                                            color: 'white',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                    >
+                                        <CheckSquare size={16} />
+                                        Tạo TK hàng loạt ({selectedIds.length})
+                                    </Button>
+                                    <span style={{ color: '#64748b', fontSize: '14px' }}>
+                                        Đã chọn {selectedIds.length}/{guests.length} guest
+                                    </span>
+                                </div>
+                            )}
+                            
+                            <div className="table-responsive">
+                                <table className="responsive-table" style={{ width: '100%' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
+                                            {/* Checkbox header */}
+                                            <th style={{ width: '50px', textAlign: 'center' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                    onChange={toggleSelectAll}
+                                                    checked={guests.length > 0 && selectedIds.length === guests.length}
+                                                    disabled={guests.length === 0}
+                                                />
+                                            </th>
+                                            <th style={{ width: '180px' }}>Mã HĐ</th>
+                                            <th>Tên Khách</th>
+                                            <th>SĐT</th>
+                                            <th>Địa chỉ</th>
+                                            <th style={{ width: '120px' }}>Trạng thái</th>
+                                            <th style={{ width: '140px' }}>Hành động</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {guests.length === 0 && <tr><td colSpan="7" style={{ padding: '20px', textAlign: 'center' }}>Không có yêu cầu nào.</td></tr>}
+                                        {guests.map(g => {
+                                            // Kiểm tra highlight - so sánh với contractId
+                                            const isHighlighted = highlightId && (
+                                                String(g.contractId) === String(highlightId) || 
+                                                String(g.id) === String(highlightId)
+                                            );
+                                            const isSelected = selectedIds.includes(g.contractId);
+                                            return (
+                                            <tr 
+                                                key={g.contractId} 
+                                                className={isHighlighted ? 'highlight-row' : ''}
+                                                style={{ backgroundColor: isSelected ? '#eff6ff' : undefined }}
+                                            >
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                                        checked={isSelected}
+                                                        onChange={() => toggleSelectOne(g.contractId)}
+                                                    />
+                                                </td>
+                                                <td data-label="Mã HĐ">{g.contractNumber}</td>
+                                                <td data-label="Tên Khách" style={{ fontWeight: '500' }}>{g.guestName}</td>
+                                                <td data-label="SĐT">{g.guestPhone}</td>
+                                                <td data-label="Địa chỉ">{g.guestAddress}</td>
+                                                <td data-label="Trạng thái">
+                                                    <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                                                        {g.status}
+                                                    </span>
+                                                </td>
+                                                <td data-label="Hành động">
+                                                    <Button size="sm" onClick={() => handleApprove(g.contractId)} style={{ backgroundColor: '#10b981', color: 'white', width: '100%' }}>
+                                                        Duyệt & Tạo TK
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
 
@@ -314,11 +537,11 @@ const CustomerManagementPage = () => {
                                         const code = getFirstAvailableValue(c, FIELD_PATHS.code) || '---';
                                         const name = getFirstAvailableValue(c, FIELD_PATHS.name) || '---';
                                         const phone = getFirstAvailableValue(c, FIELD_PATHS.phone) || '---';
-                                        // const address = ... (Bỏ)
-                                        // const meter... (Bỏ)
+                                        // Kiểm tra highlight customer
+                                        const isCustomerHighlighted = highlightCustomerId && String(id) === String(highlightCustomerId);
 
                                         return (
-                                            <tr key={id}>
+                                            <tr key={id} className={isCustomerHighlighted ? 'highlight-row' : ''}>
                                                 <td data-label="Mã KH" style={{ fontWeight: 'bold' }}>{code}</td>
                                                 <td data-label="Họ Tên" style={{ fontWeight: '500' }}>{name}</td>
                                                 <td data-label="SĐT">{phone}</td>
@@ -343,6 +566,21 @@ const CustomerManagementPage = () => {
                         title="Xác nhận duyệt"
                         message="Xác nhận tạo tài khoản và gửi SMS cho khách hàng này?"
                         isLoading={confirmLoading}
+                    />
+
+                    {/* Confirm Modal cho Bulk Action */}
+                    <ConfirmModal
+                        isOpen={showBulkConfirm}
+                        onClose={() => setShowBulkConfirm(false)}
+                        onConfirm={handleBulkApprove}
+                        title="Tạo tài khoản hàng loạt"
+                        message={
+                            <div>
+                                <p>Hệ thống sẽ tự động tạo tài khoản và gửi SMS cho <b>{selectedIds.length}</b> guest đã chọn.</p>
+                                <p>Có xác nhận không?</p>
+                            </div>
+                        }
+                        isLoading={bulkSubmitting}
                     />
 
                     <CustomerContractsModal

@@ -1,5 +1,6 @@
 package com.sep490.wcpms.service.impl;
 
+import com.sep490.wcpms.dto.BulkCreateGuestAccoutResponseDTO;
 import com.sep490.wcpms.dto.ContractDetailsDTO;
 import com.sep490.wcpms.dto.CustomerResponseDTO;
 import com.sep490.wcpms.dto.GuestRequestResponseDTO;
@@ -288,5 +289,40 @@ public class AdminServiceImpl implements AdminService {
 
     private String removeAccent(String s) {
         return s;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Integer getCustomerIdByContractId(Integer contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng với ID: " + contractId));
+
+        if (contract.getCustomer() == null) {
+            return null; // Guest chưa được tạo tài khoản
+        }
+
+        return contract.getCustomer().getId();
+    }
+
+    @Override
+    @Transactional
+    public BulkCreateGuestAccoutResponseDTO bulkApproveGuestAndCreateAccounts(List<Integer> contractIds) {
+        int success = 0;
+        int fail = 0;
+
+        for (Integer contractId : contractIds) {
+            try {
+                approveGuestAndCreateAccount(contractId);
+                success++;
+            } catch (Exception e) {
+                // Log lỗi nhưng không dừng vòng lặp để tiếp tục xử lý các contract khác
+                System.err.println("[BulkApproveGuest] Lỗi xử lý contract ID " + contractId + ": " + e.getMessage());
+                fail++;
+            }
+        }
+
+        String message = String.format("Hoàn tất tạo tài khoản: %d thành công, %d thất bại (tổng %d).",
+                                       success, fail, contractIds.size());
+        return new BulkCreateGuestAccoutResponseDTO(success, fail, message);
     }
 }

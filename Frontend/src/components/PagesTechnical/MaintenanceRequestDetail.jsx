@@ -230,7 +230,7 @@ function MaintenanceRequestDetail() {
                                     className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
                                     <ClipboardCheck size={18} className="mr-2" />
-                                    Kiểm Định Tại Chỗ
+                                    Kiểm Định Đồng Hồ
                                 </button>
                             )}
                         </div>

@@ -14,3 +14,8 @@ export const getUnreadNotificationCount = () => {
 export const markNotificationAsRead = (id) => {
     return apiClient.put(`/internal-notifications/${id}/read`);
 };
+
+// Đánh dấu tất cả đã đọc
+export const markAllNotificationsAsRead = () => {
+    return apiClient.put('/internal-notifications/read-all');
+};

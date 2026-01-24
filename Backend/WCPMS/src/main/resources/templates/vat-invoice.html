@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Hóa đơn GTGT</title>
+    <style>
+        @page { size: A4 landscape; margin: 10mm; }
+
+        body{
+            font-family:"Times New Roman",serif !important;
+            font-size:12pt;
+            margin:0; padding:0;
+            color:#000;
+        }
+
+        table.outer{
+            width:100%;
+            border:1.2px solid #000;
+            border-collapse:collapse;
+            table-layout:fixed;
+        }
+        table.outer td{
+            vertical-align:top;
+            padding:0;
+        }
+        td.left{
+            width:34%;
+            border-right:1px solid #000;
+            padding:8mm 6mm 8mm 6mm;
+        }
+        td.right{
+            width:66%;
+            padding:0;
+        }
+
+        /* LEFT */
+        .company{
+            text-align:center;
+            color:#1f4e79;
+            line-height:1.25;
+            font-size:12.5pt;
+        }
+        .company .name{
+            font-weight:bold;
+            text-transform:uppercase;
+        }
+        .logo{
+            margin:6mm 0 3mm 0;
+            text-align:center;
+        }
+        .logo img{ width:40mm; height:auto; }
+
+        .inv-title{
+            text-align:center;
+            margin-top:2mm;
+        }
+        .inv-title .t1{
+            color:#c00000;
+            font-weight:bold;
+            font-size:16.5pt;
+            text-transform:uppercase;
+            margin:0;
+        }
+        .inv-title .t2{
+            margin:1.5mm 0 0 0;
+            font-style:italic;
+            font-size:12pt;
+        }
+
+        .sigbox{
+            margin-top:6mm;
+            border:1px solid #c00000;
+            padding:3.5mm 4mm;
+            color:#c00000;
+            font-size:11.5pt;
+            line-height:1.25;
+            text-align:center;
+        }
+        .sigbox .b{ font-weight:bold; }
+
+        /* RIGHT: 1 bảng lớn, kẻ ô rõ như ảnh */
+        table.sheet{
+            width:100%;
+            border-collapse:collapse;
+            table-layout:fixed;
+            font-size:12pt;
+        }
+        table.sheet td, table.sheet th{
+            border:1px solid #000;
+            padding:2mm 3mm;
+            vertical-align:middle;
+        }
+
+        /* meta rows */
+        .lbl{
+            font-weight:bold;
+            color:#1f4e79;
+        }
+        .val{
+            font-weight:bold;
+            color:#000;
+        }
+        .so-red{
+            color:#c00000;
+            font-weight:bold;
+        }
+
+        /* header items */
+        .items-head th{
+            text-align:center;
+            font-weight:bold;
+            color:#1f4e79;
+            font-size:13pt;
+            padding-top:1.5mm;
+            padding-bottom:1.5mm;
+        }
+
+        .c{ text-align:center; }
+        .r{ text-align:right; }
+
+        /* col widths: giống ảnh (Diễn giải rộng nhất) */
+        .col-desc{ width:42%; }
+        .col-qty{ width:22%; }
+        .col-unit{ width:18%; }
+        .col-amt{ width:18%; }
+
+        .blank-row td{ height:10mm; }
+
+        /* totals rows: label spanning 3 cols */
+        .tot-lbl{
+            font-weight:bold;
+            color:#1f4e79;
+        }
+
+        .keep-together, .keep-together *{
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+
+<body>
+<table class="outer">
+    <tr>
+        <!-- LEFT -->
+        <td class="left">
+            <div class="company">
+                <div class="name">CÔNG TY CỔ PHẦN CẤP NƯỚC PHÚ THỌ</div>
+                <div>Mã số thuế: 2600117081</div>
+                <div>Số 8, đường Trần Phú, phường Việt Trì,</div>
+                <div>tỉnh Phú Thọ.</div>
+                <div>TK:116002936961</div>
+                <div>NGÂN HÀNG TMCP CÔNG THƯƠNG VN</div>
+                <div>CHI NHÁNH PHÚ THỌ</div>
+            </div>
+
+            <div class="logo">
+                <img src="logo.png" alt="logo"/>
+            </div>
+
+            <div class="inv-title">
+                <p class="t1">HÓA ĐƠN GIÁ TRỊ GIA TĂNG</p>
+                <p class="t2">
+                    Ngày <span th:text="${printDay}">...</span>
+                    tháng <span th:text="${printMonth}">...</span>
+                    năm <span th:text="${printYear}">...</span>
+                </p>
+            </div>
+
+            <div class="sigbox">
+                <div class="b">Signature Valid</div>
+                <div>Ký bởi: CÔNG TY CỔ PHẦN CẤP NƯỚC PHÚ THỌ</div>
+                <div>Ký ngày: <span th:text="${signedDate}"></span></div>
+            </div>
+        </td>
+
+        <!-- RIGHT -->
+        <td class="right" style="padding:0;">
+            <table class="sheet">
+                <!-- Row 1: Ký hiệu / Số (2 ô, có kẻ dọc) -->
+                <tr>
+                    <td colspan="2"><span class="lbl">Ký hiệu:</span> <span class="val">...</span></td>
+                    <td colspan="2" class="r"><span class="so-red">Số:</span> <span class="val">...</span></td>
+                </tr>
+
+                <!-- Meta rows: mỗi dòng full 4 cột nhưng gộp để giống form -->
+                <tr>
+                    <td colspan="4"><span class="lbl">Mã khách hàng:</span> <span class="val" th:text="${customerCode}"></span></td>
+                </tr>
+                <tr>
+                    <td colspan="4"><span class="lbl">Tên khách hàng:</span> <span class="val" th:text="${customerName}"></span></td>
+                </tr>
+                <tr>
+                    <td colspan="4"><span class="lbl">Địa chỉ:</span> <span class="val" th:text="${customerAddress}"></span></td>
+                </tr>
+
+                <!-- MST / Tuyến (chia 2 nửa như ảnh, có kẻ dọc rõ) -->
+                <tr>
+                    <td colspan="2"><span class="lbl">Mã số thuế:</span> <span class="val" th:text="${customerIdentityNumber}"></span></td>
+                    <td colspan="2"><span class="lbl">Tuyến:</span> <span class="val" th:text="${routeCode}"></span></td>
+                </tr>
+
+                <!-- Từ ngày / Chỉ số cũ -->
+                <tr>
+                    <td colspan="2"><span class="lbl">Từ ngày:</span> <span class="val" th:text="${fromDate}"></span></td>
+                    <td colspan="2"><span class="lbl">Chỉ số cũ:</span> <span class="val" th:text="${oldIndex}"></span></td>
+                </tr>
+
+                <!-- Đến ngày / Chỉ số mới -->
+                <tr>
+                    <td colspan="2"><span class="lbl">Đến ngày:</span> <span class="val" th:text="${toDate}"></span></td>
+                    <td colspan="2"><span class="lbl">Chỉ số mới:</span> <span class="val" th:text="${newIndex}"></span></td>
+                </tr>
+
+                <!-- Items header -->
+                <tr class="items-head">
+                    <th class="col-desc">Diễn giải</th>
+                    <th class="col-qty">Số lượng (m³)</th>
+                    <th class="col-unit">Đơn giá (đ)</th>
+                    <th class="col-amt">Thành tiền</th>
+                </tr>
+
+                <!-- Items -->
+                <tr th:each="it : ${lineItems}">
+                    <td th:text="${it.description}"></td>
+                    <td class="c" th:text="${it.quantity}"></td>
+                    <td class="r" th:text="${it.unitPrice}"></td>
+                    <td class="r" th:text="${it.amount}"></td>
+                </tr>
+
+                <!-- Rows trống: render theo blankRows để không bị đẩy "Số tiền bằng chữ" sang trang 2 -->
+                <tr th:each="i : ${#numbers.sequence(1, blankRows)}" class="blank-row">
+                    <td></td><td></td><td></td><td></td>
+                </tr>
+
+                <tbody class="keep-together">
+                <!-- Totals nằm TRONG cùng bảng 4 cột như ảnh -->
+                    <tr>
+                        <td colspan="3" class="tot-lbl">Cộng:</td>
+                        <td class="r val" th:text="${subTotalDisplay}"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="tot-lbl" th:text="'Thuế GTGT (' + ${vatRate} + '):'">Thuế GTGT (...):</td>
+                        <td class="r val" th:text="${vatAmount}"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="tot-lbl" th:text="'Phí bảo vệ môi trường (' + ${environmentFeeRate} + '):'">Phí bảo vệ môi trường (...):</td>
+                        <td class="r val" th:text="${environmentFeeAmount}"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="tot-lbl">Tổng cộng:</td>
+                        <td class="r val" th:text="${totalAmount}"></td>
+                    </tr>
+
+                    <tr>
+                        <td colspan="4"><span class="tot-lbl">Số tiền bằng chữ:</span> <span th:text="${amountInWords}"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

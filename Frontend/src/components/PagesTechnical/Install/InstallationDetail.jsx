@@ -274,7 +274,7 @@ function InstallationDetail() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow mb-6 border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-4">Thông Tin Kỹ Thuật (Từ Khảo Sát)</h3>
                 <p className="text-sm mb-3 text-gray-700">
-                    <strong>Chi Phí:</strong> <span className="text-orange-600 font-bold">{contract.estimatedCost?.toLocaleString('vi-VN') || '-'} VNĐ</span>
+                    <strong>Chi Phí (Chưa bao gồm VAT):</strong> <span className="text-orange-600 font-bold">{contract.estimatedCost?.toLocaleString('vi-VN') || '-'} VNĐ</span>
                 </p>
                 <div>
                     <p className="text-sm mb-1 font-medium text-gray-700">Ghi chú:</p>
